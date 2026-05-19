@@ -1,7 +1,12 @@
 import { GoldHeader } from "@/components/GoldHeader";
+import { requireMember } from "@/lib/auth";
 import { getTreasury } from "@/lib/data";
 
+// La Tesorería contiene información reservada — solo miembros autenticados.
+export const dynamic = "force-dynamic";
+
 export default async function TesoreriaPage() {
+  await requireMember("/tesoreria");
   const t = await getTreasury();
   const pct = Math.max(0, Math.min(1, t.current_amount / t.goal_amount));
   const r = 56;
