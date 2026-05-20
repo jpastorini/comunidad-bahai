@@ -7,11 +7,10 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 import { getBahaiMonth } from "@/lib/bahai-calendar";
 import {
-  TEMPLATE_DEEPENING_CONTENT,
-  TEMPLATE_DEEPENING_THEME,
   TEMPLATE_INTERNATIONAL_REPORTS_PLACEHOLDER,
   TEMPLATE_LOCAL_REPORTS_PLACEHOLDER,
   TEMPLATE_NATIONAL_REPORTS_PLACEHOLDER,
+  generateTemplateDeepening,
   generateTemplatePrayers,
 } from "@/lib/feast-template";
 
@@ -237,8 +236,12 @@ export async function loadTemplateAction(formData: FormData) {
 
   if (feast) {
     const updates: Record<string, unknown> = {};
-    if (!feast.deepening_theme) updates.deepening_theme = TEMPLATE_DEEPENING_THEME;
-    if (!feast.deepening_content) updates.deepening_content = TEMPLATE_DEEPENING_CONTENT;
+    // Profundización: si está vacía, elige un tema al azar del pool de 20.
+    if (!feast.deepening_theme || !feast.deepening_content) {
+      const deepening = generateTemplateDeepening();
+      if (!feast.deepening_theme) updates.deepening_theme = deepening.theme;
+      if (!feast.deepening_content) updates.deepening_content = deepening.content;
+    }
     if (!feast.international_reports)
       updates.international_reports = TEMPLATE_INTERNATIONAL_REPORTS_PLACEHOLDER;
     if (!feast.national_reports)

@@ -13,6 +13,10 @@
  */
 
 import { pickRandomPrayers, type PoolPrayer } from "./feast-prayer-pool";
+import {
+  formatDeepening,
+  pickRandomDeepening,
+} from "./feast-deepening-pool";
 
 export type TemplatePrayer = {
   title: string;
@@ -38,18 +42,19 @@ export function generateTemplatePrayers(count = 4): TemplatePrayer[] {
  */
 export const TEMPLATE_PRAYERS: TemplatePrayer[] = generateTemplatePrayers(4);
 
-/** Tema de profundización: vacío a propósito — cada Asamblea elige texto. */
-export const TEMPLATE_DEEPENING_THEME = "";
+/**
+ * Genera un tema de profundización al azar del pool de 20 temas
+ * (compilatorio "Fuente de Todo Bien" — Reed Chandler / ANS Chile, 1991).
+ * Devuelve `{ theme, content }` listo para guardar en la Fiesta.
+ */
+export function generateTemplateDeepening(): { theme: string; content: string } {
+  return formatDeepening(pickRandomDeepening());
+}
 
+// Constantes deprecadas pero conservadas por compatibilidad con código antiguo.
+export const TEMPLATE_DEEPENING_THEME = "";
 export const TEMPLATE_DEEPENING_CONTENT =
-  "[Sugerencia: la Asamblea elige un párrafo de los Escritos bahá'ís o " +
-  "de las cartas de la Casa Universal de Justicia.\n\n" +
-  "Fuentes recomendadas:\n" +
-  "• https://www.bahai.org/es/library/authoritative-texts\n" +
-  "• https://www.bahai.org/es/library/messages\n" +
-  "• https://reference.bahai.org/es/\n\n" +
-  "Borra este texto y reemplázalo con el pasaje elegido + las preguntas " +
-  "guía para la reflexión comunitaria.]";
+  "[La Asamblea elige un pasaje de los Escritos para reflexionar.]";
 
 export const TEMPLATE_INTERNATIONAL_REPORTS_PLACEHOLDER =
   "[Resumen de las noticias más recientes de la Comunidad Bahá'í " +
