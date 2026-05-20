@@ -144,8 +144,12 @@ export type FeastPrayer = {
 export type FeastSuggestion = {
   id: string;
   feast_id: string;
+  /** Si fue enviada por un miembro logueado, su user_id. NULL si capturada por admin. */
   user_id: string | null;
+  /** Nombre del autor cuando lo captura un admin (texto libre, opcional). */
+  author_name: string | null;
   detail: string;
+  /** True cuando la Asamblea ya trató la sugerencia en reunión. */
   reviewed: boolean;
   created_at: string;
 };
