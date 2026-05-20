@@ -35,7 +35,7 @@ export function SectionGrid({ badges }: Props) {
 
   const sections: SectionItem[] = [
     { href: "/mensajes", title: "Mensajes", subtitle: "Casa Universal", Icon: IconMensajes, color: TERRA, badge: badges.mensajes ?? "Nuevo" },
-    { href: "/chat", title: "Secretaría", subtitle: "Local", Icon: IconChat, color: AMBER, badge: badges.chat ?? 2 },
+    { href: "/chat", title: "Chat con Secretaría", subtitle: "Asamblea Local", Icon: IconChat, color: AMBER, badge: badges.chat ?? 2 },
     { href: "/actividades", title: "Actividades", subtitle: "Locales", Icon: IconActividades, color: TERRA, badge: badges.actividades ?? 3 },
     { href: "/calendario", title: "Calendario", subtitle: "Mayo 2026", Icon: IconCalendario, color: AMBER },
     { href: "/servicio", title: "Servicio", subtitle: "Necesidades", Icon: IconServicio, color: TERRA, badge: badges.servicio ?? 5 },
