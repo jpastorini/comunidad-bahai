@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Banner, Card, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
@@ -102,6 +103,22 @@ export default async function EditFeastPage({
               Cargar plantilla
             </button>
           </form>
+        </Card>
+
+        <Card>
+          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Sugerencias en vivo
+          </h3>
+          <p className="mt-2 text-[12px] text-muted">
+            Captura sugerencias rápidamente desde tu teléfono durante la
+            Fiesta misma. Cada una queda asociada a esta Fiesta.
+          </p>
+          <Link
+            href={`/admin/fiestas/${feast.id}/sugerencias`}
+            className="tap mt-3 inline-flex rounded-xl bg-terra px-4 py-2 text-[13px] font-semibold text-white shadow-card-soft"
+          >
+            Abrir captura en vivo →
+          </Link>
         </Card>
       </div>
 

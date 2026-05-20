@@ -131,7 +131,12 @@ export default async function AdminSugerenciasPage({
         title="Sugerencias de la comunidad"
         description="Capturadas durante las Fiestas. La Asamblea las consulta en su reunión administrativa y marca las tratadas."
         actions={
-          <Button href="/admin/sugerencias/nueva">+ Agregar sugerencias</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" href="/admin/sugerencias/nueva">
+              + En lote
+            </Button>
+            <Button href="/admin/fiestas">Captura en vivo →</Button>
+          </div>
         }
       />
 

@@ -149,9 +149,15 @@ export default async function AdminFiestasPage() {
           {
             key: "actions",
             label: "",
-            width: "160px",
+            width: "220px",
             render: (f) => (
               <div className="flex items-center justify-end gap-2">
+                <Link
+                  href={`/admin/fiestas/${f.id}/sugerencias`}
+                  className="text-[12px] font-semibold text-amber hover:underline"
+                >
+                  Captura
+                </Link>
                 <Link
                   href={`/admin/fiestas/${f.id}`}
                   className="text-[12px] font-semibold text-terra hover:underline"

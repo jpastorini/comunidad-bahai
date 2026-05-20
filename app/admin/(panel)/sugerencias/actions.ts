@@ -56,6 +56,42 @@ export async function bulkInsertSuggestionsAction(formData: FormData) {
   redirect("/admin/sugerencias");
 }
 
+/**
+ * Captura rápida de una sola sugerencia — usado durante la Fiesta cuando
+ * el secretario está tomando nota en su teléfono. Vuelve a la misma URL
+ * para que el form re-aparezca con foco listo para la siguiente.
+ */
+export async function quickAddSuggestionAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = createSupabaseServer();
+
+  const feast_id = formData.get("feast_id") as string;
+  const detail = ((formData.get("detail") as string) || "").trim();
+  const author_name =
+    ((formData.get("author_name") as string) || "").trim() || null;
+
+  if (!feast_id) redirect("/admin/sugerencias");
+  if (!detail) {
+    redirect(`/admin/fiestas/${feast_id}/sugerencias?error=empty`);
+  }
+
+  const { error } = await supabase.from("feast_suggestions").insert({
+    feast_id,
+    detail,
+    author_name,
+  });
+
+  if (error) {
+    setFlashToast({ tone: "error", message: `Error: ${error.message}` });
+  }
+  // No mostramos toast en éxito: el feedback visual es que la sugerencia
+  // aparece arriba de la lista y el form se limpia.
+
+  revalidatePath(`/admin/fiestas/${feast_id}/sugerencias`);
+  revalidatePath("/admin/sugerencias");
+  redirect(`/admin/fiestas/${feast_id}/sugerencias`);
+}
+
 /** Marca o desmarca una sugerencia como "tratada por la Asamblea". */
 export async function toggleSuggestionReviewedAction(formData: FormData) {
   await requireAdmin();
