@@ -12,7 +12,7 @@ import {
   TEMPLATE_INTERNATIONAL_REPORTS_PLACEHOLDER,
   TEMPLATE_LOCAL_REPORTS_PLACEHOLDER,
   TEMPLATE_NATIONAL_REPORTS_PLACEHOLDER,
-  TEMPLATE_PRAYERS,
+  generateTemplatePrayers,
 } from "@/lib/feast-template";
 
 const BUCKET = "comunicados"; // reused for treasury PDF
@@ -257,7 +257,8 @@ export async function loadTemplateAction(formData: FormData) {
     .eq("feast_id", id);
 
   if (!existing || existing.length === 0) {
-    const rows = TEMPLATE_PRAYERS.map((p, i) => ({
+    // Cada carga elige 4 oraciones al azar del pool de 40, para variar.
+    const rows = generateTemplatePrayers(4).map((p, i) => ({
       feast_id: id,
       position: i,
       title: p.title,
