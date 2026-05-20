@@ -31,7 +31,7 @@ const NAV: NavItem[] = [
   { href: "/admin/calendario", label: "Calendario", Icon: IconCalendario },
   { href: "/admin/materiales", label: "Materiales", Icon: IconMateriales },
   { href: "/admin/servicio", label: "Servicio", Icon: IconServicio },
-  { href: "/admin/chat", label: "Chat Secretaría", Icon: IconChat, requires: "chat" },
+  { href: "/admin/chat", label: "Chat con Secretaría", Icon: IconChat, requires: "chat" },
   { href: "/admin/tesoreria", label: "Tesorería", Icon: IconTesoreria, requires: "treasury" },
   { href: "/admin/miembros", label: "Miembros", Icon: IconActividades },
 ];

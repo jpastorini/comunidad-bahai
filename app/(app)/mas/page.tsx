@@ -13,8 +13,8 @@ import { colors } from "@/lib/tokens";
 const ITEMS = [
   {
     href: "/chat",
-    label: "Secretaría Local",
-    sub: "Chat directo",
+    label: "Chat con Secretaría",
+    sub: "Asamblea Local",
     Icon: IconChat,
     color: colors.amber,
   },
