@@ -115,6 +115,7 @@ async function persistLocations(formData: FormData, feastId: string) {
   const times = formData.getAll("location_time[]") as string[];
   const notes = formData.getAll("location_notes[]") as string[];
   const removes = formData.getAll("location_remove[]") as string[];
+  const participants = formData.getAll("location_participants[]") as string[];
 
   for (let i = 0; i < names.length; i++) {
     const existingId = ids[i] || null;
@@ -131,12 +132,18 @@ async function persistLocations(formData: FormData, feastId: string) {
     const time = times[i] || "19:00";
     const startsAt = `${date}T${time}:00`;
 
+    // Participantes: vacío = NULL (sin registrar), número >= 0 = registrado.
+    const pRaw = (participants[i] || "").trim();
+    const participant_count =
+      pRaw === "" ? null : Math.max(0, parseInt(pRaw, 10) || 0);
+
     const row = {
       feast_id: feastId,
       name,
       address: (addresses[i] || "").trim() || null,
       starts_at: startsAt,
       notes: (notes[i] || "").trim() || null,
+      participant_count,
     };
 
     if (existingId) {

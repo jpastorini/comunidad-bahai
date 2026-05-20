@@ -385,4 +385,5 @@ create policy "chat_update_admin_tag" on public.chat_messages
 -- Fiesta de los Diecinueve Días
 -- Ver supabase/migrations/007_feasts.sql para el esquema completo
 -- (tablas: feasts, feast_locations, feast_prayers, feast_suggestions).
+-- NOTA: feast_locations incluye participant_count (NULL = sin registrar).
 -- ─────────────────────────────────────────────────────────────────

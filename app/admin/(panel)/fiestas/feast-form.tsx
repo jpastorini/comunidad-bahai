@@ -308,6 +308,23 @@ function LocationRow({ location }: { location: Partial<FeastLocation> & { _new?:
           />
         </Field>
       </div>
+      <div className="mt-3 grid gap-3 md:grid-cols-[160px,1fr]">
+        <Field
+          label="Participantes"
+          name="location_participants[]"
+          hint="Se registra después de la Fiesta"
+        >
+          <TextInput
+            name="location_participants[]"
+            type="number"
+            min={0}
+            defaultValue={
+              location.participant_count != null ? location.participant_count : ""
+            }
+            placeholder="—"
+          />
+        </Field>
+      </div>
       {location.id && (
         <label className="mt-2 inline-flex items-center gap-2 text-[11px] text-rose-600">
           <input

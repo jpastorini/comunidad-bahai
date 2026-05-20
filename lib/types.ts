@@ -126,6 +126,8 @@ export type FeastLocation = {
   address: string | null;
   starts_at: string; // ISO
   notes: string | null;
+  /** Asistentes registrados después de la Fiesta. NULL = sin registrar. */
+  participant_count: number | null;
   created_at: string;
 };
 
