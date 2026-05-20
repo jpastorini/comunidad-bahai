@@ -27,6 +27,9 @@ import type {
   Activity,
   CalendarEvent,
   ChatMessage,
+  Feast,
+  FeastLocation,
+  FeastPrayer,
   Message,
   ServiceNeed,
   StudyMaterial,
@@ -201,6 +204,60 @@ export async function getTreasury(): Promise<Treasury> {
     .limit(1)
     .maybeSingle();
   return (data as Treasury | null) ?? seedTreasury;
+}
+
+// ─── Fiestas ────────────────────────────────────────────────────
+export async function getFeasts(): Promise<Feast[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = createSupabaseServer();
+  const { data } = await supabase
+    .from("feasts")
+    .select("*")
+    .order("bahai_year", { ascending: false })
+    .order("bahai_month_index", { ascending: false });
+  return (data ?? []) as Feast[];
+}
+
+export async function getFeast(id: string): Promise<Feast | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = createSupabaseServer();
+  const { data } = await supabase
+    .from("feasts")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  return (data as Feast | null) ?? null;
+}
+
+export async function getFeastLocations(feastId: string): Promise<FeastLocation[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = createSupabaseServer();
+  const { data } = await supabase
+    .from("feast_locations")
+    .select("*")
+    .eq("feast_id", feastId)
+    .order("starts_at", { ascending: true });
+  return (data ?? []) as FeastLocation[];
+}
+
+export async function getFeastPrayers(feastId: string): Promise<FeastPrayer[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = createSupabaseServer();
+  const { data } = await supabase
+    .from("feast_prayers")
+    .select("*")
+    .eq("feast_id", feastId)
+    .order("position", { ascending: true });
+  return (data ?? []) as FeastPrayer[];
+}
+
+/** Próxima Fiesta a celebrar (la upcoming más cercana, o la in_progress). */
+export async function getCurrentFeast(): Promise<Feast | null> {
+  const all = await getFeasts();
+  // Priorizar in_progress, luego la upcoming más reciente.
+  const inProgress = all.find((f) => f.status === "in_progress");
+  if (inProgress) return inProgress;
+  return all.find((f) => f.status === "upcoming") ?? null;
 }
 
 export async function getBadges() {

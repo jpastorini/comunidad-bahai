@@ -380,3 +380,9 @@ create policy "chat_update_admin_tag" on public.chat_messages
 
 -- Realtime: habilitar replicación para chat_messages desde el dashboard
 -- (Database -> Replication -> public.chat_messages).
+
+-- ─────────────────────────────────────────────────────────────────
+-- Fiesta de los Diecinueve Días
+-- Ver supabase/migrations/007_feasts.sql para el esquema completo
+-- (tablas: feasts, feast_locations, feast_prayers, feast_suggestions).
+-- ─────────────────────────────────────────────────────────────────

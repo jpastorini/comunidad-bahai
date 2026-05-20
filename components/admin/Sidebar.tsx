@@ -25,6 +25,7 @@ const NAV: NavItem[] = [
   { href: "/admin", label: "Inicio", Icon: IconActividades },
   { href: "/admin/mensajes", label: "Mensajes (Casa Universal)", Icon: IconMensajes },
   { href: "/admin/comunicados", label: "Comunicados (Asamblea Local)", Icon: IconMensajes },
+  { href: "/admin/fiestas", label: "Fiestas de 19 Días", Icon: IconCalendario },
   { href: "/admin/actividades", label: "Actividades", Icon: IconActividades },
   { href: "/admin/calendario", label: "Calendario", Icon: IconCalendario },
   { href: "/admin/materiales", label: "Materiales", Icon: IconMateriales },

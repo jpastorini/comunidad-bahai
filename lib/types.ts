@@ -96,6 +96,58 @@ export type Treasury = {
   methods: { type: string; description: string; letter: string }[];
 };
 
+// ─── Fiesta de los Diecinueve Días ──────────────────────────────
+export type FeastStatus = "upcoming" | "in_progress";
+
+export type Feast = {
+  id: string;
+  bahai_month_name: string;
+  bahai_month_index: number;
+  bahai_year: number;
+  status: FeastStatus;
+  started_at: string | null;
+  deepening_theme: string | null;
+  deepening_content: string | null;
+  international_reports: string | null;
+  national_reports: string | null;
+  local_reports: string | null;
+  assembly_communique: string | null;
+  treasury_income: number | null;
+  treasury_expenses: number | null;
+  treasury_final: number | null;
+  treasury_pdf_url: string | null;
+  created_at: string;
+};
+
+export type FeastLocation = {
+  id: string;
+  feast_id: string;
+  name: string;
+  address: string | null;
+  starts_at: string; // ISO
+  notes: string | null;
+  created_at: string;
+};
+
+export type FeastPrayer = {
+  id: string;
+  feast_id: string;
+  position: number;
+  title: string | null;
+  reference: string | null;
+  body: string;
+  created_at: string;
+};
+
+export type FeastSuggestion = {
+  id: string;
+  feast_id: string;
+  user_id: string | null;
+  detail: string;
+  reviewed: boolean;
+  created_at: string;
+};
+
 export type CalendarEvent = {
   id: string;
   day: number;

@@ -41,6 +41,7 @@ export function SectionGrid({ badges }: Props) {
     { href: "/servicio", title: "Servicio", subtitle: "Necesidades", Icon: IconServicio, color: TERRA, badge: badges.servicio ?? 5 },
     { href: "/materiales", title: "Materiales", subtitle: "de Estudio", Icon: IconMateriales, color: AMBER },
     { href: "/comunicados", title: "Comunicados", subtitle: "Asamblea Local", Icon: IconMensajes, color: TERRA },
+    { href: "/fiestas", title: "Fiestas", subtitle: "19 Días", Icon: IconCalendario, color: AMBER },
     { href: "/tesoreria", title: "Tesorería", subtitle: "65% meta", Icon: IconTesoreria, color: AMBER, progress: 0.65 },
   ];
 
