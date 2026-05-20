@@ -336,6 +336,9 @@ create table if not exists public.chat_messages (
   -- from "is the sender the same user as the member?" — useful when the
   -- same person tests as both member and admin.
   is_admin_reply boolean not null default false,
+  -- True cuando el miembro ya vio la respuesta. Distinto de `read`
+  -- (perspectiva de la Secretaría sobre mensajes entrantes).
+  read_by_member boolean not null default false,
   created_at timestamptz not null default now()
 );
 

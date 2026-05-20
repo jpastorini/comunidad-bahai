@@ -3,6 +3,7 @@ import { createSupabaseServer, isSupabaseConfigured } from "@/lib/supabase/serve
 import { seedChat } from "@/lib/seed-data";
 import { ChatScreen } from "./chat-screen";
 import { ChatGate } from "./chat-gate";
+import { markChatSeenByMemberAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,9 @@ export default async function ChatPage() {
     .select("*")
     .eq("member_id", session.user.id)
     .order("created_at", { ascending: true });
+
+  // Apaga el indicador "!" del home — el miembro acaba de abrir el chat.
+  await markChatSeenByMemberAction(session.user.id);
 
   return (
     <ChatScreen

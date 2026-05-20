@@ -16,16 +16,15 @@ type SectionItem = {
   subtitle: string;
   Icon: ComponentType<{ size?: number }>;
   color: string; // hex (terra or amber)
-  badge?: string | number;
+  /** Cuando true muestra un punto rojo "!" en la esquina superior derecha. */
+  hasUnseen?: boolean;
   progress?: number; // 0..1
 };
 
 type Props = {
-  badges: {
-    mensajes?: string | number;
-    chat?: number;
-    actividades?: number;
-    servicio?: number;
+  /** Indicadores personales del usuario logueado. */
+  badges?: {
+    chat_has_unseen?: boolean;
   };
 };
 
@@ -34,11 +33,18 @@ export function SectionGrid({ badges }: Props) {
   const AMBER = "#7E44B8";
 
   const sections: SectionItem[] = [
-    { href: "/mensajes", title: "Mensajes", subtitle: "Casa Universal", Icon: IconMensajes, color: TERRA, badge: badges.mensajes ?? "Nuevo" },
-    { href: "/chat", title: "Chat con Secretaría", subtitle: "Asamblea Local", Icon: IconChat, color: AMBER, badge: badges.chat ?? 2 },
-    { href: "/actividades", title: "Actividades", subtitle: "Locales", Icon: IconActividades, color: TERRA, badge: badges.actividades ?? 3 },
+    { href: "/mensajes", title: "Mensajes", subtitle: "Casa Universal", Icon: IconMensajes, color: TERRA },
+    {
+      href: "/chat",
+      title: "Chat con Secretaría",
+      subtitle: "Asamblea Local",
+      Icon: IconChat,
+      color: AMBER,
+      hasUnseen: badges?.chat_has_unseen ?? false,
+    },
+    { href: "/actividades", title: "Actividades", subtitle: "Locales", Icon: IconActividades, color: TERRA },
     { href: "/calendario", title: "Calendario", subtitle: "Mayo 2026", Icon: IconCalendario, color: AMBER },
-    { href: "/servicio", title: "Servicio", subtitle: "Necesidades", Icon: IconServicio, color: TERRA, badge: badges.servicio ?? 5 },
+    { href: "/servicio", title: "Servicio", subtitle: "Necesidades", Icon: IconServicio, color: TERRA },
     { href: "/materiales", title: "Materiales", subtitle: "de Estudio", Icon: IconMateriales, color: AMBER },
     { href: "/comunicados", title: "Comunicados", subtitle: "Asamblea Local", Icon: IconMensajes, color: TERRA },
     { href: "/fiestas", title: "Fiestas", subtitle: "19 Días", Icon: IconCalendario, color: AMBER },
@@ -54,22 +60,26 @@ export function SectionGrid({ badges }: Props) {
   );
 }
 
-function SectionCard({ href, title, subtitle, Icon, color, badge, progress }: SectionItem) {
-  const isNuevo = badge === "Nuevo";
+function SectionCard({
+  href,
+  title,
+  subtitle,
+  Icon,
+  color,
+  hasUnseen,
+  progress,
+}: SectionItem) {
   return (
     <Link
       href={href}
       className="tap relative flex flex-col items-center gap-[7px] rounded-[14px] bg-card px-2.5 pb-3 pt-3.5 shadow-card"
     >
-      {badge !== undefined && (
+      {hasUnseen && (
         <span
-          className="absolute right-2 top-2 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.3px]"
-          style={{
-            background: isNuevo ? "#2A3F8F" : "#2A3F8F15",
-            color: isNuevo ? "#fff" : "#2A3F8F",
-          }}
+          aria-label="Hay novedades"
+          className="absolute right-2 top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white shadow"
         >
-          {badge}
+          !
         </span>
       )}
       <div

@@ -1,19 +1,23 @@
 import { FeaturedMessageCard } from "@/components/home/FeaturedMessageCard";
 import { GoldHeader } from "@/components/GoldHeader";
 import { SectionGrid } from "@/components/home/SectionGrid";
-import { UpcomingActivities } from "@/components/home/UpcomingActivities";
+import { UpcomingEvents } from "@/components/home/UpcomingEvents";
+import { getOptionalMember } from "@/lib/auth";
 import {
   getBadges,
   getLatestLocalAnnouncement,
-  getUpcomingActivities,
+  getUpcomingCalendarEvents,
 } from "@/lib/data";
 import { formatLongDate } from "@/lib/format";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
+  const session = await getOptionalMember();
   const [featured, upcoming, badges] = await Promise.all([
     getLatestLocalAnnouncement(),
-    getUpcomingActivities(2),
-    getBadges(),
+    getUpcomingCalendarEvents(2),
+    getBadges(session?.user.id ?? null),
   ]);
 
   return (
@@ -35,7 +39,7 @@ export default async function HomePage() {
           />
         )}
         <SectionGrid badges={badges} />
-        <UpcomingActivities activities={upcoming} />
+        <UpcomingEvents events={upcoming} />
       </main>
     </>
   );

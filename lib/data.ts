@@ -9,7 +9,6 @@
 import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
 import {
   seedActivities,
-  seedBadges,
   seedCalendarEvents,
   seedChat,
   seedEscritos,
@@ -260,7 +259,43 @@ export async function getCurrentFeast(): Promise<Feast | null> {
   return all.find((f) => f.status === "upcoming") ?? null;
 }
 
-export async function getBadges() {
-  // Real implementation would compute unread counts; demo returns static.
-  return seedBadges;
+/**
+ * Badges del home para el usuario actual.
+ * - chat_has_unseen: true cuando hay respuestas de la Secretaría que
+ *   este miembro aún no abrió. Apaga al visitar /chat.
+ * - Otros indicadores solo se mostrarán cuando exista una forma real
+ *   de saber "qué no ha visto este usuario" (por ahora no aplica).
+ */
+export async function getBadges(userId?: string | null): Promise<{
+  chat_has_unseen: boolean;
+}> {
+  if (!isSupabaseConfigured() || !userId) {
+    return { chat_has_unseen: false };
+  }
+  const supabase = createSupabaseServer();
+  const { count } = await supabase
+    .from("chat_messages")
+    .select("*", { count: "exact", head: true })
+    .eq("member_id", userId)
+    .eq("is_admin_reply", true)
+    .eq("read_by_member", false);
+  return { chat_has_unseen: (count ?? 0) > 0 };
+}
+
+/** Próximos N eventos del calendario, ordenados por fecha. */
+export async function getUpcomingCalendarEvents(
+  limit = 2
+): Promise<CalendarEvent[]> {
+  const all = await getCalendarEvents();
+  const today = new Date();
+  const todayKey =
+    today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+  const future = all
+    .filter((e) => e.year * 10000 + e.month * 100 + e.day >= todayKey)
+    .sort(
+      (a, b) =>
+        a.year * 10000 + a.month * 100 + a.day -
+        (b.year * 10000 + b.month * 100 + b.day)
+    );
+  return future.slice(0, limit);
 }
