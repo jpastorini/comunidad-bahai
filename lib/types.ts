@@ -36,6 +36,20 @@ export type Profile = {
   role: "member" | "admin";
   can_respond_chat: boolean;
   can_manage_treasury: boolean;
+  /** Localidad a la que pertenece. NULL = todavía no eligió. */
+  locality_id: string | null;
+  /** Puede crear/editar localidades y asignar roles cross-locality. */
+  is_national_admin: boolean;
+  created_at: string;
+};
+
+export type Locality = {
+  id: string;
+  name: string;
+  city: string | null;
+  country: string;
+  description: string | null;
+  is_active: boolean;
   created_at: string;
 };
 

@@ -2,7 +2,7 @@ import { FeaturedMessageCard } from "@/components/home/FeaturedMessageCard";
 import { GoldHeader } from "@/components/GoldHeader";
 import { SectionGrid } from "@/components/home/SectionGrid";
 import { UpcomingEvents } from "@/components/home/UpcomingEvents";
-import { getOptionalMember } from "@/lib/auth";
+import { requireMember } from "@/lib/auth";
 import {
   getBadges,
   getLatestLocalAnnouncement,
@@ -13,17 +13,17 @@ import { formatLongDate } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const session = await getOptionalMember();
+  const session = await requireMember("/");
   const [featured, upcoming, badges] = await Promise.all([
     getLatestLocalAnnouncement(),
     getUpcomingCalendarEvents(2),
-    getBadges(session?.user.id ?? null),
+    getBadges(session.user.id),
   ]);
 
   return (
     <>
       <GoldHeader
-        title="Comunidad Bahá'í"
+        title={session.locality.name}
         subtitle="Centro de Comunicados"
         rightSlot={formatLongDate(new Date())}
         starSize={130}

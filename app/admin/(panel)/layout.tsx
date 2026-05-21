@@ -12,7 +12,11 @@ export default async function PanelLayout({
   const session = await requireAdmin();
   const toast = consumeFlashToast();
   return (
-    <AdminShell profile={session.profile} toast={toast}>
+    <AdminShell
+      profile={session.profile}
+      locality={session.locality}
+      toast={toast}
+    >
       {children}
     </AdminShell>
   );

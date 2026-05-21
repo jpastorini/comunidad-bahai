@@ -1,24 +1,32 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
-import type { Profile } from "./types";
+import type { Locality, Profile } from "./types";
 
 export type AdminSession = {
   user: { id: string; email: string };
   profile: Profile;
+  locality: Locality;
 };
 
 export type MemberSession = {
   user: { id: string; email: string };
   profile: Profile;
+  locality: Locality | null; // null si todavía no eligió
+};
+
+export type NationalAdminSession = {
+  user: { id: string; email: string };
+  profile: Profile;
 };
 
 /**
- * Loads the signed-in member (any role) or redirects to /login.
- * Use for member-facing features that need identity (chat, volunteer, etc.).
+ * Loads the signed-in member (any role) and their locality, or redirects
+ * to /login. If logged in but locality not chosen yet, redirects to
+ * /seleccionar-localidad.
  */
 export async function requireMember(
   redirectTo: string = "/"
-): Promise<MemberSession> {
+): Promise<MemberSession & { locality: Locality }> {
   if (!isSupabaseConfigured()) {
     redirect(`/login?error=no-supabase&next=${encodeURIComponent(redirectTo)}`);
   }
@@ -42,9 +50,26 @@ export async function requireMember(
     redirect("/login?error=no-profile");
   }
 
+  // Si no eligió localidad, forzamos la selección antes de cualquier otra cosa.
+  if (!profile.locality_id) {
+    redirect(`/seleccionar-localidad?next=${encodeURIComponent(redirectTo)}`);
+  }
+
+  const { data: locality } = await supabase
+    .from("localities")
+    .select("*")
+    .eq("id", profile.locality_id)
+    .maybeSingle();
+
+  if (!locality) {
+    // Localidad borrada — el usuario debe elegir otra.
+    redirect(`/seleccionar-localidad?error=missing&next=${encodeURIComponent(redirectTo)}`);
+  }
+
   return {
     user: { id: user.id, email: user.email ?? "" },
     profile: profile as Profile,
+    locality: locality as Locality,
   };
 }
 
@@ -62,15 +87,26 @@ export async function getOptionalMember(): Promise<MemberSession | null> {
     .eq("id", user.id)
     .maybeSingle();
   if (!profile) return null;
+
+  let locality: Locality | null = null;
+  if (profile.locality_id) {
+    const { data: loc } = await supabase
+      .from("localities")
+      .select("*")
+      .eq("id", profile.locality_id)
+      .maybeSingle();
+    locality = (loc as Locality | null) ?? null;
+  }
+
   return {
     user: { id: user.id, email: user.email ?? "" },
     profile: profile as Profile,
+    locality,
   };
 }
 
 /**
- * Loads the signed-in admin or redirects to /admin/login.
- * Use at the top of every server component inside (admin) routes.
+ * Loads the signed-in admin (rol='admin' Y locality_id set), o redirige.
  */
 export async function requireAdmin(): Promise<AdminSession> {
   if (!isSupabaseConfigured()) {
@@ -96,6 +132,50 @@ export async function requireAdmin(): Promise<AdminSession> {
     redirect("/admin/login?error=not-admin");
   }
 
+  if (!profile.locality_id) {
+    redirect("/seleccionar-localidad?next=%2Fadmin");
+  }
+
+  const { data: locality } = await supabase
+    .from("localities")
+    .select("*")
+    .eq("id", profile.locality_id)
+    .maybeSingle();
+
+  if (!locality) {
+    redirect("/seleccionar-localidad?error=missing&next=%2Fadmin");
+  }
+
+  return {
+    user: { id: user.id, email: user.email ?? "" },
+    profile: profile as Profile,
+    locality: locality as Locality,
+  };
+}
+
+/**
+ * Admin Nacional: puede gestionar localidades y asignar roles globalmente.
+ * Redirige si el usuario no tiene el flag.
+ */
+export async function requireNationalAdmin(): Promise<NationalAdminSession> {
+  if (!isSupabaseConfigured()) {
+    redirect("/admin/login?error=no-supabase");
+  }
+  const supabase = createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/admin/login?next=%2Fadmin%2Fnacional");
+  }
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (!profile?.is_national_admin) {
+    redirect("/admin?error=not-national-admin");
+  }
   return {
     user: { id: user.id, email: user.email ?? "" },
     profile: profile as Profile,

@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { SidebarContent } from "./Sidebar";
 import { Toaster } from "@/components/Toaster";
-import type { Profile } from "@/lib/types";
+import type { Locality, Profile } from "@/lib/types";
 
 type Props = {
   profile: Profile;
+  locality?: Locality;
   children: React.ReactNode;
   toast?: { tone: "success" | "error" | "info"; message: string } | null;
 };
@@ -16,7 +17,7 @@ type Props = {
  *  - Desktop (md+): fixed sidebar 256px on the left, main content fills the rest.
  *  - Mobile: top bar with hamburger that opens a slide-in drawer.
  */
-export function AdminShell({ profile, children, toast }: Props) {
+export function AdminShell({ profile, locality, children, toast }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
@@ -59,6 +60,7 @@ export function AdminShell({ profile, children, toast }: Props) {
       >
         <SidebarContent
           profile={profile}
+          locality={locality}
           onNavigate={() => setDrawerOpen(false)}
         />
       </aside>
