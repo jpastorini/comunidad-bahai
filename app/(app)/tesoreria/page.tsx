@@ -24,7 +24,11 @@ export default async function TesoreriaPage() {
   const dashOffset = circ * (1 - pct);
 
   const fmt = (n: number) =>
-    n.toLocaleString("es-MX", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+    n.toLocaleString("es-UY", {
+      style: "currency",
+      currency: "UYU",
+      maximumFractionDigits: 0,
+    });
 
   return (
     <>
@@ -102,12 +106,6 @@ export default async function TesoreriaPage() {
           </div>
         </div>
 
-        {/* Compromiso mensual del miembro logueado */}
-        <CommitmentSection
-          defaultName={session.profile.full_name ?? ""}
-          commitment={(commitment as TreasuryCommitment | null) ?? null}
-        />
-
         {/* Monthly report */}
         <div className="mb-3.5 rounded-2xl bg-card p-4 shadow-card-soft">
           <h3 className="mb-2.5 text-[13px] font-semibold text-dark">
@@ -129,6 +127,12 @@ export default async function TesoreriaPage() {
             </div>
           ))}
         </div>
+
+        {/* Compromiso mensual del miembro logueado */}
+        <CommitmentSection
+          defaultName={session.profile.full_name ?? ""}
+          commitment={(commitment as TreasuryCommitment | null) ?? null}
+        />
       </main>
     </>
   );

@@ -98,7 +98,11 @@ export default async function AdminTesoreriaPage() {
           </div>
           <div className="text-right">
             <div className="font-display text-[28px] font-bold leading-none text-amber">
-              ${totalCommitted.toLocaleString("es-MX")}
+              {totalCommitted.toLocaleString("es-UY", {
+                style: "currency",
+                currency: "UYU",
+                maximumFractionDigits: 0,
+              })}
             </div>
             <div className="mt-0.5 text-[11px] text-muted">
               total / mes
@@ -145,7 +149,11 @@ export default async function AdminTesoreriaPage() {
                       )}
                     </td>
                     <td className="px-4 py-2.5 text-right font-display text-[15px] font-semibold text-dark">
-                      ${Number(c.amount).toLocaleString("es-MX")}
+                      {Number(c.amount).toLocaleString("es-UY", {
+                        style: "currency",
+                        currency: "UYU",
+                        maximumFractionDigits: 0,
+                      })}
                     </td>
                     <td className="px-4 py-2.5 text-center">
                       {c.want_reminder ? (
