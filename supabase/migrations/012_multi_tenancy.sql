@@ -10,10 +10,20 @@
 -- - Trigger set_locality_from_auth() copia la locality_id desde el perfil
 --   del usuario que hace el INSERT, así los admins no tienen que pensar
 --
+-- ORDEN DE EJECUCIÓN IMPORTANTE:
+--   1. Crear tabla localities (sin políticas que dependan de profiles aún)
+--   2. Insert localidad default
+--   3. Agregar columnas a profiles (locality_id, is_national_admin)
+--   4. Backfill profiles
+--   5. RLS de localities (ya pueden referenciar la nueva columna)
+--   6. Helpers (current_locality_id, is_national_admin)
+--   7. Trigger genérico set_locality_from_auth
+--   8. Aplicar a cada tabla de tenant
+--
 -- Run once in the Supabase SQL Editor.
 -- ═════════════════════════════════════════════════════════════════
 
--- ─── 1. Tabla localities ─────────────────────────────────────────
+-- ─── 1. Tabla localities (sin RLS aún) ───────────────────────────
 create table if not exists public.localities (
   id uuid primary key default uuid_generate_v4(),
   name text not null,                  -- "Comunidad Bahá'í de Montevideo"
@@ -27,14 +37,28 @@ create table if not exists public.localities (
 create unique index if not exists localities_name_unique
   on public.localities (lower(name));
 
+-- ─── 2. Localidad default para preservar datos existentes ────────
+insert into public.localities (name, city, country)
+values ('Comunidad Bahá''í de Montevideo', 'Montevideo', 'Uruguay')
+on conflict do nothing;
+
+-- ─── 3. Profiles: agregar columnas ───────────────────────────────
+alter table public.profiles
+  add column if not exists locality_id uuid references public.localities(id) on delete set null,
+  add column if not exists is_national_admin boolean not null default false;
+
+-- ─── 4. Backfill profiles existentes → localidad default ─────────
+update public.profiles
+set locality_id = (select id from public.localities limit 1)
+where locality_id is null;
+
+-- ─── 5. RLS de localities (ahora sí, la columna ya existe) ───────
 alter table public.localities enable row level security;
 
--- Cualquiera puede listar localidades activas (necesario para el selector).
 drop policy if exists "localities_select_all" on public.localities;
 create policy "localities_select_all" on public.localities
   for select using (true);
 
--- Solo Admin Nacional puede modificar.
 drop policy if exists "localities_national_write" on public.localities;
 create policy "localities_national_write" on public.localities
   for all
@@ -45,23 +69,7 @@ create policy "localities_national_write" on public.localities
     coalesce((select is_national_admin from public.profiles where id = auth.uid()), false)
   );
 
--- Localidad por defecto: para preservar los datos actuales del testing.
-insert into public.localities (name, city, country)
-values ('Comunidad Bahá''í de Montevideo', 'Montevideo', 'Uruguay')
-on conflict do nothing;
-
--- ─── 2. Profiles: locality_id + is_national_admin ────────────────
-alter table public.profiles
-  add column if not exists locality_id uuid references public.localities(id) on delete set null,
-  add column if not exists is_national_admin boolean not null default false;
-
--- Backfill: todos los perfiles existentes → Montevideo
-update public.profiles
-set locality_id = (select id from public.localities limit 1)
-where locality_id is null;
-
--- Política nueva: Admin Nacional puede editar cualquier perfil (asignar
--- localidad, promover a admin, etc.)
+-- Profile policy: Admin Nacional puede editar cualquier perfil.
 drop policy if exists "profiles_national_update" on public.profiles;
 create policy "profiles_national_update" on public.profiles
   for update
@@ -72,7 +80,7 @@ create policy "profiles_national_update" on public.profiles
     coalesce((select is_national_admin from public.profiles where id = auth.uid()), false)
   );
 
--- ─── 3. Helpers de auth ──────────────────────────────────────────
+-- ─── 6. Helpers de auth ──────────────────────────────────────────
 create or replace function public.current_locality_id()
 returns uuid
 language sql security definer stable
@@ -92,10 +100,7 @@ as $$
   );
 $$;
 
--- ─── 4. Trigger genérico: auto-llenar locality_id ────────────────
--- Si la fila se inserta sin locality_id explícita, copia la del perfil
--- del usuario logueado. Esto evita que el código de la app tenga que
--- pasarla manualmente en cada insert.
+-- ─── 7. Trigger genérico: auto-llenar locality_id ────────────────
 create or replace function public.set_locality_from_auth()
 returns trigger language plpgsql security definer
 set search_path = public
@@ -108,9 +113,7 @@ begin
 end;
 $$;
 
--- ─── 5. Aplicar a cada tabla de tenant ───────────────────────────
--- Helper macro: agrega columna, backfill, NOT NULL, índice, trigger,
--- y reemplaza RLS por versión locality-aware.
+-- ─── 8. Aplicar a cada tabla de tenant ───────────────────────────
 
 -- ── messages ──
 alter table public.messages
@@ -153,6 +156,7 @@ create trigger activities_set_locality before insert on public.activities
   for each row execute function public.set_locality_from_auth();
 
 drop policy if exists "activities_select_all" on public.activities;
+drop policy if exists "activities_select_locality" on public.activities;
 create policy "activities_select_locality" on public.activities
   for select using (
     locality_id = public.current_locality_id()
@@ -176,6 +180,7 @@ create trigger calendar_events_set_locality before insert on public.calendar_eve
   for each row execute function public.set_locality_from_auth();
 
 drop policy if exists "calendar_events_select_all" on public.calendar_events;
+drop policy if exists "calendar_events_select_locality" on public.calendar_events;
 create policy "calendar_events_select_locality" on public.calendar_events
   for select using (
     locality_id = public.current_locality_id()
@@ -199,6 +204,7 @@ create trigger study_materials_set_locality before insert on public.study_materi
   for each row execute function public.set_locality_from_auth();
 
 drop policy if exists "study_materials_select_all" on public.study_materials;
+drop policy if exists "study_materials_select_locality" on public.study_materials;
 create policy "study_materials_select_locality" on public.study_materials
   for select using (
     locality_id = public.current_locality_id()
@@ -222,6 +228,7 @@ create trigger service_needs_set_locality before insert on public.service_needs
   for each row execute function public.set_locality_from_auth();
 
 drop policy if exists "service_needs_select_all" on public.service_needs;
+drop policy if exists "service_needs_select_locality" on public.service_needs;
 create policy "service_needs_select_locality" on public.service_needs
   for select using (
     locality_id = public.current_locality_id()
@@ -245,6 +252,7 @@ create trigger treasury_set_locality before insert on public.treasury
   for each row execute function public.set_locality_from_auth();
 
 drop policy if exists "treasury_select_all" on public.treasury;
+drop policy if exists "treasury_select_locality" on public.treasury;
 create policy "treasury_select_locality" on public.treasury
   for select using (
     locality_id = public.current_locality_id()
@@ -273,8 +281,6 @@ drop trigger if exists treasury_commitments_set_locality on public.treasury_comm
 create trigger treasury_commitments_set_locality before insert on public.treasury_commitments
   for each row execute function public.set_locality_from_auth();
 
--- (Las políticas owner_* siguen igual; agregamos restricción de localidad
--- al tesorero.)
 drop policy if exists "tc_treasurer_select" on public.treasury_commitments;
 create policy "tc_treasurer_select" on public.treasury_commitments
   for select using (
@@ -292,8 +298,6 @@ drop trigger if exists chat_messages_set_locality on public.chat_messages;
 create trigger chat_messages_set_locality before insert on public.chat_messages
   for each row execute function public.set_locality_from_auth();
 
--- chat ya restringe por member_id; agregamos chequeo de localidad para
--- el admin que responde.
 drop policy if exists "chat_select_admin_tag" on public.chat_messages;
 create policy "chat_select_admin_tag" on public.chat_messages
   for select using (
@@ -331,6 +335,7 @@ create trigger feasts_set_locality before insert on public.feasts
   for each row execute function public.set_locality_from_auth();
 
 drop policy if exists "feasts_select_all" on public.feasts;
+drop policy if exists "feasts_select_locality" on public.feasts;
 create policy "feasts_select_locality" on public.feasts
   for select using (
     locality_id = public.current_locality_id()
