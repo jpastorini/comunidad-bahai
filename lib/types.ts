@@ -96,6 +96,16 @@ export type Treasury = {
   methods: { type: string; description: string; letter: string }[];
 };
 
+/** Compromiso mensual de aporte declarado por un miembro al Fondo Local. */
+export type TreasuryCommitment = {
+  user_id: string;
+  display_name: string;
+  amount: number;
+  want_reminder: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 // ─── Fiesta de los Diecinueve Días ──────────────────────────────
 export type FeastStatus = "upcoming" | "in_progress";
 

@@ -319,6 +319,43 @@ create policy "treasury_tag_write" on public.treasury
   with check (public.has_treasury_tag(auth.uid()));
 
 -- ─────────────────────────────────────────────────────────────────
+-- Compromisos mensuales de aporte (los miembros declaran su intención)
+-- - Cada miembro ve y edita SOLO el propio compromiso
+-- - El tesorero (has_treasury_tag) ve todos pero no los modifica
+-- ─────────────────────────────────────────────────────────────────
+create table if not exists public.treasury_commitments (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  display_name text not null,
+  amount numeric not null check (amount > 0),
+  want_reminder boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.treasury_commitments enable row level security;
+
+drop policy if exists "tc_owner_select" on public.treasury_commitments;
+create policy "tc_owner_select" on public.treasury_commitments
+  for select using (user_id = auth.uid());
+
+drop policy if exists "tc_owner_insert" on public.treasury_commitments;
+create policy "tc_owner_insert" on public.treasury_commitments
+  for insert with check (user_id = auth.uid());
+
+drop policy if exists "tc_owner_update" on public.treasury_commitments;
+create policy "tc_owner_update" on public.treasury_commitments
+  for update using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+drop policy if exists "tc_owner_delete" on public.treasury_commitments;
+create policy "tc_owner_delete" on public.treasury_commitments
+  for delete using (user_id = auth.uid());
+
+drop policy if exists "tc_treasurer_select" on public.treasury_commitments;
+create policy "tc_treasurer_select" on public.treasury_commitments
+  for select using (public.has_treasury_tag(auth.uid()));
+
+-- ─────────────────────────────────────────────────────────────────
 -- Chat con Secretaría
 --
 -- Un miembro tiene una "conversación" implícita: member_id = su user_id.

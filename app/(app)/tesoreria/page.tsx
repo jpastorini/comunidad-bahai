@@ -1,13 +1,23 @@
 import { GoldHeader } from "@/components/GoldHeader";
 import { requireMember } from "@/lib/auth";
 import { getTreasury } from "@/lib/data";
+import { createSupabaseServer } from "@/lib/supabase/server";
+import type { TreasuryCommitment } from "@/lib/types";
+import { CommitmentSection } from "./commitment-section";
 
 // La Tesorería contiene información reservada — solo miembros autenticados.
 export const dynamic = "force-dynamic";
 
 export default async function TesoreriaPage() {
-  await requireMember("/tesoreria");
+  const session = await requireMember("/tesoreria");
   const t = await getTreasury();
+
+  const supabase = createSupabaseServer();
+  const { data: commitment } = await supabase
+    .from("treasury_commitments")
+    .select("*")
+    .eq("user_id", session.user.id)
+    .maybeSingle();
   const pct = Math.max(0, Math.min(1, t.current_amount / t.goal_amount));
   const r = 56;
   const circ = 2 * Math.PI * r;
@@ -91,6 +101,12 @@ export default async function TesoreriaPage() {
             ))}
           </div>
         </div>
+
+        {/* Compromiso mensual del miembro logueado */}
+        <CommitmentSection
+          defaultName={session.profile.full_name ?? ""}
+          commitment={(commitment as TreasuryCommitment | null) ?? null}
+        />
 
         {/* Monthly report */}
         <div className="mb-3.5 rounded-2xl bg-card p-4 shadow-card-soft">

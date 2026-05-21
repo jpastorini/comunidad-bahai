@@ -8,7 +8,7 @@ import {
 } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import type { Treasury } from "@/lib/types";
+import type { Treasury, TreasuryCommitment } from "@/lib/types";
 import { saveTreasuryAction } from "./actions";
 
 export default async function AdminTesoreriaPage() {
@@ -22,6 +22,31 @@ export default async function AdminTesoreriaPage() {
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  // Compromisos de miembros — solo el tesorero los ve (RLS lo garantiza).
+  const { data: commitmentsRaw } = await supabase
+    .from("treasury_commitments")
+    .select("*")
+    .order("amount", { ascending: false });
+
+  // Enriquecemos con el email del perfil para que el tesorero pueda contactar.
+  const commitments = (commitmentsRaw ?? []) as TreasuryCommitment[];
+  let commitmentsWithEmail: (TreasuryCommitment & { email: string | null })[] = [];
+  if (commitments.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, email")
+      .in("id", commitments.map((c) => c.user_id));
+    const emailById = new Map<string, string | null>();
+    for (const p of profiles ?? []) emailById.set(p.id, p.email);
+    commitmentsWithEmail = commitments.map((c) => ({
+      ...c,
+      email: emailById.get(c.user_id) ?? null,
+    }));
+  }
+
+  const totalCommitted = commitments.reduce((s, c) => s + Number(c.amount), 0);
+  const wantReminderCount = commitments.filter((c) => c.want_reminder).length;
 
   const t = (data ?? {
     id: null,
@@ -58,6 +83,101 @@ export default async function AdminTesoreriaPage() {
           miembros cuando guardas los cambios.
         </Banner>
       </div>
+
+      {/* Compromisos mensuales declarados por los miembros */}
+      <Card className="mb-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display text-[20px] font-semibold text-dark">
+              Compromisos mensuales
+            </h2>
+            <p className="mt-1 text-[12px] text-muted">
+              Declarados privadamente por los miembros. Solo tú (tesorero) los
+              ves; ningún otro miembro de la Asamblea tiene acceso.
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="font-display text-[28px] font-bold leading-none text-amber">
+              ${totalCommitted.toLocaleString("es-MX")}
+            </div>
+            <div className="mt-0.5 text-[11px] text-muted">
+              total / mes
+              {commitments.length > 0 && (
+                <> · {commitments.length} {commitments.length === 1 ? "miembro" : "miembros"}</>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {commitments.length === 0 ? (
+          <div className="mt-4 rounded-xl border border-dashed border-black/15 bg-bg/40 p-5 text-center text-[13px] text-muted">
+            Aún no hay compromisos registrados. Los miembros pueden declarar el
+            suyo desde la app, en la sección Tesorería.
+          </div>
+        ) : (
+          <div className="mt-4 overflow-hidden rounded-xl border border-black/[0.05]">
+            <table className="w-full border-collapse text-left">
+              <thead className="bg-bg/40 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                <tr>
+                  <th className="px-4 py-2.5">Nombre</th>
+                  <th className="px-4 py-2.5">Email</th>
+                  <th className="px-4 py-2.5 text-right">Monto / mes</th>
+                  <th className="px-4 py-2.5 text-center">Recordatorio</th>
+                  <th className="px-4 py-2.5">Última actualización</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-black/[0.05]">
+                {commitmentsWithEmail.map((c) => (
+                  <tr key={c.user_id} className="hover:bg-bg/30">
+                    <td className="px-4 py-2.5 text-[13px] font-semibold text-dark">
+                      {c.display_name}
+                    </td>
+                    <td className="px-4 py-2.5 text-[12px] text-muted">
+                      {c.email ? (
+                        <a
+                          href={`mailto:${c.email}`}
+                          className="text-terra hover:underline"
+                        >
+                          {c.email}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-display text-[15px] font-semibold text-dark">
+                      ${Number(c.amount).toLocaleString("es-MX")}
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      {c.want_reminder ? (
+                        <span className="inline-flex rounded bg-amber/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber">
+                          Sí · contactar
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-muted">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-[11px] text-muted">
+                      {new Date(c.updated_at).toLocaleDateString("es-MX", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {wantReminderCount > 0 && (
+          <p className="mt-3 text-[11.5px] text-muted">
+            <strong className="text-dark">{wantReminderCount}</strong>{" "}
+            {wantReminderCount === 1 ? "miembro pidió" : "miembros pidieron"}{" "}
+            que se les recuerde si hay retraso en su aporte.
+          </p>
+        )}
+      </Card>
 
       <form action={saveTreasuryAction}>
         {t.id && <input type="hidden" name="id" value={t.id} />}
