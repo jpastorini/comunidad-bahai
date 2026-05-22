@@ -13,27 +13,42 @@ const MONTHS_ES = [
   "ene", "feb", "mar", "abr", "may", "jun",
   "jul", "ago", "sep", "oct", "nov", "dic",
 ];
+const MONTHS_ES_LONG = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
+type MonthGroup = {
+  key: string;       // "2026-05"
+  label: string;     // "Mayo 2026"
+  year: number;
+  month: number;
+  items: UnifiedCalendarItem[];
+};
 
 export default async function AdminCalendarPage() {
   await requireAdmin();
   const items = await getUnifiedCalendarItems();
 
-  const todayKey = (() => {
-    const t = new Date();
-    return t.getFullYear() * 10000 + (t.getMonth() + 1) * 100 + t.getDate();
-  })();
+  const today = new Date();
+  const todayKey =
+    today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+  const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
 
   // Marcamos la próxima entrada (hoy o futura) como destacada visualmente.
   const nextId = items.find(
     (i) => i.year * 10000 + i.month * 100 + i.day >= todayKey
   )?.id;
 
+  // Agrupar por mes gregoriano, en orden cronológico ascendente.
+  const groups = groupByMonth(items);
+
   return (
     <>
       <PageHeader
         eyebrow="Comunidad"
         title="Calendario"
-        description="Vista general: eventos, Fiestas y, a futuro, Días Sagrados. Si vas a crear un nuevo evento, revisa primero esta lista para evitar solapamientos."
+        description="Vista general agrupada por mes gregoriano. Si vas a crear un nuevo evento, revisa primero esta lista para evitar solapamientos."
         actions={<Button href="/admin/calendario/nuevo">+ Nuevo evento</Button>}
       />
 
@@ -44,53 +59,118 @@ export default async function AdminCalendarPage() {
         "Acciones" o desde el sidebar "Fiestas de 19 Días".
       </Banner>
 
-      <div className="mt-5">
-        <DataTable
-          rows={items}
-          rowKey={(i) => `${i.source}-${i.id}`}
-          rowClassName={(i) =>
-            i.id === nextId ? "bg-[#C4A235]/[0.06]" : undefined
-          }
-          empty="Aún no hay eventos ni Fiestas en el calendario."
-          columns={[
-            {
-              key: "date",
-              label: "Fecha",
-              width: "150px",
-              render: (i) => <DateCell item={i} isNext={i.id === nextId} />,
-            },
-            {
-              key: "title",
-              label: "Evento",
-              render: (i) => <TitleCell item={i} />,
-            },
-            {
-              key: "time",
-              label: "Hora",
-              width: "100px",
-              render: (i) => (
-                <span className="text-[12px] text-muted">{i.time}</span>
-              ),
-            },
-            {
-              key: "location",
-              label: "Ubicación",
-              render: (i) => (
-                <span className="text-[12px] text-muted">
-                  {i.location ?? "—"}
-                </span>
-              ),
-            },
-            {
-              key: "actions",
-              label: "Acciones",
-              width: "180px",
-              render: (i) => <ActionsCell item={i} />,
-            },
-          ]}
-        />
-      </div>
+      {groups.length === 0 ? (
+        <div className="mt-5 rounded-2xl bg-card px-4 py-12 text-center text-[14px] text-muted shadow-card-soft">
+          Aún no hay eventos ni Fiestas en el calendario.
+        </div>
+      ) : (
+        <div className="mt-5 flex flex-col gap-6">
+          {groups.map((group) => (
+            <MonthSection
+              key={group.key}
+              group={group}
+              isCurrentMonth={group.key === currentMonthKey}
+              nextId={nextId}
+            />
+          ))}
+        </div>
+      )}
     </>
+  );
+}
+
+function MonthSection({
+  group,
+  isCurrentMonth,
+  nextId,
+}: {
+  group: MonthGroup;
+  isCurrentMonth: boolean;
+  nextId: string | undefined;
+}) {
+  return (
+    <section>
+      <div className="mb-2.5 flex items-baseline gap-3">
+        <h2 className="font-display text-[18px] font-semibold text-dark">
+          {group.label}
+        </h2>
+        {isCurrentMonth && (
+          <span className="rounded-full bg-terra/15 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-terra">
+            Este mes
+          </span>
+        )}
+        <span className="text-[11px] text-muted">
+          {group.items.length}{" "}
+          {group.items.length === 1 ? "entrada" : "entradas"}
+        </span>
+      </div>
+      <DataTable
+        rows={group.items}
+        rowKey={(i) => `${i.source}-${i.id}`}
+        rowClassName={(i) =>
+          i.id === nextId ? "bg-[#C4A235]/[0.06]" : undefined
+        }
+        empty=""
+        columns={[
+          {
+            key: "date",
+            label: "Fecha",
+            width: "130px",
+            render: (i) => <DateCell item={i} isNext={i.id === nextId} />,
+          },
+          {
+            key: "title",
+            label: "Evento",
+            render: (i) => <TitleCell item={i} />,
+          },
+          {
+            key: "time",
+            label: "Hora",
+            width: "100px",
+            render: (i) => (
+              <span className="text-[12px] text-muted">{i.time}</span>
+            ),
+          },
+          {
+            key: "location",
+            label: "Ubicación",
+            render: (i) => (
+              <span className="text-[12px] text-muted">
+                {i.location ?? "—"}
+              </span>
+            ),
+          },
+          {
+            key: "actions",
+            label: "Acciones",
+            width: "180px",
+            render: (i) => <ActionsCell item={i} />,
+          },
+        ]}
+      />
+    </section>
+  );
+}
+
+function groupByMonth(items: UnifiedCalendarItem[]): MonthGroup[] {
+  const map = new Map<string, MonthGroup>();
+  for (const i of items) {
+    const key = `${i.year}-${String(i.month).padStart(2, "0")}`;
+    let group = map.get(key);
+    if (!group) {
+      group = {
+        key,
+        label: `${MONTHS_ES_LONG[i.month - 1]} ${i.year}`,
+        year: i.year,
+        month: i.month,
+        items: [],
+      };
+      map.set(key, group);
+    }
+    group.items.push(i);
+  }
+  return [...map.values()].sort(
+    (a, b) => a.year * 12 + a.month - (b.year * 12 + b.month)
   );
 }
 
