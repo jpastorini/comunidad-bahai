@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { DataTable, PageHeader } from "@/components/admin/ui";
+import { Banner, DataTable, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
 import { celebrationDateFor, getBahaiMonth } from "@/lib/bahai-calendar";
 import { ensureCurrentAndNextYearSeeded } from "@/lib/feasts";
@@ -28,29 +27,19 @@ const MONTHS_ES = [
 ];
 
 export default async function AdminFiestasPage() {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const localityId = session.locality.id;
   const supabase = createSupabaseServer();
 
-  // Determinar localidad del usuario actual y sembrar Fiestas si faltan.
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("locality_id")
-    .eq("id", (await supabase.auth.getUser()).data.user?.id ?? "")
-    .maybeSingle();
-
-  if (!profile?.locality_id) {
-    redirect("/seleccionar-localidad");
-  }
-
-  await ensureCurrentAndNextYearSeeded(profile.locality_id);
+  const seedResult = await ensureCurrentAndNextYearSeeded(localityId);
 
   // Traer las Fiestas de esa localidad ordenadas cronológicamente.
-  const { data } = await supabase
+  const { data, error: fetchError } = await supabase
     .from("feasts")
     .select(
       "id, bahai_month_name, bahai_month_index, bahai_year, gregorian_date, status, feast_locations(participant_count)"
     )
-    .eq("locality_id", profile.locality_id)
+    .eq("locality_id", localityId)
     .order("gregorian_date", { ascending: true, nullsFirst: false });
 
   const feasts: FeastRow[] = (data ?? []).map((f) => {
@@ -82,6 +71,11 @@ export default async function AdminFiestasPage() {
         )
       : null;
 
+  const debugInfo =
+    seedResult.error || fetchError
+      ? `seed: year=${seedResult.year ?? "null"} seeded=${seedResult.seeded} error=${seedResult.error ?? "—"} · fetch: ${fetchError?.message ?? "—"} · locality=${localityId}`
+      : null;
+
   return (
     <>
       <PageHeader
@@ -89,6 +83,14 @@ export default async function AdminFiestasPage() {
         title="Fiestas de los Diecinueve Días"
         description="Las 19 Fiestas del año Badí' se siembran automáticamente. Edita el programa de cada una y publícala cuando esté lista."
       />
+
+      {debugInfo && (
+        <div className="mb-5">
+          <Banner tone="warning">
+            <strong>Diagnóstico:</strong> {debugInfo}
+          </Banner>
+        </div>
+      )}
 
       {avg !== null && (
         <div className="mb-5 rounded-2xl border border-black/[0.04] bg-card p-5 shadow-card md:p-6">

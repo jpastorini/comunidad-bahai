@@ -17,19 +17,26 @@ import type { Feast, FeastStatus } from "./types";
 export async function ensureFeastsSeeded(
   localityId: string,
   bahaiYear: number
-): Promise<void> {
+): Promise<{ seeded: number; error: string | null }> {
   const supabase = createSupabaseServer();
 
-  const { count } = await supabase
+  const { count, error: countError } = await supabase
     .from("feasts")
     .select("id", { count: "exact", head: true })
     .eq("locality_id", localityId)
     .eq("bahai_year", bahaiYear);
 
-  if ((count ?? 0) >= 19) return;
+  if (countError) {
+    console.error("[ensureFeastsSeeded] count error:", countError);
+    return { seeded: 0, error: `count: ${countError.message}` };
+  }
+
+  if ((count ?? 0) >= 19) return { seeded: 0, error: null };
 
   const calendar = getBahaiYearCalendar(bahaiYear);
-  if (!calendar) return;
+  if (!calendar) {
+    return { seeded: 0, error: `no calendar data for BE ${bahaiYear}` };
+  }
 
   const rows = calendar.feasts.map((f) => {
     const month = getBahaiMonth(f.monthIndex);
@@ -43,12 +50,20 @@ export async function ensureFeastsSeeded(
     };
   });
 
-  await supabase
+  const { error: upsertError, data } = await supabase
     .from("feasts")
     .upsert(rows, {
       onConflict: "locality_id,bahai_year,bahai_month_index",
       ignoreDuplicates: true,
-    });
+    })
+    .select("id");
+
+  if (upsertError) {
+    console.error("[ensureFeastsSeeded] upsert error:", upsertError);
+    return { seeded: 0, error: `upsert: ${upsertError.message}` };
+  }
+
+  return { seeded: data?.length ?? 0, error: null };
 }
 
 /**
@@ -59,21 +74,31 @@ export async function ensureFeastsSeeded(
 export async function ensureCurrentAndNextYearSeeded(
   localityId: string,
   today: Date = new Date()
-): Promise<void> {
+): Promise<{ year: number | null; seeded: number; error: string | null }> {
   const currentYear = getCurrentBahaiYear(today);
-  if (currentYear == null) return;
+  if (currentYear == null) {
+    return { year: null, seeded: 0, error: "no bahai year for today" };
+  }
 
-  await ensureFeastsSeeded(localityId, currentYear);
+  const cur = await ensureFeastsSeeded(localityId, currentYear);
+  if (cur.error) return { year: currentYear, seeded: cur.seeded, error: cur.error };
 
   // Si pasó la mitad del año Badí' (Mes 10 aprox), sembrar también el siguiente.
   const currentCal = getBahaiYearCalendar(currentYear);
   const nextCal = getBahaiYearCalendar(currentYear + 1);
   if (currentCal && nextCal) {
-    const midpoint = currentCal.feasts[9]?.date; // Mes 10 = ʻIzzat
+    const midpoint = currentCal.feasts[9]?.date;
     if (midpoint && isoToday(today) >= midpoint) {
-      await ensureFeastsSeeded(localityId, currentYear + 1);
+      const nxt = await ensureFeastsSeeded(localityId, currentYear + 1);
+      return {
+        year: currentYear,
+        seeded: cur.seeded + nxt.seeded,
+        error: nxt.error,
+      };
     }
   }
+
+  return { year: currentYear, seeded: cur.seeded, error: null };
 }
 
 /**
