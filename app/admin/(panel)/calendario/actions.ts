@@ -38,6 +38,9 @@ export async function upsertEventAction(formData: FormData) {
     Math.min(60 * 12, parseInt(durationStr || "60", 10) || 60)
   );
 
+  // Por ahora la Asamblea solo crea actividades generales desde este form;
+  // las Fiestas y los Días Sagrados se siembran automáticamente con su
+  // propia categoría (ver migraciones 014 / 015 y rutas dedicadas).
   const payload: Record<string, unknown> = {
     day,
     month,
@@ -45,6 +48,7 @@ export async function upsertEventAction(formData: FormData) {
     title: formData.get("title") as string,
     time: formData.get("time") as string,
     color: formData.get("color") as string,
+    kind: "actividad_general",
     description: (formData.get("description") as string) || null,
     location: (formData.get("location") as string) || null,
     duration_minutes: durationMinutes,

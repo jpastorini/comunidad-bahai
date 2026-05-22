@@ -186,6 +186,11 @@ export type CalendarEvent = {
   title: string;
   time: string;           // texto visible (ej. "7:00 PM")
   color: string;
+  /**
+   * Categoría visual del evento. Ver lib/calendar-kinds.ts.
+   * Default 'actividad_general' para eventos creados manualmente.
+   */
+  kind?: import("./calendar-kinds").CalendarEventKind | null;
   description?: string | null;
   location?: string | null;
   image_url?: string | null;

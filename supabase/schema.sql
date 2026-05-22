@@ -170,6 +170,16 @@ create table if not exists public.calendar_events (
   title text not null,
   time text not null,         -- texto visible ("7:00 PM")
   color text not null,
+  -- Categoría visual del evento. Ver lib/calendar-kinds.ts y la
+  -- migración 013_calendar_event_kind.sql para el enum completo.
+  kind text not null default 'actividad_general' check (
+    kind in (
+      'fiesta_19_dias',
+      'dia_sagrado_no_trabajo',
+      'dia_sagrado_con_trabajo',
+      'actividad_general'
+    )
+  ),
   description text,            -- descripción larga del evento
   location text,               -- ubicación (también usada en el .ics)
   image_url text,              -- invitación gráfica (URL pública en Storage)
@@ -177,6 +187,9 @@ create table if not exists public.calendar_events (
   activity_id uuid references public.activities(id) on delete set null,
   created_at timestamptz not null default now()
 );
+
+create index if not exists calendar_events_kind_idx
+  on public.calendar_events (kind);
 
 alter table public.calendar_events enable row level security;
 

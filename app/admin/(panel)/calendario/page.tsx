@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { Button, DataTable, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
+import {
+  effectiveEventColor,
+  getCalendarKind,
+} from "@/lib/calendar-kinds";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { deleteEventAction } from "./actions";
 import type { CalendarEvent } from "@/lib/types";
@@ -43,15 +47,26 @@ export default async function AdminCalendarPage() {
           {
             key: "title",
             label: "Evento",
-            render: (e) => (
-              <div className="flex items-center gap-2">
-                <span
-                  className="inline-block h-3 w-3 rounded-full"
-                  style={{ background: e.color }}
-                />
-                <span className="text-[14px] font-semibold text-dark">{e.title}</span>
-              </div>
-            ),
+            render: (e) => {
+              const meta = getCalendarKind(e.kind);
+              const dotColor = effectiveEventColor(e.kind, e.color);
+              return (
+                <div className="flex items-center gap-2">
+                  <span
+                    className="inline-block h-3 w-3 rounded-full"
+                    style={{ background: dotColor }}
+                  />
+                  <div className="min-w-0">
+                    <div className="text-[14px] font-semibold text-dark">
+                      {e.title}
+                    </div>
+                    <div className="text-[10.5px] font-medium uppercase tracking-wide text-muted">
+                      {meta.label}
+                    </div>
+                  </div>
+                </div>
+              );
+            },
           },
           {
             key: "time",

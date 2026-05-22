@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { effectiveEventColor } from "@/lib/calendar-kinds";
 import type { CalendarEvent } from "@/lib/types";
 
 const MONTHS_SHORT_ES = [
@@ -34,6 +35,7 @@ export function UpcomingEvents({ events }: { events: CalendarEvent[] }) {
           const date = new Date(e.year, e.month - 1, e.day);
           const weekday = WEEKDAYS_SHORT_ES[date.getDay()];
           const monthShort = MONTHS_SHORT_ES[e.month - 1];
+          const accent = effectiveEventColor(e.kind, e.color);
           return (
             <Link
               key={e.id}
@@ -42,7 +44,7 @@ export function UpcomingEvents({ events }: { events: CalendarEvent[] }) {
             >
               <div
                 className="mb-1.5 text-[9.5px] font-semibold uppercase tracking-[0.3px]"
-                style={{ color: e.color }}
+                style={{ color: accent }}
               >
                 {weekday} {e.day} {monthShort} · {e.time}
               </div>

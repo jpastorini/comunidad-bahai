@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { GoldHeader } from "@/components/GoldHeader";
+import { effectiveEventColor, getCalendarKind } from "@/lib/calendar-kinds";
 import { getCalendarEvent } from "@/lib/data";
 
 const MONTHS_ES = [
@@ -22,6 +23,8 @@ export default async function EventDetailPage({
   const date = new Date(event.year, event.month - 1, event.day);
   const weekday = WEEKDAYS_ES[date.getDay()];
   const monthName = MONTHS_ES[event.month - 1];
+  const kindMeta = getCalendarKind(event.kind);
+  const accent = effectiveEventColor(event.kind, event.color);
 
   return (
     <>
@@ -44,13 +47,27 @@ export default async function EventDetailPage({
         )}
 
         <div className="px-4 pt-4">
+          {/* Kind badge */}
+          <div className="mb-2.5">
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-wide"
+              style={{ background: `${kindMeta.color}15`, color: kindMeta.color }}
+            >
+              <span
+                className="inline-block h-1.5 w-1.5 rounded-full"
+                style={{ background: kindMeta.color }}
+              />
+              {kindMeta.label}
+            </span>
+          </div>
+
           {/* Date / time / place card */}
           <div
             className="mb-4 flex items-stretch gap-3 overflow-hidden rounded-2xl bg-card shadow-card"
           >
             <div
               className="flex w-16 shrink-0 flex-col items-center justify-center text-white"
-              style={{ background: event.color }}
+              style={{ background: accent }}
             >
               <div className="font-display text-[24px] font-bold leading-none">
                 {event.day}
