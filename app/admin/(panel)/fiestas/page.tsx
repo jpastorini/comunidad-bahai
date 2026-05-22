@@ -76,6 +76,19 @@ export default async function AdminFiestasPage() {
       ? `seed: year=${seedResult.year ?? "null"} seeded=${seedResult.seeded} error=${seedResult.error ?? "—"} · fetch: ${fetchError?.message ?? "—"} · locality=${localityId}`
       : null;
 
+  // Próxima Fiesta a celebrar: la primera cuya fecha de celebración
+  // (= día anterior a la fecha oficial) sea hoy o futura. Si hay una
+  // 'in_progress', esa tiene prioridad.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const inProgressId = feasts.find((f) => f.status === "in_progress")?.id;
+  const nextToCelebrateId = inProgressId
+    ? inProgressId
+    : feasts.find((f) => {
+        if (!f.gregorian_date) return false;
+        const celebration = celebrationDateFor(f.gregorian_date);
+        return celebration >= todayIso;
+      })?.id;
+
   return (
     <>
       <PageHeader
@@ -112,6 +125,9 @@ export default async function AdminFiestasPage() {
       <DataTable
         rows={feasts}
         rowKey={(f) => f.id}
+        rowClassName={(f) =>
+          f.id === nextToCelebrateId ? "bg-[#C4A235]/[0.06]" : undefined
+        }
         empty="Cargando las Fiestas del año Badí'..."
         columns={[
           {
@@ -147,8 +163,14 @@ export default async function AdminFiestasPage() {
               const official = new Date(`${f.gregorian_date}T12:00:00Z`);
               const celebrationIso = celebrationDateFor(f.gregorian_date);
               const celebration = new Date(`${celebrationIso}T12:00:00Z`);
+              const isNext = f.id === nextToCelebrateId;
               return (
                 <div>
+                  {isNext && (
+                    <div className="mb-1.5 inline-block rounded-full bg-[#C4A235]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gold-dark">
+                      ✦ Próxima a celebrar
+                    </div>
+                  )}
                   <div className="text-[11px] uppercase tracking-wide text-muted">
                     Inicio del mes
                   </div>

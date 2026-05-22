@@ -198,9 +198,17 @@ type DataTableProps<T> = {
     width?: string;
   }[];
   rowKey: (row: T) => string;
+  /** Optional per-row class for highlights (e.g. próxima Fiesta). */
+  rowClassName?: (row: T) => string | undefined;
 };
 
-export function DataTable<T>({ rows, columns, empty, rowKey }: DataTableProps<T>) {
+export function DataTable<T>({
+  rows,
+  columns,
+  empty,
+  rowKey,
+  rowClassName,
+}: DataTableProps<T>) {
   if (rows.length === 0) {
     return (
       <Card className="flex flex-col items-center gap-3 py-12 text-center">
@@ -238,7 +246,9 @@ export function DataTable<T>({ rows, columns, empty, rowKey }: DataTableProps<T>
             {rows.map((row) => (
               <tr
                 key={rowKey(row)}
-                className="transition-colors hover:bg-bg/50"
+                className={`transition-colors hover:bg-bg/50 ${
+                  rowClassName?.(row) ?? ""
+                }`}
               >
                 {columns.map((c) => (
                   <td
