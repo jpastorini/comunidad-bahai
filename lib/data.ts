@@ -6,6 +6,8 @@
  * a no-op for screens.
  */
 
+import { celebrationDateFor } from "./bahai-calendar";
+import { CALENDAR_KINDS, effectiveEventColor } from "./calendar-kinds";
 import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
 import {
   seedActivities,
@@ -308,4 +310,85 @@ export async function getUpcomingCalendarEvents(
         (b.year * 10000 + b.month * 100 + b.day)
     );
   return future.slice(0, limit);
+}
+
+// ─── Vista unificada del calendario ─────────────────────────────
+//
+// Fusiona calendar_events + Fiestas (y, a futuro, Días Sagrados) en
+// una sola lista cronológica. La RLS controla qué ve cada rol:
+//   - miembros (no admin) ven solo Fiestas published/in_progress
+//   - admins ven todo en su localidad
+//
+// Para una Fiesta, la fecha que se usa en la vista es la de
+// celebración (la noche anterior a la fecha oficial), porque es
+// cuando los miembros efectivamente concurren.
+
+export type UnifiedCalendarItem = {
+  id: string;
+  source: "calendar_event" | "feast";
+  href: string;           // ruta pública (vista de miembro)
+  adminHref: string;      // ruta de edición admin
+  day: number;
+  month: number;
+  year: number;
+  title: string;
+  time: string;
+  kind: import("./calendar-kinds").CalendarEventKind;
+  color: string;          // color visual efectivo
+  location: string | null;
+  image_url: string | null;
+  /** Solo para Fiestas; null en eventos del calendario. */
+  feastStatus: import("./types").FeastStatus | null;
+};
+
+export async function getUnifiedCalendarItems(): Promise<UnifiedCalendarItem[]> {
+  const [events, feasts] = await Promise.all([getCalendarEvents(), getFeasts()]);
+
+  const fromEvents: UnifiedCalendarItem[] = events.map((e) => ({
+    id: e.id,
+    source: "calendar_event",
+    href: `/calendario/${e.id}`,
+    adminHref: `/admin/calendario/${e.id}`,
+    day: e.day,
+    month: e.month,
+    year: e.year,
+    title: e.title,
+    time: e.time,
+    kind: e.kind ?? "actividad_general",
+    color: effectiveEventColor(e.kind, e.color),
+    location: e.location ?? null,
+    image_url: e.image_url ?? null,
+    feastStatus: null,
+  }));
+
+  const fromFeasts: UnifiedCalendarItem[] = feasts
+    .filter((f) => f.gregorian_date)
+    .map((f) => {
+      const celebrationIso = celebrationDateFor(f.gregorian_date!);
+      const [year, month, day] = celebrationIso.split("-").map((n) =>
+        parseInt(n, 10)
+      );
+      return {
+        id: f.id,
+        source: "feast",
+        href: `/fiestas/${f.id}`,
+        adminHref: `/admin/fiestas/${f.id}`,
+        day,
+        month,
+        year,
+        title: `Fiesta de ${f.bahai_month_name}`,
+        time: "Al atardecer",
+        kind: "fiesta_19_dias",
+        color: CALENDAR_KINDS.fiesta_19_dias.color,
+        location: null,
+        image_url: null,
+        feastStatus: f.status,
+      } as UnifiedCalendarItem;
+    });
+
+  return [...fromEvents, ...fromFeasts].sort(
+    (a, b) =>
+      a.year * 10000 + a.month * 100 + a.day -
+      (b.year * 10000 + b.month * 100 + b.day)
+  );
 }
