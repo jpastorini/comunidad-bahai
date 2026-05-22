@@ -121,15 +121,23 @@ export type TreasuryCommitment = {
 };
 
 // ─── Fiesta de los Diecinueve Días ──────────────────────────────
-export type FeastStatus = "upcoming" | "in_progress";
+/**
+ * draft       — pre-cargada, solo Asamblea ve.
+ * published   — Asamblea publicó: aparece en calendario público sin programa.
+ * in_progress — Asamblea inició: programa visible a toda la comunidad.
+ */
+export type FeastStatus = "draft" | "published" | "in_progress";
 
 export type Feast = {
   id: string;
   bahai_month_name: string;
   bahai_month_index: number;
   bahai_year: number;
+  /** Fecha gregoriana oficial del día 1 del mes bahá'í. ISO YYYY-MM-DD. */
+  gregorian_date: string | null;
   status: FeastStatus;
   started_at: string | null;
+  published_at: string | null;
   deepening_theme: string | null;
   deepening_content: string | null;
   international_reports: string | null;

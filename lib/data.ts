@@ -250,13 +250,23 @@ export async function getFeastPrayers(feastId: string): Promise<FeastPrayer[]> {
   return (data ?? []) as FeastPrayer[];
 }
 
-/** Próxima Fiesta a celebrar (la upcoming más cercana, o la in_progress). */
+/** Próxima Fiesta a celebrar (la in_progress, o la published más próxima). */
 export async function getCurrentFeast(): Promise<Feast | null> {
   const all = await getFeasts();
-  // Priorizar in_progress, luego la upcoming más reciente.
   const inProgress = all.find((f) => f.status === "in_progress");
   if (inProgress) return inProgress;
-  return all.find((f) => f.status === "upcoming") ?? null;
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const upcoming = all
+    .filter(
+      (f) =>
+        f.status === "published" &&
+        (f.gregorian_date ?? "9999-99-99") >= todayIso
+    )
+    .sort((a, b) =>
+      (a.gregorian_date ?? "").localeCompare(b.gregorian_date ?? "")
+    );
+  return upcoming[0] ?? null;
 }
 
 /**

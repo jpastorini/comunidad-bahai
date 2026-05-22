@@ -1,32 +1,57 @@
 import Link from "next/link";
-import { Button, DataTable, PageHeader } from "@/components/admin/ui";
+import { redirect } from "next/navigation";
+import { DataTable, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
+import { celebrationDateFor, getBahaiMonth } from "@/lib/bahai-calendar";
+import { ensureCurrentAndNextYearSeeded } from "@/lib/feasts";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { deleteFeastAction } from "./actions";
+import type { FeastStatus } from "@/lib/types";
 
 type FeastRow = {
   id: string;
   bahai_month_name: string;
   bahai_month_index: number;
   bahai_year: number;
-  status: "scheduled" | "in_progress";
+  gregorian_date: string | null;
+  status: FeastStatus;
   participants_total: number | null;
   locations_count: number;
   locations_with_data: number;
 };
 
+const WEEKDAYS_ES = [
+  "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado",
+];
+const MONTHS_ES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
 export default async function AdminFiestasPage() {
   await requireAdmin();
   const supabase = createSupabaseServer();
 
-  // Trae cada Fiesta con su array de locations (solo el campo necesario).
+  // Determinar localidad del usuario actual y sembrar Fiestas si faltan.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("locality_id")
+    .eq("id", (await supabase.auth.getUser()).data.user?.id ?? "")
+    .maybeSingle();
+
+  if (!profile?.locality_id) {
+    redirect("/seleccionar-localidad");
+  }
+
+  await ensureCurrentAndNextYearSeeded(profile.locality_id);
+
+  // Traer las Fiestas de esa localidad ordenadas cronológicamente.
   const { data } = await supabase
     .from("feasts")
     .select(
-      "id, bahai_month_name, bahai_month_index, bahai_year, status, feast_locations(participant_count)"
+      "id, bahai_month_name, bahai_month_index, bahai_year, gregorian_date, status, feast_locations(participant_count)"
     )
-    .order("bahai_year", { ascending: false })
-    .order("bahai_month_index", { ascending: false });
+    .eq("locality_id", profile.locality_id)
+    .order("gregorian_date", { ascending: true, nullsFirst: false });
 
   const feasts: FeastRow[] = (data ?? []).map((f) => {
     const locs = (f.feast_locations ?? []) as { participant_count: number | null }[];
@@ -40,14 +65,14 @@ export default async function AdminFiestasPage() {
       bahai_month_name: f.bahai_month_name,
       bahai_month_index: f.bahai_month_index,
       bahai_year: f.bahai_year,
-      status: f.status as "scheduled" | "in_progress",
+      gregorian_date: f.gregorian_date,
+      status: f.status as FeastStatus,
       participants_total: withData.length > 0 ? total : null,
       locations_count: locs.length,
       locations_with_data: withData.length,
     };
   });
 
-  // Estadística agregada sobre las últimas 6 Fiestas con datos.
   const withStats = feasts.filter((f) => f.participants_total != null).slice(0, 6);
   const avg =
     withStats.length > 0
@@ -62,8 +87,7 @@ export default async function AdminFiestasPage() {
       <PageHeader
         eyebrow="Vida comunitaria"
         title="Fiestas de los Diecinueve Días"
-        description="Programa, lugares, tesorería del mes, sugerencias y participación."
-        actions={<Button href="/admin/fiestas/nueva">+ Nueva Fiesta</Button>}
+        description="Las 19 Fiestas del año Badí' se siembran automáticamente. Edita el programa de cada una y publícala cuando esté lista."
       />
 
       {avg !== null && (
@@ -86,41 +110,69 @@ export default async function AdminFiestasPage() {
       <DataTable
         rows={feasts}
         rowKey={(f) => f.id}
-        empty="Aún no hay Fiestas creadas. Crea la primera."
+        empty="Cargando las Fiestas del año Badí'..."
         columns={[
           {
             key: "month",
-            label: "Mes",
-            render: (f) => (
-              <div>
-                <div className="font-display text-[15px] font-semibold text-dark">
-                  {f.bahai_month_name}
+            label: "Mes bahá'í",
+            render: (f) => {
+              const meta = getBahaiMonth(f.bahai_month_index);
+              return (
+                <div>
+                  <div className="font-display text-[15px] font-semibold text-dark">
+                    {f.bahai_month_name}{" "}
+                    {meta?.meaning && (
+                      <span className="text-[12px] font-normal text-muted">
+                        · {meta.meaning}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-muted">
+                    Mes {f.bahai_month_index} de 19 · Año {f.bahai_year} BE
+                  </div>
                 </div>
-                <div className="text-[11px] text-muted">
-                  Mes {f.bahai_month_index} · {f.bahai_year} BE
+              );
+            },
+          },
+          {
+            key: "date",
+            label: "Fechas",
+            width: "240px",
+            render: (f) => {
+              if (!f.gregorian_date) {
+                return <span className="text-[11px] text-muted">—</span>;
+              }
+              const official = new Date(`${f.gregorian_date}T12:00:00Z`);
+              const celebrationIso = celebrationDateFor(f.gregorian_date);
+              const celebration = new Date(`${celebrationIso}T12:00:00Z`);
+              return (
+                <div>
+                  <div className="text-[11px] uppercase tracking-wide text-muted">
+                    Inicio del mes
+                  </div>
+                  <div className="text-[12.5px] text-dark">
+                    {formatDate(official)}
+                  </div>
+                  <div className="mt-1.5 text-[11px] uppercase tracking-wide text-terra">
+                    Celebración
+                  </div>
+                  <div className="text-[12.5px] font-semibold text-terra">
+                    {formatDate(celebration)} al atardecer
+                  </div>
                 </div>
-              </div>
-            ),
+              );
+            },
           },
           {
             key: "status",
             label: "Estado",
-            width: "130px",
-            render: (f) =>
-              f.status === "in_progress" ? (
-                <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
-                  Iniciada
-                </span>
-              ) : (
-                <span className="rounded bg-bg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">
-                  Por iniciar
-                </span>
-              ),
+            width: "140px",
+            render: (f) => <StatusBadge status={f.status} />,
           },
           {
             key: "participants",
             label: "Participantes",
-            width: "150px",
+            width: "130px",
             render: (f) => {
               if (f.locations_count === 0) {
                 return <span className="text-[11px] text-muted">—</span>;
@@ -149,9 +201,9 @@ export default async function AdminFiestasPage() {
           {
             key: "actions",
             label: "",
-            width: "220px",
+            width: "180px",
             render: (f) => (
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex items-center justify-end gap-3">
                 <Link
                   href={`/admin/fiestas/${f.id}/sugerencias`}
                   className="text-[12px] font-semibold text-amber hover:underline"
@@ -164,15 +216,6 @@ export default async function AdminFiestasPage() {
                 >
                   Editar
                 </Link>
-                <form action={deleteFeastAction}>
-                  <input type="hidden" name="id" value={f.id} />
-                  <button
-                    type="submit"
-                    className="text-[12px] font-semibold text-rose-600 hover:underline"
-                  >
-                    Borrar
-                  </button>
-                </form>
               </div>
             ),
           },
@@ -180,4 +223,34 @@ export default async function AdminFiestasPage() {
       />
     </>
   );
+}
+
+function StatusBadge({ status }: { status: FeastStatus }) {
+  if (status === "in_progress") {
+    return (
+      <span className="rounded bg-[#C4A235]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gold-dark">
+        Iniciada
+      </span>
+    );
+  }
+  if (status === "published") {
+    return (
+      <span className="rounded bg-terra/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-terra">
+        Publicada
+      </span>
+    );
+  }
+  return (
+    <span className="rounded bg-bg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">
+      No publicada
+    </span>
+  );
+}
+
+function formatDate(d: Date): string {
+  const weekday = WEEKDAYS_ES[d.getUTCDay()];
+  const day = d.getUTCDate();
+  const month = MONTHS_ES[d.getUTCMonth()];
+  const year = d.getUTCFullYear();
+  return `${weekday} ${day} de ${month} ${year}`;
 }

@@ -4,11 +4,11 @@ import { Banner, Card, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getFeast, getFeastLocations, getFeastPrayers } from "@/lib/data";
-import type { FeastSuggestion } from "@/lib/types";
+import type { FeastStatus, FeastSuggestion } from "@/lib/types";
 import { FeastForm } from "../feast-form";
 import {
   loadTemplateAction,
-  toggleFeastStatusAction,
+  setFeastStatusAction,
   toggleSuggestionReviewedAction,
 } from "../actions";
 
@@ -33,14 +33,14 @@ export default async function EditFeastPage({
     .eq("feast_id", params.id)
     .order("created_at", { ascending: false });
 
-  const isInProgress = feast.status === "in_progress";
+  const status = feast.status as FeastStatus;
 
   return (
     <>
       <PageHeader
         eyebrow={`Mes ${feast.bahai_month_index} · ${feast.bahai_year} BE`}
         title={`Fiesta de ${feast.bahai_month_name}`}
-        description="Edita el programa, lugares y tesorería. Cuando esté listo, inicia la Fiesta para que los miembros vean el programa."
+        description="Edita el programa, lugares y tesorería. Cuando esté listo, publica la Fiesta y, al llegar el día, iníciala."
       />
 
       {/* Estado + plantilla */}
@@ -50,39 +50,19 @@ export default async function EditFeastPage({
             Estado actual
           </h3>
           <div className="mt-1 flex items-center gap-3">
-            {isInProgress ? (
-              <span className="rounded bg-emerald-500/15 px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide text-emerald-700">
-                Iniciada
-              </span>
-            ) : (
-              <span className="rounded bg-bg px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide text-muted">
-                Por iniciar
-              </span>
-            )}
+            <FeastStatusBadge status={status} />
           </div>
           <p className="mt-3 text-[12px] text-muted">
-            {isInProgress
-              ? "Los miembros pueden ver el programa completo de esta Fiesta."
-              : "Los miembros solo ven los lugares y fechas. El programa permanece oculto hasta que la Asamblea inicie la Fiesta."}
+            {status === "draft" &&
+              "Solo la Asamblea ve esta Fiesta. Cuando la publiques, aparecerá en el calendario de la comunidad sin el programa."}
+            {status === "published" &&
+              "La comunidad ve esta Fiesta en su calendario y la página de la Fiesta, pero el programa interno aún no es visible. Al iniciar la Fiesta, el programa se hace visible a todos."}
+            {status === "in_progress" &&
+              "El programa completo de esta Fiesta es visible para todos los miembros."}
           </p>
-          <form action={toggleFeastStatusAction} className="mt-3">
-            <input type="hidden" name="id" value={feast.id} />
-            <input
-              type="hidden"
-              name="new_status"
-              value={isInProgress ? "upcoming" : "in_progress"}
-            />
-            <button
-              type="submit"
-              className={`tap rounded-xl px-4 py-2 text-[13px] font-semibold shadow-card-soft ${
-                isInProgress
-                  ? "border border-black/10 bg-card text-dark"
-                  : "bg-terra text-white"
-              }`}
-            >
-              {isInProgress ? "Volver a 'Por iniciar'" : "▶ Iniciar Fiesta"}
-            </button>
-          </form>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <FeastStatusActions feastId={feast.id} status={status} />
+          </div>
         </Card>
 
         <Card>
@@ -178,10 +158,107 @@ export default async function EditFeastPage({
 
       <div className="mt-6">
         <Banner tone="info">
-          Cuando la Asamblea esté lista, presiona <strong>"Iniciar Fiesta"</strong>{" "}
-          arriba. Eso publica el programa para todos los miembros.
+          Flujo: <strong>No publicada</strong> (solo Asamblea) →{" "}
+          <strong>Publicada</strong> (en el calendario sin el programa) →{" "}
+          <strong>Iniciada</strong> (programa visible a todos).
         </Banner>
       </div>
     </>
+  );
+}
+
+function FeastStatusBadge({ status }: { status: FeastStatus }) {
+  if (status === "in_progress") {
+    return (
+      <span className="rounded bg-[#C4A235]/15 px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide text-gold-dark">
+        Iniciada
+      </span>
+    );
+  }
+  if (status === "published") {
+    return (
+      <span className="rounded bg-terra/15 px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide text-terra">
+        Publicada
+      </span>
+    );
+  }
+  return (
+    <span className="rounded bg-bg px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide text-muted">
+      No publicada
+    </span>
+  );
+}
+
+function FeastStatusActions({
+  feastId,
+  status,
+}: {
+  feastId: string;
+  status: FeastStatus;
+}) {
+  if (status === "draft") {
+    return (
+      <StatusButton
+        feastId={feastId}
+        newStatus="published"
+        label="Publicar a la comunidad"
+        variant="primary"
+      />
+    );
+  }
+  if (status === "published") {
+    return (
+      <>
+        <StatusButton
+          feastId={feastId}
+          newStatus="in_progress"
+          label="▶ Iniciar Fiesta"
+          variant="primary"
+        />
+        <StatusButton
+          feastId={feastId}
+          newStatus="draft"
+          label="Volver a 'No publicada'"
+          variant="secondary"
+        />
+      </>
+    );
+  }
+  return (
+    <StatusButton
+      feastId={feastId}
+      newStatus="published"
+      label="Volver a Publicada"
+      variant="secondary"
+    />
+  );
+}
+
+function StatusButton({
+  feastId,
+  newStatus,
+  label,
+  variant,
+}: {
+  feastId: string;
+  newStatus: FeastStatus;
+  label: string;
+  variant: "primary" | "secondary";
+}) {
+  return (
+    <form action={setFeastStatusAction}>
+      <input type="hidden" name="id" value={feastId} />
+      <input type="hidden" name="new_status" value={newStatus} />
+      <button
+        type="submit"
+        className={`tap rounded-xl px-4 py-2 text-[13px] font-semibold shadow-card-soft ${
+          variant === "primary"
+            ? "bg-terra text-white"
+            : "border border-black/10 bg-card text-dark"
+        }`}
+      >
+        {label}
+      </button>
+    </form>
   );
 }

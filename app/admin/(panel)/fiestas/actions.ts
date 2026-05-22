@@ -195,37 +195,66 @@ function parseOptionalNumber(v: FormDataEntryValue | null): number | null {
   return isNaN(n) ? null : n;
 }
 
-// ─── Toggle estado (por iniciar / iniciada) ────────────────────
-export async function toggleFeastStatusAction(formData: FormData) {
+// ─── Cambiar estado de Fiesta (draft / published / in_progress) ──
+//
+// new_status admite: 'draft' | 'published' | 'in_progress'
+//
+// Transiciones esperadas:
+//   draft       → published   (publicar a la comunidad)
+//   published   → draft       (despublicar)
+//   published   → in_progress (iniciar Fiesta)
+//   in_progress → published   (volver a publicada)
+export async function setFeastStatusAction(formData: FormData) {
   await requireAdmin();
   const id = formData.get("id") as string;
-  const newStatus =
-    (formData.get("new_status") as string) === "in_progress"
-      ? "in_progress"
-      : "upcoming";
+  const requested = formData.get("new_status") as string;
+  const valid = ["draft", "published", "in_progress"] as const;
+  const newStatus = (valid as readonly string[]).includes(requested)
+    ? (requested as (typeof valid)[number])
+    : "draft";
+
+  const update: Record<string, unknown> = { status: newStatus };
+  if (newStatus === "published") {
+    update.published_at = new Date().toISOString();
+    update.started_at = null;
+  } else if (newStatus === "in_progress") {
+    update.started_at = new Date().toISOString();
+  } else {
+    // draft
+    update.started_at = null;
+    update.published_at = null;
+  }
 
   const supabase = createSupabaseServer();
-  await supabase
-    .from("feasts")
-    .update({
-      status: newStatus,
-      started_at: newStatus === "in_progress" ? new Date().toISOString() : null,
-    })
-    .eq("id", id);
+  await supabase.from("feasts").update(update).eq("id", id);
 
-  setFlashToast({
-    tone: "success",
-    message:
-      newStatus === "in_progress"
-        ? "Fiesta iniciada — el programa ya es visible para los miembros."
-        : "Fiesta vuelta a 'por iniciar'.",
-  });
+  const messages: Record<typeof newStatus, string> = {
+    draft:
+      "Fiesta vuelta a 'No publicada' — solo la Asamblea la ve.",
+    published:
+      "Fiesta publicada — aparece en el calendario de la comunidad.",
+    in_progress:
+      "Fiesta iniciada — el programa ya es visible para los miembros.",
+  };
+  setFlashToast({ tone: "success", message: messages[newStatus] });
 
   revalidatePath("/admin/fiestas");
   revalidatePath(`/admin/fiestas/${id}`);
   revalidatePath("/fiestas");
   revalidatePath(`/fiestas/${id}`);
+  revalidatePath("/calendario");
   redirect(`/admin/fiestas/${id}`);
+}
+
+/** @deprecated usar setFeastStatusAction. Mantenido por compatibilidad con
+ *  formularios antiguos que envíen `new_status=in_progress|upcoming`. */
+export async function toggleFeastStatusAction(formData: FormData) {
+  const raw = formData.get("new_status") as string;
+  const normalized = raw === "in_progress" ? "in_progress" : "draft";
+  const proxied = new FormData();
+  proxied.set("id", formData.get("id") as string);
+  proxied.set("new_status", normalized);
+  await setFeastStatusAction(proxied);
 }
 
 // ─── Cargar plantilla en una Fiesta existente ──────────────────
