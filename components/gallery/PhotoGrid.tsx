@@ -1,30 +1,43 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { EventPhoto } from "@/lib/types";
+import type {
+  EventPhoto,
+  PhotoComment,
+  PhotoReactionSummary,
+} from "@/lib/types";
+import { CommentSection } from "./CommentSection";
+import { ReactionBar } from "./ReactionBar";
 import { deleteEventPhotoAction } from "./photo-actions";
 
 type Props = {
   photos: EventPhoto[];
   currentUserId: string | null;
+  currentUserName?: string | null;
   isAdmin: boolean;
   adminLocalityId: string | null;
   /** Compacto = preview embebido en detalle del evento (más chico). */
   variant?: "compact" | "full";
+  /** Reacciones por foto (keyed by photo.id). Default vacío. */
+  reactionsMap?: Record<string, PhotoReactionSummary>;
+  /** Comentarios por foto (keyed by photo.id). Default vacío. */
+  commentsMap?: Record<string, PhotoComment[]>;
 };
 
-/**
- * Client component que muestra fotos en grid + lightbox con
- * navegación entre fotos (teclado, flechas en pantalla, swipe).
- *
- * Sin librerías externas — touch handlers nativos.
- */
+const EMPTY_REACTIONS: PhotoReactionSummary = {
+  counts: { heart: 0, pray: 0, star: 0, flower: 0 },
+  mine: [],
+};
+
 export function PhotoGrid({
   photos,
   currentUserId,
+  currentUserName = null,
   isAdmin,
   adminLocalityId,
   variant = "full",
+  reactionsMap = {},
+  commentsMap = {},
 }: Props) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -43,7 +56,6 @@ export function PhotoGrid({
     []
   );
 
-  // Teclado: flechas + escape
   useEffect(() => {
     if (openIndex === null) return;
     function onKey(e: KeyboardEvent) {
@@ -55,7 +67,6 @@ export function PhotoGrid({
     return () => window.removeEventListener("keydown", onKey);
   }, [openIndex, close, next, prev]);
 
-  // Bloquear scroll cuando lightbox abierto
   useEffect(() => {
     if (openIndex === null) return;
     const prev = document.body.style.overflow;
@@ -84,8 +95,6 @@ export function PhotoGrid({
       setDeleteError(res.error || "No se pudo borrar.");
       setDeleting(null);
     } else {
-      // El revalidate del action refresca el feed cuando re-cargue.
-      // Cerramos el lightbox si la foto borrada estaba abierta.
       if (openIndex !== null && photos[openIndex]?.id === photo.id) close();
       setDeleting(null);
     }
@@ -101,22 +110,38 @@ export function PhotoGrid({
   return (
     <>
       <div className={`grid gap-1.5 ${gridCols}`}>
-        {photos.map((p, idx) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => setOpenIndex(idx)}
-            className="group relative aspect-square overflow-hidden rounded-lg bg-bg/40 shadow-card-soft"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={p.public_url}
-              alt={p.caption ?? "Foto del evento"}
-              loading="lazy"
-              className="h-full w-full object-cover transition-transform group-hover:scale-105"
-            />
-          </button>
-        ))}
+        {photos.map((p, idx) => {
+          const photoReactions = reactionsMap[p.id] ?? EMPTY_REACTIONS;
+          const totalReactions =
+            photoReactions.counts.heart +
+            photoReactions.counts.pray +
+            photoReactions.counts.star +
+            photoReactions.counts.flower;
+          const commentCount = commentsMap[p.id]?.length ?? 0;
+          const showMeta = totalReactions > 0 || commentCount > 0;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setOpenIndex(idx)}
+              className="group relative aspect-square overflow-hidden rounded-lg bg-bg/40 shadow-card-soft"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={p.public_url}
+                alt={p.caption ?? "Foto del evento"}
+                loading="lazy"
+                className="h-full w-full object-cover transition-transform group-hover:scale-105"
+              />
+              {showMeta && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-end gap-2 bg-gradient-to-t from-black/55 to-transparent px-1.5 pb-1 pt-3 text-[10px] font-semibold text-white">
+                  {totalReactions > 0 && <span>❤ {totalReactions}</span>}
+                  {commentCount > 0 && <span>💬 {commentCount}</span>}
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {deleteError && (
@@ -132,6 +157,11 @@ export function PhotoGrid({
           total={photos.length}
           canDelete={canDelete(current)}
           deleting={deleting === current.id}
+          reactions={reactionsMap[current.id] ?? EMPTY_REACTIONS}
+          comments={commentsMap[current.id] ?? []}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
+          isAdmin={isAdmin}
           onClose={close}
           onNext={next}
           onPrev={prev}
@@ -148,6 +178,11 @@ type LightboxProps = {
   total: number;
   canDelete: boolean;
   deleting: boolean;
+  reactions: PhotoReactionSummary;
+  comments: PhotoComment[];
+  currentUserId: string | null;
+  currentUserName: string | null;
+  isAdmin: boolean;
   onClose: () => void;
   onNext: () => void;
   onPrev: () => void;
@@ -160,6 +195,11 @@ function Lightbox({
   total,
   canDelete,
   deleting,
+  reactions,
+  comments,
+  currentUserId,
+  currentUserName,
+  isAdmin,
   onClose,
   onNext,
   onPrev,
@@ -183,17 +223,9 @@ function Lightbox({
   const hasNext = index < total - 1;
 
   return (
-    <div
-      onClick={onClose}
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-      className="fixed inset-0 z-50 flex flex-col items-stretch bg-black"
-    >
+    <div className="fixed inset-0 z-50 flex flex-col bg-black">
       {/* Top bar */}
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="flex shrink-0 items-center justify-between px-4 py-3 text-white"
-      >
+      <div className="flex shrink-0 items-center justify-between px-4 py-3 text-white">
         <div className="text-[12px] opacity-80">
           {index + 1} / {total}
         </div>
@@ -219,27 +251,25 @@ function Lightbox({
         </div>
       </div>
 
-      {/* Image */}
+      {/* Photo (swipe enabled here only) */}
       <div
-        onClick={onClose}
-        className="relative flex flex-1 items-center justify-center overflow-hidden px-4"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        className="relative shrink-0"
+        style={{ height: "min(45vh, 420px)" }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={photo.public_url}
           alt={photo.caption ?? "Foto del evento"}
-          className="max-h-full max-w-full select-none object-contain"
-          onClick={(e) => e.stopPropagation()}
+          className="h-full w-full select-none object-contain"
           draggable={false}
         />
 
         {hasPrev && (
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onPrev();
-            }}
+            onClick={onPrev}
             aria-label="Anterior"
             className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 text-white backdrop-blur-sm hover:bg-white/30"
           >
@@ -251,10 +281,7 @@ function Lightbox({
         {hasNext && (
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onNext();
-            }}
+            onClick={onNext}
             aria-label="Siguiente"
             className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 text-white backdrop-blur-sm hover:bg-white/30"
           >
@@ -265,15 +292,12 @@ function Lightbox({
         )}
       </div>
 
-      {/* Caption / author */}
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="shrink-0 bg-black/40 px-4 py-3 text-white"
-      >
+      {/* Caption + author */}
+      <div className="shrink-0 px-4 pb-1 pt-2 text-white">
         {photo.caption && (
           <p className="mb-1 text-[13px] leading-snug">{photo.caption}</p>
         )}
-        <p className="text-[10.5px] uppercase tracking-wide opacity-80">
+        <p className="text-[10px] uppercase tracking-wide opacity-70">
           {photo.uploader_name} ·{" "}
           {new Date(photo.created_at).toLocaleDateString("es-MX", {
             day: "numeric",
@@ -282,6 +306,26 @@ function Lightbox({
           })}
         </p>
       </div>
+
+      {/* Reactions */}
+      <div className="shrink-0 border-t border-white/10 px-4 py-2">
+        <ReactionBar
+          photoId={photo.id}
+          initial={reactions}
+          currentUserId={currentUserId}
+          dark
+        />
+      </div>
+
+      {/* Comments + input (scrolls internally) */}
+      <CommentSection
+        photoId={photo.id}
+        initial={comments}
+        currentUserId={currentUserId}
+        currentUserName={currentUserName}
+        isAdmin={isAdmin}
+        dark
+      />
     </div>
   );
 }

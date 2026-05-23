@@ -52,7 +52,7 @@ export function SectionGrid({ badges }: Props) {
   ];
 
   return (
-    <div className="mb-3 grid grid-cols-2 gap-[9px]">
+    <div className="mb-3 grid grid-cols-3 gap-2">
       {sections.map((s) => (
         <SectionCard key={s.href} {...s} />
       ))}
@@ -72,31 +72,33 @@ function SectionCard({
   return (
     <Link
       href={href}
-      className="tap relative flex flex-col items-center gap-[7px] rounded-[14px] bg-card px-2.5 pb-3 pt-3.5 shadow-card"
+      className="tap relative flex flex-col items-center gap-1.5 rounded-[14px] bg-card px-1.5 pb-2.5 pt-3 shadow-card"
     >
       {hasUnseen && (
         <span
           aria-label="Hay novedades"
-          className="absolute right-2 top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white shadow"
+          className="absolute right-1.5 top-1.5 flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white shadow"
         >
           !
         </span>
       )}
       <div
-        className="flex h-[42px] w-[42px] items-center justify-center rounded-[13px]"
+        className="flex h-[36px] w-[36px] items-center justify-center rounded-[11px]"
         style={{ background: `${color}10`, color }}
       >
-        <Icon size={20} />
+        <Icon size={18} />
       </div>
       <div className="text-center">
-        <div className="text-[12.5px] font-semibold leading-[1.2] text-dark">
+        <div className="text-[11px] font-semibold leading-[1.15] text-dark">
           {title}
         </div>
-        <div className="mt-0.5 font-body text-[10px] text-muted">{subtitle}</div>
+        <div className="mt-0.5 font-body text-[9px] leading-tight text-muted">
+          {subtitle}
+        </div>
       </div>
       {progress !== undefined && (
         <div
-          className="mt-[-2px] h-1 w-[75%] overflow-hidden rounded-sm"
+          className="mt-[-1px] h-[3px] w-[70%] overflow-hidden rounded-sm"
           style={{ background: "#7E44B820" }}
         >
           <div

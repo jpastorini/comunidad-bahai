@@ -209,6 +209,53 @@ export type EventPhoto = {
   created_at: string;
 };
 
+// ─── Reacciones, comentarios, notificaciones sociales ──────────
+export type ReactionEmoji = "heart" | "pray" | "star" | "flower";
+
+export type PhotoReaction = {
+  id: string;
+  photo_id: string;
+  user_id: string;
+  emoji: ReactionEmoji;
+  locality_id: string;
+  created_at: string;
+};
+
+/** Agregado por foto: cuenta por emoji + qué emojis dejó el usuario actual. */
+export type PhotoReactionSummary = {
+  counts: Record<ReactionEmoji, number>;
+  mine: ReactionEmoji[];
+};
+
+export type PhotoComment = {
+  id: string;
+  photo_id: string;
+  user_id: string | null;
+  author_name: string;
+  body: string;
+  locality_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SocialNotificationType = "reaction" | "comment";
+
+export type SocialNotification = {
+  id: string;
+  recipient_user_id: string;
+  actor_user_id: string | null;
+  actor_name: string;
+  type: SocialNotificationType;
+  photo_id: string | null;
+  event_type: "calendar" | "feast" | null;
+  event_id: string | null;
+  emoji: ReactionEmoji | null;
+  preview: string | null;
+  locality_id: string;
+  read_at: string | null;
+  created_at: string;
+};
+
 export type CalendarEvent = {
   id: string;
   day: number;

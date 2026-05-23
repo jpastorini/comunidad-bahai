@@ -1,5 +1,9 @@
 import Link from "next/link";
-import type { EventPhoto } from "@/lib/types";
+import type {
+  EventPhoto,
+  PhotoComment,
+  PhotoReactionSummary,
+} from "@/lib/types";
 import { PhotoGrid } from "./PhotoGrid";
 import { PhotoUpload } from "./PhotoUpload";
 
@@ -8,9 +12,12 @@ type Props = {
   eventId: string;
   photos: EventPhoto[];
   currentUserId: string | null;
+  currentUserName?: string | null;
   isAdmin: boolean;
   adminLocalityId: string | null;
   canUpload: boolean;
+  reactionsMap?: Record<string, PhotoReactionSummary>;
+  commentsMap?: Record<string, PhotoComment[]>;
 };
 
 /**
@@ -23,9 +30,12 @@ export function FullGalleryView({
   eventId,
   photos,
   currentUserId,
+  currentUserName = null,
   isAdmin,
   adminLocalityId,
   canUpload,
+  reactionsMap,
+  commentsMap,
 }: Props) {
   const detailHref =
     eventType === "calendar" ? `/calendario/${eventId}` : `/fiestas/${eventId}`;
@@ -55,9 +65,12 @@ export function FullGalleryView({
         <PhotoGrid
           photos={photos}
           currentUserId={currentUserId}
+          currentUserName={currentUserName}
           isAdmin={isAdmin}
           adminLocalityId={adminLocalityId}
           variant="full"
+          reactionsMap={reactionsMap}
+          commentsMap={commentsMap}
         />
       )}
 

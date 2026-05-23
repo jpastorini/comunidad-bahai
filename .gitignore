@@ -33,6 +33,13 @@ yarn-error.log*
 .env.local
 .env*.local
 
+# Credentials (no commitear nunca)
+client_secret*.json
+*credentials*.json
+
+# Design handoff (no es código de app)
+handoff/
+
 # Vercel
 .vercel
 

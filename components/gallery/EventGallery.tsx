@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getOptionalMember } from "@/lib/auth";
 import { getEventPhotos } from "@/lib/event-photos";
+import { getPhotosInteractions } from "@/lib/photo-interactions";
 import { PhotoGrid } from "./PhotoGrid";
 import { PhotoUpload } from "./PhotoUpload";
 
@@ -23,6 +24,10 @@ export async function EventGallery({ eventType, eventId }: Props) {
   ]);
 
   const previewPhotos = allPhotos.slice(0, PREVIEW_LIMIT);
+  const { reactions, comments } = await getPhotosInteractions(
+    previewPhotos.map((p) => p.id),
+    session?.user.id ?? null
+  );
   const remaining = Math.max(0, allPhotos.length - PREVIEW_LIMIT);
   const fullHref =
     eventType === "calendar"
@@ -61,9 +66,12 @@ export async function EventGallery({ eventType, eventId }: Props) {
           <PhotoGrid
             photos={previewPhotos}
             currentUserId={session?.user.id ?? null}
+            currentUserName={session?.profile.full_name ?? null}
             isAdmin={session?.profile.role === "admin"}
             adminLocalityId={session?.locality?.id ?? null}
             variant="compact"
+            reactionsMap={reactions}
+            commentsMap={comments}
           />
           {remaining > 0 && (
             <Link
