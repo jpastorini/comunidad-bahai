@@ -35,6 +35,12 @@ export default async function EditFeastPage({
 
   const status = feast.status as FeastStatus;
 
+  // Advertencia: Fiesta publicada o iniciada sin lugares cargados.
+  // Los miembros entran al detalle y no ven horarios/direcciones.
+  const needsLocationsWarning =
+    (status === "published" || status === "in_progress") &&
+    locations.length === 0;
+
   return (
     <>
       <PageHeader
@@ -42,6 +48,17 @@ export default async function EditFeastPage({
         title={`Fiesta de ${feast.bahai_month_name}`}
         description="Edita el programa, lugares y tesorería. Cuando esté listo, publica la Fiesta y, al llegar el día, iníciala."
       />
+
+      {needsLocationsWarning && (
+        <div className="mb-5">
+          <Banner tone="warning">
+            <strong>Esta Fiesta está {status === "in_progress" ? "iniciada" : "publicada"} pero sin lugares cargados.</strong>
+            {" "}
+            Los miembros no saben dónde ni a qué hora encontrarse. Agregá al
+            menos una casa anfitriona en la sección <em>"Lugares de celebración"</em> abajo.
+          </Banner>
+        </div>
+      )}
 
       {/* Estado + plantilla */}
       <div className="mb-6 grid gap-4 md:grid-cols-2">

@@ -7,8 +7,16 @@ import {
   getFeastLocations,
   getFeastPrayers,
 } from "@/lib/data";
-import { getBahaiMonth } from "@/lib/bahai-calendar";
+import {
+  celebrationDateFor,
+  getBahaiMonth,
+} from "@/lib/bahai-calendar";
 import { SuggestionForm } from "./suggestion-form";
+
+const MONTHS_ES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
 
 export const dynamic = "force-dynamic";
 
@@ -61,9 +69,10 @@ export default async function FeastDetailPage({
         {/* Lugares — siempre visibles */}
         <Section title="Lugares y horarios">
           {locations.length === 0 ? (
-            <EmptyHint>
-              La Asamblea aún no cargó lugares ni horarios para esta Fiesta.
-            </EmptyHint>
+            <FallbackCelebration
+              gregorianDate={feast.gregorian_date}
+              monthName={feast.bahai_month_name}
+            />
           ) : (
             <ul className="flex flex-col gap-2.5">
               {locations.map((loc) => {
@@ -251,6 +260,53 @@ function EmptyHint({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-dashed border-black/10 bg-card/50 p-4 text-center text-[12.5px] text-muted">
       {children}
+    </div>
+  );
+}
+
+/**
+ * Fallback cuando la Asamblea aún no cargó casas anfitrionas:
+ * mostramos la fecha oficial de celebración como referencia para
+ * que el miembro al menos sepa el día en que sucede.
+ */
+function FallbackCelebration({
+  gregorianDate,
+  monthName,
+}: {
+  gregorianDate: string | null;
+  monthName: string;
+}) {
+  if (!gregorianDate) {
+    return (
+      <EmptyHint>
+        La Asamblea aún no cargó lugares ni horarios para esta Fiesta.
+      </EmptyHint>
+    );
+  }
+  const celebrationIso = celebrationDateFor(gregorianDate);
+  const cd = new Date(`${celebrationIso}T12:00:00Z`);
+  const od = new Date(`${gregorianDate}T12:00:00Z`);
+  const fmt = (d: Date) =>
+    `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} de ${MONTHS_ES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+
+  return (
+    <div className="rounded-2xl border border-dashed border-terra/30 bg-terra/[0.04] p-4">
+      <div className="text-[10.5px] uppercase tracking-wide text-muted">
+        Fecha oficial del Mes de {monthName}
+      </div>
+      <div className="mt-0.5 text-[13px] text-dark">{fmt(od)}</div>
+
+      <div className="mt-2.5 text-[10.5px] uppercase tracking-wide text-terra">
+        Conmemoración
+      </div>
+      <div className="text-[13.5px] font-semibold text-terra">
+        {fmt(cd)} al atardecer
+      </div>
+
+      <p className="mt-3 text-[11.5px] italic text-muted">
+        La Asamblea aún no cargó las casas anfitrionas ni los horarios
+        específicos. Pronto verás aquí los detalles de cada lugar.
+      </p>
     </div>
   );
 }
