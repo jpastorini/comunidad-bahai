@@ -33,6 +33,8 @@ export type Profile = {
   id: string;
   email: string | null;
   full_name: string | null;
+  /** URL pública del avatar. Puede ser de Google o subido manualmente. */
+  avatar_url: string | null;
   role: "member" | "admin";
   can_respond_chat: boolean;
   can_manage_treasury: boolean;

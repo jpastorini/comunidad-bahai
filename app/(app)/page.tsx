@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { Avatar } from "@/components/Avatar";
 import { FeaturedMessageCard } from "@/components/home/FeaturedMessageCard";
 import { GoldHeader } from "@/components/GoldHeader";
 import { SectionGrid } from "@/components/home/SectionGrid";
@@ -8,7 +10,6 @@ import {
   getLatestLocalAnnouncement,
   getUpcomingCalendarEvents,
 } from "@/lib/data";
-import { formatLongDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,15 @@ export default async function HomePage() {
       <GoldHeader
         title={session.locality.name}
         subtitle="Centro de Comunicados"
-        rightSlot={formatLongDate(new Date())}
+        rightSlot={
+          <Link href="/perfil" aria-label="Mi perfil" className="tap inline-flex">
+            <Avatar
+              url={session.profile.avatar_url}
+              name={session.profile.full_name}
+              size={38}
+            />
+          </Link>
+        }
         starSize={130}
       />
       <main className="scroll-area flex-1 px-3.5 pt-3">

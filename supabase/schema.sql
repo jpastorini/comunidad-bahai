@@ -19,6 +19,9 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
   full_name text,
+  -- URL pública del avatar (de Google o subido al bucket 'avatars').
+  -- Ver migración 018_profile_avatar.sql.
+  avatar_url text,
   role text not null default 'member' check (role in ('member', 'admin')),
   can_respond_chat boolean not null default false,
   can_manage_treasury boolean not null default false,
@@ -76,17 +79,27 @@ as $$
 $$;
 
 -- Crea automáticamente un perfil cuando se registra un usuario.
+-- También intenta poblar avatar_url desde la metadata del provider
+-- (Google manda 'avatar_url' o 'picture').
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, email, full_name)
+  insert into public.profiles (id, email, full_name, avatar_url)
   values (
     new.id,
     new.email,
-    coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1))
+    coalesce(
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'name',
+      split_part(new.email, '@', 1)
+    ),
+    coalesce(
+      new.raw_user_meta_data->>'avatar_url',
+      new.raw_user_meta_data->>'picture'
+    )
   )
   on conflict (id) do nothing;
   return new;
