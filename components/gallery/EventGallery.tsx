@@ -1,7 +1,7 @@
+import Link from "next/link";
 import { getOptionalMember } from "@/lib/auth";
 import { getEventPhotos } from "@/lib/event-photos";
-import type { EventPhoto } from "@/lib/types";
-import { PhotoCard } from "./PhotoCard";
+import { PhotoGrid } from "./PhotoGrid";
 import { PhotoUpload } from "./PhotoUpload";
 
 type Props = {
@@ -9,56 +9,70 @@ type Props = {
   eventId: string;
 };
 
+const PREVIEW_LIMIT = 6;
+
 /**
- * Server component que renderiza la galería completa de un evento:
- * grilla de fotos + formulario de subida (si el miembro está logueado).
- *
- * RLS de Supabase filtra automáticamente a la localidad del usuario.
- * Si no hay sesión, no se muestra el form de subida (los miembros
- * anónimos solo ven las fotos del evento si tienen acceso).
+ * Server component que renderiza la galería embebida en el detalle
+ * del evento: preview de las primeras N fotos (con CTA a la galería
+ * completa si hay más) + formulario de subida.
  */
 export async function EventGallery({ eventType, eventId }: Props) {
-  const [photos, session] = await Promise.all([
+  const [allPhotos, session] = await Promise.all([
     getEventPhotos(eventType, eventId),
     getOptionalMember(),
   ]);
 
-  const canDelete = (photo: EventPhoto): boolean => {
-    if (!session) return false;
-    if (photo.uploader_user_id === session.user.id) return true;
-    if (
-      session.profile.role === "admin" &&
-      photo.locality_id === session.locality?.id
-    ) {
-      return true;
-    }
-    return false;
-  };
+  const previewPhotos = allPhotos.slice(0, PREVIEW_LIMIT);
+  const remaining = Math.max(0, allPhotos.length - PREVIEW_LIMIT);
+  const fullHref =
+    eventType === "calendar"
+      ? `/calendario/${eventId}/galeria`
+      : `/fiestas/${eventId}/galeria`;
 
   return (
     <section className="mb-5 mt-2">
       <div className="mb-2.5 flex items-baseline justify-between">
         <h2 className="text-[13px] font-semibold text-dark">
-          Galería{" "}
-          {photos.length > 0 && (
+          Galería
+          {allPhotos.length > 0 && (
             <span className="ml-1 text-[11px] font-normal text-muted">
-              · {photos.length}{" "}
-              {photos.length === 1 ? "foto" : "fotos"}
+              · {allPhotos.length}{" "}
+              {allPhotos.length === 1 ? "foto" : "fotos"}
             </span>
           )}
         </h2>
+        {allPhotos.length > 0 && (
+          <Link
+            href={fullHref}
+            className="text-[11.5px] font-semibold text-terra hover:underline"
+          >
+            Ver todas →
+          </Link>
+        )}
       </div>
 
-      {photos.length === 0 ? (
+      {allPhotos.length === 0 ? (
         <div className="mb-3 rounded-2xl border border-dashed border-black/10 bg-card/50 px-4 py-6 text-center text-[12.5px] text-muted">
           Aún no hay fotos compartidas.
           {session ? " ¡Sé el primero!" : ""}
         </div>
       ) : (
-        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {photos.map((p) => (
-            <PhotoCard key={p.id} photo={p} canDelete={canDelete(p)} />
-          ))}
+        <div className="mb-4">
+          <PhotoGrid
+            photos={previewPhotos}
+            currentUserId={session?.user.id ?? null}
+            isAdmin={session?.profile.role === "admin"}
+            adminLocalityId={session?.locality?.id ?? null}
+            variant="compact"
+          />
+          {remaining > 0 && (
+            <Link
+              href={fullHref}
+              className="tap mt-2 flex items-center justify-center gap-1 rounded-xl border border-terra/20 bg-terra/[0.05] px-4 py-2 text-[12px] font-semibold text-terra hover:bg-terra/10"
+            >
+              Ver galería completa ({allPhotos.length} fotos) →
+            </Link>
+          )}
         </div>
       )}
 
