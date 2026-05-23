@@ -196,9 +196,13 @@ create table if not exists public.calendar_events (
 create index if not exists calendar_events_kind_idx
   on public.calendar_events (kind);
 
-create unique index if not exists calendar_events_system_id_unique
-  on public.calendar_events (locality_id, system_id)
-  where system_id is not null;
+-- Constraint único para system-seeded events. NULL distinct por default
+-- (eventos manuales con system_id NULL no chocan entre sí).
+alter table public.calendar_events
+  drop constraint if exists calendar_events_locality_system_id_unique;
+alter table public.calendar_events
+  add constraint calendar_events_locality_system_id_unique
+  unique (locality_id, system_id);
 
 create index if not exists calendar_events_official_date_idx
   on public.calendar_events (official_date);
