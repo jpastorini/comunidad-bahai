@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 type Props = { next?: string };
@@ -74,44 +75,55 @@ export function MemberLoginForm({ next }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-5">
       <div>
         <h2 className="font-display text-[22px] font-semibold text-dark">
           Iniciar sesión
         </h2>
         <p className="mt-1 font-body text-[13px] text-muted">
-          Recibirás un enlace mágico por correo. Sin contraseñas.
+          La forma más rápida es con tu cuenta de Google. También podés usar
+          tu email y te mandamos un enlace mágico.
         </p>
       </div>
 
-      <div>
-        <label
-          htmlFor="email"
-          className="mb-1 block text-[12px] font-semibold text-dark"
-        >
-          Correo electrónico
-        </label>
-        <input
-          id="email"
-          type="email"
-          required
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="tu@correo.com"
-          className="w-full rounded-xl border border-black/10 bg-bg px-4 py-3 text-[14px] text-dark outline-none placeholder:text-muted focus:border-terra"
-        />
+      <GoogleSignInButton next={next} />
+
+      <div className="flex items-center gap-3 text-[11px] uppercase tracking-wide text-muted">
+        <span className="h-px flex-1 bg-black/[0.08]" />
+        <span>o usar email</span>
+        <span className="h-px flex-1 bg-black/[0.08]" />
       </div>
 
-      {errorMsg && <p className="text-[12px] text-rose-600">{errorMsg}</p>}
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div>
+          <label
+            htmlFor="email"
+            className="mb-1 block text-[12px] font-semibold text-dark"
+          >
+            Correo electrónico
+          </label>
+          <input
+            id="email"
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="tu@correo.com"
+            className="w-full rounded-xl border border-black/10 bg-bg px-4 py-3 text-[14px] text-dark outline-none placeholder:text-muted focus:border-terra"
+          />
+        </div>
 
-      <button
-        type="submit"
-        disabled={status === "sending"}
-        className="tap w-full rounded-xl bg-terra px-4 py-3 text-[14px] font-semibold text-white shadow-card-soft transition disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {status === "sending" ? "Enviando..." : "Enviar enlace mágico"}
-      </button>
-    </form>
+        {errorMsg && <p className="text-[12px] text-rose-600">{errorMsg}</p>}
+
+        <button
+          type="submit"
+          disabled={status === "sending"}
+          className="tap w-full rounded-xl border border-terra/30 bg-terra/[0.05] px-4 py-3 text-[14px] font-semibold text-terra shadow-card-soft transition disabled:cursor-not-allowed disabled:opacity-60 hover:bg-terra/10"
+        >
+          {status === "sending" ? "Enviando..." : "Enviar enlace mágico"}
+        </button>
+      </form>
+    </div>
   );
 }
