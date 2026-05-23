@@ -346,6 +346,30 @@ export type UnifiedCalendarItem = {
 export async function getUnifiedCalendarItems(): Promise<UnifiedCalendarItem[]> {
   const [events, feasts] = await Promise.all([getCalendarEvents(), getFeasts()]);
 
+  // Para enriquecer la tarjeta de cada Fiesta con horario y lugar,
+  // traemos también las feast_locations cargadas por la Asamblea.
+  // Usamos la PRIMERA location en orden cronológico como representante
+  // en el calendario; si hay más de una, lo indicamos con "+N más".
+  type FeastLoc = {
+    feast_id: string;
+    name: string | null;
+    starts_at: string;
+  };
+  let locationsByFeast = new Map<string, FeastLoc[]>();
+  if (isSupabaseConfigured() && feasts.length > 0) {
+    const supabase = createSupabaseServer();
+    const { data: locs } = await supabase
+      .from("feast_locations")
+      .select("feast_id, name, starts_at")
+      .in("feast_id", feasts.map((f) => f.id))
+      .order("starts_at", { ascending: true });
+    for (const row of (locs ?? []) as FeastLoc[]) {
+      const arr = locationsByFeast.get(row.feast_id) ?? [];
+      arr.push(row);
+      locationsByFeast.set(row.feast_id, arr);
+    }
+  }
+
   const fromEvents: UnifiedCalendarItem[] = events.map((e) => ({
     id: e.id,
     source: "calendar_event",
@@ -367,10 +391,38 @@ export async function getUnifiedCalendarItems(): Promise<UnifiedCalendarItem[]> 
   const fromFeasts: UnifiedCalendarItem[] = feasts
     .filter((f) => f.gregorian_date)
     .map((f) => {
-      const celebrationIso = celebrationDateFor(f.gregorian_date!);
-      const [year, month, day] = celebrationIso.split("-").map((n) =>
-        parseInt(n, 10)
-      );
+      const locs = locationsByFeast.get(f.id) ?? [];
+      const firstLoc = locs[0];
+
+      // Si la Asamblea cargó al menos una location, usamos su fecha/hora
+      // como referencia (puede no ser exactamente la noche anterior si
+      // la celebración la mueven). Sino, fallback a noche anterior + "Al atardecer".
+      let day: number, month: number, year: number, time: string;
+      if (firstLoc) {
+        const d = new Date(firstLoc.starts_at);
+        year = d.getFullYear();
+        month = d.getMonth() + 1;
+        day = d.getDate();
+        time = d.toLocaleTimeString("es-MX", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+      } else {
+        const celebrationIso = celebrationDateFor(f.gregorian_date!);
+        const parts = celebrationIso.split("-").map((n) => parseInt(n, 10));
+        year = parts[0];
+        month = parts[1];
+        day = parts[2];
+        time = "Al atardecer";
+      }
+
+      const locationLabel = firstLoc?.name
+        ? locs.length > 1
+          ? `${firstLoc.name} (+${locs.length - 1})`
+          : firstLoc.name
+        : null;
+
       return {
         id: f.id,
         source: "feast",
@@ -380,10 +432,10 @@ export async function getUnifiedCalendarItems(): Promise<UnifiedCalendarItem[]> 
         month,
         year,
         title: `Fiesta de ${f.bahai_month_name}`,
-        time: "Al atardecer",
+        time,
         kind: "fiesta_19_dias",
         color: CALENDAR_KINDS.fiesta_19_dias.color,
-        location: null,
+        location: locationLabel,
         image_url: null,
         isSystemSeeded: true,
         feastStatus: f.status,

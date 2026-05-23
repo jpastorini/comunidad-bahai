@@ -51,8 +51,9 @@ export default async function FeastDetailPage({
               Esta Fiesta aún no ha iniciado
             </h2>
             <p className="mt-1 text-[12px] text-white/85">
-              Cuando la Asamblea inicie la Fiesta, aquí aparecerá el programa
-              completo (oraciones, profundización, informes y comunicado).
+              Los lugares y horarios de celebración aparecen abajo. El programa
+              interno (oraciones, profundización, informes) se hace visible
+              cuando la Asamblea inicia la Fiesta.
             </p>
           </div>
         )}
@@ -61,7 +62,7 @@ export default async function FeastDetailPage({
         <Section title="Lugares y horarios">
           {locations.length === 0 ? (
             <EmptyHint>
-              Pronto se publicarán los lugares y horarios.
+              La Asamblea aún no cargó lugares ni horarios para esta Fiesta.
             </EmptyHint>
           ) : (
             <ul className="flex flex-col gap-2.5">
