@@ -337,6 +337,8 @@ export type UnifiedCalendarItem = {
   color: string;          // color visual efectivo
   location: string | null;
   image_url: string | null;
+  /** true para Días Sagrados auto-sembrados (no borrables). */
+  isSystemSeeded: boolean;
   /** Solo para Fiestas; null en eventos del calendario. */
   feastStatus: import("./types").FeastStatus | null;
 };
@@ -358,6 +360,7 @@ export async function getUnifiedCalendarItems(): Promise<UnifiedCalendarItem[]> 
     color: effectiveEventColor(e.kind, e.color),
     location: e.location ?? null,
     image_url: e.image_url ?? null,
+    isSystemSeeded: e.is_system_seeded === true,
     feastStatus: null,
   }));
 
@@ -382,6 +385,7 @@ export async function getUnifiedCalendarItems(): Promise<UnifiedCalendarItem[]> 
         color: CALENDAR_KINDS.fiesta_19_dias.color,
         location: null,
         image_url: null,
+        isSystemSeeded: true,
         feastStatus: f.status,
       } as UnifiedCalendarItem;
     });

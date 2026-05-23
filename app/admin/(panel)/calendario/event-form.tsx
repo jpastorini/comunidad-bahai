@@ -1,4 +1,5 @@
 import {
+  Banner,
   Button,
   Card,
   Field,
@@ -18,47 +19,116 @@ const COLORS = [
   { value: "#C4A235", label: "Dorado" },
 ];
 
+const MONTHS_ES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
 export function EventForm({ event }: Props) {
   const date = event
     ? `${event.year}-${String(event.month).padStart(2, "0")}-${String(event.day).padStart(2, "0")}`
     : "";
 
+  const isProtected = event?.is_system_seeded === true;
+  const officialDateLabel = event?.official_date
+    ? formatLongDate(event.official_date)
+    : null;
+  const celebrationDateLabel =
+    event && date ? formatLongDate(date) : null;
+
   return (
     <form action={upsertEventAction} encType="multipart/form-data">
       {event && <input type="hidden" name="id" value={event.id} />}
 
+      {isProtected && (
+        <div className="mb-5">
+          <Banner tone="info">
+            <strong>Este es un Día Sagrado oficial.</strong> El nombre y la
+            fecha están definidos por el calendario bahá'í y no se pueden
+            modificar. Sí podés editar la hora, el lugar, la descripción, la
+            imagen de invitación y la duración.
+          </Banner>
+        </div>
+      )}
+
       <Card>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Fecha" name="date" required>
-            <TextInput
-              id="date"
-              name="date"
-              type="date"
-              required
-              defaultValue={date}
-            />
-          </Field>
-          <Field label="Hora" name="time" hint='Texto libre (ej. "7:00 PM")'>
+        {isProtected ? (
+          <div className="mb-4 grid gap-3 rounded-xl border border-black/[0.06] bg-bg/40 p-4 md:grid-cols-2">
+            <div>
+              <div className="text-[10.5px] uppercase tracking-wide text-muted">
+                Día Sagrado
+              </div>
+              <div className="font-display text-[18px] font-semibold text-dark">
+                {event?.title}
+              </div>
+            </div>
+            {officialDateLabel && (
+              <div>
+                <div className="text-[10.5px] uppercase tracking-wide text-muted">
+                  Fecha oficial
+                </div>
+                <div className="text-[13px] text-dark">{officialDateLabel}</div>
+                {celebrationDateLabel &&
+                  event?.official_date !== date && (
+                    <div className="mt-1 text-[10.5px] uppercase tracking-wide text-terra">
+                      Celebración
+                    </div>
+                  )}
+                {celebrationDateLabel &&
+                  event?.official_date !== date && (
+                    <div className="text-[12.5px] font-semibold text-terra">
+                      {celebrationDateLabel}
+                    </div>
+                  )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Fecha" name="date" required>
+                <TextInput
+                  id="date"
+                  name="date"
+                  type="date"
+                  required
+                  defaultValue={date}
+                />
+              </Field>
+              <Field label="Hora" name="time" hint='Texto libre (ej. "7:00 PM")'>
+                <TextInput
+                  id="time"
+                  name="time"
+                  defaultValue={event?.time ?? "7:00 PM"}
+                  placeholder="7:00 PM"
+                />
+              </Field>
+            </div>
+
+            <div className="mt-4">
+              <Field label="Título" name="title" required>
+                <TextInput
+                  id="title"
+                  name="title"
+                  required
+                  defaultValue={event?.title ?? ""}
+                  placeholder="Círculo de Estudio"
+                />
+              </Field>
+            </div>
+          </>
+        )}
+
+        {isProtected && (
+          <Field label="Hora" name="time" hint='Texto libre (ej. "7:00 PM" o "Al atardecer")'>
             <TextInput
               id="time"
               name="time"
-              defaultValue={event?.time ?? "7:00 PM"}
-              placeholder="7:00 PM"
+              defaultValue={event?.time ?? ""}
+              placeholder="Al atardecer"
             />
           </Field>
-        </div>
-
-        <div className="mt-4">
-          <Field label="Título" name="title" required>
-            <TextInput
-              id="title"
-              name="title"
-              required
-              defaultValue={event?.title ?? ""}
-              placeholder="Círculo de Estudio"
-            />
-          </Field>
-        </div>
+        )}
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <Field label="Ubicación" name="location" hint="Aparece en el .ics">
@@ -132,6 +202,15 @@ export function EventForm({ event }: Props) {
       </div>
     </form>
   );
+}
+
+function formatLongDate(iso: string): string {
+  const [yStr, mStr, dStr] = iso.split("-");
+  const y = parseInt(yStr, 10);
+  const m = parseInt(mStr, 10);
+  const d = parseInt(dStr, 10);
+  if (!y || !m || !d) return iso;
+  return `${d} de ${MONTHS_ES[m - 1]} de ${y}`;
 }
 
 function ImageSlot({ currentUrl }: { currentUrl: string | null }) {

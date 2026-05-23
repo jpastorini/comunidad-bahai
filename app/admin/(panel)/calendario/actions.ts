@@ -30,7 +30,7 @@ export async function upsertEventAction(formData: FormData) {
 
   const id = formData.get("id") as string | null;
   const date = formData.get("date") as string;
-  const [year, month, day] = date.split("-").map((n) => parseInt(n, 10));
+  const [year, month, day] = (date || "").split("-").map((n) => parseInt(n, 10));
 
   const durationStr = formData.get("duration_minutes") as string | null;
   const durationMinutes = Math.max(
@@ -38,23 +38,59 @@ export async function upsertEventAction(formData: FormData) {
     Math.min(60 * 12, parseInt(durationStr || "60", 10) || 60)
   );
 
-  // Por ahora la Asamblea solo crea actividades generales desde este form;
-  // las Fiestas y los Días Sagrados se siembran automáticamente con su
-  // propia categoría (ver migraciones 014 / 015 y rutas dedicadas).
+  // Si es edición de un evento existente, traemos los campos protegidos
+  // por si es system-seeded (Día Sagrado): título, fecha, kind y system_id
+  // no se pueden modificar — solo hora, lugar, descripción, imagen y duración.
+  type ExistingEvent = {
+    is_system_seeded: boolean | null;
+    day: number;
+    month: number;
+    year: number;
+    title: string;
+    kind: string | null;
+    system_id: string | null;
+    official_date: string | null;
+  };
+  let existing: ExistingEvent | null = null;
+
+  if (id) {
+    const { data } = await supabase
+      .from("calendar_events")
+      .select("is_system_seeded, day, month, year, title, kind, system_id, official_date")
+      .eq("id", id)
+      .maybeSingle();
+    existing = (data as ExistingEvent | null) ?? null;
+  }
+
+  const isProtected = existing?.is_system_seeded === true;
+
+  // Build payload — los campos protegidos vienen del registro existente.
   const payload: Record<string, unknown> = {
-    day,
-    month,
-    year,
-    title: formData.get("title") as string,
     time: formData.get("time") as string,
-    color: formData.get("color") as string,
-    kind: "actividad_general",
     description: (formData.get("description") as string) || null,
     location: (formData.get("location") as string) || null,
     duration_minutes: durationMinutes,
   };
 
-  if (!date || !payload.title) {
+  if (isProtected && existing) {
+    payload.day = existing.day;
+    payload.month = existing.month;
+    payload.year = existing.year;
+    payload.title = existing.title;
+    payload.color = formData.get("color") as string; // color sí se puede ajustar
+  } else {
+    payload.day = day;
+    payload.month = month;
+    payload.year = year;
+    payload.title = formData.get("title") as string;
+    payload.color = formData.get("color") as string;
+    if (!id) {
+      // Nuevos eventos creados a mano son siempre actividades generales.
+      payload.kind = "actividad_general";
+    }
+  }
+
+  if (!isProtected && (!date || !payload.title)) {
     setFlashToast({ tone: "error", message: "Faltan campos obligatorios." });
     redirect("/admin/calendario");
   }
@@ -88,7 +124,26 @@ export async function deleteEventAction(formData: FormData) {
   const supabase = createSupabaseServer();
   const id = formData.get("id") as string;
   if (id) {
-    const { error } = await supabase.from("calendar_events").delete().eq("id", id);
+    // Verificar que el evento no sea system-seeded (Día Sagrado).
+    const { data: existing } = await supabase
+      .from("calendar_events")
+      .select("is_system_seeded, title")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (existing?.is_system_seeded) {
+      setFlashToast({
+        tone: "error",
+        message: `"${existing.title}" no se puede borrar — es un Día Sagrado oficial.`,
+      });
+      revalidatePath("/admin/calendario");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("calendar_events")
+      .delete()
+      .eq("id", id);
     setFlashToast(
       error
         ? { tone: "error", message: `No se pudo borrar: ${error.message}` }

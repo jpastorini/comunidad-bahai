@@ -185,11 +185,23 @@ create table if not exists public.calendar_events (
   image_url text,              -- invitación gráfica (URL pública en Storage)
   duration_minutes int not null default 60, -- usado para DTEND del .ics
   activity_id uuid references public.activities(id) on delete set null,
+  -- Sembrado automáticamente por el sistema (ej. Días Sagrados, ver
+  -- migración 015 y lib/holy-days.ts). NO se puede borrar ni renombrar.
+  is_system_seeded boolean not null default false,
+  system_id text,              -- identificador estable de la siembra
+  official_date date,          -- fecha oficial del calendario Badí'
   created_at timestamptz not null default now()
 );
 
 create index if not exists calendar_events_kind_idx
   on public.calendar_events (kind);
+
+create unique index if not exists calendar_events_system_id_unique
+  on public.calendar_events (locality_id, system_id)
+  where system_id is not null;
+
+create index if not exists calendar_events_official_date_idx
+  on public.calendar_events (official_date);
 
 alter table public.calendar_events enable row level security;
 

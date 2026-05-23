@@ -26,6 +26,13 @@ export default async function EventDetailPage({
   const kindMeta = getCalendarKind(event.kind);
   const accent = effectiveEventColor(event.kind, event.color);
 
+  // Para Días Sagrados con official_date, mostrar el patrón
+  // "Fecha oficial / Conmemoración" debajo del header.
+  const hasOfficialDate = !!event.official_date;
+  const officialDateLabel = event.official_date
+    ? formatOfficialDate(event.official_date)
+    : null;
+
   return (
     <>
       <GoldHeader
@@ -100,6 +107,33 @@ export default async function EventDetailPage({
             </div>
           </div>
 
+          {hasOfficialDate && officialDateLabel && (
+            <div className="mb-4 rounded-2xl border border-black/[0.06] bg-card p-4 shadow-card-soft">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <div className="text-[10.5px] uppercase tracking-wide text-muted">
+                    Fecha oficial
+                  </div>
+                  <div className="mt-0.5 text-[13px] text-dark">
+                    {officialDateLabel}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10.5px] uppercase tracking-wide text-terra">
+                    Conmemoración
+                  </div>
+                  <div className="mt-0.5 text-[13px] font-semibold text-terra">
+                    {weekday} {event.day} de {monthName} · {event.time}
+                  </div>
+                </div>
+              </div>
+              <p className="mt-2 text-[10.5px] italic text-muted">
+                En el calendario Badí', el día comienza al atardecer del día
+                anterior según el calendario gregoriano.
+              </p>
+            </div>
+          )}
+
           {event.description && (
             <article className="mb-4 rounded-2xl bg-card p-4 shadow-card-soft">
               <h2 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted">
@@ -134,4 +168,15 @@ export default async function EventDetailPage({
       </main>
     </>
   );
+}
+
+function formatOfficialDate(iso: string): string {
+  const [yStr, mStr, dStr] = iso.split("-");
+  const y = parseInt(yStr, 10);
+  const m = parseInt(mStr, 10);
+  const d = parseInt(dStr, 10);
+  if (!y || !m || !d) return iso;
+  const date = new Date(Date.UTC(y, m - 1, d, 12, 0));
+  const weekday = WEEKDAYS_ES[date.getUTCDay()];
+  return `${weekday} ${d} de ${MONTHS_ES[m - 1]} ${y}`;
 }

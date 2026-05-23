@@ -148,6 +148,199 @@ export function getBahaiYearCalendar(
   return BAHAI_CALENDAR_YEARS.find((c) => c.bahaiYear === bahaiYear);
 }
 
+// ─────────────────────────────────────────────────────────────────
+// Días Sagrados (Holy Days)
+//
+// 11 conmemoraciones por año Badí'. 9 con suspensión de trabajo,
+// 2 sin. La mayoría se celebra la noche anterior; tres tienen hora
+// exacta (Martirio del Báb mediodía, Ascensión de Bahá'u'lláh 3 AM,
+// Ascensión de 'Abdu'l-Bahá 1 AM).
+// ─────────────────────────────────────────────────────────────────
+
+export type HolyDayCelebrationRule =
+  | { kind: "night_before" }
+  | { kind: "exact_time"; hour: number; minute: number; label: string };
+
+export type HolyDayDefinition = {
+  id: string;                  // estable, usado para system_id
+  name: string;
+  workSuspended: boolean;
+  rule: HolyDayCelebrationRule;
+  description: string;         // texto inicial para el campo description
+};
+
+export const HOLY_DAYS: HolyDayDefinition[] = [
+  {
+    id: "naw_ruz",
+    name: "Naw-Rúz",
+    workSuspended: true,
+    rule: { kind: "night_before" },
+    description:
+      "Año Nuevo bahá'í. La comunidad se reúne para dar la bienvenida al nuevo año Badí'.",
+  },
+  {
+    id: "ridvan_1",
+    name: "Primer Día de Riḍván",
+    workSuspended: true,
+    rule: { kind: "night_before" },
+    description:
+      "Conmemoración del primer día en que Bahá'u'lláh declaró Su Misión en el jardín de Riḍván, Bagdad, en 1863.",
+  },
+  {
+    id: "ridvan_9",
+    name: "Noveno Día de Riḍván",
+    workSuspended: true,
+    rule: { kind: "night_before" },
+    description:
+      "Noveno día del Festival de Riḍván, cuando la familia de Bahá'u'lláh se unió a Él en el jardín.",
+  },
+  {
+    id: "ridvan_12",
+    name: "Duodécimo Día de Riḍván",
+    workSuspended: true,
+    rule: { kind: "night_before" },
+    description:
+      "Último día del Festival de Riḍván, cuando Bahá'u'lláh partió del jardín hacia Constantinopla.",
+  },
+  {
+    id: "declaration_bab",
+    name: "Declaración del Báb",
+    workSuspended: true,
+    rule: { kind: "night_before" },
+    description:
+      "Conmemoración de la declaración del Báb a Mullá Ḥusayn en Shiraz, la noche del 22 al 23 de mayo de 1844.",
+  },
+  {
+    id: "ascension_bahaullah",
+    name: "Ascensión de Bahá'u'lláh",
+    workSuspended: true,
+    rule: {
+      kind: "exact_time",
+      hour: 3,
+      minute: 0,
+      label: "3:00 de la madrugada",
+    },
+    description:
+      "Conmemoración de la ascensión de Bahá'u'lláh en Bahjí, cerca de 'Akká, el 29 de mayo de 1892.",
+  },
+  {
+    id: "martyrdom_bab",
+    name: "Martirio del Báb",
+    workSuspended: true,
+    rule: { kind: "exact_time", hour: 12, minute: 0, label: "12:00 (mediodía)" },
+    description:
+      "Conmemoración del martirio del Báb en Tabriz, Persia, el mediodía del 9 de julio de 1850.",
+  },
+  {
+    id: "birth_bab",
+    name: "Nacimiento del Báb",
+    workSuspended: true,
+    rule: { kind: "night_before" },
+    description:
+      "Primer día de los Cumpleaños Gemelos. Conmemoración del nacimiento del Báb en Shiraz en 1819.",
+  },
+  {
+    id: "birth_bahaullah",
+    name: "Nacimiento de Bahá'u'lláh",
+    workSuspended: true,
+    rule: { kind: "night_before" },
+    description:
+      "Segundo día de los Cumpleaños Gemelos. Conmemoración del nacimiento de Bahá'u'lláh en Teherán en 1817.",
+  },
+  {
+    id: "covenant",
+    name: "Día del Convenio",
+    workSuspended: false,
+    rule: { kind: "night_before" },
+    description:
+      "Conmemoración del Convenio establecido por Bahá'u'lláh, designando a 'Abdu'l-Bahá como Centro de Su Convenio.",
+  },
+  {
+    id: "ascension_abdul_baha",
+    name: "Ascensión de 'Abdu'l-Bahá",
+    workSuspended: false,
+    rule: {
+      kind: "exact_time",
+      hour: 1,
+      minute: 0,
+      label: "1:00 de la madrugada",
+    },
+    description:
+      "Conmemoración de la ascensión de 'Abdu'l-Bahá en Haifa, el 28 de noviembre de 1921.",
+  },
+];
+
+export function getHolyDayDefinition(
+  id: string
+): HolyDayDefinition | undefined {
+  return HOLY_DAYS.find((h) => h.id === id);
+}
+
+// Fechas oficiales de los Días Sagrados por año Badí'.
+// Fuente: https://www.bahai.org/es/action/devotional-life/calendar
+// IMPORTANTE: Las fechas de los Cumpleaños Gemelos (birth_bab,
+// birth_bahaullah) se calculan astronómicamente cada año. Verificar
+// contra el sitio oficial al actualizar.
+export type HolyDayYearDates = {
+  bahaiYear: number;
+  dates: Record<string, string>; // id → ISO YYYY-MM-DD (fecha oficial)
+};
+
+export const HOLY_DAY_DATES_BY_YEAR: HolyDayYearDates[] = [
+  {
+    bahaiYear: 183,
+    dates: {
+      naw_ruz: "2026-03-20",
+      ridvan_1: "2026-04-20",
+      ridvan_9: "2026-04-28",
+      ridvan_12: "2026-05-01",
+      declaration_bab: "2026-05-23",
+      ascension_bahaullah: "2026-05-29",
+      martyrdom_bab: "2026-07-09",
+      birth_bab: "2026-11-10",        // VERIFICAR con bahai.org
+      birth_bahaullah: "2026-11-11",  // VERIFICAR con bahai.org
+      covenant: "2026-11-26",
+      ascension_abdul_baha: "2026-11-28",
+    },
+  },
+  {
+    bahaiYear: 184,
+    dates: {
+      naw_ruz: "2027-03-21",
+      ridvan_1: "2027-04-21",
+      ridvan_9: "2027-04-29",
+      ridvan_12: "2027-05-02",
+      declaration_bab: "2027-05-23",
+      ascension_bahaullah: "2027-05-29",
+      martyrdom_bab: "2027-07-10",
+      birth_bab: "2027-10-30",        // VERIFICAR con bahai.org
+      birth_bahaullah: "2027-10-31",  // VERIFICAR con bahai.org
+      covenant: "2027-11-26",
+      ascension_abdul_baha: "2027-11-28",
+    },
+  },
+];
+
+export function getHolyDayDatesForYear(
+  bahaiYear: number
+): HolyDayYearDates | undefined {
+  return HOLY_DAY_DATES_BY_YEAR.find((d) => d.bahaiYear === bahaiYear);
+}
+
+/**
+ * Dada la fecha oficial y la regla, calcula la fecha y hora de
+ * celebración (lo que se muestra en el calendario).
+ */
+export function computeHolyDayCelebration(
+  officialDateIso: string,
+  rule: HolyDayCelebrationRule
+): { date: string; time: string } {
+  if (rule.kind === "exact_time") {
+    return { date: officialDateIso, time: rule.label };
+  }
+  return { date: celebrationDateFor(officialDateIso), time: "Al atardecer" };
+}
+
 /**
  * Año bahá'í que contiene la fecha gregoriana dada.
  * Retorna null si la fecha cae fuera del rango cargado en BAHAI_CALENDAR_YEARS.

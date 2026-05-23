@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getCalendarKind } from "@/lib/calendar-kinds";
 import { getUnifiedCalendarItems } from "@/lib/data";
 import type { UnifiedCalendarItem } from "@/lib/data";
+import { ensureYearSeeded } from "@/lib/year-seed";
 import { deleteEventAction } from "./actions";
 
 const WEEKDAYS_ES = [
@@ -27,7 +28,8 @@ type MonthGroup = {
 };
 
 export default async function AdminCalendarPage() {
-  await requireAdmin();
+  const session = await requireAdmin();
+  await ensureYearSeeded(session.locality.id);
   const items = await getUnifiedCalendarItems();
 
   const today = new Date();
@@ -257,6 +259,21 @@ function ActionsCell({ item }: { item: UnifiedCalendarItem }) {
       </div>
     );
   }
+
+  // Día Sagrado (system-seeded): solo editar, no borrar.
+  if (item.isSystemSeeded) {
+    return (
+      <div className="flex items-center justify-end">
+        <Link
+          href={item.adminHref}
+          className="text-[12px] font-semibold text-terra hover:underline"
+        >
+          Editar
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-end gap-2">
       <Link

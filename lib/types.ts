@@ -203,4 +203,20 @@ export type CalendarEvent = {
   location?: string | null;
   image_url?: string | null;
   duration_minutes?: number | null;
+  /**
+   * true cuando el evento fue sembrado automáticamente por el sistema
+   * (ej. un Día Sagrado). La Asamblea NO puede borrar ni renombrar
+   * estos eventos; solo puede editar hora, lugar, descripción, imagen
+   * y duración.
+   */
+  is_system_seeded?: boolean | null;
+  /** Identificador estable de la siembra (ej. 'holy_naw_ruz_BE183'). */
+  system_id?: string | null;
+  /**
+   * Fecha gregoriana oficial del calendario Badí'. Para Días Sagrados
+   * que se celebran la noche anterior, day/month/year guardan la fecha
+   * de celebración y official_date guarda la fecha oficial. Para los
+   * de horario exacto coinciden.
+   */
+  official_date?: string | null;
 };

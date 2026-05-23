@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Banner, DataTable, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
 import { celebrationDateFor, getBahaiMonth } from "@/lib/bahai-calendar";
-import { ensureCurrentAndNextYearSeeded } from "@/lib/feasts";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { FeastStatus } from "@/lib/types";
+import { ensureYearSeeded } from "@/lib/year-seed";
 
 type FeastRow = {
   id: string;
@@ -31,7 +31,7 @@ export default async function AdminFiestasPage() {
   const localityId = session.locality.id;
   const supabase = createSupabaseServer();
 
-  const seedResult = await ensureCurrentAndNextYearSeeded(localityId);
+  const seedResult = await ensureYearSeeded(localityId);
 
   // Traer las Fiestas de esa localidad ordenadas cronológicamente.
   const { data, error: fetchError } = await supabase
@@ -72,8 +72,8 @@ export default async function AdminFiestasPage() {
       : null;
 
   const debugInfo =
-    seedResult.error || fetchError
-      ? `seed: year=${seedResult.year ?? "null"} seeded=${seedResult.seeded} error=${seedResult.error ?? "—"} · fetch: ${fetchError?.message ?? "—"} · locality=${localityId}`
+    seedResult.errors.length > 0 || fetchError
+      ? `seed: year=${seedResult.year ?? "null"} feasts=${seedResult.feastsSeeded} holyDays=${seedResult.holyDaysSeeded} errors=${seedResult.errors.join(" | ") || "—"} · fetch: ${fetchError?.message ?? "—"} · locality=${localityId}`
       : null;
 
   // Próxima Fiesta a celebrar: la primera cuya fecha de celebración
