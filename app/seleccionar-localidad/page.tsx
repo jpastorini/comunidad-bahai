@@ -48,7 +48,10 @@ export default async function SeleccionarLocalidadPage({
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-bg">
-      <header className="relative overflow-hidden bg-gold-grad px-6 pb-10 pt-16">
+      <header
+        className="relative overflow-hidden bg-gold-grad px-6 pb-10"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 28px)" }}
+      >
         <div className="pointer-events-none absolute right-[-20px] top-6 opacity-[0.08]">
           <BahaiStar size={160} color="#fff" />
         </div>
@@ -66,7 +69,7 @@ export default async function SeleccionarLocalidadPage({
         </div>
       </header>
 
-      <main className="-mt-6 flex-1 px-4 pb-12">
+      <main className="mt-4 flex-1 px-4 pb-12">
         <div className="mx-auto w-full max-w-md">
           {error && (
             <div className="mb-4 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-[13px] text-rose-700 shadow-card-soft">
