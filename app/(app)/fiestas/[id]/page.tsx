@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { EventGallery } from "@/components/gallery/EventGallery";
 import { GoldHeader } from "@/components/GoldHeader";
 import { getOptionalMember } from "@/lib/auth";
 import {
@@ -228,6 +229,9 @@ export default async function FeastDetailPage({
             </Section>
           </>
         )}
+
+        {/* Galería de fotos — disponible siempre (incluso antes de iniciar). */}
+        <EventGallery eventType="feast" eventId={feast.id} />
       </main>
     </>
   );

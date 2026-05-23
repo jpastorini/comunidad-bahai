@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { EventGallery } from "@/components/gallery/EventGallery";
 import { GoldHeader } from "@/components/GoldHeader";
 import { effectiveEventColor, getCalendarKind } from "@/lib/calendar-kinds";
 import { getCalendarEvent } from "@/lib/data";
@@ -144,6 +145,9 @@ export default async function EventDetailPage({
               </p>
             </article>
           )}
+
+          {/* Galería de fotos */}
+          <EventGallery eventType="calendar" eventId={event.id} />
 
           {/* CTA: add to calendar */}
           <a

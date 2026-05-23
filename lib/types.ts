@@ -186,6 +186,27 @@ export type FeastSuggestion = {
   created_at: string;
 };
 
+// ─── Galería de fotos por evento (Fase 1) ────────────────────────
+export type EventPhoto = {
+  id: string;
+  /** 'calendar' para filas de calendar_events (incluye Días Sagrados),
+   *  'feast' para Fiestas. */
+  event_type: "calendar" | "feast";
+  event_id: string;
+  uploader_user_id: string;
+  uploader_name: string;
+  storage_path: string;
+  public_url: string;
+  caption: string | null;
+  locality_id: string;
+  /** Hooks Fase 2 — sin UI todavía. */
+  visibility: "locality" | "national";
+  featured: boolean;
+  file_size_bytes: number | null;
+  mime_type: string | null;
+  created_at: string;
+};
+
 export type CalendarEvent = {
   id: string;
   day: number;

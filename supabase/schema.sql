@@ -456,3 +456,10 @@ create policy "chat_update_admin_tag" on public.chat_messages
 -- (tablas: feasts, feast_locations, feast_prayers, feast_suggestions).
 -- NOTA: feast_locations incluye participant_count (NULL = sin registrar).
 -- ─────────────────────────────────────────────────────────────────
+
+-- ─────────────────────────────────────────────────────────────────
+-- Galería de fotos por evento (Fase 1)
+-- Ver supabase/migrations/017_event_photos.sql para la definición
+-- completa de la tabla event_photos, sus RLS, y el bucket de
+-- Storage 'event-photos'.
+-- ─────────────────────────────────────────────────────────────────
