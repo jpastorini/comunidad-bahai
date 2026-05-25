@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  IconAEL,
   IconBiblioteca,
   IconCalendario,
   IconHome,
-  IconMore,
   IconServicio,
 } from "./Icons";
 
@@ -21,18 +21,16 @@ type Tab = {
 // Rutas que iluminan cada hub. El primer href es el destino por defecto.
 const BIBLIOTECA_ROUTES = ["/mensajes", "/materiales"];
 const CALENDARIO_ROUTES = ["/calendario", "/fiestas", "/dias-sagrados", "/actividades"];
+// Hub AEL: todo lo directo de la Asamblea Espiritual Local.
+const AEL_ROUTES = ["/comunicados", "/chat", "/tesoreria"];
 
 const TABS: Tab[] = [
   { href: "/", label: "Inicio", Icon: IconHome },
   { href: "/mensajes", label: "Biblioteca", Icon: IconBiblioteca, prefix: "/mensajes" },
   { href: "/calendario", label: "Calendario", Icon: IconCalendario, prefix: "/calendario" },
   { href: "/servicio", label: "Servicio", Icon: IconServicio, prefix: "/servicio" },
-  { href: "/mas", label: "Más", Icon: IconMore, prefix: "/mas" },
+  { href: "/comunicados", label: "AEL", Icon: IconAEL, prefix: "/comunicados" },
 ];
-
-// Routes that should highlight "Más" in the tab bar.
-// Incluye el hub AEL (Comunicados · Chat · Tesorería), accesible desde Inicio.
-const MAS_ROUTES = ["/chat", "/metas", "/tesoreria", "/mas", "/comunicados"];
 
 export function TabBar() {
   const pathname = usePathname();
@@ -72,7 +70,8 @@ export function TabBar() {
 
 function isTabActive(tab: Tab, pathname: string): boolean {
   if (tab.href === "/") return pathname === "/";
-  if (tab.href === "/mas") return MAS_ROUTES.some((r) => pathname.startsWith(r));
+  if (tab.href === "/comunicados")
+    return AEL_ROUTES.some((r) => pathname.startsWith(r));
   if (tab.href === "/mensajes")
     return BIBLIOTECA_ROUTES.some((r) => pathname.startsWith(r));
   if (tab.href === "/calendario")

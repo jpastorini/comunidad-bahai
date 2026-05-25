@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { GoldHeader } from "@/components/GoldHeader";
+import { IconChevronRight } from "@/components/Icons";
 import { requireMember } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { EventPhoto } from "@/lib/types";
@@ -95,23 +96,6 @@ export default async function ProfilePage() {
           </h3>
           <div className="space-y-3">
             <Field label="Correo electrónico" value={session.user.email} />
-            <Field
-              label="Localidad"
-              value={session.locality.name}
-              extra={
-                session.locality.city
-                  ? `${session.locality.city} · ${session.locality.country}`
-                  : session.locality.country
-              }
-              action={
-                <Link
-                  href="/seleccionar-localidad?error=missing"
-                  className="text-[12px] font-semibold text-terra hover:underline"
-                >
-                  Cambiar
-                </Link>
-              }
-            />
             {roleChips.length > 0 && (
               <div>
                 <div className="text-[10.5px] uppercase tracking-wide text-muted">
@@ -148,13 +132,46 @@ export default async function ProfilePage() {
           adminLocalityId={session.locality.id}
         />
 
+        {/* Localidad actual */}
+        <div className="mt-6 rounded-2xl bg-card p-4 shadow-card-soft">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Localidad actual
+          </div>
+          <div className="mt-0.5 font-display text-[17px] font-semibold text-dark">
+            {session.locality.name}
+          </div>
+          {session.locality.city && (
+            <div className="mt-0.5 font-body text-[11px] text-muted">
+              {session.locality.city} · {session.locality.country}
+            </div>
+          )}
+          <Link
+            href="/seleccionar-localidad?error=missing"
+            className="mt-3 inline-block text-[12px] font-semibold text-terra hover:underline"
+          >
+            Cambiar de localidad →
+          </Link>
+        </div>
+
         {/* Cerrar sesión */}
-        <form action="/auth/signout" method="post" className="mt-6">
+        <form
+          action="/auth/signout"
+          method="post"
+          className="tap mt-3 flex items-center rounded-2xl bg-card px-4 py-3.5 shadow-card-soft"
+        >
           <button
             type="submit"
-            className="tap w-full rounded-xl border border-black/10 bg-card px-4 py-3 text-[13px] font-semibold text-rose-600 shadow-card-soft hover:bg-rose-50"
+            className="flex w-full items-center justify-between text-left"
           >
-            Cerrar sesión
+            <div>
+              <div className="text-[13.5px] font-semibold text-dark">
+                Cerrar sesión
+              </div>
+              <div className="mt-0.5 font-body text-[11px] text-muted">
+                {session.user.email}
+              </div>
+            </div>
+            <IconChevronRight size={14} className="text-muted" />
           </button>
         </form>
       </main>
