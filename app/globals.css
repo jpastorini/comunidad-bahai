@@ -21,29 +21,37 @@ body {
   font-family: var(--font-sora), system-ui, sans-serif;
 }
 
-/* Mobile-first viewport: lock the app shell to the screen. */
+/* Mobile-first viewport: lock the app shell to the screen so the chrome
+   (gold header, segmented nav, tab bar) stays fixed and only the content
+   scrolls. Using height + overflow:hidden — not min-height — is what keeps
+   the bottom TabBar pinned on long pages. */
 #app-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  height: 100dvh;
   max-width: 480px;
   margin: 0 auto;
   background: #F8F7F2;
   position: relative;
+  overflow: hidden;
 }
 
-/* Hide scrollbars on the chrome of the shell while allowing content scroll. */
+/* Hide scrollbars on the chrome of the shell while allowing content scroll.
+   min-height:0 lets the flex-1 scroll area shrink below its content height
+   so it scrolls internally instead of pushing the shell taller. */
 .scroll-area {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+  scrollbar-color: #ffffff transparent;
+  min-height: 0;
 }
 
 .scroll-area::-webkit-scrollbar {
   width: 6px;
 }
 .scroll-area::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.08);
+  background: #ffffff;
   border-radius: 3px;
 }
 
