@@ -5,11 +5,15 @@ import { MaterialForm } from "../material-form";
 export const dynamic = "force-dynamic";
 
 export default async function NewMaterialPage() {
-  const session = await requireAdmin();
+  await requireAdmin();
   return (
     <FormShell>
-      <PageHeader eyebrow="Estudio" title="Nuevo material" />
-      <MaterialForm canPublishNational={session.profile.is_national_admin} />
+      <PageHeader
+        eyebrow="Estudio"
+        title="Nuevo material"
+        description="Material de tu comunidad. Los materiales para todas las localidades se cargan en Admin Nacional → Materiales."
+      />
+      <MaterialForm />
     </FormShell>
   );
 }

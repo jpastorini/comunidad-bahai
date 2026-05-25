@@ -121,6 +121,13 @@ export function SidebarContent({ profile, locality, onNavigate }: Props) {
                 Icon={IconMensajes}
               />
               <NationalLink
+                href="/admin/nacional/materiales"
+                label="Materiales (nacionales)"
+                pathname={pathname}
+                onNavigate={onNavigate}
+                Icon={IconMateriales}
+              />
+              <NationalLink
                 href="/admin/nacional/localidades"
                 label="Localidades"
                 pathname={pathname}

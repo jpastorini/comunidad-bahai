@@ -14,8 +14,12 @@ import type { StudyMaterial } from "@/lib/types";
 
 type Props = {
   material?: StudyMaterial;
-  /** Si el admin es Nacional, puede publicar material a nivel nacional. */
-  canPublishNational?: boolean;
+  /**
+   * true cuando el formulario vive en la sección Admin Nacional: el
+   * material se crea/edita a nivel NACIONAL (visible a todas las
+   * localidades). El alcance lo fija la sección, no un selector.
+   */
+  national?: boolean;
 };
 
 const KINDS = [
@@ -26,36 +30,17 @@ const KINDS = [
   { value: "oracion_del_mes", label: "Oración del mes (imagen)" },
 ];
 
-export function MaterialForm({ material, canPublishNational = false }: Props) {
+export function MaterialForm({ material, national = false }: Props) {
   const [kind, setKind] = useState<string>(material?.kind ?? "ruhi");
   const isRuhi = kind === "ruhi";
   const isImageBased = kind === "oracion_del_mes";
-  // Alcance actual: si la fila no tiene localidad, es nacional.
-  const defaultScope =
-    material?.locality_id === null && material !== undefined
-      ? "nacional"
-      : "local";
+  const cancelHref = national ? "/admin/nacional/materiales" : "/admin/materiales";
 
   return (
     <form action={upsertMaterialAction} encType="multipart/form-data">
       {material && <input type="hidden" name="id" value={material.id} />}
-
-      {canPublishNational && (
-        <Card className="mb-5">
-          <Field label="Alcance" name="scope" required>
-            <Select id="scope" name="scope" defaultValue={defaultScope}>
-              <option value="local">Local — solo mi comunidad</option>
-              <option value="nacional">
-                Nacional — todas las comunidades
-              </option>
-            </Select>
-          </Field>
-          <p className="mt-2 text-[12px] text-muted">
-            El material nacional lo ven todas las localidades y se actualiza
-            desde un solo lugar.
-          </p>
-        </Card>
-      )}
+      {/* El alcance lo define la sección (local vs. nacional). */}
+      <input type="hidden" name="scope" value={national ? "nacional" : "local"} />
 
       <Card>
         <div className="grid gap-4 md:grid-cols-2">
@@ -181,7 +166,7 @@ export function MaterialForm({ material, canPublishNational = false }: Props) {
       </Card>
 
       <div className="mt-5 flex items-center justify-end gap-2">
-        <Button variant="secondary" href="/admin/materiales">
+        <Button variant="secondary" href={cancelHref}>
           Cancelar
         </Button>
         <Button type="submit">{material ? "Guardar" : "Crear material"}</Button>

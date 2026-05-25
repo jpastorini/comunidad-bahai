@@ -36,10 +36,13 @@ export async function upsertMaterialAction(formData: FormData) {
   const numberStr = formData.get("number") as string | null;
 
   // Alcance: nacional (locality_id NULL, visible a todas) solo lo puede
-  // elegir un Admin Nacional; de lo contrario, queda en su localidad.
+  // crear un Admin Nacional; de lo contrario, queda en su localidad.
   const wantsNational =
     formData.get("scope") === "nacional" && session.profile.is_national_admin;
   const locality_id = wantsNational ? null : session.locality.id;
+  const listPath = wantsNational
+    ? "/admin/nacional/materiales"
+    : "/admin/materiales";
 
   const payload: Record<string, unknown> = {
     kind,
@@ -57,7 +60,7 @@ export async function upsertMaterialAction(formData: FormData) {
 
   if (!payload.kind || !payload.title) {
     setFlashToast({ tone: "error", message: "Faltan campos obligatorios." });
-    redirect("/admin/materiales");
+    redirect(listPath);
   }
 
   // Adjuntos: PDF para ruhi/escritos/oraciones, imagen para oracion_del_mes.
@@ -96,8 +99,9 @@ export async function upsertMaterialAction(formData: FormData) {
   );
 
   revalidatePath("/admin/materiales");
+  revalidatePath("/admin/nacional/materiales");
   revalidatePath("/materiales");
-  redirect("/admin/materiales");
+  redirect(listPath);
 }
 
 export async function deleteMaterialAction(formData: FormData) {
@@ -113,5 +117,6 @@ export async function deleteMaterialAction(formData: FormData) {
     );
   }
   revalidatePath("/admin/materiales");
+  revalidatePath("/admin/nacional/materiales");
   revalidatePath("/materiales");
 }

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Button, DataTable, PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requireNationalAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { deleteMaterialAction } from "./actions";
 import type { StudyMaterial } from "@/lib/types";
+import { deleteMaterialAction } from "../../materiales/actions";
+
+export const dynamic = "force-dynamic";
 
 const KIND_LABEL: Record<string, string> = {
   ruhi: "Ruhí",
@@ -13,15 +15,14 @@ const KIND_LABEL: Record<string, string> = {
   oracion_del_mes: "Oración del mes",
 };
 
-export default async function AdminMaterialesPage() {
-  const session = await requireAdmin();
+export default async function AdminNacionalMaterialesPage() {
+  await requireNationalAdmin();
   const supabase = createSupabaseServer();
-  // Solo materiales de ESTA localidad. Los nacionales se gestionan en
-  // Admin Nacional → Materiales (nacionales).
+  // Solo materiales NACIONALES (locality_id NULL) — visibles a todas.
   const { data } = await supabase
     .from("study_materials")
     .select("*")
-    .eq("locality_id", session.locality.id)
+    .is("locality_id", null)
     .order("kind", { ascending: true })
     .order("number", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });
@@ -31,16 +32,20 @@ export default async function AdminMaterialesPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Estudio"
-        title="Materiales"
-        description="Libros Ruhí, escritos, oraciones y la Oración del mes con imagen para compartir."
-        actions={<Button href="/admin/materiales/nuevo">+ Nuevo material</Button>}
+        eyebrow="Admin Nacional"
+        title="Materiales (nacionales)"
+        description="Libros Ruhí, Escritos y Libros para TODAS las comunidades. Lo que cargues acá lo ven todas las localidades."
+        actions={
+          <Button href="/admin/nacional/materiales/nuevo">
+            + Nuevo material
+          </Button>
+        }
       />
 
       <DataTable
         rows={rows}
         rowKey={(m) => m.id}
-        empty="Sin materiales todavía."
+        empty="Aún no hay materiales nacionales."
         columns={[
           {
             key: "kind",
@@ -71,22 +76,8 @@ export default async function AdminMaterialesPage() {
             key: "attachment",
             label: "Archivo",
             width: "110px",
-            render: (m) => {
-              if (m.kind === "oracion_del_mes") {
-                return m.image_url ? (
-                  <a
-                    href={m.image_url}
-                    target="_blank"
-                    rel="noopener"
-                    className="inline-flex items-center gap-1 rounded bg-gold/15 px-2 py-0.5 text-[10px] font-bold tracking-wide text-gold-dark hover:bg-gold/25"
-                  >
-                    IMG
-                  </a>
-                ) : (
-                  <span className="text-[11px] text-muted">—</span>
-                );
-              }
-              return m.pdf_url ? (
+            render: (m) =>
+              m.pdf_url ? (
                 <a
                   href={m.pdf_url}
                   target="_blank"
@@ -97,38 +88,7 @@ export default async function AdminMaterialesPage() {
                 </a>
               ) : (
                 <span className="text-[11px] text-muted">—</span>
-              );
-            },
-          },
-          {
-            key: "status",
-            label: "Estado",
-            width: "120px",
-            render: (m) => {
-              if (m.kind === "oracion_del_mes") {
-                return m.current ? (
-                  <span className="rounded bg-amber/15 px-2 py-0.5 text-[10px] font-bold uppercase text-amber">
-                    Actual
-                  </span>
-                ) : (
-                  <span className="text-[11px] text-muted">Pasado</span>
-                );
-              }
-              if (m.kind !== "ruhi") return <span className="text-[11px] text-muted">—</span>;
-              if (m.current)
-                return (
-                  <span className="rounded bg-amber/15 px-2 py-0.5 text-[10px] font-bold uppercase text-amber">
-                    En curso
-                  </span>
-                );
-              if (m.completed)
-                return (
-                  <span className="rounded bg-terra/15 px-2 py-0.5 text-[10px] font-bold uppercase text-terra">
-                    Completado
-                  </span>
-                );
-              return <span className="text-[11px] text-muted">Pendiente</span>;
-            },
+              ),
           },
           {
             key: "actions",
@@ -137,7 +97,7 @@ export default async function AdminMaterialesPage() {
             render: (m) => (
               <div className="flex items-center justify-end gap-2">
                 <Link
-                  href={`/admin/materiales/${m.id}`}
+                  href={`/admin/nacional/materiales/${m.id}`}
                   className="text-[12px] font-semibold text-terra hover:underline"
                 >
                   Editar
