@@ -19,7 +19,7 @@ type Tab = {
 };
 
 // Rutas que iluminan cada hub. El primer href es el destino por defecto.
-const BIBLIOTECA_ROUTES = ["/mensajes", "/comunicados", "/materiales"];
+const BIBLIOTECA_ROUTES = ["/mensajes", "/materiales"];
 const CALENDARIO_ROUTES = ["/calendario", "/fiestas", "/dias-sagrados", "/actividades"];
 
 const TABS: Tab[] = [
@@ -31,7 +31,8 @@ const TABS: Tab[] = [
 ];
 
 // Routes that should highlight "Más" in the tab bar.
-const MAS_ROUTES = ["/chat", "/metas", "/tesoreria", "/mas"];
+// Incluye el hub AEL (Comunicados · Chat · Tesorería), accesible desde Inicio.
+const MAS_ROUTES = ["/chat", "/metas", "/tesoreria", "/mas", "/comunicados"];
 
 export function TabBar() {
   const pathname = usePathname();

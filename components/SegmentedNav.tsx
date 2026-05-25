@@ -51,8 +51,14 @@ export function SegmentedNav({ items }: { items: SegmentItem[] }) {
 /** Items del hub Biblioteca (textos para leer). */
 export const BIBLIOTECA_SEGMENTS: SegmentItem[] = [
   { href: "/mensajes", label: "Mensajes", prefix: "/mensajes" },
-  { href: "/comunicados", label: "Comunicados", prefix: "/comunicados" },
   { href: "/materiales", label: "Materiales", prefix: "/materiales" },
+];
+
+/** Items del hub AEL — todo lo que emite/gestiona la Asamblea Espiritual Local. */
+export const AEL_SEGMENTS: SegmentItem[] = [
+  { href: "/comunicados", label: "Comunicados", prefix: "/comunicados" },
+  { href: "/chat", label: "Chat", prefix: "/chat" },
+  { href: "/tesoreria", label: "Tesorería", prefix: "/tesoreria" },
 ];
 
 /** Items del hub Calendario (todo lo que ocurre en el tiempo). */

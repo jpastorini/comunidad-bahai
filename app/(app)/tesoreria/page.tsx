@@ -1,4 +1,5 @@
 import { GoldHeader } from "@/components/GoldHeader";
+import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { requireMember } from "@/lib/auth";
 import { getTreasury } from "@/lib/data";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -32,7 +33,8 @@ export default async function TesoreriaPage() {
 
   return (
     <>
-      <GoldHeader title="Tesorería" backHref="/" />
+      <GoldHeader title="Asamblea Local" subtitle={session.locality.name} backHref="/" />
+      <SegmentedNav items={AEL_SEGMENTS} />
       <main className="scroll-area flex-1 px-4 pt-4">
         {/* Progress ring */}
         <div className="mb-3.5 flex flex-col items-center rounded-[20px] bg-card p-5 shadow-card-elevated">

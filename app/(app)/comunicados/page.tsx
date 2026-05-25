@@ -1,6 +1,6 @@
 import { GoldHeader } from "@/components/GoldHeader";
 import { IconSearch } from "@/components/Icons";
-import { BIBLIOTECA_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
+import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { requireMember } from "@/lib/auth";
 import { getLocalAnnouncements } from "@/lib/data";
 import { formatMessageDate } from "@/lib/format";
@@ -15,8 +15,8 @@ export default async function ComunicadosPage() {
 
   return (
     <>
-      <GoldHeader title="Biblioteca" subtitle={session.locality.name} backHref="/" />
-      <SegmentedNav items={BIBLIOTECA_SEGMENTS} />
+      <GoldHeader title="Asamblea Local" subtitle={session.locality.name} backHref="/" />
+      <SegmentedNav items={AEL_SEGMENTS} />
       <div className="shrink-0 px-4 pb-1.5 pt-0.5">
         <div
           className="flex items-center gap-2 rounded-xl px-3.5 py-2.5"

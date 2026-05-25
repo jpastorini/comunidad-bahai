@@ -91,6 +91,17 @@ export const IconTesoreria = (p: IconProps) => (
   </Svg>
 );
 
+export const IconAEL = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 21h18" />
+    <path d="M12 3 4 7v1h16V7z" />
+    <line x1="5" y1="10" x2="5" y2="18" />
+    <line x1="9.5" y1="10" x2="9.5" y2="18" />
+    <line x1="14.5" y1="10" x2="14.5" y2="18" />
+    <line x1="19" y1="10" x2="19" y2="18" />
+  </Svg>
+);
+
 export const IconHome = (p: IconProps) => (
   <Svg {...p}>
     <path d="M3 12l9-9 9 9" />

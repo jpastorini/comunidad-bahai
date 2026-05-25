@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { BahaiStar } from "@/components/BahaiStar";
 import { IconChevronLeft, IconSend } from "@/components/Icons";
+import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { formatChatTime } from "@/lib/format";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import type { ChatMessage } from "@/lib/types";
@@ -162,6 +163,8 @@ export function ChatScreen({ mode, memberId, initialMessages }: Props) {
           </div>
         </div>
       </header>
+
+      <SegmentedNav items={AEL_SEGMENTS} />
 
       <div
         ref={scrollRef}
