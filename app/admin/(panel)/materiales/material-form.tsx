@@ -108,21 +108,6 @@ export function MaterialForm({ material, national = false }: Props) {
           </div>
         )}
 
-        {isRuhi && (
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <Checkbox
-              name="completed"
-              label="Completado por la comunidad"
-              defaultChecked={material?.completed ?? false}
-            />
-            <Checkbox
-              name="current"
-              label="En curso (libro actual)"
-              defaultChecked={material?.current ?? false}
-            />
-          </div>
-        )}
-
         {isImageBased && (
           <div className="mt-4">
             <Checkbox

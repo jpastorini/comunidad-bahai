@@ -114,20 +114,7 @@ export default async function AdminMaterialesPage() {
                   <span className="text-[11px] text-muted">Pasado</span>
                 );
               }
-              if (m.kind !== "ruhi") return <span className="text-[11px] text-muted">—</span>;
-              if (m.current)
-                return (
-                  <span className="rounded bg-amber/15 px-2 py-0.5 text-[10px] font-bold uppercase text-amber">
-                    En curso
-                  </span>
-                );
-              if (m.completed)
-                return (
-                  <span className="rounded bg-terra/15 px-2 py-0.5 text-[10px] font-bold uppercase text-terra">
-                    Completado
-                  </span>
-                );
-              return <span className="text-[11px] text-muted">Pendiente</span>;
+              return <span className="text-[11px] text-muted">—</span>;
             },
           },
           {

@@ -1,5 +1,5 @@
 import { GoldHeader } from "@/components/GoldHeader";
-import { IconCheck, IconMateriales } from "@/components/Icons";
+import { IconMateriales } from "@/components/Icons";
 import { OracionDelMesCard } from "@/components/materials/OracionDelMesCard";
 import { BIBLIOTECA_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { requireMember } from "@/lib/auth";
@@ -41,48 +41,25 @@ export default async function MaterialesPage() {
           Instituto Ruhí
         </h2>
         <ul className="mb-5 flex flex-col gap-1.5">
-          {ruhi.map((b) => {
-            const numberBg = b.current
-              ? "#2A3F8F"
-              : b.completed
-              ? "#2A3F8F12"
-              : "#7A767010";
-            const numberColor = b.current
-              ? "#fff"
-              : b.completed
-              ? "#2A3F8F"
-              : "#7A7670";
-            return (
-              <li
-                key={b.id}
-                className="flex items-center gap-3 rounded-xl bg-card px-3.5 py-2.5 shadow-card-soft"
+          {ruhi.map((b) => (
+            <li
+              key={b.id}
+              className="flex items-center gap-3 rounded-xl bg-card px-3.5 py-2.5 shadow-card-soft"
+            >
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-[13px] font-bold text-terra"
+                style={{ background: "#2A3F8F10" }}
               >
-                <div
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-[13px] font-bold"
-                  style={{ background: numberBg, color: numberColor }}
-                >
-                  {b.number ?? "—"}
+                {b.number ?? "—"}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[12px] font-semibold leading-[1.3] text-dark">
+                  {b.title}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[12px] font-semibold leading-[1.3] text-dark">
-                    {b.title}
-                  </div>
-                </div>
-                {b.pdf_url && <PdfButton href={b.pdf_url} small />}
-                {b.completed && !b.pdf_url && (
-                  <IconCheck size={16} className="text-terra" />
-                )}
-                {b.current && (
-                  <span
-                    className="rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide"
-                    style={{ background: "#7E44B815", color: "#7E44B8" }}
-                  >
-                    En curso
-                  </span>
-                )}
-              </li>
-            );
-          })}
+              </div>
+              {b.pdf_url && <PdfButton href={b.pdf_url} small />}
+            </li>
+          ))}
         </ul>
 
         {libros.length > 0 && (
