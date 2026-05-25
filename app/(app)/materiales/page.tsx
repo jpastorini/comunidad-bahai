@@ -6,6 +6,7 @@ import { requireMember } from "@/lib/auth";
 import {
   getEscritos,
   getLatestOracionDelMes,
+  getLibros,
   getOracionesDelMes,
   getRuhiBooks,
 } from "@/lib/data";
@@ -14,13 +15,15 @@ import { formatMessageDate } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export default async function MaterialesPage() {
-  const [session, ruhi, otros, latestOracion, allOraciones] = await Promise.all([
-    requireMember("/materiales"),
-    getRuhiBooks(),
-    getEscritos(),
-    getLatestOracionDelMes(),
-    getOracionesDelMes(),
-  ]);
+  const [session, ruhi, otros, libros, latestOracion, allOraciones] =
+    await Promise.all([
+      requireMember("/materiales"),
+      getRuhiBooks(),
+      getEscritos(),
+      getLibros(),
+      getLatestOracionDelMes(),
+      getOracionesDelMes(),
+    ]);
 
   // Past oraciones (excluyendo la actual destacada arriba).
   const pastOraciones = latestOracion
@@ -81,6 +84,40 @@ export default async function MaterialesPage() {
             );
           })}
         </ul>
+
+        {libros.length > 0 && (
+          <>
+            <h2 className="mb-2.5 text-[13px] font-semibold text-dark">
+              Libros
+            </h2>
+            <ul className="mb-5 flex flex-col gap-1.5">
+              {libros.map((b) => (
+                <li
+                  key={b.id}
+                  className="flex items-center gap-3 rounded-xl bg-card px-3.5 py-2.5 shadow-card-soft"
+                >
+                  <div
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-terra"
+                    style={{ background: "#2A3F8F10" }}
+                  >
+                    <IconMateriales size={16} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[12px] font-semibold text-dark">
+                      {b.title}
+                    </div>
+                    {b.subtitle && (
+                      <div className="mt-0.5 text-[10px] text-muted">
+                        {b.subtitle}
+                      </div>
+                    )}
+                  </div>
+                  {b.pdf_url && <PdfButton href={b.pdf_url} small />}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
 
         <h2 className="mb-2.5 text-[13px] font-semibold text-dark">
           Escritos y Oraciones

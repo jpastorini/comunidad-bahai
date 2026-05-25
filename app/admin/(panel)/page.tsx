@@ -20,7 +20,7 @@ type Stat = {
   count: number | string;
   Icon: typeof IconMensajes;
   color: string;
-  requires?: "chat" | "treasury";
+  requires?: "chat" | "treasury" | "national";
 };
 
 const COLOR_TERRA = "#2A3F8F";
@@ -67,10 +67,11 @@ export default async function AdminHomePage({
     {
       href: "/admin/mensajes",
       label: "Mensajes",
-      hint: "Casa Universal",
+      hint: "Casa Universal (nacional)",
       count: messages.count ?? 0,
       Icon: IconMensajes,
       color: COLOR_TERRA,
+      requires: "national",
     },
     {
       href: "/admin/actividades",
@@ -135,6 +136,7 @@ export default async function AdminHomePage({
   const visibleStats = stats.filter((s) => {
     if (s.requires === "chat") return session.profile.can_respond_chat;
     if (s.requires === "treasury") return session.profile.can_manage_treasury;
+    if (s.requires === "national") return session.profile.is_national_admin;
     return true;
   });
 
@@ -235,15 +237,17 @@ export default async function AdminHomePage({
                 <IconArrowRight size={12} className="text-muted" />
               </Link>
             </li>
-            <li>
-              <Link
-                href="/admin/mensajes/nuevo"
-                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-dark hover:bg-bg"
-              >
-                <span>Subir mensaje de la Casa Universal (PDF)</span>
-                <IconArrowRight size={12} className="text-muted" />
-              </Link>
-            </li>
+            {session.profile.is_national_admin && (
+              <li>
+                <Link
+                  href="/admin/mensajes/nuevo"
+                  className="flex items-center justify-between rounded-lg px-2 py-1.5 text-dark hover:bg-bg"
+                >
+                  <span>Subir mensaje de la Casa Universal (PDF)</span>
+                  <IconArrowRight size={12} className="text-muted" />
+                </Link>
+              </li>
+            )}
             <li>
               <Link
                 href="/admin/actividades/nueva"

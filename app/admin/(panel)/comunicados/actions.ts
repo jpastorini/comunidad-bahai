@@ -28,7 +28,7 @@ async function uploadAttachment(
 }
 
 export async function upsertComunicadoAction(formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const supabase = createSupabaseServer();
 
   const id = formData.get("id") as string | null;
@@ -75,9 +75,13 @@ export async function upsertComunicadoAction(formData: FormData) {
     payload.image_url = null;
   }
 
+  // Los comunicados son SIEMPRE locales: fijamos la localidad explícita
+  // (ya no hay trigger de auto-locality en messages).
   const { error } = id
     ? await supabase.from("messages").update(payload).eq("id", id)
-    : await supabase.from("messages").insert(payload);
+    : await supabase
+        .from("messages")
+        .insert({ ...payload, locality_id: session.locality.id });
 
   setFlashToast(
     error

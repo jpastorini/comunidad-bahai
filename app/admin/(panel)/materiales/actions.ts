@@ -28,12 +28,18 @@ async function uploadAttachment(
 }
 
 export async function upsertMaterialAction(formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const supabase = createSupabaseServer();
 
   const id = formData.get("id") as string | null;
   const kind = formData.get("kind") as string;
   const numberStr = formData.get("number") as string | null;
+
+  // Alcance: nacional (locality_id NULL, visible a todas) solo lo puede
+  // elegir un Admin Nacional; de lo contrario, queda en su localidad.
+  const wantsNational =
+    formData.get("scope") === "nacional" && session.profile.is_national_admin;
+  const locality_id = wantsNational ? null : session.locality.id;
 
   const payload: Record<string, unknown> = {
     kind,
@@ -75,8 +81,13 @@ export async function upsertMaterialAction(formData: FormData) {
   }
 
   const { error } = id
-    ? await supabase.from("study_materials").update(payload).eq("id", id)
-    : await supabase.from("study_materials").insert(payload);
+    ? await supabase
+        .from("study_materials")
+        .update({ ...payload, locality_id })
+        .eq("id", id)
+    : await supabase
+        .from("study_materials")
+        .insert({ ...payload, locality_id });
 
   setFlashToast(
     error

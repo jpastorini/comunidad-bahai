@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requireNationalAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 
@@ -25,7 +25,7 @@ async function uploadPdf(file: File | null): Promise<string | null> {
 }
 
 export async function upsertMessageAction(formData: FormData) {
-  await requireAdmin();
+  await requireNationalAdmin();
   const supabase = createSupabaseServer();
 
   const id = formData.get("id") as string | null;
@@ -59,9 +59,12 @@ export async function upsertMessageAction(formData: FormData) {
     payload.pdf_url = null;
   }
 
+  // Casa Universal = contenido NACIONAL (locality_id NULL, visible a todas).
   const { error } = id
     ? await supabase.from("messages").update(payload).eq("id", id)
-    : await supabase.from("messages").insert(payload);
+    : await supabase
+        .from("messages")
+        .insert({ ...payload, locality_id: null });
 
   setFlashToast(
     error
@@ -75,7 +78,7 @@ export async function upsertMessageAction(formData: FormData) {
 }
 
 export async function deleteMessageAction(formData: FormData) {
-  await requireAdmin();
+  await requireNationalAdmin();
   const supabase = createSupabaseServer();
   const id = formData.get("id") as string;
   if (id) {

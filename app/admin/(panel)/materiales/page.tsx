@@ -7,6 +7,7 @@ import type { StudyMaterial } from "@/lib/types";
 
 const KIND_LABEL: Record<string, string> = {
   ruhi: "Ruhí",
+  libros: "Libro",
   escritos: "Escritos",
   oraciones: "Oraciones",
   oracion_del_mes: "Oración del mes",
@@ -53,9 +54,16 @@ export default async function AdminMaterialesPage() {
             label: "Título",
             render: (m) => (
               <div>
-                <div className="text-[14px] font-semibold text-dark">
-                  {m.kind === "ruhi" && m.number ? `${m.number}. ` : ""}
-                  {m.title}
+                <div className="flex items-center gap-2">
+                  <span className="text-[14px] font-semibold text-dark">
+                    {m.kind === "ruhi" && m.number ? `${m.number}. ` : ""}
+                    {m.title}
+                  </span>
+                  {m.locality_id === null && (
+                    <span className="rounded bg-gold/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-gold-dark">
+                      Nacional
+                    </span>
+                  )}
                 </div>
                 {m.subtitle && (
                   <div className="text-[12px] text-muted">{m.subtitle}</div>

@@ -70,7 +70,8 @@ export type StudyMaterialKind =
   | "ruhi"
   | "escritos"
   | "oraciones"
-  | "oracion_del_mes";
+  | "oracion_del_mes"
+  | "libros";
 
 export type StudyMaterial = {
   id: string;
@@ -83,6 +84,8 @@ export type StudyMaterial = {
   pdf_url: string | null;
   image_url: string | null;
   created_at?: string;
+  /** null = contenido NACIONAL (visible a todas las localidades). */
+  locality_id?: string | null;
 };
 
 export type TeachingGoal = {

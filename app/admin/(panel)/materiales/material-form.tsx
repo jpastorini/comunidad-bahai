@@ -12,23 +12,50 @@ import {
 import { upsertMaterialAction } from "./actions";
 import type { StudyMaterial } from "@/lib/types";
 
-type Props = { material?: StudyMaterial };
+type Props = {
+  material?: StudyMaterial;
+  /** Si el admin es Nacional, puede publicar material a nivel nacional. */
+  canPublishNational?: boolean;
+};
 
 const KINDS = [
   { value: "ruhi", label: "Libro Ruhí" },
+  { value: "libros", label: "Libro" },
   { value: "escritos", label: "Escritos sagrados" },
   { value: "oraciones", label: "Oraciones" },
   { value: "oracion_del_mes", label: "Oración del mes (imagen)" },
 ];
 
-export function MaterialForm({ material }: Props) {
+export function MaterialForm({ material, canPublishNational = false }: Props) {
   const [kind, setKind] = useState<string>(material?.kind ?? "ruhi");
   const isRuhi = kind === "ruhi";
   const isImageBased = kind === "oracion_del_mes";
+  // Alcance actual: si la fila no tiene localidad, es nacional.
+  const defaultScope =
+    material?.locality_id === null && material !== undefined
+      ? "nacional"
+      : "local";
 
   return (
     <form action={upsertMaterialAction} encType="multipart/form-data">
       {material && <input type="hidden" name="id" value={material.id} />}
+
+      {canPublishNational && (
+        <Card className="mb-5">
+          <Field label="Alcance" name="scope" required>
+            <Select id="scope" name="scope" defaultValue={defaultScope}>
+              <option value="local">Local — solo mi comunidad</option>
+              <option value="nacional">
+                Nacional — todas las comunidades
+              </option>
+            </Select>
+          </Field>
+          <p className="mt-2 text-[12px] text-muted">
+            El material nacional lo ven todas las localidades y se actualiza
+            desde un solo lugar.
+          </p>
+        </Card>
+      )}
 
       <Card>
         <div className="grid gap-4 md:grid-cols-2">

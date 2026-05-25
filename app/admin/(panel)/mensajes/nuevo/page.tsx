@@ -1,7 +1,11 @@
 import { FormShell, PageHeader } from "@/components/admin/ui";
+import { requireNationalAdmin } from "@/lib/auth";
 import { MessageForm } from "../message-form";
 
-export default function NewMessagePage() {
+export const dynamic = "force-dynamic";
+
+export default async function NewMessagePage() {
+  await requireNationalAdmin();
   return (
     <FormShell>
       <PageHeader

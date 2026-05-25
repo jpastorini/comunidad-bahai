@@ -152,6 +152,22 @@ export async function getEscritos(): Promise<StudyMaterial[]> {
   return data as StudyMaterial[];
 }
 
+/**
+ * Libros (kind 'libros') — categoría de Materiales, normalmente nacional.
+ * Devuelve nacional + local (RLS resuelve la visibilidad).
+ */
+export async function getLibros(): Promise<StudyMaterial[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = createSupabaseServer();
+  const { data, error } = await supabase
+    .from("study_materials")
+    .select("*")
+    .eq("kind", "libros")
+    .order("title", { ascending: true });
+  if (error || !data) return [];
+  return data as StudyMaterial[];
+}
+
 /** Lista completa de Oraciones del mes — más recientes primero. */
 export async function getOracionesDelMes(): Promise<StudyMaterial[]> {
   if (!isSupabaseConfigured()) return seedOracionesDelMes;

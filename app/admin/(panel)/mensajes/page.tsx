@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { Button, DataTable, PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requireNationalAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { formatMessageDate } from "@/lib/format";
 import type { Message } from "@/lib/types";
 import { deleteMessageAction } from "./actions";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminMensajesPage() {
-  await requireAdmin();
+  await requireNationalAdmin();
   const supabase = createSupabaseServer();
   const { data } = await supabase
     .from("messages")

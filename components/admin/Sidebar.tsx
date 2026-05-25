@@ -23,7 +23,6 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { href: "/admin", label: "Inicio", Icon: IconActividades },
-  { href: "/admin/mensajes", label: "Mensajes (Casa Universal)", Icon: IconMensajes },
   { href: "/admin/comunicados", label: "Comunicados (Asamblea Local)", Icon: IconMensajes },
   { href: "/admin/fiestas", label: "Fiestas de 19 Días", Icon: IconCalendario },
   { href: "/admin/sugerencias", label: "Sugerencias", Icon: IconChat },
@@ -113,6 +112,13 @@ export function SidebarContent({ profile, locality, onNavigate }: Props) {
                 pathname={pathname}
                 onNavigate={onNavigate}
                 Icon={IconActividades}
+              />
+              <NationalLink
+                href="/admin/mensajes"
+                label="Mensajes (Casa Universal)"
+                pathname={pathname}
+                onNavigate={onNavigate}
+                Icon={IconMensajes}
               />
               <NationalLink
                 href="/admin/nacional/localidades"
