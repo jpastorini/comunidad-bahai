@@ -32,7 +32,7 @@ const TABS: Tab[] = [
   { href: "/comunicados", label: "AEL", Icon: IconAEL, prefix: "/comunicados" },
 ];
 
-export function TabBar() {
+export function TabBar({ chatHasUnseen = false }: { chatHasUnseen?: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -43,14 +43,23 @@ export function TabBar() {
       <ul className="flex items-center justify-around pt-2.5">
         {TABS.map((tab) => {
           const isActive = isTabActive(tab, pathname);
+          // El "!" del chat vive dentro del hub AEL, así que lo mostramos
+          // en su pestaña (href "/comunicados").
+          const showUnseen = chatHasUnseen && tab.href === "/comunicados";
           return (
             <li key={tab.href}>
               <Link
                 href={tab.href}
-                className={`tap flex flex-col items-center gap-[3px] ${
+                className={`tap relative flex flex-col items-center gap-[3px] ${
                   isActive ? "text-terra" : "text-muted"
                 }`}
               >
+                {showUnseen && (
+                  <span
+                    aria-label="Hay novedades en el chat"
+                    className="absolute -right-1.5 -top-0.5 h-[7px] w-[7px] rounded-full bg-rose-500 ring-2 ring-card"
+                  />
+                )}
                 <tab.Icon size={20} />
                 <span
                   className={`text-[10px] tracking-[0.1px] ${
