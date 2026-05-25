@@ -102,6 +102,22 @@ export const IconAEL = (p: IconProps) => (
   </Svg>
 );
 
+export const IconOraciones = (p: IconProps) => {
+  // Estrella bahá'í de 9 puntas, en trazo (center 12, r externo 10 / interno 5).
+  const pts: string[] = [];
+  for (let i = 0; i < 9; i++) {
+    const outer = ((i * 40 - 90) * Math.PI) / 180;
+    const inner = ((i * 40 + 20 - 90) * Math.PI) / 180;
+    pts.push(`${12 + 10 * Math.cos(outer)},${12 + 10 * Math.sin(outer)}`);
+    pts.push(`${12 + 5 * Math.cos(inner)},${12 + 5 * Math.sin(inner)}`);
+  }
+  return (
+    <Svg {...p}>
+      <polygon points={pts.join(" ")} />
+    </Svg>
+  );
+};
+
 export const IconHome = (p: IconProps) => (
   <Svg {...p}>
     <path d="M3 12l9-9 9 9" />

@@ -1,10 +1,10 @@
 import Link from "next/link";
 import type { ComponentType } from "react";
 import {
-  IconAEL,
-  IconBiblioteca,
   IconCalendario,
-  IconServicio,
+  IconChat,
+  IconMensajes,
+  IconOraciones,
 } from "../Icons";
 
 type SectionItem = {
@@ -12,7 +12,7 @@ type SectionItem = {
   title: string;
   Icon: ComponentType<{ size?: number }>;
   color: string; // hex
-  /** Cuando true muestra un punto rojo "!" en la esquina superior derecha. */
+  /** Cuando true muestra un punto rojo de aviso en la esquina. */
   hasUnseen?: boolean;
 };
 
@@ -25,11 +25,9 @@ type Props = {
 };
 
 /**
- * Lanzador de hubs en Inicio. Refleja la navegación por hubs:
- *   • Biblioteca → Mensajes · Materiales
- *   • Calendario → Calendario · Fiestas · Días Sagrados · Actividades
- *   • AEL        → Comunicados · Chat · Tesorería (lo directo de la Asamblea)
- *   • Servicio   → Necesidades y voluntariado
+ * Accesos rápidos en Inicio. No duplica el TabBar (que navega por hubs):
+ * surfacea destinos de alta intención o que quedan a 2 toques dentro de
+ * un hub (Chat y Comunicados viven en AEL; Fiestas vive en Calendario).
  */
 export function SectionGrid({ badges }: Props) {
   const TERRA = "#2A3F8F";
@@ -39,41 +37,43 @@ export function SectionGrid({ badges }: Props) {
 
   const sections: SectionItem[] = [
     {
-      href: "/mensajes",
-      title: "Biblioteca",
-      Icon: IconBiblioteca,
-      color: TERRA,
+      href: "/chat",
+      title: "Chat",
+      Icon: IconChat,
+      color: AMBER,
+      hasUnseen: badges?.chat_has_unseen ?? false,
     },
     {
-      href: "/calendario",
-      title: "Calendario",
-      Icon: IconCalendario,
-      color: AMBER,
+      href: "/oraciones",
+      title: "Oraciones",
+      Icon: IconOraciones,
+      color: GOLD,
     },
     {
       href: "/comunicados",
-      title: "AEL",
-      Icon: IconAEL,
-      color: GOLD,
-      // Chat y Comunicados viven dentro de AEL: avisa si cualquiera tiene
-      // novedades sin leer.
-      hasUnseen:
-        (badges?.chat_has_unseen ?? false) ||
-        (badges?.comunicados_has_unseen ?? false),
+      title: "Comunicados",
+      Icon: IconMensajes,
+      color: TERRA,
+      hasUnseen: badges?.comunicados_has_unseen ?? false,
     },
     {
-      href: "/servicio",
-      title: "Servicio",
-      Icon: IconServicio,
+      href: "/fiestas",
+      title: "Fiestas",
+      Icon: IconCalendario,
       color: GREEN,
     },
   ];
 
   return (
-    <div className="mb-3 grid grid-cols-4 gap-2">
-      {sections.map((s) => (
-        <SectionCard key={s.href} {...s} />
-      ))}
+    <div className="mb-4">
+      <h2 className="mb-2 px-1 text-[13px] font-semibold text-dark">
+        Accesos rápidos
+      </h2>
+      <div className="grid grid-cols-4 gap-2">
+        {sections.map((s) => (
+          <SectionCard key={s.href} {...s} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -87,10 +87,8 @@ function SectionCard({ href, title, Icon, color, hasUnseen }: SectionItem) {
       {hasUnseen && (
         <span
           aria-label="Hay novedades"
-          className="absolute right-1.5 top-1.5 flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white shadow"
-        >
-          !
-        </span>
+          className="absolute right-1.5 top-1.5 h-[8px] w-[8px] rounded-full bg-rose-500 ring-2 ring-card"
+        />
       )}
       <div
         className="flex h-[40px] w-[40px] items-center justify-center rounded-[13px]"
