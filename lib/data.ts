@@ -275,23 +275,50 @@ export async function getCurrentFeast(): Promise<Feast | null> {
  * Badges del home para el usuario actual.
  * - chat_has_unseen: true cuando hay respuestas de la Secretaría que
  *   este miembro aún no abrió. Apaga al visitar /chat.
- * - Otros indicadores solo se mostrarán cuando exista una forma real
- *   de saber "qué no ha visto este usuario" (por ahora no aplica).
+ * - comunicados_has_unseen: true cuando hay comunicados de la Asamblea
+ *   Local publicados después de la última vez que abrió la sección
+ *   (`profiles.comunicados_seen_at`). Apaga al visitar /comunicados.
  */
 export async function getBadges(userId?: string | null): Promise<{
   chat_has_unseen: boolean;
+  comunicados_has_unseen: boolean;
 }> {
   if (!isSupabaseConfigured() || !userId) {
-    return { chat_has_unseen: false };
+    return { chat_has_unseen: false, comunicados_has_unseen: false };
   }
   const supabase = createSupabaseServer();
-  const { count } = await supabase
-    .from("chat_messages")
-    .select("*", { count: "exact", head: true })
-    .eq("member_id", userId)
-    .eq("is_admin_reply", true)
-    .eq("read_by_member", false);
-  return { chat_has_unseen: (count ?? 0) > 0 };
+
+  const [chatRes, profileRes] = await Promise.all([
+    supabase
+      .from("chat_messages")
+      .select("*", { count: "exact", head: true })
+      .eq("member_id", userId)
+      .eq("is_admin_reply", true)
+      .eq("read_by_member", false),
+    supabase
+      .from("profiles")
+      .select("comunicados_seen_at")
+      .eq("id", userId)
+      .maybeSingle(),
+  ]);
+
+  const seenAt =
+    (profileRes.data as { comunicados_seen_at: string | null } | null)
+      ?.comunicados_seen_at ?? null;
+
+  // ¿Hay algún comunicado más nuevo que la última visita? Si nunca lo
+  // abrió (seenAt null) cuenta cualquier comunicado existente.
+  let comunicadosQuery = supabase
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .eq("source", "asamblea_local");
+  if (seenAt) comunicadosQuery = comunicadosQuery.gt("created_at", seenAt);
+  const { count: comunicadosCount } = await comunicadosQuery;
+
+  return {
+    chat_has_unseen: (chatRes.count ?? 0) > 0,
+    comunicados_has_unseen: (comunicadosCount ?? 0) > 0,
+  };
 }
 
 /** Próximos N eventos del calendario, ordenados por fecha. */

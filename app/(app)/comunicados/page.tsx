@@ -4,6 +4,7 @@ import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { requireMember } from "@/lib/auth";
 import { getLocalAnnouncements } from "@/lib/data";
 import { formatMessageDate } from "@/lib/format";
+import { markComunicadosSeenAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,9 @@ export default async function ComunicadosPage() {
     requireMember("/comunicados"),
     getLocalAnnouncements(),
   ]);
+
+  // Apaga el punto de aviso de AEL — el miembro acaba de abrir Comunicados.
+  await markComunicadosSeenAction(session.user.id);
 
   return (
     <>

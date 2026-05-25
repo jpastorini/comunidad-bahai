@@ -13,10 +13,14 @@ export default async function AppLayout({
 }) {
   const session = await requireMember("/");
   const badges = await getBadges(session.user.id);
+  // El hub AEL agrupa Chat y Comunicados: su pestaña avisa si cualquiera
+  // de los dos tiene novedades sin leer.
+  const aelHasUnseen =
+    badges.chat_has_unseen || badges.comunicados_has_unseen;
   return (
     <div id="app-shell">
       {children}
-      <TabBar chatHasUnseen={badges.chat_has_unseen} />
+      <TabBar aelHasUnseen={aelHasUnseen} />
     </div>
   );
 }

@@ -20,6 +20,7 @@ type Props = {
   /** Indicadores personales del usuario logueado. */
   badges?: {
     chat_has_unseen?: boolean;
+    comunicados_has_unseen?: boolean;
   };
 };
 
@@ -54,8 +55,11 @@ export function SectionGrid({ badges }: Props) {
       title: "AEL",
       Icon: IconAEL,
       color: GOLD,
-      // Surface el aviso del chat aquí, ya que vive dentro de AEL.
-      hasUnseen: badges?.chat_has_unseen ?? false,
+      // Chat y Comunicados viven dentro de AEL: avisa si cualquiera tiene
+      // novedades sin leer.
+      hasUnseen:
+        (badges?.chat_has_unseen ?? false) ||
+        (badges?.comunicados_has_unseen ?? false),
     },
     {
       href: "/servicio",
