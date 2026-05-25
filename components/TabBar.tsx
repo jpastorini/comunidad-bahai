@@ -37,7 +37,7 @@ export function TabBar({ aelHasUnseen = false }: { aelHasUnseen?: boolean }) {
 
   return (
     <nav
-      className="shrink-0 border-t border-black/[0.06] bg-card"
+      className="shrink-0 rounded-t-[20px] border-t border-black/[0.06] bg-card"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 18px)" }}
     >
       <ul className="flex items-center justify-around pt-2.5">

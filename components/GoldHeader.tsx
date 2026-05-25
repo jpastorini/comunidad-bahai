@@ -28,7 +28,7 @@ export function GoldHeader({
 }: GoldHeaderProps) {
   return (
     <header
-      className="relative shrink-0 overflow-hidden bg-gold-grad px-5 pb-5"
+      className="relative shrink-0 overflow-hidden rounded-b-[20px] bg-gold-grad px-5 pb-5"
       style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 28px)" }}
     >
       <div
