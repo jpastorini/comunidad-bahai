@@ -1,8 +1,12 @@
 import { GoldHeader } from "@/components/GoldHeader";
+import { CALENDARIO_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
+import { requireMember } from "@/lib/auth";
 import { getActivities } from "@/lib/data";
 import { formatActivityWhen } from "@/lib/format";
 import { colors } from "@/lib/tokens";
 import type { ActivityType } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
 
 const TYPE_LABEL: Record<ActivityType, string> = {
   estudio: "Estudio",
@@ -19,16 +23,16 @@ const TYPE_COLOR: Record<ActivityType, string> = {
 };
 
 export default async function ActividadesPage() {
-  const activities = await getActivities();
+  const [session, activities] = await Promise.all([
+    requireMember("/actividades"),
+    getActivities(),
+  ]);
 
   return (
     <>
-      <GoldHeader
-        title="Actividades"
-        subtitle="Próximas actividades de la comunidad"
-        backHref="/"
-      />
-      <main className="scroll-area flex-1 px-4 pt-3.5">
+      <GoldHeader title="Calendario" subtitle={session.locality.name} backHref="/" />
+      <SegmentedNav items={CALENDARIO_SEGMENTS} />
+      <main className="scroll-area flex-1 px-4 pt-1">
         <div className="flex flex-col gap-2.5 pb-3.5">
           {activities.map((a) => {
             const when = formatActivityWhen(a.starts_at);

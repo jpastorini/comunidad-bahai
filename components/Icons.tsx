@@ -30,6 +30,14 @@ export const IconMensajes = (p: IconProps) => (
   </Svg>
 );
 
+export const IconBiblioteca = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 6.5C10.5 5 8.5 4.5 6 4.5c-1 0-1.8.1-2.5.3a.5.5 0 0 0-.5.5v12.6a.5.5 0 0 0 .65.48C4.3 18.16 5.1 18 6 18c2.5 0 4.2.6 6 2" />
+    <path d="M12 6.5C13.5 5 15.5 4.5 18 4.5c1 0 1.8.1 2.5.3a.5.5 0 0 1 .5.5v12.6a.5.5 0 0 1-.65.48C19.7 18.16 18.9 18 18 18c-2.5 0-4.2.6-6 2" />
+    <line x1="12" y1="6.5" x2="12" y2="20" />
+  </Svg>
+);
+
 export const IconChat = (p: IconProps) => (
   <Svg {...p}>
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />

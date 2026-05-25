@@ -1,11 +1,8 @@
 import Link from "next/link";
 import { GoldHeader } from "@/components/GoldHeader";
 import {
-  IconActividades,
   IconChat,
   IconChevronRight,
-  IconMateriales,
-  IconMensajes,
   IconTesoreria,
 } from "@/components/Icons";
 import { requireMember } from "@/lib/auth";
@@ -22,32 +19,11 @@ const ITEMS = [
     color: colors.amber,
   },
   {
-    href: "/actividades",
-    label: "Actividades Locales",
-    sub: "Próximas reuniones",
-    Icon: IconActividades,
-    color: colors.terra,
-  },
-  {
-    href: "/materiales",
-    label: "Materiales de Estudio",
-    sub: "Libros y escritos",
-    Icon: IconMateriales,
-    color: colors.amber,
-  },
-  {
-    href: "/comunicados",
-    label: "Comunicados",
-    sub: "Asamblea Espiritual Local",
-    Icon: IconMensajes,
-    color: colors.terra,
-  },
-  {
     href: "/tesoreria",
     label: "Tesorería",
     sub: "Fondo y contribuciones",
     Icon: IconTesoreria,
-    color: colors.amber,
+    color: colors.terra,
   },
 ];
 

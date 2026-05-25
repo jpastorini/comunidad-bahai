@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { GoldHeader } from "@/components/GoldHeader";
+import { CALENDARIO_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
+import { requireMember } from "@/lib/auth";
 import { celebrationDateFor, getBahaiMonth } from "@/lib/bahai-calendar";
 import { getFeasts } from "@/lib/data";
 
@@ -14,7 +16,10 @@ const MONTHS_ES = [
 ];
 
 export default async function FiestasPage() {
-  const feasts = await getFeasts();
+  const [session, feasts] = await Promise.all([
+    requireMember("/fiestas"),
+    getFeasts(),
+  ]);
   const todayIso = new Date().toISOString().slice(0, 10);
 
   // Ya filtramos drafts por RLS, pero defensivamente.
@@ -43,12 +48,9 @@ export default async function FiestasPage() {
 
   return (
     <>
-      <GoldHeader
-        title="Fiestas de 19 Días"
-        subtitle="Vida espiritual de la comunidad"
-        backHref="/"
-      />
-      <main className="scroll-area flex-1 px-4 pb-4 pt-4">
+      <GoldHeader title="Calendario" subtitle={session.locality.name} backHref="/" />
+      <SegmentedNav items={CALENDARIO_SEGMENTS} />
+      <main className="scroll-area flex-1 px-4 pb-4 pt-1">
         {visible.length === 0 && (
           <div className="py-12 text-center text-[13px] text-muted">
             Aún no hay Fiestas publicadas por la Asamblea.

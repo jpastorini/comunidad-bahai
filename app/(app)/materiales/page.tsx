@@ -1,6 +1,8 @@
 import { GoldHeader } from "@/components/GoldHeader";
 import { IconCheck, IconMateriales } from "@/components/Icons";
 import { OracionDelMesCard } from "@/components/materials/OracionDelMesCard";
+import { BIBLIOTECA_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
+import { requireMember } from "@/lib/auth";
 import {
   getEscritos,
   getLatestOracionDelMes,
@@ -9,8 +11,11 @@ import {
 } from "@/lib/data";
 import { formatMessageDate } from "@/lib/format";
 
+export const dynamic = "force-dynamic";
+
 export default async function MaterialesPage() {
-  const [ruhi, otros, latestOracion, allOraciones] = await Promise.all([
+  const [session, ruhi, otros, latestOracion, allOraciones] = await Promise.all([
+    requireMember("/materiales"),
     getRuhiBooks(),
     getEscritos(),
     getLatestOracionDelMes(),
@@ -24,8 +29,9 @@ export default async function MaterialesPage() {
 
   return (
     <>
-      <GoldHeader title="Materiales" subtitle="de Estudio" backHref="/" />
-      <main className="scroll-area flex-1 px-4 pb-4 pt-3.5">
+      <GoldHeader title="Biblioteca" subtitle={session.locality.name} backHref="/" />
+      <SegmentedNav items={BIBLIOTECA_SEGMENTS} />
+      <main className="scroll-area flex-1 px-4 pb-4 pt-1">
         {latestOracion && <OracionDelMesCard oracion={latestOracion} />}
 
         <h2 className="mb-2.5 text-[13px] font-semibold text-dark">

@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  IconBiblioteca,
   IconCalendario,
   IconHome,
-  IconMensajes,
   IconMore,
   IconServicio,
 } from "./Icons";
@@ -18,16 +18,20 @@ type Tab = {
   Icon: typeof IconHome;
 };
 
+// Rutas que iluminan cada hub. El primer href es el destino por defecto.
+const BIBLIOTECA_ROUTES = ["/mensajes", "/comunicados", "/materiales"];
+const CALENDARIO_ROUTES = ["/calendario", "/fiestas", "/dias-sagrados", "/actividades"];
+
 const TABS: Tab[] = [
   { href: "/", label: "Inicio", Icon: IconHome },
-  { href: "/mensajes", label: "Mensajes", Icon: IconMensajes, prefix: "/mensajes" },
+  { href: "/mensajes", label: "Biblioteca", Icon: IconBiblioteca, prefix: "/mensajes" },
   { href: "/calendario", label: "Calendario", Icon: IconCalendario, prefix: "/calendario" },
   { href: "/servicio", label: "Servicio", Icon: IconServicio, prefix: "/servicio" },
   { href: "/mas", label: "Más", Icon: IconMore, prefix: "/mas" },
 ];
 
 // Routes that should highlight "Más" in the tab bar.
-const MAS_ROUTES = ["/chat", "/actividades", "/materiales", "/metas", "/tesoreria", "/mas"];
+const MAS_ROUTES = ["/chat", "/metas", "/tesoreria", "/mas"];
 
 export function TabBar() {
   const pathname = usePathname();
@@ -68,5 +72,9 @@ export function TabBar() {
 function isTabActive(tab: Tab, pathname: string): boolean {
   if (tab.href === "/") return pathname === "/";
   if (tab.href === "/mas") return MAS_ROUTES.some((r) => pathname.startsWith(r));
+  if (tab.href === "/mensajes")
+    return BIBLIOTECA_ROUTES.some((r) => pathname.startsWith(r));
+  if (tab.href === "/calendario")
+    return CALENDARIO_ROUTES.some((r) => pathname.startsWith(r));
   return tab.prefix ? pathname.startsWith(tab.prefix) : pathname === tab.href;
 }

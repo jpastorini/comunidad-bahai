@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { GoldHeader } from "@/components/GoldHeader";
+import { CALENDARIO_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
+import { requireMember } from "@/lib/auth";
 import { getCalendarKind } from "@/lib/calendar-kinds";
 import { getUnifiedCalendarItems } from "@/lib/data";
 
@@ -35,7 +37,10 @@ export default async function CalendarioPage({
 
   const daysInMonth = new Date(year, month, 0).getDate();
 
-  const allItems = await getUnifiedCalendarItems();
+  const [session, allItems] = await Promise.all([
+    requireMember("/calendario"),
+    getUnifiedCalendarItems(),
+  ]);
   const items = allItems
     .filter((i) => i.month === month && i.year === year)
     .sort((a, b) => a.day - b.day);
@@ -53,12 +58,9 @@ export default async function CalendarioPage({
 
   return (
     <>
-      <GoldHeader
-        title="Calendario"
-        subtitle={`${MONTHS_ES_LONG[month - 1]} ${year}`}
-        backHref="/"
-      />
-      <main className="scroll-area flex-1 px-4 pt-3.5">
+      <GoldHeader title="Calendario" subtitle={session.locality.name} backHref="/" />
+      <SegmentedNav items={CALENDARIO_SEGMENTS} />
+      <main className="scroll-area flex-1 px-4 pt-2">
         {/* Month navigator */}
         <div className="mb-3 flex items-center justify-between gap-2">
           <Link
