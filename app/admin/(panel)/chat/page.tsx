@@ -18,49 +18,10 @@ export default async function AdminChatListPage() {
   ensureChatTag(session.profile);
   const supabase = createSupabaseServer();
 
-  const { data: messages } = await supabase
-    .from("chat_messages")
-    .select("member_id, from_user_id, text, created_at, read, is_admin_reply")
-    .order("created_at", { ascending: false });
-
-  // Group by member_id
-  const map = new Map<string, ConversationSummary>();
-  for (const m of messages ?? []) {
-    let conv = map.get(m.member_id);
-    if (!conv) {
-      conv = {
-        member_id: m.member_id,
-        member_name: "Cargando...",
-        member_email: "",
-        last_text: m.text,
-        last_at: m.created_at,
-        unread: 0,
-      };
-      map.set(m.member_id, conv);
-    }
-    // Unread = mensaje entrante (no respuesta de admin) sin leer.
-    if (!m.is_admin_reply && !m.read) conv.unread += 1;
-  }
-
-  // Resolve member names
-  const ids = Array.from(map.keys());
-  if (ids.length > 0) {
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, full_name, email")
-      .in("id", ids);
-    for (const p of profiles ?? []) {
-      const conv = map.get(p.id);
-      if (conv) {
-        conv.member_name = p.full_name || "Sin nombre";
-        conv.member_email = p.email ?? "";
-      }
-    }
-  }
-
-  const conversations = Array.from(map.values()).sort(
-    (a, b) => new Date(b.last_at).getTime() - new Date(a.last_at).getTime()
-  );
+  // Una sola RPC agrega por miembro (último mensaje + sin leer), filtrando
+  // por localidad y tag de chat en SQL. Ver migración 022.
+  const { data } = await supabase.rpc("get_chat_conversation_summaries");
+  const conversations = (data ?? []) as ConversationSummary[];
 
   return (
     <>

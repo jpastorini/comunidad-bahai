@@ -77,11 +77,19 @@ export async function getPhotosInteractions(
 
   const supabase = createSupabaseServer();
 
-  const [reactionsRes, commentsRes] = await Promise.all([
-    supabase
-      .from("event_photo_reactions")
-      .select("photo_id, user_id, emoji")
-      .in("photo_id", photoIds),
+  // Conteo de reacciones por emoji agregado en SQL (ver migración 023).
+  // Las reacciones del usuario actual ('mine') se traen aparte: solo sus
+  // filas, no todas. Los comentarios se precargan completos porque el
+  // Lightbox los necesita al abrirse.
+  const [countsRes, mineRes, commentsRes] = await Promise.all([
+    supabase.rpc("get_photo_reaction_counts", { photo_ids: photoIds }),
+    currentUserId
+      ? supabase
+          .from("event_photo_reactions")
+          .select("photo_id, emoji")
+          .eq("user_id", currentUserId)
+          .in("photo_id", photoIds)
+      : Promise.resolve({ data: [] as { photo_id: string; emoji: ReactionEmoji }[] }),
     supabase
       .from("event_photo_comments")
       .select("*")
@@ -89,15 +97,22 @@ export async function getPhotosInteractions(
       .order("created_at", { ascending: true }),
   ]);
 
-  for (const row of (reactionsRes.data ?? []) as Array<
-    Pick<PhotoReaction, "photo_id" | "user_id" | "emoji">
-  >) {
+  for (const row of (countsRes.data ?? []) as Array<{
+    photo_id: string;
+    emoji: ReactionEmoji;
+    count: number;
+  }>) {
     const summary = reactions[row.photo_id];
     if (!summary) continue;
-    summary.counts[row.emoji] = (summary.counts[row.emoji] ?? 0) + 1;
-    if (currentUserId && row.user_id === currentUserId) {
-      summary.mine.push(row.emoji);
-    }
+    summary.counts[row.emoji] = Number(row.count) || 0;
+  }
+
+  for (const row of (mineRes.data ?? []) as Array<{
+    photo_id: string;
+    emoji: ReactionEmoji;
+  }>) {
+    const summary = reactions[row.photo_id];
+    if (summary) summary.mine.push(row.emoji);
   }
 
   for (const row of (commentsRes.data ?? []) as PhotoComment[]) {

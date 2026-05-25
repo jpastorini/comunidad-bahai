@@ -43,7 +43,7 @@ export async function getMessages(): Promise<Message[]> {
   const supabase = createSupabaseServer();
   const { data, error } = await supabase
     .from("messages")
-    .select("*")
+    .select("id, date, title, excerpt, is_new, source, pdf_url")
     .eq("source", "casa_universal")
     .order("date", { ascending: false });
   if (error || !data?.length) return seedMessages;
@@ -55,7 +55,9 @@ export async function getLocalAnnouncements(): Promise<Message[]> {
   const supabase = createSupabaseServer();
   const { data, error } = await supabase
     .from("messages")
-    .select("*")
+    .select(
+      "id, date, title, excerpt, full_text, is_new, source, subject, pdf_url, image_url"
+    )
     .eq("source", "asamblea_local")
     .order("date", { ascending: false });
   if (error || !data?.length) return seedLocalAnnouncements;
@@ -68,7 +70,7 @@ export async function getLatestLocalAnnouncement(): Promise<Message | null> {
   const supabase = createSupabaseServer();
   const { data } = await supabase
     .from("messages")
-    .select("*")
+    .select("id, date, title, excerpt, is_new, source")
     .eq("source", "asamblea_local")
     .order("date", { ascending: false })
     .limit(1)
@@ -81,7 +83,7 @@ export async function getActivities(): Promise<Activity[]> {
   const supabase = createSupabaseServer();
   const { data, error } = await supabase
     .from("activities")
-    .select("*")
+    .select("id, type, title, detail, starts_at, place")
     .order("starts_at", { ascending: true });
   if (error || !data?.length) return seedActivities;
   return data as Activity[];
@@ -97,7 +99,9 @@ export async function getCalendarEvents(): Promise<CalendarEvent[]> {
   const supabase = createSupabaseServer();
   const { data, error } = await supabase
     .from("calendar_events")
-    .select("*")
+    .select(
+      "id, day, month, year, title, time, color, kind, location, image_url, is_system_seeded"
+    )
     .order("year", { ascending: true })
     .order("month", { ascending: true })
     .order("day", { ascending: true });
@@ -134,7 +138,7 @@ export async function getRuhiBooks(): Promise<StudyMaterial[]> {
   const supabase = createSupabaseServer();
   const { data, error } = await supabase
     .from("study_materials")
-    .select("*")
+    .select("id, kind, number, title, subtitle, pdf_url, image_url, created_at")
     .eq("kind", "ruhi")
     .order("number", { ascending: true });
   if (error || !data?.length) return seedRuhi;
@@ -146,7 +150,7 @@ export async function getEscritos(): Promise<StudyMaterial[]> {
   const supabase = createSupabaseServer();
   const { data, error } = await supabase
     .from("study_materials")
-    .select("*")
+    .select("id, kind, number, title, subtitle, pdf_url, image_url, created_at")
     .in("kind", ["escritos", "oraciones"]);
   if (error || !data?.length) return seedEscritos;
   return data as StudyMaterial[];
@@ -161,7 +165,7 @@ export async function getLibros(): Promise<StudyMaterial[]> {
   const supabase = createSupabaseServer();
   const { data, error } = await supabase
     .from("study_materials")
-    .select("*")
+    .select("id, kind, number, title, subtitle, pdf_url, image_url, created_at")
     .eq("kind", "libros")
     .order("title", { ascending: true });
   if (error || !data) return [];
@@ -174,7 +178,7 @@ export async function getOracionesDelMes(): Promise<StudyMaterial[]> {
   const supabase = createSupabaseServer();
   const { data, error } = await supabase
     .from("study_materials")
-    .select("*")
+    .select("id, kind, number, title, subtitle, pdf_url, image_url, created_at")
     .eq("kind", "oracion_del_mes")
     .order("created_at", { ascending: false });
   if (error || !data?.length) return seedOracionesDelMes;
@@ -205,7 +209,7 @@ export async function getServiceNeeds(): Promise<ServiceNeed[]> {
   const supabase = createSupabaseServer();
   const { data, error } = await supabase
     .from("service_needs")
-    .select("*")
+    .select("id, title, description, urgency")
     .order("created_at", { ascending: false });
   if (error || !data?.length) return seedNeeds;
   return data as ServiceNeed[];
@@ -229,7 +233,9 @@ export async function getFeasts(): Promise<Feast[]> {
   const supabase = createSupabaseServer();
   const { data } = await supabase
     .from("feasts")
-    .select("*")
+    .select(
+      "id, bahai_month_name, bahai_month_index, bahai_year, gregorian_date, status, created_at"
+    )
     .order("bahai_year", { ascending: false })
     .order("bahai_month_index", { ascending: false });
   return (data ?? []) as Feast[];
@@ -251,7 +257,9 @@ export async function getFeastLocations(feastId: string): Promise<FeastLocation[
   const supabase = createSupabaseServer();
   const { data } = await supabase
     .from("feast_locations")
-    .select("*")
+    .select(
+      "id, feast_id, name, address, starts_at, notes, participant_count, created_at"
+    )
     .eq("feast_id", feastId)
     .order("starts_at", { ascending: true });
   return (data ?? []) as FeastLocation[];
@@ -262,7 +270,7 @@ export async function getFeastPrayers(feastId: string): Promise<FeastPrayer[]> {
   const supabase = createSupabaseServer();
   const { data } = await supabase
     .from("feast_prayers")
-    .select("*")
+    .select("id, feast_id, position, title, reference, body, created_at")
     .eq("feast_id", feastId)
     .order("position", { ascending: true });
   return (data ?? []) as FeastPrayer[];
@@ -341,18 +349,53 @@ export async function getBadges(userId?: string | null): Promise<{
 export async function getUpcomingCalendarEvents(
   limit = 2
 ): Promise<CalendarEvent[]> {
-  const all = await getCalendarEvents();
+  if (!isSupabaseConfigured()) {
+    const today = new Date();
+    const todayKey =
+      today.getFullYear() * 10000 +
+      (today.getMonth() + 1) * 100 +
+      today.getDate();
+    return seedCalendarEvents
+      .filter((e) => e.year * 10000 + e.month * 100 + e.day >= todayKey)
+      .sort(
+        (a, b) =>
+          a.year * 10000 + a.month * 100 + a.day -
+          (b.year * 10000 + b.month * 100 + b.day)
+      )
+      .slice(0, limit);
+  }
+
+  const supabase = createSupabaseServer();
   const today = new Date();
-  const todayKey =
-    today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
-  const future = all
-    .filter((e) => e.year * 10000 + e.month * 100 + e.day >= todayKey)
-    .sort(
-      (a, b) =>
-        a.year * 10000 + a.month * 100 + a.day -
-        (b.year * 10000 + b.month * 100 + b.day)
-    );
-  return future.slice(0, limit);
+  const y = today.getFullYear();
+  const m = today.getMonth() + 1;
+  const d = today.getDate();
+
+  // Solo filas con fecha de hoy o futura:
+  //   year > Y  OR  (year = Y AND (month > M OR (month = M AND day >= D)))
+  const { data, error } = await supabase
+    .from("calendar_events")
+    .select("id, day, month, year, title, time, color, kind, location")
+    .or(
+      `year.gt.${y},and(year.eq.${y},month.gt.${m}),and(year.eq.${y},month.eq.${m},day.gte.${d})`
+    )
+    .order("year", { ascending: true })
+    .order("month", { ascending: true })
+    .order("day", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    const todayKey = y * 10000 + m * 100 + d;
+    return seedCalendarEvents
+      .filter((e) => e.year * 10000 + e.month * 100 + e.day >= todayKey)
+      .sort(
+        (a, b) =>
+          a.year * 10000 + a.month * 100 + a.day -
+          (b.year * 10000 + b.month * 100 + b.day)
+      )
+      .slice(0, limit);
+  }
+  return (data ?? []) as CalendarEvent[];
 }
 
 // ─── Vista unificada del calendario ─────────────────────────────

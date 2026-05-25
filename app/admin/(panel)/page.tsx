@@ -40,17 +40,17 @@ export default async function AdminHomePage({
     await Promise.all([
       supabase
         .from("messages")
-        .select("*", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("source", "casa_universal"),
       supabase
         .from("messages")
-        .select("*", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("source", "asamblea_local"),
-      supabase.from("activities").select("*", { count: "exact", head: true }),
-      supabase.from("calendar_events").select("*", { count: "exact", head: true }),
-      supabase.from("study_materials").select("*", { count: "exact", head: true }),
-      supabase.from("service_needs").select("*", { count: "exact", head: true }),
-      supabase.from("profiles").select("*", { count: "exact", head: true }),
+      supabase.from("activities").select("id", { count: "exact", head: true }),
+      supabase.from("calendar_events").select("id", { count: "exact", head: true }),
+      supabase.from("study_materials").select("id", { count: "exact", head: true }),
+      supabase.from("service_needs").select("id", { count: "exact", head: true }),
+      supabase.from("profiles").select("id", { count: "exact", head: true }),
     ]);
 
   // Cuenta solo mensajes enviados POR miembros (no las propias respuestas
@@ -58,7 +58,7 @@ export default async function AdminHomePage({
   const chatUnread = session.profile.can_respond_chat
     ? await supabase
         .from("chat_messages")
-        .select("*", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("read", false)
         .eq("is_admin_reply", false)
     : { count: 0 };

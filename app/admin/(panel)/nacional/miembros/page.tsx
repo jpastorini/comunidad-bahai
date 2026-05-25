@@ -20,11 +20,14 @@ export default async function NacionalMiembrosPage() {
   const [{ data: profilesRaw }, { data: localitiesRaw }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("*")
+      .select(
+        "id, full_name, email, role, can_respond_chat, can_manage_treasury, is_national_admin, locality_id, created_at"
+      )
       .order("is_national_admin", { ascending: false })
       .order("role", { ascending: false })
-      .order("created_at", { ascending: true }),
-    supabase.from("localities").select("*").order("name"),
+      .order("created_at", { ascending: true })
+      .limit(100),
+    supabase.from("localities").select("id, name, is_active").order("name"),
   ]);
 
   const profiles = (profilesRaw ?? []) as Profile[];

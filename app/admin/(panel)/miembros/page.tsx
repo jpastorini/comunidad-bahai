@@ -18,9 +18,13 @@ export default async function AdminMiembrosPage() {
 
   const { data } = await supabase
     .from("profiles")
-    .select("*")
+    .select(
+      "id, full_name, email, role, can_respond_chat, can_manage_treasury, locality_id, created_at"
+    )
+    .eq("locality_id", session.locality.id)
     .order("role", { ascending: false })
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .limit(100);
 
   const profiles = (data ?? []) as Profile[];
 

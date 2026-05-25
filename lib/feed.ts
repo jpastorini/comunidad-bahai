@@ -223,25 +223,21 @@ async function enrichPhotoGroups(groups: FeedPhotoGroup[]) {
     }
   }
 
-  // Contadores agregados de reactions + comments
+  // Contadores agregados de reactions + comments (agregados en SQL).
   const reactionsByPhoto = new Map<string, number>();
   const commentsByPhoto = new Map<string, number>();
   if (allPhotoIds.length > 0) {
-    const [rxRes, cmRes] = await Promise.all([
-      supabase
-        .from("event_photo_reactions")
-        .select("photo_id")
-        .in("photo_id", allPhotoIds),
-      supabase
-        .from("event_photo_comments")
-        .select("photo_id")
-        .in("photo_id", allPhotoIds),
-    ]);
-    for (const r of (rxRes.data ?? []) as { photo_id: string }[]) {
-      reactionsByPhoto.set(r.photo_id, (reactionsByPhoto.get(r.photo_id) ?? 0) + 1);
-    }
-    for (const c of (cmRes.data ?? []) as { photo_id: string }[]) {
-      commentsByPhoto.set(c.photo_id, (commentsByPhoto.get(c.photo_id) ?? 0) + 1);
+    const { data: counts } = await supabase.rpc(
+      "get_photo_interaction_counts",
+      { photo_ids: allPhotoIds }
+    );
+    for (const row of (counts ?? []) as Array<{
+      photo_id: string;
+      reaction_count: number;
+      comment_count: number;
+    }>) {
+      reactionsByPhoto.set(row.photo_id, Number(row.reaction_count) || 0);
+      commentsByPhoto.set(row.photo_id, Number(row.comment_count) || 0);
     }
   }
 
