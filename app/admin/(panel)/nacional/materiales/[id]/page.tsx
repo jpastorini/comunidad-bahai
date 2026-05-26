@@ -5,7 +5,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import type { StudyMaterial } from "@/lib/types";
 import { MaterialForm } from "../../../materiales/material-form";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function EditNacionalMaterialPage({
   params,

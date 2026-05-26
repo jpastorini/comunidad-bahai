@@ -6,7 +6,7 @@ import { getLocalAnnouncements } from "@/lib/data";
 import { formatMessageDate } from "@/lib/format";
 import { markComunicadosSeenAction } from "./actions";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function ComunicadosPage() {
   const [session, announcements] = await Promise.all([

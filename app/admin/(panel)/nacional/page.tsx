@@ -3,7 +3,7 @@ import { Card, PageHeader } from "@/components/admin/ui";
 import { requireNationalAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function AdminNacionalPage() {
   await requireNationalAdmin();

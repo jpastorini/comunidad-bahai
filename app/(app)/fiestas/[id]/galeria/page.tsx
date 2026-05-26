@@ -6,7 +6,7 @@ import { getFeast } from "@/lib/data";
 import { getEventPhotos } from "@/lib/event-photos";
 import { getPhotosInteractions } from "@/lib/photo-interactions";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function FeastGalleryPage({
   params,

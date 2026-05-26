@@ -8,7 +8,7 @@ import {
   toggleSuggestionReviewedAction,
 } from "../../../sugerencias/actions";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function FeastQuickSuggestionsPage({
   params,

@@ -8,7 +8,7 @@ import { AvatarEditor } from "./avatar-editor";
 import { MyPhotosSection } from "./my-photos";
 import { NameForm } from "./name-form";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function ProfilePage() {
   const session = await requireMember("/perfil");

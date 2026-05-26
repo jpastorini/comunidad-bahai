@@ -6,7 +6,7 @@ import { formatActivityWhen } from "@/lib/format";
 import { colors } from "@/lib/tokens";
 import type { ActivityType } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 const TYPE_LABEL: Record<ActivityType, string> = {
   estudio: "Estudio",

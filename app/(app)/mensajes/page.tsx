@@ -5,7 +5,7 @@ import { requireMember } from "@/lib/auth";
 import { getMessages } from "@/lib/data";
 import { formatMessageDate } from "@/lib/format";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function MensajesPage() {
   const [session, messages] = await Promise.all([

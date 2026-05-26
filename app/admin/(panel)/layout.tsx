@@ -2,7 +2,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { requireAdmin } from "@/lib/auth";
 import { consumeFlashToast } from "@/lib/toast";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function PanelLayout({
   children,

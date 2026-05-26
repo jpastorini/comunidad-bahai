@@ -11,7 +11,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import type { Locality, Profile } from "@/lib/types";
 import { updateMemberLocalityAction } from "../actions";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function NacionalMiembrosPage() {
   const session = await requireNationalAdmin();

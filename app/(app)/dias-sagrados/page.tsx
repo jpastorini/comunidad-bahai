@@ -5,7 +5,7 @@ import { requireMember } from "@/lib/auth";
 import { getCalendarKind } from "@/lib/calendar-kinds";
 import { getUnifiedCalendarItems, type UnifiedCalendarItem } from "@/lib/data";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 const WEEKDAYS_ES = [
   "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado",

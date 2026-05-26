@@ -4,7 +4,7 @@ import { requireMember } from "@/lib/auth";
 import { findPrayer } from "@/lib/oraciones";
 import { SharePrayerButton } from "../../share-button";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function OracionLecturaPage({
   params,

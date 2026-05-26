@@ -2,7 +2,7 @@ import { FormShell, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
 import { MaterialForm } from "../material-form";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function NewMaterialPage() {
   await requireAdmin();

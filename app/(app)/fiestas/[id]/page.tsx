@@ -18,7 +18,7 @@ const MONTHS_ES = [
   "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 ];
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 const WEEKDAYS = [
   "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado",

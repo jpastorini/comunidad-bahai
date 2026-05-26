@@ -4,7 +4,7 @@ import { IconChevronRight } from "@/components/Icons";
 import { requireMember } from "@/lib/auth";
 import { getOraciones } from "@/lib/oraciones";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function OracionesPage() {
   const session = await requireMember("/oraciones");

@@ -5,7 +5,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import type { StudyMaterial } from "@/lib/types";
 import { deleteMaterialAction } from "../../materiales/actions";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 const KIND_LABEL: Record<string, string> = {
   ruhi: "Ruhí",

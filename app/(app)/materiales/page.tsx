@@ -12,7 +12,7 @@ import {
 } from "@/lib/data";
 import { formatMessageDate } from "@/lib/format";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function MaterialesPage() {
   const [session, ruhi, otros, libros, latestOracion, allOraciones] =

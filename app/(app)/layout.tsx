@@ -2,9 +2,9 @@ import { TabBar } from "@/components/TabBar";
 import { requireMember } from "@/lib/auth";
 import { getBadges } from "@/lib/data";
 
-// Toda la app de miembros requiere login + localidad elegida.
-// `requireMember` redirige a /login o /seleccionar-localidad si falta.
-export const dynamic = "force-dynamic";
+// Revalida cada 60s; se invalida al instante cuando el admin publica
+// contenido (los server actions ya llaman revalidatePath).
+export const revalidate = 60;
 
 export default async function AppLayout({
   children,

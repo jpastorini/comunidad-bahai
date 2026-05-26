@@ -15,7 +15,7 @@ import {
 import { getHomeFeed } from "@/lib/feed";
 import { getUnreadNotificationCount } from "@/lib/notifications";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function HomePage() {
   const session = await requireMember("/");

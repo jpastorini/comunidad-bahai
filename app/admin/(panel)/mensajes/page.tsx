@@ -6,7 +6,7 @@ import { formatMessageDate } from "@/lib/format";
 import type { Message } from "@/lib/types";
 import { deleteMessageAction } from "./actions";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function AdminMensajesPage() {
   await requireNationalAdmin();

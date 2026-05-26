@@ -4,7 +4,7 @@ import { createSupabaseServer, isSupabaseConfigured } from "@/lib/supabase/serve
 import type { Locality } from "@/lib/types";
 import { selectLocalityAction } from "./actions";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 const ERROR_COPY: Record<string, string> = {
   missing:

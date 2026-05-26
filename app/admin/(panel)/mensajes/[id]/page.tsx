@@ -5,7 +5,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import type { Message } from "@/lib/types";
 import { MessageForm } from "../message-form";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function EditMessagePage({
   params,

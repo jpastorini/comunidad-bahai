@@ -7,7 +7,7 @@ import type { TreasuryCommitment } from "@/lib/types";
 import { CommitmentSection } from "./commitment-section";
 
 // La Tesorería contiene información reservada — solo miembros autenticados.
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function TesoreriaPage() {
   const session = await requireMember("/tesoreria");

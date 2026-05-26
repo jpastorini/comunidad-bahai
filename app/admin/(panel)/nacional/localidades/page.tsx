@@ -16,7 +16,7 @@ import {
   upsertLocalityAction,
 } from "../actions";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function LocalidadesPage() {
   await requireNationalAdmin();

@@ -15,7 +15,7 @@ const MONTHS_ES_SHORT = [
   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
 ];
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function CalendarioPage({
   searchParams,

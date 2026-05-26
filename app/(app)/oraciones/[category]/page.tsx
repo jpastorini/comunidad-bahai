@@ -5,7 +5,7 @@ import { IconChevronRight } from "@/components/Icons";
 import { requireMember } from "@/lib/auth";
 import { findCategory } from "@/lib/oraciones";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function CategoriaOracionesPage({
   params,

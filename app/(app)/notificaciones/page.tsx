@@ -5,7 +5,7 @@ import { requireMember } from "@/lib/auth";
 import { getNotifications } from "@/lib/notifications";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function NotificationsPage() {
   const session = await requireMember("/notificaciones");
