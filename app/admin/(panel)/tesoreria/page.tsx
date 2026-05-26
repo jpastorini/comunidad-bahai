@@ -10,8 +10,8 @@ import { IconArrowRight } from "@/components/Icons";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { Treasury, TreasuryCommitment } from "@/lib/types";
+import { MonthlyReportShare } from "@/components/treasury/MonthlyReportShare";
 import { saveTreasuryAction } from "./actions";
-import { MonthlyReportShare } from "./report-share";
 
 export default async function AdminTesoreriaPage() {
   const session = await requireAdmin();

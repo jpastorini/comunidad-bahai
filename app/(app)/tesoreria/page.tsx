@@ -1,5 +1,7 @@
 import { GoldHeader } from "@/components/GoldHeader";
 import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
+import { BudgetReportShare } from "@/components/treasury/BudgetReportShare";
+import { MonthlyReportShare } from "@/components/treasury/MonthlyReportShare";
 import { requireMember } from "@/lib/auth";
 import { getTreasury } from "@/lib/data";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -175,6 +177,37 @@ export default async function TesoreriaPage() {
             items={budgetItems}
           />
         )}
+
+        {/* Compartir reportes (imagen para WhatsApp) */}
+        <section className="mb-3.5">
+          <h2 className="mb-2.5 text-[14px] font-semibold text-dark">
+            Compartir
+          </h2>
+          <div className="flex flex-col gap-2.5 rounded-2xl bg-card p-4 shadow-card-soft">
+            <p className="text-[12px] text-muted">
+              Generá una imagen del fondo para enviar al grupo.
+            </p>
+            <MonthlyReportShare
+              preview={false}
+              buttonLabel="Compartir reporte mensual"
+              localityName={session.locality.name}
+              period={t.period}
+              goalAmount={t.goal_amount}
+              currentAmount={t.current_amount}
+              contributions={t.contributions}
+              methods={t.methods}
+            />
+            {activeBudget && budgetItems.length > 0 && (
+              <BudgetReportShare
+                preview={false}
+                buttonLabel="Compartir presupuesto"
+                localityName={session.locality.name}
+                period={(activeBudget as { period: string }).period}
+                items={budgetItems}
+              />
+            )}
+          </div>
+        </section>
 
         {/* Compromiso mensual del miembro logueado */}
         <CommitmentSection

@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 import { Button, Card, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { BudgetReportShare } from "@/components/treasury/BudgetReportShare";
 import { addBudgetCategoryAction, saveBudgetItemsAction } from "../actions";
 import { BudgetEditor, type EditorItem } from "../budget-editor";
-import { BudgetReportShare } from "./budget-report-share";
 
 export const revalidate = 60;
 
