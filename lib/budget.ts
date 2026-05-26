@@ -1,5 +1,7 @@
 /**
- * Metadatos visuales por categoría de presupuesto.
+ * Lógica de dominio del presupuesto de Tesorería, compartida entre el
+ * editor admin (app/admin/.../presupuesto) y la vista de miembros
+ * (app/(app)/tesoreria).
  *
  * La columna `icon` de treasury_budget_items guarda una clave semántica
  * (ej. "ensenanza"), no un emoji, para que la UI pueda cambiar el ícono

@@ -4,6 +4,7 @@ import { requireMember } from "@/lib/auth";
 import { getTreasury } from "@/lib/data";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { TreasuryCommitment } from "@/lib/types";
+import { BudgetView, type BudgetViewItem } from "./budget-view";
 import { CommitmentSection } from "./commitment-section";
 
 // La Tesorería contiene información reservada — solo miembros autenticados.
@@ -19,6 +20,43 @@ export default async function TesoreriaPage() {
     .select("*")
     .eq("user_id", session.user.id)
     .maybeSingle();
+
+  // Presupuesto vigente de la localidad (solo lectura para miembros).
+  const { data: activeBudget } = await supabase
+    .from("treasury_budgets")
+    .select("id, period")
+    .eq("locality_id", session.locality.id)
+    .eq("status", "active")
+    .order("bahai_year", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let budgetItems: BudgetViewItem[] = [];
+  if (activeBudget) {
+    const { data: itemsRaw } = await supabase
+      .from("treasury_budget_items")
+      .select("id, category, icon, planned_amount, spent_amount")
+      .eq("budget_id", (activeBudget as { id: string }).id)
+      .gt("planned_amount", 0)
+      .order("position", { ascending: true });
+    budgetItems = (
+      (itemsRaw ?? []) as Array<{
+        id: string;
+        category: string;
+        icon: string;
+        planned_amount: number;
+        spent_amount: number;
+      }>
+    ).map((it) => ({
+      id: it.id,
+      category: it.category,
+      icon: it.icon,
+      planned: Number(it.planned_amount),
+      spent: Number(it.spent_amount),
+    }));
+  }
+
   const pct = Math.max(0, Math.min(1, t.current_amount / t.goal_amount));
   const r = 56;
   const circ = 2 * Math.PI * r;
@@ -129,6 +167,14 @@ export default async function TesoreriaPage() {
             </div>
           ))}
         </div>
+
+        {/* Presupuesto vigente (solo lectura) */}
+        {activeBudget && (
+          <BudgetView
+            period={(activeBudget as { period: string }).period}
+            items={budgetItems}
+          />
+        )}
 
         {/* Compromiso mensual del miembro logueado */}
         <CommitmentSection

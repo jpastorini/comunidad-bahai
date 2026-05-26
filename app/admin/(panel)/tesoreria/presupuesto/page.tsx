@@ -11,8 +11,8 @@ import {
 import { IconArrowRight } from "@/components/Icons";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { fmtUYU } from "@/lib/budget";
 import { createBudgetAction } from "./actions";
-import { fmtUYU } from "./category-meta";
 
 export const revalidate = 60;
 

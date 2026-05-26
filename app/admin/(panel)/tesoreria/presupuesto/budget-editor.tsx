@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { Button, Card, Field, Select, TextArea, TextInput } from "@/components/admin/ui";
-import { categoryMeta, fmtUYU } from "./category-meta";
+import { categoryMeta, fmtUYU } from "@/lib/budget";
 
 export type EditorItem = {
   id: string;
