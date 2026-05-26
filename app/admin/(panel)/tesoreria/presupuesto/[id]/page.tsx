@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
-import { Button, PageHeader } from "@/components/admin/ui";
+import { Button, Card, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { addBudgetCategoryAction, saveBudgetItemsAction } from "../actions";
 import { BudgetEditor, type EditorItem } from "../budget-editor";
+import { BudgetReportShare } from "./budget-report-share";
 
 export const revalidate = 60;
 
@@ -85,6 +86,21 @@ export default async function PresupuestoEditorPage({
         saveAction={saveBudgetItemsAction}
         addCategoryAction={addBudgetCategoryAction}
       />
+
+      <Card className="mt-5">
+        <h2 className="mb-1 font-display text-[16px] font-semibold text-dark">
+          Compartir reporte
+        </h2>
+        <p className="mb-4 text-[12px] text-muted">
+          Genera una imagen del presupuesto para enviar al grupo. Refleja lo
+          último guardado.
+        </p>
+        <BudgetReportShare
+          localityName={session.locality.name}
+          period={budget.period}
+          items={items}
+        />
+      </Card>
     </>
   );
 }

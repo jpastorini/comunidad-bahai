@@ -11,6 +11,7 @@ import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { Treasury, TreasuryCommitment } from "@/lib/types";
 import { saveTreasuryAction } from "./actions";
+import { MonthlyReportShare } from "./report-share";
 
 export default async function AdminTesoreriaPage() {
   const session = await requireAdmin();
@@ -90,6 +91,26 @@ export default async function AdminTesoreriaPage() {
           miembros cuando guardas los cambios.
         </Banner>
       </div>
+
+      {/* Reporte mensual para compartir (imagen). No incluye compromisos
+          individuales — solo el estado agregado del fondo. */}
+      <Card className="mb-5">
+        <h2 className="mb-1 font-display text-[20px] font-semibold text-dark">
+          Compartir reporte mensual
+        </h2>
+        <p className="mb-4 text-[12px] text-muted">
+          Genera una imagen con el estado del fondo para enviar al grupo. Refleja
+          los datos guardados abajo; no incluye los compromisos individuales.
+        </p>
+        <MonthlyReportShare
+          localityName={session.locality.name}
+          period={t.period}
+          goalAmount={t.goal_amount}
+          currentAmount={t.current_amount}
+          contributions={t.contributions}
+          methods={t.methods}
+        />
+      </Card>
 
       {/* Compromisos mensuales declarados por los miembros */}
       <Card className="mb-5">
