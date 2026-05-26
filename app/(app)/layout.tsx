@@ -1,3 +1,4 @@
+import { ChatNotifier } from "@/components/ChatNotifier";
 import { TabBar } from "@/components/TabBar";
 import { requireMember } from "@/lib/auth";
 import { getBadges } from "@/lib/data";
@@ -19,6 +20,7 @@ export default async function AppLayout({
     badges.chat_has_unseen || badges.comunicados_has_unseen;
   return (
     <div id="app-shell">
+      <ChatNotifier userId={session.user.id} side="member" />
       {children}
       <TabBar aelHasUnseen={aelHasUnseen} />
     </div>

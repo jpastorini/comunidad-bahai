@@ -1,4 +1,5 @@
 import { AdminShell } from "@/components/admin/AdminShell";
+import { ChatNotifier } from "@/components/ChatNotifier";
 import { requireAdmin } from "@/lib/auth";
 import { consumeFlashToast } from "@/lib/toast";
 
@@ -17,6 +18,10 @@ export default async function PanelLayout({
       locality={session.locality}
       toast={toast}
     >
+      {/* Aviso de chat para la Secretaría (solo con tag de chat). */}
+      {session.profile.can_respond_chat && (
+        <ChatNotifier userId={session.user.id} side="admin" />
+      )}
       {children}
     </AdminShell>
   );
