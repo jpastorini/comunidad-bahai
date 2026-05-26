@@ -6,6 +6,7 @@ import {
   PageHeader,
   TextInput,
 } from "@/components/admin/ui";
+import { IconArrowRight } from "@/components/Icons";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { Treasury, TreasuryCommitment } from "@/lib/types";
@@ -75,6 +76,12 @@ export default async function AdminTesoreriaPage() {
         eyebrow="Tesorería"
         title="Fondo de la Comunidad"
         description="Solo miembros con permiso de Tesorería pueden editar esta sección."
+        actions={
+          <Button href="/admin/tesoreria/presupuesto">
+            Plan de Presupuesto
+            <IconArrowRight size={13} />
+          </Button>
+        }
       />
 
       <div className="mb-4">

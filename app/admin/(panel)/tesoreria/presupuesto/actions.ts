@@ -9,8 +9,11 @@ import { setFlashToast } from "@/lib/toast";
 /**
  * Categorías por defecto para un presupuesto nuevo.
  * Cada Asamblea puede agregar categorías personalizadas.
+ *
+ * NOTA: no se exporta — un archivo "use server" solo puede exportar
+ * funciones async. Se usa únicamente dentro de createBudgetAction.
  */
-export const DEFAULT_BUDGET_CATEGORIES = [
+const DEFAULT_BUDGET_CATEGORIES = [
   { category: "Enseñanza", icon: "ensenanza", position: 0 },
   { category: "Mantenimiento", icon: "mantenimiento", position: 1 },
   { category: "Tareas Administrativas", icon: "administrativas", position: 2 },
