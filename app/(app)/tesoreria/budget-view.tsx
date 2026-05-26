@@ -4,14 +4,17 @@ export type BudgetViewItem = {
   id: string;
   category: string;
   icon: string;
+  /** Presupuesto de este año. */
   planned: number;
+  /** Gastado el año pasado (referencia). */
   spent: number;
 };
 
 /**
  * Vista de solo-lectura del presupuesto vigente (status 'active') para
- * los miembros. Muestra la ejecución total y el avance por categoría.
- * Solo recibe categorías con meta > 0 (las de $0 no se presupuestaron).
+ * los miembros. Muestra, por categoría, lo gastado el año pasado (como
+ * referencia) y el monto presupuestado para este año. Solo recibe
+ * categorías con presupuesto > 0.
  */
 export function BudgetView({
   period,
@@ -22,9 +25,8 @@ export function BudgetView({
 }) {
   if (items.length === 0) return null;
 
-  const totalPlanned = items.reduce((s, i) => s + i.planned, 0);
-  const totalSpent = items.reduce((s, i) => s + i.spent, 0);
-  const pct = totalPlanned > 0 ? Math.round((totalSpent / totalPlanned) * 100) : 0;
+  const totalThisYear = items.reduce((s, i) => s + i.planned, 0);
+  const totalLastYear = items.reduce((s, i) => s + i.spent, 0);
 
   return (
     <section className="mb-3.5">
@@ -32,59 +34,45 @@ export function BudgetView({
         Presupuesto del año
       </h2>
       <div className="rounded-2xl bg-card p-4 shadow-card-soft">
-        <div className="mb-1 flex items-baseline justify-between gap-2">
-          <span className="text-[11.5px] text-muted">{period}</span>
-          <span className="text-[11.5px] font-semibold text-terra">
-            {pct}% ejecutado
-          </span>
-        </div>
-        <div className="text-[15px] font-semibold text-dark">
-          {fmtUYU(totalSpent)}{" "}
-          <span className="font-body text-[11.5px] font-normal text-muted">
-            de {fmtUYU(totalPlanned)} planificado
-          </span>
-        </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-terra/10">
-          <div
-            className="h-full rounded-full bg-terra transition-[width] duration-500"
-            style={{ width: `${Math.min(pct, 100)}%` }}
-          />
+        <div className="mb-3 flex items-end justify-between gap-3 border-b border-[rgba(42,63,143,0.06)] pb-3">
+          <div>
+            <div className="text-[11px] text-muted">{period}</div>
+            <div className="text-[15px] font-semibold text-dark">
+              {fmtUYU(totalThisYear)}{" "}
+              <span className="font-body text-[11.5px] font-normal text-muted">
+                presupuestado
+              </span>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-[10.5px] text-muted">Año pasado (ref.)</div>
+            <div className="text-[12.5px] font-semibold text-muted">
+              {fmtUYU(totalLastYear)}
+            </div>
+          </div>
         </div>
 
-        <div className="mt-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
           {items.map((it) => {
             const meta = categoryMeta(it.icon);
-            const cpct = it.planned > 0 ? (it.spent / it.planned) * 100 : 0;
-            const over = cpct > 100;
             return (
-              <div key={it.id}>
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="flex items-center gap-1.5 text-[12.5px] font-medium text-dark">
-                    <span aria-hidden>{meta.emoji}</span>
-                    {it.category}
+              <div
+                key={it.id}
+                className="flex items-center justify-between gap-3"
+              >
+                <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] font-medium text-dark">
+                  <span aria-hidden>{meta.emoji}</span>
+                  <span className="truncate">{it.category}</span>
+                </span>
+                <span className="shrink-0 text-right text-[11px]">
+                  <span className="text-muted">
+                    Año pasado {fmtUYU(it.spent)}
                   </span>
-                  <span
-                    className={`text-[10.5px] ${
-                      over ? "font-bold text-rose-600" : "text-muted"
-                    }`}
-                  >
-                    {fmtUYU(it.spent)} / {fmtUYU(it.planned)}
+                  <span className="mx-1 text-muted/50">·</span>
+                  <span className="font-semibold text-dark">
+                    Este año {fmtUYU(it.planned)}
                   </span>
-                </div>
-                <div
-                  className="mt-1.5 h-1.5 overflow-hidden rounded-full"
-                  style={{ background: `${meta.color}15` }}
-                >
-                  <div
-                    className="h-full rounded-full transition-[width] duration-500"
-                    style={{
-                      width: `${Math.min(cpct, 100)}%`,
-                      background: over
-                        ? "linear-gradient(90deg,#C2185B,#E91E63)"
-                        : meta.color,
-                    }}
-                  />
-                </div>
+                </span>
               </div>
             );
           })}

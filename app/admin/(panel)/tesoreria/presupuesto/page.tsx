@@ -141,10 +141,6 @@ export default async function PresupuestoListPage() {
         <div className="flex flex-col gap-3">
           {budgets.map((b) => {
             const totals = totalsByBudget.get(b.id);
-            const pct =
-              totals && totals.planned > 0
-                ? Math.round((totals.spent / totals.planned) * 100)
-                : null;
             const status = STATUS_META[b.status];
             return (
               <Link
@@ -166,11 +162,11 @@ export default async function PresupuestoListPage() {
                   <div className="mt-1 text-[12px] text-muted">
                     {totals && totals.planned > 0 ? (
                       <>
-                        {fmtUYU(totals.spent)} de {fmtUYU(totals.planned)}
-                        {pct !== null && <> · {pct}% ejecutado</>}
+                        {fmtUYU(totals.planned)} presupuestado · año pasado{" "}
+                        {fmtUYU(totals.spent)}
                       </>
                     ) : (
-                      "Sin metas definidas todavía"
+                      "Sin presupuesto definido todavía"
                     )}
                   </div>
                 </div>

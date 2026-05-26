@@ -1,14 +1,16 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Button, Card, Field, Select, TextArea, TextInput } from "@/components/admin/ui";
+import { Banner, Button, Card, Field, Select, TextArea, TextInput } from "@/components/admin/ui";
 import { categoryMeta, fmtUYU } from "@/lib/budget";
 
 export type EditorItem = {
   id: string;
   category: string;
   icon: string;
+  /** Presupuesto de ESTE año (planned_amount). */
   planned: number;
+  /** Gastado el AÑO PASADO — referencia (spent_amount). */
   spent: number;
   position: number;
 };
@@ -22,8 +24,6 @@ type Props = {
   saveAction: (formData: FormData) => void;
   addCategoryAction: (formData: FormData) => void;
 };
-
-const DARK = "#2A2833";
 
 export function BudgetEditor({
   budgetId,
@@ -47,10 +47,10 @@ export function BudgetEditor({
     []
   );
 
+  // Solo cuentan en los totales las categorías presupuestadas este año.
   const activeItems = items.filter((i) => i.planned > 0);
-  const totalPlanned = activeItems.reduce((s, i) => s + i.planned, 0);
-  const totalSpent = activeItems.reduce((s, i) => s + i.spent, 0);
-  const overallPct = totalPlanned > 0 ? (totalSpent / totalPlanned) * 100 : 0;
+  const totalThisYear = activeItems.reduce((s, i) => s + i.planned, 0);
+  const totalLastYear = activeItems.reduce((s, i) => s + i.spent, 0);
   const omitted = items.length - activeItems.length;
 
   return (
@@ -74,9 +74,7 @@ export function BudgetEditor({
                 id="status"
                 name="status"
                 value={status}
-                onChange={(e) =>
-                  setStatus(e.target.value as Props["status"])
-                }
+                onChange={(e) => setStatus(e.target.value as Props["status"])}
               >
                 <option value="draft">Borrador</option>
                 <option value="active">Activo</option>
@@ -98,19 +96,21 @@ export function BudgetEditor({
           </div>
         </Card>
 
-        {/* Resumen en vivo */}
+        <div className="mb-4">
+          <Banner tone="info">
+            <strong>Gastado el año pasado</strong> es solo una referencia para
+            decidir cuánto presupuestar. <strong>Presupuesto este año</strong>{" "}
+            es el monto que planificás para el período.
+          </Banner>
+        </div>
+
+        {/* Totales */}
         {activeItems.length > 0 && (
-          <div className="mb-5 flex items-center gap-5 rounded-2xl bg-terra-grad p-5 text-white">
-            <OverallRing pct={overallPct} />
-            <div className="min-w-0 flex-1">
-              <div className="text-[12px] opacity-80">
-                Ejecución total del presupuesto
-              </div>
-              <div className="font-display text-[26px] font-bold leading-tight">
-                {fmtUYU(totalSpent)}{" "}
-                <span className="text-[14px] font-normal opacity-70">
-                  de {fmtUYU(totalPlanned)}
-                </span>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-terra-grad p-5 text-white">
+            <div>
+              <div className="text-[12px] opacity-80">Presupuesto este año</div>
+              <div className="font-display text-[28px] font-bold leading-tight">
+                {fmtUYU(totalThisYear)}
               </div>
               <div className="text-[11px] opacity-65">
                 {activeItems.length}{" "}
@@ -123,6 +123,12 @@ export function BudgetEditor({
                     · {omitted} {omitted === 1 ? "omitida" : "omitidas"}
                   </>
                 )}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[11px] opacity-75">Año pasado (ref.)</div>
+              <div className="font-display text-[18px] font-semibold opacity-90">
+                {fmtUYU(totalLastYear)}
               </div>
             </div>
           </div>
@@ -174,21 +180,23 @@ export function BudgetEditor({
         </div>
         <ul className="flex list-none flex-col gap-1.5 p-0 text-[12px] leading-relaxed text-muted">
           <li>
-            → Poné la <strong className="text-dark">Meta ($)</strong> de cada
-            categoría para definir cuánto se planea gastar.
+            → Mirá lo{" "}
+            <strong className="text-dark">gastado el año pasado</strong> como
+            referencia para definir cada categoría.
           </li>
           <li>
-            → Las categorías con meta en{" "}
-            <strong className="text-dark">$0</strong> se atenúan y no se
-            cuentan en el presupuesto total.
+            → Poné el{" "}
+            <strong className="text-dark">presupuesto de este año</strong> en
+            cada categoría que planeás financiar.
           </li>
           <li>
-            → Actualizá el <strong className="text-dark">Gastado ($)</strong>{" "}
-            periódicamente para ver el progreso vs. plan.
+            → Las categorías con presupuesto en{" "}
+            <strong className="text-dark">$0</strong> se atenúan y no se cuentan
+            en el total del año.
           </li>
           <li>
-            → El estado <strong className="text-dark">Activo</strong> indica
-            que el presupuesto está vigente para el período.
+            → El estado <strong className="text-dark">Activo</strong> indica que
+            el presupuesto está vigente y se muestra a los miembros.
           </li>
         </ul>
       </Card>
@@ -204,9 +212,7 @@ function BudgetItemRow({
   onUpdate: (id: string, field: "planned" | "spent", value: number) => void;
 }) {
   const meta = categoryMeta(item.icon);
-  const pct = item.planned > 0 ? (item.spent / item.planned) * 100 : 0;
   const isZero = item.planned === 0;
-  const over = pct > 100;
 
   return (
     <div
@@ -226,64 +232,22 @@ function BudgetItemRow({
         >
           {meta.emoji}
         </div>
-
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[14px] font-semibold text-dark">
-              {item.category}
-            </span>
-            {!isZero && (
-              <span
-                className={`text-[11px] ${
-                  over ? "font-bold text-rose-600" : "text-muted"
-                }`}
-              >
-                {fmtUYU(item.spent)} / {fmtUYU(item.planned)}
-              </span>
-            )}
-          </div>
+          <span className="text-[14px] font-semibold text-dark">
+            {item.category}
+          </span>
           <p className="mt-0.5 text-[11px] text-muted">{meta.hint}</p>
-
-          {!isZero ? (
-            <div
-              className="mt-2.5 h-1.5 overflow-hidden rounded-full"
-              style={{ background: `${meta.color}15` }}
-            >
-              <div
-                className="h-full rounded-full transition-[width] duration-500"
-                style={{
-                  width: `${Math.min(pct, 100)}%`,
-                  background: over
-                    ? "linear-gradient(90deg,#C2185B,#E91E63)"
-                    : `linear-gradient(90deg,${meta.color},${meta.color}CC)`,
-                }}
-              />
-            </div>
-          ) : (
+          {isZero && (
             <div className="mt-1.5 text-[11px] italic text-muted">
-              No presupuestado — se omite de las metas
+              No presupuestado este año — se omite del total
             </div>
           )}
         </div>
-
-        {!isZero && <ItemRing pct={pct} color={meta.color} />}
       </div>
 
       <div className="mt-3.5 grid grid-cols-2 gap-2.5 border-t border-black/[0.06] pt-3.5">
-        <Field label="Meta ($)" name={`planned_${item.id}`}>
-          <TextInput
-            name="planned_amount[]"
-            type="number"
-            min="0"
-            step="100"
-            value={item.planned || ""}
-            onChange={(e) =>
-              onUpdate(item.id, "planned", parseFloat(e.target.value) || 0)
-            }
-            placeholder="0 = no presupuestado"
-          />
-        </Field>
-        <Field label="Gastado ($)" name={`spent_${item.id}`}>
+        {/* Primero: gastado el año pasado (referencia) */}
+        <Field label="Gastado año pasado ($)" name={`spent_${item.id}`} hint="referencia">
           <TextInput
             name="spent_amount[]"
             type="number"
@@ -296,65 +260,21 @@ function BudgetItemRow({
             placeholder="0"
           />
         </Field>
+        {/* Luego: presupuesto de este año */}
+        <Field label="Presupuesto este año ($)" name={`planned_${item.id}`}>
+          <TextInput
+            name="planned_amount[]"
+            type="number"
+            min="0"
+            step="100"
+            value={item.planned || ""}
+            onChange={(e) =>
+              onUpdate(item.id, "planned", parseFloat(e.target.value) || 0)
+            }
+            placeholder="0 = no presupuestado"
+          />
+        </Field>
       </div>
     </div>
-  );
-}
-
-function ItemRing({ pct, color }: { pct: number; color: string }) {
-  const size = 56;
-  const stroke = 5;
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (Math.min(pct, 100) / 100) * circ;
-  return (
-    <svg width={size} height={size} className="shrink-0">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`${color}18`} strokeWidth={stroke} />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke={color}
-        strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeDasharray={circ}
-        strokeDashoffset={offset}
-        transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        style={{ transition: "stroke-dashoffset 0.6s ease" }}
-      />
-      <text x={size / 2} y={size / 2} textAnchor="middle" dy="0.35em" fill={DARK} fontSize="11" fontWeight="700">
-        {Math.round(pct)}%
-      </text>
-    </svg>
-  );
-}
-
-function OverallRing({ pct }: { pct: number }) {
-  const size = 72;
-  const stroke = 6;
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (Math.min(pct, 100) / 100) * circ;
-  return (
-    <svg width={size} height={size} className="shrink-0">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={stroke} />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke="#fff"
-        strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeDasharray={circ}
-        strokeDashoffset={offset}
-        transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        style={{ transition: "stroke-dashoffset 0.6s ease" }}
-      />
-      <text x={size / 2} y={size / 2} textAnchor="middle" dy="0.35em" fill="#fff" fontSize="14" fontWeight="800">
-        {Math.round(pct)}%
-      </text>
-    </svg>
   );
 }

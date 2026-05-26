@@ -68,7 +68,7 @@ export default async function PresupuestoEditorPage({
       <PageHeader
         eyebrow="Tesorería · Presupuesto"
         title={budget.period}
-        description="Definí la meta de cada categoría y actualizá lo gastado. Las categorías en $0 se omiten de las metas del año."
+        description="Tomá como referencia lo gastado el año pasado y definí el presupuesto de este año por categoría. Las categorías en $0 se omiten del total."
         actions={
           <Button variant="secondary" href="/admin/tesoreria/presupuesto">
             ← Presupuestos
