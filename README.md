@@ -151,9 +151,13 @@ public/icons/                # Íconos PWA generados (no commiteado por defecto)
 6. Auth → URL Configuration → añade
    `http://localhost:3000/auth/callback` y la URL de producción a la lista
    de redirect URLs.
-7. (chat en vivo) Database → Replication → activa replicación para
-   `public.chat_messages`. El cliente puede subscribirse con
-   `supabase.channel('chat').on('postgres_changes', …)`.
+7. (chat en vivo + notificaciones) Ejecuta
+   `supabase/migrations/028_chat_realtime_publication.sql`, que agrega
+   `public.chat_messages` a la publicación `supabase_realtime` (y le pone
+   `replica identity full`). **Sin esto no llega ningún evento de Realtime**
+   y las notificaciones de chat no funcionan. Verificá en Database →
+   Publications → `supabase_realtime`. Ver la sección
+   [Notificaciones de chat](#notificaciones-de-chat).
 
 ### Roles y permisos
 
@@ -188,7 +192,91 @@ A partir de ahí, ese admin puede gestionar al resto desde
   Regenerar con `powershell -ExecutionPolicy Bypass -File .\scripts\generate-icons.ps1`.
 
 Para instalarla en móvil: abre la URL en Chrome/Safari → "Añadir a
-pantalla de inicio".
+pantalla de inicio". La app también muestra un botón **"Instalar App"**
+(componente `InstallAppButton` en Home y Perfil) que solo aparece si NO
+está instalada: en Android dispara el instalador nativo
+(`beforeinstallprompt`); en iPhone muestra las instrucciones de Safari
+(iOS no permite instalar por código). Se oculta al correr en modo
+standalone.
+
+---
+
+## Notificaciones de chat
+
+El chat avisa en **tres capas**, en ambos sentidos (miembro ↔ Secretaría):
+
+1. **En la app — sonido + badge en vivo.** Un listener global
+   `ChatNotifier` (montado en los layouts de miembro y de admin) escucha
+   `chat_messages` por Supabase Realtime desde **cualquier pantalla**:
+   reproduce un sonido (Web Audio, sin archivo de audio) y refresca el
+   badge del tab AEL / "chat sin leer". Solo necesita que Realtime esté
+   habilitado (ver más abajo).
+2. **Notificación del sistema — app en segundo plano.** Si la pestaña/PWA
+   no está visible y el usuario dio permiso, se muestra una `Notification`.
+3. **Web Push — app cerrada.** Service worker (`worker/index.js`) +
+   `web-push` envían la notificación aunque la app esté totalmente cerrada.
+
+### Requisitos
+
+**a) Realtime habilitado para `chat_messages`** (capas 1 y 2). **Sin esto
+no llega ningún evento.** Lo garantiza la migración
+`supabase/migrations/028_chat_realtime_publication.sql`. Verificá en
+Database → Publications → `supabase_realtime`.
+
+**b) Web Push** (capa 3):
+
+- Ejecutar `supabase/migrations/027_push_subscriptions.sql` (tabla de
+  suscripciones con RLS por usuario).
+- Variables de entorno (en `.env.local` **y** en Vercel):
+
+  ```
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY=...   # clave pública VAPID (cliente)
+  VAPID_PRIVATE_KEY=...              # clave privada VAPID (servidor, secreta)
+  VAPID_SUBJECT=mailto:tu@correo.com
+  SUPABASE_SERVICE_ROLE_KEY=...      # service_role (Settings → API): el envío
+                                     # lee las suscripciones del destinatario
+  ```
+
+- Generar el par VAPID:
+
+  ```
+  node -e "console.log(require('web-push').generateVAPIDKeys())"
+  ```
+
+- El usuario activa el push con el botón **"Activar"** en **Perfil**
+  (miembro) o **Secretaría → Conversaciones** (admin).
+
+### A quién se notifica
+
+- Un **miembro** escribe → a los admins con `can_respond_chat` de su localidad.
+- La **Secretaría** responde → al miembro.
+- El **emisor se excluye** → para probar, usá **dos cuentas distintas**.
+
+### Cómo probar
+
+- **Capa 1** (sin segunda cuenta): abrí `/chat` y, desde el SQL Editor,
+  insertá un mensaje dirigido a vos:
+
+  ```sql
+  insert into chat_messages (member_id, from_user_id, text, is_admin_reply, read, locality_id)
+  select p.id, p.id, 'prueba realtime', true, true, p.locality_id
+  from profiles p where p.email = 'tu@correo.com';
+  ```
+
+  Debería aparecer solo + sonar. En consola: `[chat:member] subscribe
+  status: SUBSCRIBED` y `[chat:member] INSERT received`.
+- **Capa 3:** dos cuentas en dos dispositivos; una manda, la otra recibe
+  con la app cerrada.
+
+### Gotchas
+
+- **Solo funciona en producción** (Vercel): `next-pwa` desactiva el service
+  worker en `npm run dev`, así que push e instalación se prueban deployado.
+- **iPhone:** el push solo llega si la app está **instalada** en la pantalla
+  de inicio (iOS 16.4+); en Safari como pestaña normal, iOS no entrega push.
+- **Cambios de variables de entorno en Vercel** requieren **redeploy**.
+- Si el push no llega, verificá que se creó una fila en `push_subscriptions`
+  al tocar "Activar".
 
 ---
 
@@ -201,6 +289,9 @@ npm install -g vercel
 vercel
 # añade NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY
 # desde el dashboard de Vercel (Project Settings → Environment Variables)
+# Para notificaciones push, añade además NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+# VAPID_PRIVATE_KEY, VAPID_SUBJECT y SUPABASE_SERVICE_ROLE_KEY
+# (ver "Notificaciones de chat"). Cambiar env vars requiere redeploy.
 ```
 
 ---
@@ -230,13 +321,13 @@ Fuentes (Google Fonts vía `next/font`): **Cormorant Garamond** (display),
 - [x] Panel admin (`/admin/...`) para que la Secretaría edite mensajes,
       actividades, calendario, materiales, metas, servicio, tesorería y
       miembros — con tags `can_respond_chat` y `can_manage_treasury`.
-- [ ] Realtime chat: subscribirse a `chat_messages` desde
-      `app/(app)/chat/chat-screen.tsx` con
-      `supabase.channel().on('postgres_changes', …)`. Hoy se envían
-      mensajes pero el render es estático.
-- [ ] Conectar la app de miembros a la sesión real (hoy el chat usa
-      `seed-data` y no envía mensajes a la DB).
-- [ ] Notificaciones push: usar `web-push` + un endpoint Edge Function.
+- [x] Realtime chat: `chat-screen.tsx` y `conversation.tsx` se subscriben a
+      `chat_messages` con `postgres_changes` (requiere migración 028).
+- [x] Conectar la app de miembros a la sesión real (el chat envía y lee
+      mensajes de la DB con la sesión del miembro).
+- [x] Notificaciones de chat en 3 capas: in-app (sonido + badge), del
+      sistema (segundo plano) y Web Push con la app cerrada (`web-push` +
+      service worker, sin Edge Function). Ver "Notificaciones de chat".
 - [ ] Calendario dinámico (hoy se muestra Mayo 2026 fijo según el
       prototipo): swap por mes/año actuales y navegación entre meses.
 - [ ] Bahá'í Calendar (19-day Feast + Holy Days): integrar el calendario
