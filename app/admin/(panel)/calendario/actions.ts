@@ -84,10 +84,11 @@ export async function upsertEventAction(formData: FormData) {
     payload.year = year;
     payload.title = formData.get("title") as string;
     payload.color = formData.get("color") as string;
-    if (!id) {
-      // Nuevos eventos creados a mano son siempre actividades generales.
-      payload.kind = "actividad_general";
-    }
+    // Tipo elegible a mano: actividad_general o reunion_ael. Las Fiestas y
+    // Días Sagrados se siembran automáticamente y no se pueden setear acá.
+    const rawKind = formData.get("kind") as string | null;
+    payload.kind =
+      rawKind === "reunion_ael" ? "reunion_ael" : "actividad_general";
   }
 
   if (!isProtected && (!date || !payload.title)) {

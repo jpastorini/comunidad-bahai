@@ -11,6 +11,7 @@ export type CalendarEventKind =
   | "fiesta_19_dias"
   | "dia_sagrado_no_trabajo"
   | "dia_sagrado_con_trabajo"
+  | "reunion_ael"
   | "actividad_general";
 
 export type CalendarKindMeta = {
@@ -38,6 +39,12 @@ export const CALENDAR_KINDS: Record<CalendarEventKind, CalendarKindMeta> = {
     label: "Día Sagrado · se trabaja",
     short: "Día Sagrado",
     color: colors.amber,
+  },
+  reunion_ael: {
+    id: "reunion_ael",
+    label: "Reunión AEL",
+    short: "Reunión AEL",
+    color: "#0E7C86",
   },
   actividad_general: {
     id: "actividad_general",

@@ -116,6 +116,23 @@ export function EventForm({ event }: Props) {
                 />
               </Field>
             </div>
+
+            <div className="mt-4">
+              <Field
+                label="Tipo de evento"
+                name="kind"
+                hint="La Reunión AEL usa su color propio"
+              >
+                <Select
+                  id="kind"
+                  name="kind"
+                  defaultValue={event?.kind ?? "actividad_general"}
+                >
+                  <option value="actividad_general">Actividad general</option>
+                  <option value="reunion_ael">Reunión AEL</option>
+                </Select>
+              </Field>
+            </div>
           </>
         )}
 
