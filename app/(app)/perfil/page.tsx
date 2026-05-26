@@ -4,6 +4,7 @@ import { IconChevronRight } from "@/components/Icons";
 import { requireMember } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { EventPhoto } from "@/lib/types";
+import { PushToggle } from "@/components/PushToggle";
 import { AvatarEditor } from "./avatar-editor";
 import { MyPhotosSection } from "./my-photos";
 import { NameForm } from "./name-form";
@@ -121,6 +122,11 @@ export default async function ProfilePage() {
               )}
             />
           </div>
+        </div>
+
+        {/* Notificaciones push */}
+        <div className="mb-5">
+          <PushToggle />
         </div>
 
         {/* Mis fotos */}

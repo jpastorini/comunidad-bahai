@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireMember } from "@/lib/auth";
+import { getChatAdminIds, sendPushToUsers } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 /**
@@ -33,6 +34,15 @@ export async function sendMemberMessageAction(formData: FormData) {
     from_user_id: session.user.id,
     text,
     is_admin_reply: false,
+  });
+
+  // Push a la Secretaría (admins con tag de chat de la localidad).
+  const adminIds = await getChatAdminIds(session.locality.id, session.user.id);
+  await sendPushToUsers(adminIds, {
+    title: "Nuevo mensaje de chat",
+    body: text.slice(0, 120),
+    url: `/admin/chat/${session.user.id}`,
+    tag: `chat-${session.user.id}`,
   });
 
   revalidatePath("/chat");

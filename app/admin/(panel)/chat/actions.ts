@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ensureChatTag, requireAdmin } from "@/lib/auth";
+import { sendPushToUsers } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 export async function sendChatReplyAction(formData: FormData) {
@@ -25,6 +26,16 @@ export async function sendChatReplyAction(formData: FormData) {
     // el flag `read` solo aplica a mensajes entrantes que esperan respuesta.
     read: true,
   });
+
+  // Push al miembro (a menos que sea uno mismo en pruebas).
+  if (memberId !== session.user.id) {
+    await sendPushToUsers([memberId], {
+      title: "Secretaría Local",
+      body: text.slice(0, 120),
+      url: "/chat",
+      tag: `chat-${memberId}`,
+    });
+  }
 
   revalidatePath(`/admin/chat/${memberId}`);
   revalidatePath("/admin/chat");

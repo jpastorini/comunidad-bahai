@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, PageHeader } from "@/components/admin/ui";
+import { PushToggle } from "@/components/PushToggle";
 import { ensureChatTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { RealtimeRefresher } from "./realtime-refresher";
@@ -31,6 +32,10 @@ export default async function AdminChatListPage() {
         title="Conversaciones"
         description="Responde a los miembros que han escrito a la Secretaría."
       />
+
+      <div className="mb-4">
+        <PushToggle />
+      </div>
 
       {conversations.length === 0 ? (
         <Card className="text-center text-[13px] text-muted">
