@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
+import { getLocalityMemberIds, sendPushToUsers } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 
@@ -82,6 +83,18 @@ export async function upsertComunicadoAction(formData: FormData) {
     : await supabase
         .from("messages")
         .insert({ ...payload, locality_id: session.locality.id });
+
+  // Push solo al PUBLICAR uno nuevo (no al editar), a todos los miembros de
+  // la localidad — incluido quien publica, sirve como confirmación.
+  if (!id && !error) {
+    const recipients = await getLocalityMemberIds(session.locality.id);
+    await sendPushToUsers(recipients, {
+      title: "Nuevo comunicado",
+      body: title,
+      url: "/comunicados",
+      tag: "comunicado",
+    });
+  }
 
   setFlashToast(
     error

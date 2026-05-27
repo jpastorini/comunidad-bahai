@@ -39,10 +39,19 @@ export default async function ComunicadosPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {announcements.map((m) => (
+            {announcements.map((m, i) => (
               <article
                 key={m.id}
-                className="overflow-hidden rounded-2xl bg-card shadow-card"
+                className={
+                  i === 0
+                    ? "overflow-hidden rounded-2xl shadow-card-elevated ring-1 ring-gold/45"
+                    : "overflow-hidden rounded-2xl bg-card shadow-card"
+                }
+                style={
+                  i === 0
+                    ? { background: "linear-gradient(160deg, #FBF6E4, #FFFDF7)" }
+                    : undefined
+                }
               >
                 {m.image_url && (
                   // eslint-disable-next-line @next/next/no-img-element

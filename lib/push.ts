@@ -75,6 +75,20 @@ export async function sendPushToUsers(
   }
 }
 
+/** IDs de TODOS los miembros de una localidad (para avisar un comunicado
+ *  nuevo). Usa service-role para no chocar con RLS de profiles. */
+export async function getLocalityMemberIds(
+  localityId: string
+): Promise<string[]> {
+  const supabase = createSupabaseAdmin();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("locality_id", localityId);
+  return ((data ?? []) as Array<{ id: string }>).map((d) => d.id);
+}
+
 /** IDs de los admins con tag de chat en una localidad (para avisar mensajes
  *  entrantes). Usa service-role para no chocar con RLS de profiles. */
 export async function getChatAdminIds(

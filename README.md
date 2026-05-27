@@ -280,6 +280,34 @@ Database → Publications → `supabase_realtime`.
 
 ---
 
+## Notificaciones de comunicados y eventos
+
+Reusan la misma infra de Web Push (VAPID + `SUPABASE_SERVICE_ROLE_KEY`).
+
+- **Comunicado nuevo:** al publicar un comunicado (no al editarlo), se envía
+  push a **todos los miembros de la localidad** (incluido quien publica, como
+  confirmación). Deep-link → `/comunicados`, donde el más reciente queda
+  resaltado en dorado.
+- **Recordatorio de evento (1 día antes):** un **Vercel Cron** diario llama a
+  `GET /api/cron/event-reminders` a las **13:00 UTC ≈ 10:00 UYT** (ver
+  `vercel.json`) y avisa de los eventos de *mañana* a los miembros de cada
+  localidad. La columna `calendar_events.reminder_sent_at` (migración 030)
+  evita reenvíos.
+
+Variables de entorno extra (Vercel → Environment Variables):
+
+```
+CRON_SECRET=...        # Vercel lo envía como "Authorization: Bearer <secret>".
+                       # La ruta lo exige si está seteado; sin él, queda abierta.
+APP_TIMEZONE=America/Montevideo   # opcional; default ya es esta TZ.
+                       # Define qué fecha civil cuenta como "mañana".
+```
+
+> El plan Hobby de Vercel permite cron una vez por día — el horario fijo
+> diario encaja. Para cambiar la hora, ajustá el `schedule` (cron en UTC).
+
+---
+
 ## Despliegue
 
 Recomendado: **Vercel** (cero configuración para Next.js + PWA).
@@ -291,7 +319,9 @@ vercel
 # desde el dashboard de Vercel (Project Settings → Environment Variables)
 # Para notificaciones push, añade además NEXT_PUBLIC_VAPID_PUBLIC_KEY,
 # VAPID_PRIVATE_KEY, VAPID_SUBJECT y SUPABASE_SERVICE_ROLE_KEY
-# (ver "Notificaciones de chat"). Cambiar env vars requiere redeploy.
+# (ver "Notificaciones de chat"). Para el cron de recordatorios de eventos,
+# añade CRON_SECRET (ver "Notificaciones de comunicados y eventos").
+# Cambiar env vars requiere redeploy.
 ```
 
 ---

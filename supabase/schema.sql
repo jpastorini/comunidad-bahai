@@ -203,6 +203,9 @@ create table if not exists public.calendar_events (
   is_system_seeded boolean not null default false,
   system_id text,              -- identificador estable de la siembra
   official_date date,          -- fecha oficial del calendario Badí'
+  -- Momento en que se envió el recordatorio push (1 día antes). NULL = no
+  -- enviado. Ver migración 030 y app/api/cron/event-reminders.
+  reminder_sent_at timestamptz,
   created_at timestamptz not null default now()
 );
 
