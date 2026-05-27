@@ -297,8 +297,9 @@ export const HOLY_DAY_DATES_BY_YEAR: HolyDayYearDates[] = [
       declaration_bab: "2026-05-23",
       ascension_bahaullah: "2026-05-29",
       martyrdom_bab: "2026-07-09",
-      birth_bab: "2026-11-10",        // VERIFICAR con bahai.org
-      birth_bahaullah: "2026-11-11",  // VERIFICAR con bahai.org
+      // Cumpleaños Gemelos verificados contra bahai.org / Bahaipedia (2026).
+      birth_bab: "2026-11-10",
+      birth_bahaullah: "2026-11-11",
       covenant: "2026-11-26",
       ascension_abdul_baha: "2026-11-28",
     },
@@ -313,8 +314,9 @@ export const HOLY_DAY_DATES_BY_YEAR: HolyDayYearDates[] = [
       declaration_bab: "2027-05-23",
       ascension_bahaullah: "2027-05-29",
       martyrdom_bab: "2027-07-10",
-      birth_bab: "2027-10-30",        // VERIFICAR con bahai.org
-      birth_bahaullah: "2027-10-31",  // VERIFICAR con bahai.org
+      // Cumpleaños Gemelos verificados contra bahai.org / Bahaipedia (2027).
+      birth_bab: "2027-10-30",
+      birth_bahaullah: "2027-10-31",
       covenant: "2027-11-26",
       ascension_abdul_baha: "2027-11-28",
     },
