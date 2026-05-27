@@ -479,7 +479,7 @@ create policy "chat_update_admin_tag" on public.chat_messages
 
 -- ─────────────────────────────────────────────────────────────────
 -- Solicitudes de cambio de localidad
--- Ver supabase/migrations/019_locality_change_requests.sql.
+-- Ver supabase/migrations/029_locality_change_requests.sql.
 -- El primer ingreso es directo; los cambios entre localidades crean
 -- una solicitud que aprueba la Asamblea destino.
 -- ─────────────────────────────────────────────────────────────────
