@@ -9,24 +9,53 @@ import {
 } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import type { Profile } from "@/lib/types";
-import { updateMemberAction } from "./actions";
+import type { LocalityChangeRequest, Profile } from "@/lib/types";
+import { decideLocalityChangeAction, updateMemberAction } from "./actions";
 
 export default async function AdminMiembrosPage() {
   const session = await requireAdmin();
   const supabase = createSupabaseServer();
 
-  const { data } = await supabase
-    .from("profiles")
-    .select(
-      "id, full_name, email, role, can_respond_chat, can_manage_treasury, locality_id, created_at"
-    )
-    .eq("locality_id", session.locality.id)
-    .order("role", { ascending: false })
-    .order("created_at", { ascending: true })
-    .limit(100);
+  const [{ data }, { data: requestRows }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select(
+        "id, full_name, email, role, can_respond_chat, can_manage_treasury, locality_id, created_at"
+      )
+      .eq("locality_id", session.locality.id)
+      .order("role", { ascending: false })
+      .order("created_at", { ascending: true })
+      .limit(100),
+    // Solicitudes de ingreso PENDIENTES hacia esta localidad.
+    supabase
+      .from("locality_change_requests")
+      .select("*")
+      .eq("to_locality_id", session.locality.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: true }),
+  ]);
 
   const profiles = (data ?? []) as Profile[];
+  const pendingRequests = (requestRows ?? []) as LocalityChangeRequest[];
+
+  // Resolver nombres de las localidades de origen para mostrar contexto.
+  const fromIds = Array.from(
+    new Set(
+      pendingRequests
+        .map((r) => r.from_locality_id)
+        .filter((x): x is string => !!x)
+    )
+  );
+  const fromNames = new Map<string, string>();
+  if (fromIds.length > 0) {
+    const { data: locs } = await supabase
+      .from("localities")
+      .select("id, name")
+      .in("id", fromIds);
+    for (const l of (locs ?? []) as { id: string; name: string }[]) {
+      fromNames.set(l.id, l.name);
+    }
+  }
 
   return (
     <>
@@ -35,6 +64,34 @@ export default async function AdminMiembrosPage() {
         title="Miembros"
         description="Gestiona el rol de cada usuario y los permisos especiales."
       />
+
+      {pendingRequests.length > 0 && (
+        <div className="mb-6">
+          <h2 className="mb-2.5 flex items-center gap-2 font-display text-[18px] font-semibold text-dark">
+            Solicitudes de ingreso
+            <span className="rounded-full bg-terra/15 px-2 py-0.5 text-[11px] font-bold text-terra">
+              {pendingRequests.length}
+            </span>
+          </h2>
+          <p className="mb-3 text-[12px] text-muted">
+            Estas personas pidieron unirse a tu comunidad desde otra localidad.
+            Al aprobar, pasan a pertenecer a la tuya.
+          </p>
+          <div className="grid gap-3">
+            {pendingRequests.map((r) => (
+              <RequestCard
+                key={r.id}
+                request={r}
+                fromName={
+                  r.from_locality_id
+                    ? fromNames.get(r.from_locality_id) ?? "Otra localidad"
+                    : "Sin localidad"
+                }
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mb-4">
         <Banner tone="warning">
@@ -51,6 +108,59 @@ export default async function AdminMiembrosPage() {
         ))}
       </div>
     </>
+  );
+}
+
+function RequestCard({
+  request,
+  fromName,
+}: {
+  request: LocalityChangeRequest;
+  fromName: string;
+}) {
+  return (
+    <Card>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-display text-[16px] font-semibold text-dark">
+            {request.user_name}
+          </div>
+          {request.user_email && (
+            <div className="text-[12px] text-muted">{request.user_email}</div>
+          )}
+          <div className="mt-1 text-[11.5px] text-muted">
+            Viene de <span className="font-semibold">{fromName}</span> ·{" "}
+            {new Date(request.created_at).toLocaleDateString("es-MX", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <form action={decideLocalityChangeAction}>
+            <input type="hidden" name="request_id" value={request.id} />
+            <input type="hidden" name="decision" value="reject" />
+            <button
+              type="submit"
+              className="rounded-xl border border-black/10 bg-card px-3.5 py-2 text-[12.5px] font-semibold text-rose-600 hover:bg-rose-50"
+            >
+              Rechazar
+            </button>
+          </form>
+          <form action={decideLocalityChangeAction}>
+            <input type="hidden" name="request_id" value={request.id} />
+            <input type="hidden" name="decision" value="approve" />
+            <button
+              type="submit"
+              className="rounded-xl bg-terra px-3.5 py-2 text-[12.5px] font-semibold text-white shadow-card-soft"
+            >
+              Aprobar
+            </button>
+          </form>
+        </div>
+      </div>
+    </Card>
   );
 }
 

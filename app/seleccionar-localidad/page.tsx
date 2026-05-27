@@ -14,7 +14,7 @@ const ERROR_COPY: Record<string, string> = {
 export default async function SeleccionarLocalidadPage({
   searchParams,
 }: {
-  searchParams: { next?: string; error?: string };
+  searchParams: { next?: string; error?: string; change?: string };
 }) {
   if (!isSupabaseConfigured()) {
     redirect("/login?error=no-supabase");
@@ -33,18 +33,36 @@ export default async function SeleccionarLocalidadPage({
     .eq("is_active", true)
     .order("name");
 
-  // Si ya tiene localidad y no viene con error → no necesita estar acá.
   const { data: profile } = await supabase
     .from("profiles")
     .select("locality_id, role")
     .eq("id", user.id)
     .maybeSingle();
-  if (profile?.locality_id && !searchParams.error) {
+
+  const isChange = searchParams.change === "1";
+
+  // Si ya tiene una solicitud pendiente, no puede pedir otra → al perfil.
+  if (profile?.locality_id) {
+    const { data: pending } = await supabase
+      .from("locality_change_requests")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("status", "pending")
+      .maybeSingle();
+    if (pending) {
+      redirect("/perfil");
+    }
+  }
+
+  // Si ya tiene localidad y no viene con error ni en modo cambio → no necesita estar acá.
+  if (profile?.locality_id && !searchParams.error && !isChange) {
     redirect(searchParams.next ?? (profile.role === "admin" ? "/admin" : "/"));
   }
 
   const list = (localities ?? []) as Locality[];
   const error = searchParams.error ? ERROR_COPY[searchParams.error] : null;
+  // En modo cambio, la elección crea una SOLICITUD (no cambia directo).
+  const isExistingMember = !!profile?.locality_id;
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-bg">
@@ -57,14 +75,17 @@ export default async function SeleccionarLocalidadPage({
         </div>
         <div className="relative mx-auto max-w-md">
           <div className="mb-2 text-[10px] font-semibold uppercase tracking-[2.5px] text-white/55">
-            Elige tu comunidad
+            {isExistingMember ? "Cambiar de comunidad" : "Elige tu comunidad"}
           </div>
           <h1 className="font-display text-[30px] font-bold leading-tight text-white">
-            ¿De qué localidad eres?
+            {isExistingMember
+              ? "¿A qué comunidad querés mudarte?"
+              : "¿De qué localidad eres?"}
           </h1>
           <p className="mt-2 font-body text-[13px] text-white/75">
-            Selecciona la Comunidad Bahá'í a la que perteneces. Verás los
-            comunicados, actividades y vida administrativa de esa localidad.
+            {isExistingMember
+              ? "Tu solicitud la revisa la Asamblea de la comunidad que elijas. Hasta que la aprueben, seguís en tu comunidad actual."
+              : "Selecciona la Comunidad Bahá'í a la que perteneces. Verás los comunicados, actividades y vida administrativa de esa localidad."}
           </p>
         </div>
       </header>
@@ -133,8 +154,9 @@ export default async function SeleccionarLocalidadPage({
           )}
 
           <p className="mt-6 text-center text-[11px] text-muted">
-            Si te equivocas, podrás cambiar de localidad después desde tu
-            perfil.
+            {isExistingMember
+              ? "Al elegir una comunidad, se envía una solicitud a su Asamblea para que la apruebe."
+              : "Si te equivocas, podrás cambiar de localidad después desde tu perfil."}
           </p>
         </div>
       </main>

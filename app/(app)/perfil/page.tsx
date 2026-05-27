@@ -2,8 +2,9 @@ import Link from "next/link";
 import { GoldHeader } from "@/components/GoldHeader";
 import { IconChevronRight } from "@/components/Icons";
 import { requireMember } from "@/lib/auth";
+import { cancelLocalityChangeAction } from "@/app/seleccionar-localidad/actions";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import type { EventPhoto } from "@/lib/types";
+import type { EventPhoto, LocalityChangeRequest } from "@/lib/types";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { PushToggle } from "@/components/PushToggle";
 import { AvatarEditor } from "./avatar-editor";
@@ -71,6 +72,25 @@ export default async function ProfilePage() {
     bahai_month_name: string;
   }[]) {
     eventTitles.set(`feast:${r.id}`, `Fiesta de ${r.bahai_month_name}`);
+  }
+
+  // Solicitud de cambio de localidad pendiente (si la hay).
+  const { data: pendingReq } = await supabase
+    .from("locality_change_requests")
+    .select("*")
+    .eq("user_id", session.user.id)
+    .eq("status", "pending")
+    .maybeSingle();
+  const pendingRequest = (pendingReq as LocalityChangeRequest | null) ?? null;
+
+  let pendingToName: string | null = null;
+  if (pendingRequest) {
+    const { data: toLoc } = await supabase
+      .from("localities")
+      .select("name")
+      .eq("id", pendingRequest.to_locality_id)
+      .maybeSingle();
+    pendingToName = (toLoc as { name: string } | null)?.name ?? "otra comunidad";
   }
 
   const roleChips = buildRoleChips(session.profile);
@@ -155,12 +175,35 @@ export default async function ProfilePage() {
               {session.locality.city} · {session.locality.country}
             </div>
           )}
-          <Link
-            href="/seleccionar-localidad?error=missing"
-            className="mt-3 inline-block text-[12px] font-semibold text-terra hover:underline"
-          >
-            Cambiar de localidad →
-          </Link>
+
+          {pendingRequest ? (
+            <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
+              <div className="text-[12px] font-semibold text-amber-800">
+                Solicitud pendiente
+              </div>
+              <p className="mt-0.5 text-[11.5px] text-amber-800/90">
+                Pediste unirte a <strong>{pendingToName}</strong>. La Asamblea de
+                esa comunidad debe aprobarla. Mientras tanto seguís en{" "}
+                {session.locality.name}.
+              </p>
+              <form action={cancelLocalityChangeAction} className="mt-2">
+                <input type="hidden" name="request_id" value={pendingRequest.id} />
+                <button
+                  type="submit"
+                  className="text-[11.5px] font-semibold text-rose-600 hover:underline"
+                >
+                  Cancelar solicitud
+                </button>
+              </form>
+            </div>
+          ) : (
+            <Link
+              href="/seleccionar-localidad?change=1"
+              className="mt-3 inline-block text-[12px] font-semibold text-terra hover:underline"
+            >
+              Cambiar de localidad →
+            </Link>
+          )}
         </div>
 
         {/* Cerrar sesión */}

@@ -55,6 +55,25 @@ export type Locality = {
   created_at: string;
 };
 
+export type LocalityChangeStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "cancelled";
+
+export type LocalityChangeRequest = {
+  id: string;
+  user_id: string;
+  user_name: string;
+  user_email: string | null;
+  from_locality_id: string | null;
+  to_locality_id: string;
+  status: LocalityChangeStatus;
+  decided_by: string | null;
+  decided_at: string | null;
+  created_at: string;
+};
+
 export type ActivityType = "estudio" | "devocional" | "ninos" | "jovenes";
 
 export type Activity = {

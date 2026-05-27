@@ -476,3 +476,10 @@ create policy "chat_update_admin_tag" on public.chat_messages
 -- completa de la tabla event_photos, sus RLS, y el bucket de
 -- Storage 'event-photos'.
 -- ─────────────────────────────────────────────────────────────────
+
+-- ─────────────────────────────────────────────────────────────────
+-- Solicitudes de cambio de localidad
+-- Ver supabase/migrations/019_locality_change_requests.sql.
+-- El primer ingreso es directo; los cambios entre localidades crean
+-- una solicitud que aprueba la Asamblea destino.
+-- ─────────────────────────────────────────────────────────────────
