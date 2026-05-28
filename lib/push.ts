@@ -89,6 +89,21 @@ export async function getLocalityMemberIds(
   return ((data ?? []) as Array<{ id: string }>).map((d) => d.id);
 }
 
+/** IDs de los miembros de la Asamblea (role='admin') de una localidad
+ *  (para avisar reuniones AEL). Usa service-role para no chocar con RLS. */
+export async function getLocalityAdminIds(
+  localityId: string
+): Promise<string[]> {
+  const supabase = createSupabaseAdmin();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("locality_id", localityId)
+    .eq("role", "admin");
+  return ((data ?? []) as Array<{ id: string }>).map((d) => d.id);
+}
+
 /** IDs de los admins con tag de chat en una localidad (para avisar mensajes
  *  entrantes). Usa service-role para no chocar con RLS de profiles. */
 export async function getChatAdminIds(

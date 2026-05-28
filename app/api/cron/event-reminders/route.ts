@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { getLocalityMemberIds, sendPushToUsers } from "@/lib/push";
+import {
+  getLocalityAdminIds,
+  getLocalityMemberIds,
+  sendPushToUsers,
+} from "@/lib/push";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +17,7 @@ type EventRow = {
   id: string;
   title: string;
   time: string;
+  kind: string | null;
   locality_id: string | null;
 };
 
@@ -53,7 +58,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase
     .from("calendar_events")
-    .select("id, title, time, locality_id")
+    .select("id, title, time, kind, locality_id")
     .eq("day", day)
     .eq("month", month)
     .eq("year", year)
@@ -68,19 +73,25 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, sent: 0 });
   }
 
-  // Cache de miembros por localidad para no re-consultar por evento.
-  const membersByLocality = new Map<string, string[]>();
+  // Las reuniones de Asamblea (reunion_ael) solo se recuerdan a los miembros
+  // de la AEL (role='admin'); el resto de eventos a toda la comunidad.
+  // Cacheamos por (localidad, audiencia) para no re-consultar por evento.
+  const recipientsByKey = new Map<string, string[]>();
   const processedIds: string[] = [];
 
   for (const ev of events) {
     if (!ev.locality_id) continue;
-    let recipients = membersByLocality.get(ev.locality_id);
+    const adminOnly = ev.kind === "reunion_ael";
+    const cacheKey = `${ev.locality_id}:${adminOnly ? "admin" : "all"}`;
+    let recipients = recipientsByKey.get(cacheKey);
     if (!recipients) {
-      recipients = await getLocalityMemberIds(ev.locality_id);
-      membersByLocality.set(ev.locality_id, recipients);
+      recipients = adminOnly
+        ? await getLocalityAdminIds(ev.locality_id)
+        : await getLocalityMemberIds(ev.locality_id);
+      recipientsByKey.set(cacheKey, recipients);
     }
     await sendPushToUsers(recipients, {
-      title: "Recordatorio de evento",
+      title: adminOnly ? "Recordatorio de reunión" : "Recordatorio de evento",
       body: `Mañana: ${ev.title}${ev.time ? ` — ${ev.time}` : ""}`,
       url: "/calendario",
       tag: `event-${ev.id}`,
