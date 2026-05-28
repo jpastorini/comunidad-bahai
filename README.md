@@ -358,9 +358,11 @@ Fuentes (Google Fonts vía `next/font`): **Cormorant Garamond** (display),
 - [x] Notificaciones de chat en 3 capas: in-app (sonido + badge), del
       sistema (segundo plano) y Web Push con la app cerrada (`web-push` +
       service worker, sin Edge Function). Ver "Notificaciones de chat".
-- [ ] Calendario dinámico (hoy se muestra Mayo 2026 fijo según el
-      prototipo): swap por mes/año actuales y navegación entre meses.
-- [ ] Bahá'í Calendar (19-day Feast + Holy Days): integrar el calendario
-      bahá'í además del gregoriano.
+- [x] Calendario dinámico: mes/año actuales con navegación entre meses
+      (`/calendario?m=YYYY-MM` + "Volver a hoy"), calendario admin agrupado
+      por mes ("Este mes"/"Próximo") y card del home con próximos eventos.
+- [x] Bahá'í Calendar (19-day Feast + Holy Days): integrado junto al
+      gregoriano — Fiestas y Días Sagrados se siembran en `calendar_events`
+      y se muestran unificados (`getUnifiedCalendarItems`).
 - [ ] i18n: estructura ya preparada para múltiples idiomas (Sora + Outfit
       cubren latin extended; añadir Persian con `next/font` si se necesita).

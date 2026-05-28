@@ -3,6 +3,7 @@ import { Banner, Card, PageHeader } from "@/components/admin/ui";
 import {
   IconActividades,
   IconArrowRight,
+  IconBell,
   IconCalendario,
   IconChat,
   IconMateriales,
@@ -11,6 +12,7 @@ import {
   IconTesoreria,
 } from "@/components/Icons";
 import { requireAdmin } from "@/lib/auth";
+import { getLocalityPushReach } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 type Stat = {
@@ -52,6 +54,8 @@ export default async function AdminHomePage({
       supabase.from("service_needs").select("id", { count: "exact", head: true }),
       supabase.from("profiles").select("id", { count: "exact", head: true }),
     ]);
+
+  const pushReach = await getLocalityPushReach(session.locality.id);
 
   // Cuenta solo mensajes enviados POR miembros (no las propias respuestas
   // de Secretaría) que todavía estén sin leer.
@@ -129,6 +133,14 @@ export default async function AdminHomePage({
       count: members.count ?? 0,
       Icon: IconActividades,
       color: COLOR_TERRA,
+    },
+    {
+      href: "/admin/comunicados",
+      label: "Push activo",
+      hint: "Miembros con notificaciones",
+      count: `${pushReach.withPush}/${pushReach.total}`,
+      Icon: IconBell,
+      color: COLOR_GOLD,
     },
   ];
 

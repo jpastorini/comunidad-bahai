@@ -1,19 +1,23 @@
 import Link from "next/link";
-import { Button, DataTable, PageHeader } from "@/components/admin/ui";
+import { Banner, Button, DataTable, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
+import { getLocalityPushReach } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { formatMessageDate } from "@/lib/format";
 import type { Message } from "@/lib/types";
 import { deleteComunicadoAction } from "./actions";
 
 export default async function AdminComunicadosPage() {
-  await requireAdmin();
+  const session = await requireAdmin();
   const supabase = createSupabaseServer();
-  const { data } = await supabase
-    .from("messages")
-    .select("*")
-    .eq("source", "asamblea_local")
-    .order("date", { ascending: false });
+  const [{ data }, pushReach] = await Promise.all([
+    supabase
+      .from("messages")
+      .select("*")
+      .eq("source", "asamblea_local")
+      .order("date", { ascending: false }),
+    getLocalityPushReach(session.locality.id),
+  ]);
 
   const rows = (data ?? []) as Message[];
 
@@ -27,6 +31,28 @@ export default async function AdminComunicadosPage() {
           <Button href="/admin/comunicados/nuevo">+ Nuevo comunicado</Button>
         }
       />
+
+      <div className="mb-4">
+        <Banner tone="info">
+          {pushReach.total === 0 ? (
+            "Aún no hay miembros en la comunidad."
+          ) : pushReach.withPush === 0 ? (
+            <>
+              Al publicar, la notificación push <strong>no llega a nadie</strong>{" "}
+              todavía: ninguno de los {pushReach.total} miembros activó las
+              notificaciones.
+            </>
+          ) : (
+            <>
+              Al publicar, la notificación push llega a{" "}
+              <strong>
+                {pushReach.withPush} de {pushReach.total}
+              </strong>{" "}
+              miembros con notificaciones activas.
+            </>
+          )}
+        </Banner>
+      </div>
 
       <DataTable
         rows={rows}

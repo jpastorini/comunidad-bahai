@@ -89,6 +89,33 @@ export async function getLocalityMemberIds(
   return ((data ?? []) as Array<{ id: string }>).map((d) => d.id);
 }
 
+/** Alcance de push de una localidad: cuántos de sus miembros tienen al
+ *  menos una suscripción activa, sobre el total. Usa service-role porque la
+ *  RLS de push_subscriptions solo deja ver las propias. */
+export async function getLocalityPushReach(
+  localityId: string
+): Promise<{ withPush: number; total: number }> {
+  const supabase = createSupabaseAdmin();
+  if (!supabase) return { withPush: 0, total: 0 };
+
+  const { data: members } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("locality_id", localityId);
+  const memberIds = ((members ?? []) as Array<{ id: string }>).map((m) => m.id);
+  if (memberIds.length === 0) return { withPush: 0, total: 0 };
+
+  const { data: subs } = await supabase
+    .from("push_subscriptions")
+    .select("user_id")
+    .in("user_id", memberIds);
+  const withPush = new Set(
+    ((subs ?? []) as Array<{ user_id: string }>).map((s) => s.user_id)
+  ).size;
+
+  return { withPush, total: memberIds.length };
+}
+
 /** IDs de los miembros de la Asamblea (role='admin') de una localidad
  *  (para avisar reuniones AEL). Usa service-role para no chocar con RLS. */
 export async function getLocalityAdminIds(
