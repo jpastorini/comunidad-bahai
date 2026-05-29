@@ -5,6 +5,7 @@ import {
   IconArrowRight,
   IconBell,
   IconCalendario,
+  IconCheck,
   IconChat,
   IconMateriales,
   IconMensajes,
@@ -38,8 +39,16 @@ export default async function AdminHomePage({
   const session = await requireAdmin();
   const supabase = createSupabaseServer();
 
-  const [messages, comunicados, activities, calendar, materials, needs, members] =
-    await Promise.all([
+  const [
+    messages,
+    comunicados,
+    activities,
+    calendar,
+    materials,
+    needs,
+    members,
+    pendingTasks,
+  ] = await Promise.all([
       supabase
         .from("messages")
         .select("id", { count: "exact", head: true })
@@ -53,6 +62,12 @@ export default async function AdminHomePage({
       supabase.from("study_materials").select("id", { count: "exact", head: true }),
       supabase.from("service_needs").select("id", { count: "exact", head: true }),
       supabase.from("profiles").select("id", { count: "exact", head: true }),
+      // Tareas de la Asamblea sin terminar (por hacer + en progreso).
+      supabase
+        .from("assembly_tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("scope", "local")
+        .neq("status", "hecha"),
     ]);
 
   const pushReach = await getLocalityPushReach(session.locality.id);
@@ -68,6 +83,14 @@ export default async function AdminHomePage({
     : { count: 0 };
 
   const stats: Stat[] = [
+    {
+      href: "/admin/tareas",
+      label: "Tareas pendientes",
+      hint: "De la Asamblea",
+      count: pendingTasks.count ?? 0,
+      Icon: IconCheck,
+      color: COLOR_GOLD,
+    },
     {
       href: "/admin/mensajes",
       label: "Mensajes",
