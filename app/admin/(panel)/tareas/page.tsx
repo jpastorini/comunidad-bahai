@@ -45,7 +45,14 @@ export default async function AdminTareasPage() {
         eyebrow="Asamblea Espiritual Local"
         title="Tareas de la Asamblea"
         description="Tablero interno de la Asamblea para listar las tareas que salen de la consulta y seguir su avance. Privado: solo lo ven los miembros de la Asamblea."
-        actions={<Button href="/admin/tareas/nueva">+ Nueva tarea</Button>}
+        actions={
+          <>
+            <Button variant="secondary" href="/admin/tareas/importar">
+              Importar acta
+            </Button>
+            <Button href="/admin/tareas/nueva">+ Nueva tarea</Button>
+          </>
+        }
       />
 
       <div className="mb-4">
