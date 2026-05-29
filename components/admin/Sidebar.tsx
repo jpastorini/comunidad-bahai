@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   IconActividades,
   IconCalendario,
+  IconCheck,
   IconChat,
   IconMateriales,
   IconMensajes,
@@ -24,6 +25,7 @@ type NavItem = {
 const NAV: NavItem[] = [
   { href: "/admin", label: "Inicio", Icon: IconActividades },
   { href: "/admin/comunicados", label: "Comunicados (Asamblea Local)", Icon: IconMensajes },
+  { href: "/admin/tareas", label: "Tareas de la Asamblea", Icon: IconCheck },
   { href: "/admin/fiestas", label: "Fiestas de 19 Días", Icon: IconCalendario },
   { href: "/admin/sugerencias", label: "Sugerencias", Icon: IconChat },
   { href: "/admin/actividades", label: "Actividades", Icon: IconActividades },
