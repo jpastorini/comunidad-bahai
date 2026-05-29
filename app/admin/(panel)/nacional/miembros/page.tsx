@@ -26,6 +26,9 @@ export default async function NacionalMiembrosPage() {
       .order("is_national_admin", { ascending: false })
       .order("role", { ascending: false })
       .order("created_at", { ascending: true })
+      // Desempate determinístico (ver nota en /admin/miembros): evita que la
+      // lista se reordene tras un UPDATE y descoordine los inputs.
+      .order("id", { ascending: true })
       .limit(100),
     supabase.from("localities").select("id, name, is_active").order("name"),
   ]);
@@ -52,7 +55,10 @@ export default async function NacionalMiembrosPage() {
       <div className="grid gap-3">
         {profiles.map((p) => (
           <MemberCard
-            key={p.id}
+            // Ver nota en /admin/miembros: la key con los campos editables
+            // remonta la tarjeta cuando cambian los datos, evitando inputs
+            // no controlados con valores "pegados".
+            key={`${p.id}:${p.full_name}:${p.role}:${p.locality_id}:${p.is_national_admin}:${p.can_respond_chat}:${p.can_manage_treasury}`}
             profile={p}
             localities={localities}
             currentLocality={p.locality_id ? localityMap.get(p.locality_id) : undefined}

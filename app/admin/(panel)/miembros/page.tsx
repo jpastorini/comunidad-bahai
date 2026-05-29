@@ -29,6 +29,10 @@ export default async function AdminMiembrosPage() {
       .eq("locality_id", session.locality.id)
       .order("role", { ascending: false })
       .order("created_at", { ascending: true })
+      // Desempate determinístico: sin esto, las filas con mismo rol y
+      // created_at empatado pueden volver en distinto orden tras un UPDATE,
+      // descoordinando los inputs no controlados (nombre) del resto.
+      .order("id", { ascending: true })
       .limit(100),
     // Solicitudes de ingreso PENDIENTES hacia esta localidad.
     supabase
@@ -108,7 +112,14 @@ export default async function AdminMiembrosPage() {
 
       <div className="grid gap-3">
         {profiles.map((p) => (
-          <MemberCard key={p.id} profile={p} isMe={p.id === session.user.id} />
+          <MemberCard
+            // La key incluye los campos editables: si el server devuelve datos
+            // nuevos tras guardar, la tarjeta se remonta y los inputs no
+            // controlados (nombre, rol, checkboxes) reflejan el valor real.
+            key={`${p.id}:${p.full_name}:${p.role}:${p.can_respond_chat}:${p.can_manage_treasury}`}
+            profile={p}
+            isMe={p.id === session.user.id}
+          />
         ))}
       </div>
     </>
