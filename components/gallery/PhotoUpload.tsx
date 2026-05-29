@@ -17,7 +17,8 @@ export function PhotoUpload({ eventType, eventId }: Props) {
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
@@ -33,7 +34,8 @@ export function PhotoUpload({ eventType, eventId }: Props) {
     setPreview(null);
     setCaption("");
     setConsent(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (galleryInputRef.current) galleryInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -100,7 +102,7 @@ export function PhotoUpload({ eventType, eventId }: Props) {
           </button>
         </div>
       ) : (
-        <label className="mb-3 flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-black/[0.15] bg-bg/40 px-3 py-6 text-center text-[12px] text-muted hover:bg-bg/70 cursor-pointer">
+        <div className="mb-3 rounded-xl border border-dashed border-black/[0.15] bg-bg/40 px-3 py-5 text-center">
           <svg
             width="22"
             height="22"
@@ -110,22 +112,54 @@ export function PhotoUpload({ eventType, eventId }: Props) {
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="text-terra"
+            className="mx-auto text-terra"
           >
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
             <circle cx="8.5" cy="8.5" r="1.5" />
             <polyline points="21 15 16 10 5 21" />
           </svg>
-          <span className="font-semibold text-terra">Elegir foto</span>
-          <span>O sacarla con la cámara · max 10 MB</span>
+          <p className="mt-1 text-[11.5px] text-muted">Agregá una foto · max 10 MB</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => galleryInputRef.current?.click()}
+              className="tap flex items-center justify-center gap-1.5 rounded-xl border border-black/[0.1] bg-card px-3 py-2 text-[12.5px] font-semibold text-terra"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+              Galería
+            </button>
+            <button
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+              className="tap flex items-center justify-center gap-1.5 rounded-xl border border-black/[0.1] bg-card px-3 py-2 text-[12.5px] font-semibold text-terra"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              Cámara
+            </button>
+          </div>
           <input
-            ref={fileInputRef}
+            ref={galleryInputRef}
             type="file"
             accept="image/*"
             onChange={onFileChange}
             className="hidden"
           />
-        </label>
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={onFileChange}
+            className="hidden"
+          />
+        </div>
       )}
 
       <div className="mb-3">
