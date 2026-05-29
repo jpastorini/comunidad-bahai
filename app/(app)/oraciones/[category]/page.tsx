@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { GoldHeader } from "@/components/GoldHeader";
 import { IconChevronRight } from "@/components/Icons";
 import { requireMember } from "@/lib/auth";
-import { findCategory } from "@/lib/oraciones";
+import { countWords, findCategory } from "@/lib/oraciones";
 
 export const revalidate = 60;
 
@@ -47,11 +47,13 @@ export default async function CategoriaOracionesPage({
                     <div className="text-[13.5px] font-medium leading-snug text-dark">
                       {prayer.title}
                     </div>
-                    {prayer.author && (
-                      <div className="mt-0.5 font-body text-[11px] text-muted">
-                        {prayer.author}
-                      </div>
-                    )}
+                    <div className="mt-0.5 flex items-center gap-1.5 font-body text-[11px] text-muted">
+                      {prayer.author && <span className="truncate">{prayer.author}</span>}
+                      {prayer.author && <span aria-hidden>·</span>}
+                      <span className="shrink-0">
+                        {countWords(prayer.body)} palabras
+                      </span>
+                    </div>
                   </div>
                   <IconChevronRight size={14} className="shrink-0 text-muted" />
                 </Link>

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { GoldHeader } from "@/components/GoldHeader";
 import { requireMember } from "@/lib/auth";
 import { findPrayer } from "@/lib/oraciones";
+import { PrayerReader } from "../../prayer-reader";
 import { SharePrayerButton } from "../../share-button";
 
 export const revalidate = 60;
@@ -26,14 +27,7 @@ export default async function OracionLecturaPage({
       />
       <main className="scroll-area flex-1 px-4 pb-8 pt-4">
         <article className="rounded-2xl bg-card p-5 shadow-card">
-          <p className="whitespace-pre-line font-body text-[15.5px] leading-[1.75] text-dark">
-            {prayer.body}
-          </p>
-          {prayer.author && (
-            <p className="mt-5 text-right font-display text-[14px] italic text-muted">
-              — {prayer.author}
-            </p>
-          )}
+          <PrayerReader body={prayer.body} author={prayer.author} />
           <div className="mt-5 border-t border-black/[0.06] pt-4">
             <SharePrayerButton
               title={prayer.title}

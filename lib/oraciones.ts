@@ -39,6 +39,12 @@ export function getOraciones(): OracionesData {
   return data;
 }
 
+/** Cantidad de palabras de un texto (separadas por espacios en blanco).
+ *  Se usa para mostrar la extensión de cada oración en el índice. */
+export function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 export function findCategory(
   categoryId: string
 ): { group: PrayerGroup; category: PrayerCategory } | null {
