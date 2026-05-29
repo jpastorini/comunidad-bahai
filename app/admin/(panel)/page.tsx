@@ -24,6 +24,8 @@ type Stat = {
   Icon: typeof IconMensajes;
   color: string;
   requires?: "chat" | "treasury" | "national";
+  /** Áreas de mayor atención: tile más grande y con fondo tenue. */
+  featured?: boolean;
 };
 
 const COLOR_TERRA = "#2A3F8F";
@@ -90,6 +92,7 @@ export default async function AdminHomePage({
       count: pendingTasks.count ?? 0,
       Icon: IconCheck,
       color: COLOR_GOLD,
+      featured: true,
     },
     {
       href: "/admin/mensajes",
@@ -115,6 +118,7 @@ export default async function AdminHomePage({
       count: calendar.count ?? 0,
       Icon: IconCalendario,
       color: COLOR_GREEN,
+      featured: true,
     },
     {
       href: "/admin/comunicados",
@@ -146,8 +150,9 @@ export default async function AdminHomePage({
       hint: "Mensajes pendientes",
       count: chatUnread.count ?? 0,
       Icon: IconChat,
-      color: COLOR_GOLD,
+      color: COLOR_AMBER,
       requires: "chat",
+      featured: true,
     },
     {
       href: "/admin/miembros",
@@ -174,6 +179,8 @@ export default async function AdminHomePage({
     if (s.requires === "national") return session.profile.is_national_admin;
     return true;
   });
+  const featuredStats = visibleStats.filter((s) => s.featured);
+  const regularStats = visibleStats.filter((s) => !s.featured);
 
   return (
     <>
@@ -200,8 +207,50 @@ export default async function AdminHomePage({
         </div>
       )}
 
+      {/* Áreas de mayor atención: tiles grandes, con fondo tenue por color. */}
+      {featuredStats.length > 0 && (
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
+          {featuredStats.map((s) => (
+            <Link
+              key={s.href}
+              href={s.href}
+              className="tap group flex flex-col gap-5 rounded-2xl border p-6 shadow-card transition hover:-translate-y-0.5 hover:shadow-card-elevated"
+              style={{
+                background: `${s.color}0D`,
+                borderColor: `${s.color}33`,
+              }}
+            >
+              <div className="flex items-start justify-between">
+                <div
+                  className="flex h-14 w-14 items-center justify-center rounded-2xl"
+                  style={{ background: `${s.color}1F`, color: s.color }}
+                >
+                  <s.Icon size={26} />
+                </div>
+                <span
+                  className="font-display text-[44px] font-bold leading-none"
+                  style={{ color: s.color }}
+                >
+                  {s.count}
+                </span>
+              </div>
+              <div>
+                <div className="text-[16px] font-semibold text-dark">{s.label}</div>
+                <div className="text-[12px] text-muted">{s.hint}</div>
+              </div>
+              <span
+                className="mt-auto inline-flex items-center gap-1 text-[12px] font-semibold transition group-hover:gap-2"
+                style={{ color: s.color }}
+              >
+                Gestionar <IconArrowRight size={12} />
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
-        {visibleStats.map((s) => (
+        {regularStats.map((s) => (
           <Link
             key={s.href}
             href={s.href}
