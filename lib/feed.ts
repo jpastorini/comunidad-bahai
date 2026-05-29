@@ -1,23 +1,23 @@
 /**
  * Feed social del Home (Fase 2).
  *
- * El feed es **derivado** — no hay tabla `posts`. Se construye combinando:
- *   1. Uploads recientes de fotos a event_photos, agrupados por
- *      (event_type, event_id, uploader_user_id, ventana de 6 horas).
- *   2. Comunicados de la Asamblea Local recientes (messages con
- *      source='asamblea_local').
+ * El feed es **derivado** — no hay tabla `posts`. Se construye a partir de
+ * los uploads recientes de fotos a event_photos, agrupados por
+ * (event_type, event_id, uploader_user_id, ventana de 6 horas).
  *
- * Ordenado por timestamp más reciente del grupo/comunicado.
+ * Los comunicados NO viven en el feed: el último se muestra en el card
+ * destacado del Home y la lista completa en /comunicados.
+ *
+ * Ordenado por timestamp más reciente del grupo.
  */
 
 import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
-import type { EventPhoto, Message } from "./types";
+import type { EventPhoto } from "./types";
 
 const GROUPING_WINDOW_HOURS = 6;
 const GROUPING_WINDOW_MS = GROUPING_WINDOW_HOURS * 60 * 60 * 1000;
 const PHOTOS_PER_GROUP_PREVIEW = 4;
 const RAW_PHOTO_FETCH = 60; // últimos N uploads para agrupar
-const RAW_ANNOUNCEMENT_FETCH = 5;
 
 export type FeedPhotoGroup = {
   type: "photos";
@@ -38,15 +38,7 @@ export type FeedPhotoGroup = {
   last_at: string; // usado para ordenar
 };
 
-export type FeedAnnouncement = {
-  type: "announcement";
-  id: string;
-  title: string;
-  excerpt: string;
-  created_at: string;
-};
-
-export type FeedItem = FeedPhotoGroup | FeedAnnouncement;
+export type FeedItem = FeedPhotoGroup;
 
 export async function getHomeFeed(limit = 10): Promise<FeedItem[]> {
   if (!isSupabaseConfigured()) return [];
@@ -113,46 +105,15 @@ export async function getHomeFeed(limit = 10): Promise<FeedItem[]> {
     if (p.created_at > g.last_at) g.last_at = p.created_at;
   }
 
-  const groups = Array.from(groupsMap.values());
+  // 2) Ordenar por timestamp más reciente del grupo, tomar limit.
+  const top = Array.from(groupsMap.values())
+    .sort((a, b) => b.last_at.localeCompare(a.last_at))
+    .slice(0, limit);
 
-  // 2) Comunicados recientes de Asamblea Local.
-  const { data: rawMessages } = await supabase
-    .from("messages")
-    .select("id, title, excerpt, date")
-    .eq("source", "asamblea_local")
-    .order("date", { ascending: false })
-    .limit(RAW_ANNOUNCEMENT_FETCH);
-
-  const announcements: FeedAnnouncement[] = (
-    (rawMessages ?? []) as Array<
-      Pick<Message, "id" | "title" | "excerpt"> & { date: string }
-    >
-  ).map((m) => ({
-    type: "announcement",
-    id: m.id,
-    title: m.title,
-    excerpt: m.excerpt,
-    created_at: m.date,
-  }));
-
-  // 3) Merge + sort por timestamp más reciente, take limit.
-  const merged: FeedItem[] = [
-    ...groups,
-    ...announcements,
-  ].sort((a, b) => tsOf(b).localeCompare(tsOf(a)));
-  const top = merged.slice(0, limit);
-
-  // 4) Enriquecer photo groups con datos del evento, avatares y contadores.
-  const photoGroups = top.filter(
-    (i): i is FeedPhotoGroup => i.type === "photos"
-  );
-  await enrichPhotoGroups(photoGroups);
+  // 3) Enriquecer photo groups con datos del evento, avatares y contadores.
+  await enrichPhotoGroups(top);
 
   return top;
-}
-
-function tsOf(item: FeedItem): string {
-  return item.type === "photos" ? item.last_at : item.created_at;
 }
 
 async function enrichPhotoGroups(groups: FeedPhotoGroup[]) {

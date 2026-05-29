@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
-import { BahaiStar } from "@/components/BahaiStar";
-import type {
-  FeedAnnouncement,
-  FeedItem,
-  FeedPhotoGroup,
-} from "@/lib/feed";
+import type { FeedItem, FeedPhotoGroup } from "@/lib/feed";
 
 type Props = {
   items: FeedItem[];
@@ -21,13 +16,9 @@ export function HomeFeed({ items }: Props) {
         </h2>
       </div>
       <ul className="flex flex-col gap-2.5">
-        {items.map((item) =>
-          item.type === "photos" ? (
-            <PhotoGroupCard key={item.id} group={item} />
-          ) : (
-            <AnnouncementCard key={item.id} announcement={item} />
-          )
-        )}
+        {items.map((item) => (
+          <PhotoGroupCard key={item.id} group={item} />
+        ))}
       </ul>
     </section>
   );
@@ -150,41 +141,6 @@ function PhotoPreviewGrid({
         </div>
       ))}
     </div>
-  );
-}
-
-function AnnouncementCard({ announcement }: { announcement: FeedAnnouncement }) {
-  return (
-    <li className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-terra to-[#3D56B0] px-4 py-3.5 text-white shadow-card">
-      <div className="pointer-events-none absolute -bottom-3 -right-2 opacity-[0.07]">
-        <BahaiStar size={70} color="#fff" />
-      </div>
-      <div className="relative">
-        <div className="flex items-center gap-2 text-[9.5px] font-bold uppercase tracking-[1.5px] text-white/65">
-          <span>✦ Asamblea Local</span>
-          <span className="rounded bg-white/15 px-1.5 py-[1px] text-[8.5px] tracking-wide">
-            Oficial
-          </span>
-          <span className="ml-auto text-[9.5px] font-medium tracking-normal text-white/55 normal-case">
-            {formatRelative(announcement.created_at)}
-          </span>
-        </div>
-        <div className="mt-1.5 font-display text-[16px] font-semibold leading-tight">
-          {announcement.title}
-        </div>
-        {announcement.excerpt && (
-          <p className="mt-1 font-body text-[11.5px] leading-snug text-white/75">
-            {announcement.excerpt}
-          </p>
-        )}
-        <Link
-          href="/comunicados"
-          className="tap mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold text-white"
-        >
-          Leer comunicado →
-        </Link>
-      </div>
-    </li>
   );
 }
 
