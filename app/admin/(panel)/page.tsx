@@ -15,6 +15,7 @@ import {
 import { requireAdmin } from "@/lib/auth";
 import { getLocalityPushReach } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { ROLE_LABELS } from "@/lib/types";
 
 type Stat = {
   href: string;
@@ -290,7 +291,7 @@ export default async function AdminHomePage({
             <li className="flex items-center justify-between">
               <span>Rol</span>
               <span className="rounded bg-terra/10 px-2 py-0.5 text-[11px] font-bold uppercase text-terra">
-                {session.profile.role}
+                {ROLE_LABELS[session.profile.role]}
               </span>
             </li>
             <li className="flex items-center justify-between">

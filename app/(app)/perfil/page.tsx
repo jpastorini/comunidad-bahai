@@ -4,7 +4,7 @@ import { IconChevronRight } from "@/components/Icons";
 import { requireMember } from "@/lib/auth";
 import { cancelLocalityChangeAction } from "@/app/seleccionar-localidad/actions";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import type { EventPhoto, LocalityChangeRequest } from "@/lib/types";
+import { ROLE_LABELS, type EventPhoto, type LocalityChangeRequest } from "@/lib/types";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { PushToggle } from "@/components/PushToggle";
 import { AvatarEditor } from "./avatar-editor";
@@ -273,7 +273,7 @@ function buildRoleChips(
   }
   if (profile.role === "admin") {
     chips.push({
-      label: "Admin",
+      label: ROLE_LABELS.admin,
       className: "bg-terra/15 text-terra",
     });
   }

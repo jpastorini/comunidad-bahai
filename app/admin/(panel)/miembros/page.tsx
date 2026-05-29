@@ -9,7 +9,11 @@ import {
 } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import type { LocalityChangeRequest, Profile } from "@/lib/types";
+import {
+  ROLE_LABELS,
+  type LocalityChangeRequest,
+  type Profile,
+} from "@/lib/types";
 import { decideLocalityChangeAction, updateMemberAction } from "./actions";
 
 export default async function AdminMiembrosPage() {
@@ -95,10 +99,10 @@ export default async function AdminMiembrosPage() {
 
       <div className="mb-4">
         <Banner tone="warning">
-          Para invitar a un nuevo miembro: pídele que abra{" "}
+          Para invitar a una persona nueva: pídele que abra{" "}
           <code className="rounded bg-amber-100 px-1">/login</code> con su
           correo. Aparecerá aquí tras su primer ingreso (como{" "}
-          <code className="rounded bg-amber-100 px-1">member</code>).
+          <strong>{ROLE_LABELS.member}</strong>).
         </Banner>
       </div>
 
@@ -190,8 +194,8 @@ function MemberCard({ profile, isMe }: { profile: Profile; isMe: boolean }) {
 
           <Field label="Rol" name="role">
             <Select name="role" defaultValue={profile.role} disabled={isMe}>
-              <option value="member">Miembro</option>
-              <option value="admin">Admin</option>
+              <option value="member">{ROLE_LABELS.member}</option>
+              <option value="admin">{ROLE_LABELS.admin}</option>
             </Select>
           </Field>
 

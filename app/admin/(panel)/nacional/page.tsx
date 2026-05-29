@@ -63,13 +63,13 @@ export default async function AdminNacionalPage() {
         </p>
         <ul className="mt-2 list-inside list-disc space-y-1 text-[13px] text-dark">
           <li>Crear nuevas localidades (Comunidades Bahá'ís)</li>
-          <li>Asignar la localidad de cada miembro</li>
+          <li>Asignar la localidad de cada usuario</li>
           <li>
-            Promover a miembros como administradores de sus localidades
+            Promover a Usuarios de la Comunidad a Miembros de la Asamblea Local
           </li>
           <li>
-            Otorgar tags especiales (Chat Secretaría, Tesorería) a admins
-            locales
+            Otorgar tags especiales (Chat Secretaría, Tesorería) a Miembros de
+            la Asamblea Local
           </li>
         </ul>
         <p className="mt-3 text-[12px] text-muted">

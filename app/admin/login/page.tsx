@@ -11,7 +11,7 @@ const ERROR_COPY: Record<string, string> = {
   "no-supabase":
     "Supabase no está configurado. Define NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY en .env.local.",
   "not-admin":
-    "Tu cuenta no tiene rol de administrador. Pide a un miembro de la Asamblea que te promueva.",
+    "Tu cuenta no es Miembro de la Asamblea Local. Pide a un miembro de la Asamblea que te dé acceso.",
   "callback-failed":
     "No pudimos validar el enlace mágico. Solicita uno nuevo.",
 };

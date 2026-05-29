@@ -13,7 +13,7 @@ import {
   IconTesoreria,
 } from "@/components/Icons";
 import { BahaiStar } from "@/components/BahaiStar";
-import type { Locality, Profile } from "@/lib/types";
+import { ROLE_LABELS, type Locality, type Profile } from "@/lib/types";
 
 type NavItem = {
   href: string;
@@ -164,7 +164,7 @@ export function SidebarContent({ profile, locality, onNavigate }: Props) {
             </span>
           )}
           <span className="rounded bg-terra/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-terra">
-            {profile.role}
+            {ROLE_LABELS[profile.role]}
           </span>
           {profile.can_respond_chat && (
             <span className="rounded bg-amber/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber">

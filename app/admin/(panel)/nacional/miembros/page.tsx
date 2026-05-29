@@ -8,7 +8,7 @@ import {
 } from "@/components/admin/ui";
 import { requireNationalAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import type { Locality, Profile } from "@/lib/types";
+import { ROLE_LABELS, type Locality, type Profile } from "@/lib/types";
 import { updateMemberLocalityAction } from "../actions";
 
 export const revalidate = 60;
@@ -103,7 +103,7 @@ function MemberCard({
             )}
             {profile.role === "admin" && (
               <span className="rounded bg-terra/15 px-2 py-0.5 text-[10px] font-bold uppercase text-terra">
-                Admin local
+                {ROLE_LABELS.admin}
               </span>
             )}
           </div>
@@ -123,8 +123,8 @@ function MemberCard({
           </Field>
           <Field label="Rol" name="role">
             <Select name="role" defaultValue={profile.role} disabled={isMe}>
-              <option value="member">Miembro</option>
-              <option value="admin">Admin local</option>
+              <option value="member">{ROLE_LABELS.member}</option>
+              <option value="admin">{ROLE_LABELS.admin}</option>
             </Select>
           </Field>
         </div>

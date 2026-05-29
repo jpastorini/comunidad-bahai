@@ -45,6 +45,16 @@ export type Profile = {
   created_at: string;
 };
 
+/**
+ * Etiquetas visibles de los roles. Los valores en la base de datos siguen
+ * siendo 'member' / 'admin' (RLS, triggers, tipos); esto es solo el texto
+ * descriptivo que ve la gente, pensado para usuarios no técnicos.
+ */
+export const ROLE_LABELS: Record<Profile["role"], string> = {
+  member: "Usuario Comunidad",
+  admin: "Miembro Asamblea Local",
+};
+
 export type Locality = {
   id: string;
   name: string;
