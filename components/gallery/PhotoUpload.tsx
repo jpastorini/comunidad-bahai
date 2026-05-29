@@ -122,7 +122,6 @@ export function PhotoUpload({ eventType, eventId }: Props) {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             onChange={onFileChange}
             className="hidden"
           />
