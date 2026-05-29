@@ -40,9 +40,9 @@ export function FeaturedPhotos({ photos }: { photos: FeaturedPhoto[] }) {
         </h2>
         <Link
           href="/boletin"
-          className="tap text-[12px] font-semibold text-gold-dark"
+          className="tap inline-flex items-center gap-1 rounded-full border border-gold/40 bg-gold/[0.07] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.6px] text-gold-dark"
         >
-          Ver boletín nacional →
+          Boletín nacional →
         </Link>
       </div>
       <div className="-mx-3.5 flex gap-2.5 overflow-x-auto px-3.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
