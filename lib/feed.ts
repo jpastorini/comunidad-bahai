@@ -11,6 +11,7 @@
  * Ordenado por timestamp más reciente del grupo.
  */
 
+import { eventMetaKey, resolveEventMeta } from "./event-photos";
 import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
 import type { EventPhoto } from "./types";
 
@@ -120,54 +121,11 @@ async function enrichPhotoGroups(groups: FeedPhotoGroup[]) {
   if (groups.length === 0) return;
   const supabase = createSupabaseServer();
 
-  const calendarIds = Array.from(
-    new Set(groups.filter((g) => g.event_type === "calendar").map((g) => g.event_id))
-  );
-  const feastIds = Array.from(
-    new Set(groups.filter((g) => g.event_type === "feast").map((g) => g.event_id))
-  );
   const uploaderIds = Array.from(new Set(groups.map((g) => g.uploader_user_id)));
   const allPhotoIds = groups.flatMap((g) => g.photo_ids);
 
-  // Eventos del calendario
-  const calendarMap = new Map<string, { title: string; when: string | null }>();
-  if (calendarIds.length > 0) {
-    const { data } = await supabase
-      .from("calendar_events")
-      .select("id, title, day, month, year, time")
-      .in("id", calendarIds);
-    for (const r of (data ?? []) as Array<{
-      id: string;
-      title: string;
-      day: number;
-      month: number;
-      year: number;
-      time: string | null;
-    }>) {
-      calendarMap.set(r.id, {
-        title: r.title,
-        when: formatEventDate(r.day, r.month, r.year, r.time),
-      });
-    }
-  }
-
-  // Fiestas
-  const feastMap = new Map<string, { title: string; when: string | null }>();
-  if (feastIds.length > 0) {
-    const { data } = await supabase
-      .from("feasts")
-      .select("id, bahai_month_name")
-      .in("id", feastIds);
-    for (const r of (data ?? []) as Array<{
-      id: string;
-      bahai_month_name: string;
-    }>) {
-      feastMap.set(r.id, {
-        title: `Fiesta de ${r.bahai_month_name}`,
-        when: null,
-      });
-    }
-  }
+  // Título + fecha del evento (resolución compartida con admin/boletín).
+  const eventMeta = await resolveEventMeta(groups);
 
   // Avatares de uploaders
   const avatarMap = new Map<string, string | null>();
@@ -203,10 +161,7 @@ async function enrichPhotoGroups(groups: FeedPhotoGroup[]) {
   }
 
   for (const g of groups) {
-    const ev =
-      g.event_type === "calendar"
-        ? calendarMap.get(g.event_id)
-        : feastMap.get(g.event_id);
+    const ev = eventMeta.get(eventMetaKey(g.event_type, g.event_id));
     g.event_title = ev?.title ?? "Evento";
     g.event_when = ev?.when ?? null;
     g.uploader_avatar_url = avatarMap.get(g.uploader_user_id) ?? null;
@@ -219,21 +174,4 @@ async function enrichPhotoGroups(groups: FeedPhotoGroup[]) {
       0
     );
   }
-}
-
-const MONTHS_ABBR_ES = [
-  "ene", "feb", "mar", "abr", "may", "jun",
-  "jul", "ago", "sep", "oct", "nov", "dic",
-];
-
-function formatEventDate(
-  day: number,
-  month: number,
-  year: number,
-  time: string | null
-): string {
-  const monthAbbr = MONTHS_ABBR_ES[month - 1] ?? "";
-  const date = `${day} ${monthAbbr}`;
-  const yearShort = year !== new Date().getFullYear() ? ` ${year}` : "";
-  return time ? `${date}${yearShort} · ${time}` : `${date}${yearShort}`;
 }

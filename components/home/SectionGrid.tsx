@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 import {
   IconCalendario,
   IconChat,
+  IconGaleria,
   IconMensajes,
   IconOraciones,
 } from "../Icons";
@@ -34,6 +35,7 @@ export function SectionGrid({ badges }: Props) {
   const AMBER = "#7E44B8";
   const GOLD = "#96790E";
   const GREEN = "#6A8B5F";
+  const ROSE = "#B0506B";
 
   const sections: SectionItem[] = [
     {
@@ -61,6 +63,12 @@ export function SectionGrid({ badges }: Props) {
       title: "Fiestas",
       Icon: IconCalendario,
       color: GREEN,
+    },
+    {
+      href: "/boletin",
+      title: "Boletín",
+      Icon: IconGaleria,
+      color: ROSE,
     },
   ];
 

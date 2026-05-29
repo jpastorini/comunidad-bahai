@@ -6,7 +6,9 @@ import {
   EVENT_PHOTOS_BUCKET,
   MAX_UPLOAD_BYTES,
   MONTHLY_UPLOAD_LIMIT,
+  eventMetaKey,
   getMonthlyUploadCount,
+  resolveEventMeta,
 } from "@/lib/event-photos";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
@@ -78,6 +80,11 @@ export async function uploadEventPhotoAction(
     .from(EVENT_PHOTOS_BUCKET)
     .getPublicUrl(path);
 
+  // Snapshot del título del evento (para mostrarlo en el boletín nacional,
+  // donde la RLS no deja resolver eventos de otras localidades).
+  const meta = await resolveEventMeta([{ event_type: eventType, event_id: eventId }]);
+  const eventTitle = meta.get(eventMetaKey(eventType, eventId))?.title ?? null;
+
   const { error: insertError } = await supabase.from("event_photos").insert({
     event_type: eventType,
     event_id: eventId,
@@ -86,6 +93,7 @@ export async function uploadEventPhotoAction(
     storage_path: path,
     public_url: pub.publicUrl,
     caption: caption || null,
+    event_title: eventTitle,
     file_size_bytes: file.size,
     mime_type: file.type,
     locality_id: session.locality.id,

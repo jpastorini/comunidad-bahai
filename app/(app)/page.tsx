@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { FeaturedMessageCard } from "@/components/home/FeaturedMessageCard";
+import { FeaturedPhotos } from "@/components/home/FeaturedPhotos";
 import { HomeFeed } from "@/components/home/HomeFeed";
 import { GoldHeader } from "@/components/GoldHeader";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -13,6 +14,7 @@ import {
   getLatestLocalAnnouncement,
   getUpcomingCalendarEvents,
 } from "@/lib/data";
+import { getFeaturedPhotos } from "@/lib/event-photos";
 import { getHomeFeed } from "@/lib/feed";
 import { getUnreadNotificationCount } from "@/lib/notifications";
 
@@ -20,13 +22,15 @@ export const revalidate = 60;
 
 export default async function HomePage() {
   const session = await requireMember("/");
-  const [featured, upcoming, badges, unreadNotifs, feed] = await Promise.all([
-    getLatestLocalAnnouncement(),
-    getUpcomingCalendarEvents(2),
-    getBadges(session.user.id),
-    getUnreadNotificationCount(session.user.id),
-    getHomeFeed(10),
-  ]);
+  const [featured, upcoming, badges, unreadNotifs, feed, featuredPhotos] =
+    await Promise.all([
+      getLatestLocalAnnouncement(),
+      getUpcomingCalendarEvents(2),
+      getBadges(session.user.id),
+      getUnreadNotificationCount(session.user.id),
+      getHomeFeed(10),
+      getFeaturedPhotos(session.locality.id),
+    ]);
 
   return (
     <>
@@ -60,6 +64,7 @@ export default async function HomePage() {
         )}
         <SectionGrid badges={badges} />
         <UpcomingEvents events={upcoming} />
+        <FeaturedPhotos photos={featuredPhotos} />
         <HomeFeed items={feed} />
       </main>
     </>
