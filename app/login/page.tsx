@@ -79,6 +79,18 @@ export default function MemberLoginPage({
               </a>
             </div>
           </div>
+
+          <p className="mt-5 text-center text-[11.5px] text-white/65">
+            Al ingresar aceptás nuestros{" "}
+            <a href="/terminos" className="font-medium text-white underline">
+              Términos
+            </a>{" "}
+            y{" "}
+            <a href="/privacidad" className="font-medium text-white underline">
+              Política de Privacidad
+            </a>
+            .
+          </p>
         </div>
       </main>
     </div>
