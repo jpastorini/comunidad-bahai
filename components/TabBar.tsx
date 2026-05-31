@@ -50,20 +50,27 @@ export function TabBar({ aelHasUnseen = false }: { aelHasUnseen?: boolean }) {
             <li key={tab.href}>
               <Link
                 href={tab.href}
-                className={`tap relative flex flex-col items-center gap-[3px] ${
-                  isActive ? "text-terra" : "text-muted"
-                }`}
+                aria-current={isActive ? "page" : undefined}
+                className="tap relative flex flex-col items-center gap-1"
               >
-                {showUnseen && (
-                  <span
-                    aria-label="Hay novedades en el chat"
-                    className="absolute -right-1.5 -top-0.5 h-[7px] w-[7px] rounded-full bg-rose-500 ring-2 ring-card"
-                  />
-                )}
-                <tab.Icon size={20} />
                 <span
-                  className={`text-[10px] tracking-[0.1px] ${
-                    isActive ? "font-semibold" : "font-normal"
+                  className={`relative flex items-center justify-center rounded-full px-4 py-1 transition-colors ${
+                    isActive ? "bg-terra/10 text-terra" : "text-dark/45"
+                  }`}
+                >
+                  {showUnseen && (
+                    <span
+                      aria-label="Hay novedades en el chat"
+                      className="absolute right-1.5 top-0 h-[7px] w-[7px] rounded-full bg-rose-500 ring-2 ring-card"
+                    />
+                  )}
+                  <tab.Icon size={22} />
+                </span>
+                <span
+                  className={`text-[10.5px] tracking-[0.1px] ${
+                    isActive
+                      ? "font-semibold text-terra"
+                      : "font-medium text-dark/55"
                   }`}
                 >
                   {tab.label}

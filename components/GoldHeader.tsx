@@ -8,8 +8,10 @@ import { IconChevronLeft } from "./Icons";
 type GoldHeaderProps = {
   title: string;
   subtitle?: string;
-  /** Pass a href (e.g. "/") to render a back-to-home link. */
+  /** Pass a href (e.g. "/") to render a back link. */
   backHref?: string;
+  /** Texto del botón Volver. Default: "Inicio" si backHref es "/", sino "Volver". */
+  backLabel?: string;
   /** Custom right-side content (date, status, etc.). */
   rightSlot?: ReactNode;
   /** Extra content below subtitle (search bar, avatar row…). */
@@ -22,10 +24,12 @@ export function GoldHeader({
   title,
   subtitle,
   backHref,
+  backLabel,
   rightSlot,
   children,
   starSize = 100,
 }: GoldHeaderProps) {
+  const backText = backLabel ?? (backHref === "/" ? "Inicio" : "Volver");
   return (
     <header
       className="relative shrink-0 overflow-hidden rounded-b-[20px] bg-gold-grad px-5 pb-5"
@@ -45,10 +49,10 @@ export function GoldHeader({
       {backHref && (
         <Link
           href={backHref}
-          className="tap relative mb-3 inline-flex items-center gap-2 text-white/60"
+          className="tap relative mb-3 inline-flex items-center gap-1 rounded-full bg-white/15 py-1.5 pl-2 pr-3.5 text-white ring-1 ring-white/15 active:scale-95"
         >
-          <IconChevronLeft size={14} className="text-white/70" />
-          <span className="font-body text-[13px]">Inicio</span>
+          <IconChevronLeft size={16} className="text-white" />
+          <span className="font-body text-[13px] font-medium">{backText}</span>
         </Link>
       )}
 
