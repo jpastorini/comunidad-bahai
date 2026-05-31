@@ -1,4 +1,5 @@
 import { ChatNotifier } from "@/components/ChatNotifier";
+import { PhotoFab } from "@/components/PhotoFab";
 import { TabBar } from "@/components/TabBar";
 import { requireMember } from "@/lib/auth";
 import { getBadges } from "@/lib/data";
@@ -22,6 +23,7 @@ export default async function AppLayout({
     <div id="app-shell">
       <ChatNotifier userId={session.user.id} side="member" />
       {children}
+      <PhotoFab />
       <TabBar aelHasUnseen={aelHasUnseen} />
     </div>
   );
