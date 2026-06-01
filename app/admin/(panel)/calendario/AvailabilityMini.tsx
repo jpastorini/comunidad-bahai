@@ -150,7 +150,7 @@ function MiniRow({
                   ? `rgba(16,185,129,${0.12 + 0.78 * Math.min(intensity, 1)})`
                   : sometimes > 0
                     ? "rgba(250,204,21,0.30)"
-                    : "transparent",
+                    : "#f3d7d7",
             }}
           />
         );

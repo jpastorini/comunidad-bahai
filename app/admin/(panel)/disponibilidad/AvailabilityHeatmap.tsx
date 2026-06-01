@@ -41,6 +41,13 @@ export function AvailabilityHeatmap({ data }: { data: LocalityAvailability }) {
         <span className="inline-flex items-center gap-1.5">
           <span className="font-bold text-amber-600">+N</span> = a veces puedo
         </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            className="inline-block h-3.5 w-3.5 rounded"
+            style={{ background: "#f3d7d7" }}
+          />
+          Nadie disponible
+        </span>
         <span>
           {filled.size}/{totalMembers} cargaron su disponibilidad
         </span>
@@ -142,7 +149,9 @@ function Row({
               background:
                 available.length > 0
                   ? `rgba(16,185,129,${0.12 + 0.78 * Math.min(intensity, 1)})`
-                  : "var(--card, #fff)",
+                  : sometimes.length > 0
+                    ? "rgba(250,204,21,0.30)"
+                    : "#f3d7d7",
               color: strong ? "#fff" : "#1f2937",
             }}
           >
