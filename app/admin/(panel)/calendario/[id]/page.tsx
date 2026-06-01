@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
-import { FormShell, PageHeader } from "@/components/admin/ui";
+import { PageHeader } from "@/components/admin/ui";
+import { requireAdmin } from "@/lib/auth";
+import { getLocalityAvailability } from "@/lib/availability-data";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { CalendarEvent } from "@/lib/types";
+import { AvailabilityMini } from "../AvailabilityMini";
+import { EventAvailabilityAside } from "../EventAvailabilityAside";
 import { EventForm } from "../event-form";
 
 export default async function EditEventPage({
@@ -9,6 +13,7 @@ export default async function EditEventPage({
 }: {
   params: { id: string };
 }) {
+  const session = await requireAdmin();
   const supabase = createSupabaseServer();
   const { data } = await supabase
     .from("calendar_events")
@@ -17,11 +22,21 @@ export default async function EditEventPage({
     .maybeSingle();
 
   if (!data) notFound();
+  const event = data as CalendarEvent;
+  const availability = await getLocalityAvailability(session.locality.id);
 
   return (
-    <FormShell>
-      <PageHeader eyebrow="Calendario" title="Editar evento" />
-      <EventForm event={data as CalendarEvent} />
-    </FormShell>
+    <div className="mx-auto max-w-3xl xl:flex xl:max-w-none xl:items-start xl:gap-6">
+      <div className="min-w-0 xl:max-w-3xl xl:flex-1">
+        <PageHeader eyebrow="Calendario" title="Editar evento" />
+        <EventForm event={event} />
+      </div>
+      <EventAvailabilityAside
+        initialKind={event.kind ?? "actividad_general"}
+        className="hidden xl:sticky xl:top-6 xl:block xl:w-[340px] xl:shrink-0"
+      >
+        <AvailabilityMini data={availability} />
+      </EventAvailabilityAside>
+    </div>
   );
 }

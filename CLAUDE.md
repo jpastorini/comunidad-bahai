@@ -103,13 +103,11 @@ Google OAuth + magic link · Perfil de usuario (avatar, nombre, mis fotos) ·
 Aprobación de cambio de localidad por Asamblea destino · Notificaciones de
 chat (in-app + Web Push) · Botón "Instalar App" (PWA) · Tesorería con
 presupuesto · Contenido nacional · Disponibilidad para reuniones (grilla
-semanal por miembro AEL + consolidado/heatmap en `/admin/disponibilidad`).
+semanal por miembro AEL + consolidado/heatmap en `/admin/disponibilidad`;
+además, al crear/editar un evento "Reunión AEL" se despliega el consolidado
+compacto al costado del formulario, solo en PC).
 
 ## Pendientes conocidos
-
-- **Fase 2 de disponibilidad:** ajuste por fecha puntual. La columna
-  `event_date` en `availability_slots` (migración 033) ya está lista; falta
-  solo la UI para abrir una fecha concreta y sobrescribir el patrón semanal.
 
 - **Notificaciones de comunicados y recordatorios de eventos** (24h antes).
   Ya existe infra de Web Push para chat (`supabase/migrations/027_push_subscriptions.sql`)
