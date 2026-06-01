@@ -97,6 +97,9 @@ export default async function CalendarioPage({
 
         {/* Calendar grid */}
         <div className="mb-3.5 rounded-[18px] bg-card p-4 shadow-card-elevated">
+          <div className="mb-2 text-center font-display text-[16px] font-semibold capitalize text-dark">
+            {MONTHS_ES_LONG[month - 1]} {year}
+          </div>
           <div className="grid grid-cols-7 gap-0.5 text-center">
             {WEEKDAY_LABELS.map((d) => (
               <div
