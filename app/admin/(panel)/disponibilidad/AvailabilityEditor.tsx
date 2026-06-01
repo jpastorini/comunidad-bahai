@@ -23,7 +23,7 @@ const CELL_STYLE: Record<
   "empty" | "1" | "2",
   { cls: string; label: string }
 > = {
-  empty: { cls: "bg-card border border-black/[0.07] text-transparent", label: "" },
+  empty: { cls: "bg-[#f3d7d7] border border-black/[0.05] text-transparent", label: "" },
   "2": { cls: "bg-emerald-500 text-white border border-emerald-600", label: "✓" },
   "1": { cls: "bg-yellow-400 text-yellow-950 border border-yellow-500", label: "?" },
 };
@@ -72,7 +72,7 @@ export function AvailabilityEditor({ initial }: { initial: MyAvailability }) {
           A veces puedo
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-3.5 w-3.5 rounded border border-black/15 bg-card" />
+          <span className="inline-block h-3.5 w-3.5 rounded border border-black/[0.05] bg-[#f3d7d7]" />
           No puedo
         </span>
       </div>
