@@ -25,7 +25,7 @@ const CELL_STYLE: Record<
 > = {
   empty: { cls: "bg-card border border-black/[0.07] text-transparent", label: "" },
   "2": { cls: "bg-emerald-500 text-white border border-emerald-600", label: "✓" },
-  "1": { cls: "bg-amber-400 text-white border border-amber-500", label: "~" },
+  "1": { cls: "bg-yellow-400 text-yellow-950 border border-yellow-500", label: "?" },
 };
 
 export function AvailabilityEditor({ initial }: { initial: MyAvailability }) {
@@ -66,7 +66,9 @@ export function AvailabilityEditor({ initial }: { initial: MyAvailability }) {
           Disponible
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-3.5 w-3.5 rounded bg-amber-400" />
+          <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded bg-yellow-400 text-[9px] font-bold text-yellow-950">
+            ?
+          </span>
           A veces puedo
         </span>
         <span className="inline-flex items-center gap-1.5">
