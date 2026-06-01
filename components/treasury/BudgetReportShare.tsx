@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { BahaiStar } from "@/components/BahaiStar";
 import { categoryMeta, fmtUYU } from "@/lib/budget";
+import { formatDate } from "@/lib/format";
 import { shareNodeAsImage } from "@/lib/share-image";
 
 export type ReportItem = {
@@ -37,11 +38,7 @@ export function BudgetReportShare({
   const totalThisYear = budgeted.reduce((s, i) => s + i.planned, 0);
   const totalLastYear = budgeted.reduce((s, i) => s + i.spent, 0);
 
-  const today = new Date().toLocaleDateString("es-UY", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const today = formatDate(new Date());
 
   async function handleShare() {
     if (!cardRef.current || busy) return;

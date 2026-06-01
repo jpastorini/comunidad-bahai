@@ -21,7 +21,9 @@ function dayKey(i: { year: number; month: number; day: number }): number {
 
 function formatLongDate(i: UnifiedCalendarItem): string {
   const d = new Date(i.year, i.month - 1, i.day);
-  return `${WEEKDAYS_ES[d.getDay()]} ${i.day} de ${MONTHS_ES[i.month - 1]} ${i.year}`;
+  const dd = String(i.day).padStart(2, "0");
+  const mm = String(i.month).padStart(2, "0");
+  return `${WEEKDAYS_ES[d.getDay()]} ${dd}/${mm}/${i.year}`;
 }
 
 export default async function DiasSagradosPage() {

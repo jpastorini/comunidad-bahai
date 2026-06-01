@@ -13,11 +13,6 @@ import {
 } from "@/lib/bahai-calendar";
 import { SuggestionForm } from "./suggestion-form";
 
-const MONTHS_ES = [
-  "enero", "febrero", "marzo", "abril", "mayo", "junio",
-  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-];
-
 export const revalidate = 60;
 
 const WEEKDAYS = [
@@ -84,8 +79,9 @@ export default async function FeastDetailPage({
                     className="rounded-2xl bg-card p-4 shadow-card-soft"
                   >
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-terra">
-                      {weekday} {dt.getDate()}{" "}
-                      {dt.toLocaleString("es-MX", { month: "long" })} ·{" "}
+                      {weekday} {String(dt.getDate()).padStart(2, "0")}/
+                      {String(dt.getMonth() + 1).padStart(2, "0")}/
+                      {dt.getFullYear()} ·{" "}
                       {dt.toLocaleString("es-MX", {
                         hour: "numeric",
                         minute: "2-digit",
@@ -287,7 +283,7 @@ function FallbackCelebration({
   const cd = new Date(`${celebrationIso}T12:00:00Z`);
   const od = new Date(`${gregorianDate}T12:00:00Z`);
   const fmt = (d: Date) =>
-    `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} de ${MONTHS_ES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+    `${WEEKDAYS[d.getUTCDay()]} ${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
 
   return (
     <div className="rounded-2xl border border-dashed border-terra/30 bg-terra/[0.04] p-4">

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { formatDayMonth } from "@/lib/format";
 import { REACTION_EMOJIS } from "@/lib/reaction-emojis";
 import type {
   ReactionEmoji,
@@ -173,8 +174,5 @@ function formatRelative(iso: string): string {
   if (h < 24) return `hace ${h} h`;
   const d = Math.floor(h / 24);
   if (d < 7) return `hace ${d} d`;
-  return new Date(iso).toLocaleDateString("es-MX", {
-    day: "numeric",
-    month: "short",
-  });
+  return formatDayMonth(iso);
 }

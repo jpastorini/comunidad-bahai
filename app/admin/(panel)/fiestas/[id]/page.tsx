@@ -4,6 +4,7 @@ import { Banner, Card, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getFeast, getFeastLocations, getFeastPrayers } from "@/lib/data";
+import { formatDateTime } from "@/lib/format";
 import type { FeastStatus, FeastSuggestion } from "@/lib/types";
 import { FeastForm } from "../feast-form";
 import {
@@ -145,10 +146,7 @@ export default async function EditFeastPage({
                       {s.detail}
                     </p>
                     <div className="mt-1 text-[10.5px] text-muted">
-                      {new Date(s.created_at).toLocaleString("es-MX", {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })}
+                      {formatDateTime(s.created_at)}
                     </div>
                   </div>
                   <form action={toggleSuggestionReviewedAction} className="shrink-0">

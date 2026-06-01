@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
+import { formatDayMonth } from "@/lib/format";
 import type { FeedItem, FeedPhotoGroup } from "@/lib/feed";
 
 type Props = {
@@ -159,8 +160,5 @@ function formatRelative(iso: string): string {
   if (h < 24) return `hace ${h} h`;
   const d = Math.floor(h / 24);
   if (d < 7) return `hace ${d} d`;
-  return new Date(iso).toLocaleDateString("es-MX", {
-    day: "numeric",
-    month: "short",
-  });
+  return formatDayMonth(iso);
 }

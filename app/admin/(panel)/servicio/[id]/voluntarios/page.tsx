@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { Card, PageHeader } from "@/components/admin/ui";
+import { formatDate } from "@/lib/format";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 export default async function VolunteersPage({
@@ -47,7 +48,7 @@ export default async function VolunteersPage({
                     <div className="text-[12px] text-muted">{p?.email}</div>
                   </div>
                   <div className="text-[11px] text-muted">
-                    {new Date(v.created_at).toLocaleDateString("es-MX")}
+                    {formatDate(v.created_at)}
                   </div>
                 </li>
               );

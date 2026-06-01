@@ -38,7 +38,7 @@ export default async function EventDetailPage({
     <>
       <GoldHeader
         title={event.title}
-        subtitle={`${weekday} ${event.day} de ${monthName}`}
+        subtitle={`${weekday} ${String(event.day).padStart(2, "0")}/${String(event.month).padStart(2, "0")}/${event.year}`}
         backHref="/calendario"
       />
 
@@ -124,7 +124,7 @@ export default async function EventDetailPage({
                     Conmemoración
                   </div>
                   <div className="mt-0.5 text-[13px] font-semibold text-terra">
-                    {weekday} {event.day} de {monthName} · {event.time}
+                    {weekday} {String(event.day).padStart(2, "0")}/{String(event.month).padStart(2, "0")}/{event.year} · {event.time}
                   </div>
                 </div>
               </div>
@@ -182,5 +182,5 @@ function formatOfficialDate(iso: string): string {
   if (!y || !m || !d) return iso;
   const date = new Date(Date.UTC(y, m - 1, d, 12, 0));
   const weekday = WEEKDAYS_ES[date.getUTCDay()];
-  return `${weekday} ${d} de ${MONTHS_ES[m - 1]} ${y}`;
+  return `${weekday} ${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`;
 }

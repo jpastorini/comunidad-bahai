@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { formatDate } from "@/lib/format";
 import { submitSuggestionAction } from "./actions";
 
 type Props = {
@@ -39,7 +40,7 @@ export function SuggestionForm({ feastId, feastName }: Props) {
           Fiesta: <strong className="text-dark">{feastName}</strong>
         </span>
         <span className="rounded bg-bg px-2 py-0.5">
-          Fecha: <strong className="text-dark">{new Date().toLocaleDateString("es-MX")}</strong>
+          Fecha: <strong className="text-dark">{formatDate(new Date())}</strong>
         </span>
       </div>
 

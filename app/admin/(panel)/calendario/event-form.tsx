@@ -19,11 +19,6 @@ const COLORS = [
   { value: "#C4A235", label: "Dorado" },
 ];
 
-const MONTHS_ES = [
-  "enero", "febrero", "marzo", "abril", "mayo", "junio",
-  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-];
-
 export function EventForm({ event }: Props) {
   const date = event
     ? `${event.year}-${String(event.month).padStart(2, "0")}-${String(event.day).padStart(2, "0")}`
@@ -227,7 +222,7 @@ function formatLongDate(iso: string): string {
   const m = parseInt(mStr, 10);
   const d = parseInt(dStr, 10);
   if (!y || !m || !d) return iso;
-  return `${d} de ${MONTHS_ES[m - 1]} de ${y}`;
+  return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`;
 }
 
 function ImageSlot({ currentUrl }: { currentUrl: string | null }) {

@@ -10,11 +10,6 @@ export const revalidate = 60;
 const WEEKDAYS_ES = [
   "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado",
 ];
-const MONTHS_ES = [
-  "enero", "febrero", "marzo", "abril", "mayo", "junio",
-  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-];
-
 export default async function FiestasPage() {
   const [session, feasts] = await Promise.all([
     requireMember("/fiestas"),
@@ -193,8 +188,7 @@ function FeastDates({
 
 function formatLongDate(d: Date): string {
   const weekday = WEEKDAYS_ES[d.getUTCDay()];
-  const day = d.getUTCDate();
-  const month = MONTHS_ES[d.getUTCMonth()];
-  const year = d.getUTCFullYear();
-  return `${weekday} ${day} de ${month} ${year}`;
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${weekday} ${dd}/${mm}/${d.getUTCFullYear()}`;
 }

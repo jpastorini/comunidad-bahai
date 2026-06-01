@@ -6,6 +6,7 @@ import type {
   PhotoComment,
   PhotoReactionSummary,
 } from "@/lib/types";
+import { formatDate } from "@/lib/format";
 import { CommentSection } from "./CommentSection";
 import { ReactionBar } from "./ReactionBar";
 import { deleteEventPhotoAction } from "./photo-actions";
@@ -299,11 +300,7 @@ function Lightbox({
         )}
         <p className="text-[10px] uppercase tracking-wide opacity-70">
           {photo.uploader_name} ·{" "}
-          {new Date(photo.created_at).toLocaleDateString("es-MX", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}
+          {formatDate(photo.created_at)}
         </p>
       </div>
 

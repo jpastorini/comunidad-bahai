@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { BahaiStar } from "@/components/BahaiStar";
+import { formatDate } from "@/lib/format";
 import { shareNodeAsImage } from "@/lib/share-image";
 
 type Props = {
@@ -45,11 +46,7 @@ export function MonthlyReportShare({
   const circ = 2 * Math.PI * r;
   const offset = circ - (pct / 100) * circ;
 
-  const today = new Date().toLocaleDateString("es-UY", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const today = formatDate(new Date());
 
   async function handleShare() {
     if (!cardRef.current || busy) return;

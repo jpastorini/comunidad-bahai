@@ -8,6 +8,7 @@ import {
   TextInput,
 } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
+import { formatDate } from "@/lib/format";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import {
   ROLE_LABELS,
@@ -145,11 +146,7 @@ function RequestCard({
           )}
           <div className="mt-1 text-[11.5px] text-muted">
             Viene de <span className="font-semibold">{fromName}</span> ·{" "}
-            {new Date(request.created_at).toLocaleDateString("es-MX", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
+            {formatDate(request.created_at)}
           </div>
         </div>
         <div className="flex items-center gap-2">

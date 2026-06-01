@@ -8,6 +8,7 @@ import {
 } from "@/components/admin/ui";
 import { IconArrowRight } from "@/components/Icons";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
+import { formatDate } from "@/lib/format";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { Treasury, TreasuryCommitment } from "@/lib/types";
 import { MonthlyReportShare } from "@/components/treasury/MonthlyReportShare";
@@ -193,11 +194,7 @@ export default async function AdminTesoreriaPage() {
                       )}
                     </td>
                     <td className="px-4 py-2.5 text-[11px] text-muted">
-                      {new Date(c.updated_at).toLocaleDateString("es-MX", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                      {formatDate(c.updated_at)}
                     </td>
                   </tr>
                 ))}

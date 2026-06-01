@@ -10,10 +10,6 @@ import { deleteEventAction } from "./actions";
 const WEEKDAYS_ES = [
   "Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb",
 ];
-const MONTHS_ES = [
-  "ene", "feb", "mar", "abr", "may", "jun",
-  "jul", "ago", "sep", "oct", "nov", "dic",
-];
 const MONTHS_ES_LONG = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
@@ -192,9 +188,9 @@ function DateCell({
         </div>
       )}
       <div className="font-display text-[13px] font-semibold text-dark">
-        {WEEKDAYS_ES[date.getUTCDay()]} {item.day} {MONTHS_ES[item.month - 1]}
+        {WEEKDAYS_ES[date.getUTCDay()]} {String(item.day).padStart(2, "0")}/
+        {String(item.month).padStart(2, "0")}/{item.year}
       </div>
-      <div className="text-[10.5px] text-muted">{item.year}</div>
     </div>
   );
 }

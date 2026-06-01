@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Banner, Button, Card, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import {
   deleteSuggestionAction,
@@ -239,11 +240,7 @@ function FilterTab({
 
 function SuggestionCard({ suggestion }: { suggestion: SuggestionRow }) {
   const dateStr = suggestion.feast_date
-    ? new Date(suggestion.feast_date).toLocaleDateString("es-MX", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
+    ? formatDate(suggestion.feast_date)
     : null;
 
   return (
@@ -288,12 +285,7 @@ function SuggestionCard({ suggestion }: { suggestion: SuggestionRow }) {
             <span className="italic">Anónima</span>
           )}
           <span className="ml-2">
-            · {new Date(suggestion.created_at).toLocaleString("es-MX", {
-              day: "2-digit",
-              month: "short",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            · {formatDateTime(suggestion.created_at)}
           </span>
         </div>
         <div className="flex items-center gap-3">
