@@ -13,6 +13,7 @@ import {
   IconTesoreria,
 } from "@/components/Icons";
 import { requireAdmin } from "@/lib/auth";
+import { getAvailabilityFillStats } from "@/lib/availability";
 import { getLocalityPushReach } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { ROLE_LABELS } from "@/lib/types";
@@ -74,6 +75,7 @@ export default async function AdminHomePage({
     ]);
 
   const pushReach = await getLocalityPushReach(session.locality.id);
+  const availability = await getAvailabilityFillStats(session.locality.id);
 
   // Cuenta solo mensajes enviados POR miembros (no las propias respuestas
   // de Secretaría) que todavía estén sin leer.
@@ -162,6 +164,14 @@ export default async function AdminHomePage({
       count: members.count ?? 0,
       Icon: IconActividades,
       color: COLOR_TERRA,
+    },
+    {
+      href: "/admin/disponibilidad",
+      label: "Disponibilidad",
+      hint: "AEL que ya cargó",
+      count: `${availability.filled}/${availability.total}`,
+      Icon: IconCalendario,
+      color: COLOR_GREEN,
     },
     {
       href: "/admin/comunicados",

@@ -236,18 +236,27 @@ export type BulletinPhoto = {
   locality_name: string;
 };
 
-/** Fotos del boletín nacional: visibility='national' de todas las localidades. */
+/** Ventana del boletín: solo mostramos fotos subidas en los últimos N días. */
+export const BULLETIN_WINDOW_DAYS = 30;
+
+/**
+ * Fotos del boletín nacional: visibility='national' de todas las localidades,
+ * limitado a las subidas en los últimos {@link BULLETIN_WINDOW_DAYS} días.
+ */
 export async function getNationalBulletinPhotos(
   limit = 60
 ): Promise<BulletinPhoto[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = createSupabaseServer();
+  const since = new Date();
+  since.setDate(since.getDate() - BULLETIN_WINDOW_DAYS);
   const { data } = await supabase
     .from("event_photos")
     .select(
       "id, public_url, caption, uploader_name, created_at, event_type, event_id, event_title, locality_id"
     )
     .eq("visibility", "national")
+    .gte("created_at", since.toISOString())
     .order("created_at", { ascending: false })
     .limit(limit);
 
