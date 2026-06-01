@@ -37,8 +37,13 @@ export function AdminShell({ profile, locality, children, toast }: Props) {
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
-        <div className="font-display text-[18px] font-semibold text-dark">
-          Admin
+        <div className="min-w-0 text-center">
+          <div className="text-[9px] font-semibold uppercase tracking-[1.5px] text-gold-dark">
+            Panel de la Asamblea
+          </div>
+          <div className="truncate font-display text-[15px] font-semibold leading-tight text-dark">
+            {locality?.name ?? "Comunidad Bahá'í"}
+          </div>
         </div>
         <div className="w-9" />
       </header>

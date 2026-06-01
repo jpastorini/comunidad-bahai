@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BahaiStar } from "@/components/BahaiStar";
 import { GoldHeader } from "@/components/GoldHeader";
 import { IconChevronRight } from "@/components/Icons";
 import { requireMember } from "@/lib/auth";
@@ -110,6 +111,29 @@ export default async function ProfilePage() {
             <NameForm initialName={session.profile.full_name ?? ""} />
           </div>
         </div>
+
+        {/* Acceso al panel de la Asamblea — solo para admins */}
+        {session.profile.role === "admin" && (
+          <Link
+            href="/admin"
+            className="tap mb-5 flex items-center justify-between rounded-2xl bg-gold-grad px-4 py-3.5 shadow-card-elevated"
+          >
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25">
+                <BahaiStar size={18} color="#fff" />
+              </span>
+              <div>
+                <div className="text-[13.5px] font-semibold text-white">
+                  Panel de la Asamblea
+                </div>
+                <div className="text-[11px] text-white/75">
+                  Gestionar {session.locality.name}
+                </div>
+              </div>
+            </div>
+            <IconChevronRight size={14} className="text-white/80" />
+          </Link>
+        )}
 
         {/* Datos de cuenta */}
         <div className="mb-5 rounded-2xl bg-card p-4 shadow-card-soft">

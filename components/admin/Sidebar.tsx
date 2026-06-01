@@ -180,7 +180,14 @@ export function SidebarContent({ profile, locality, onNavigate }: Props) {
             </span>
           )}
         </div>
-        <form action="/auth/signout" method="post" className="mt-3">
+        <Link
+          href="/"
+          onClick={onNavigate}
+          className="mt-3 flex items-center justify-center gap-2 rounded-lg bg-terra/[0.06] px-3 py-1.5 text-[12px] font-semibold text-terra hover:bg-terra/10"
+        >
+          ← Volver a la app de comunidad
+        </Link>
+        <form action="/auth/signout" method="post" className="mt-2">
           <button
             type="submit"
             className="w-full rounded-lg border border-black/10 px-3 py-1.5 text-[12px] font-medium text-dark hover:bg-bg"

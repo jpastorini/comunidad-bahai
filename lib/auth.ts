@@ -195,14 +195,15 @@ export async function getOptionalMember(): Promise<MemberSession | null> {
  */
 export async function requireAdmin(): Promise<AdminSession> {
   if (!isSupabaseConfigured()) {
-    redirect("/admin/login?error=no-supabase");
+    redirect("/login?error=no-supabase");
   }
 
   // ── Fast path ─────────────────────────────────────────────────
   const cached = getProfileFromHeaders();
   if (cached) {
     if (cached.profile.role !== "admin") {
-      redirect("/admin/login?error=not-admin");
+      // Logueado pero sin rol admin → a su app de comunidad.
+      redirect("/");
     }
     if (!cached.profile.locality_id) {
       redirect("/seleccionar-localidad?next=%2Fadmin");
@@ -222,7 +223,7 @@ export async function requireAdmin(): Promise<AdminSession> {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/admin/login");
+    redirect("/login?next=%2Fadmin");
   }
 
   const { data: profile } = await supabase
@@ -232,7 +233,7 @@ export async function requireAdmin(): Promise<AdminSession> {
     .maybeSingle();
 
   if (!profile || profile.role !== "admin") {
-    redirect("/admin/login?error=not-admin");
+    redirect("/");
   }
 
   if (!profile.locality_id) {
@@ -254,7 +255,7 @@ export async function requireAdmin(): Promise<AdminSession> {
  */
 export async function requireNationalAdmin(): Promise<NationalAdminSession> {
   if (!isSupabaseConfigured()) {
-    redirect("/admin/login?error=no-supabase");
+    redirect("/login?error=no-supabase");
   }
 
   // ── Fast path ─────────────────────────────────────────────────
@@ -275,7 +276,7 @@ export async function requireNationalAdmin(): Promise<NationalAdminSession> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/admin/login?next=%2Fadmin%2Fnacional");
+    redirect("/login?next=%2Fadmin%2Fnacional");
   }
   const { data: profile } = await supabase
     .from("profiles")

@@ -71,8 +71,10 @@ export async function updateSession(request: NextRequest) {
   // ── Sin sesión ─────────────────────────────────────────────────
   if (!user) {
     if (isAdminRoute) {
-      const loginUrl = new URL("/admin/login", request.url);
-      loginUrl.searchParams.set("redirectTo", path);
+      // Puerta única: el login es /login. Guardamos el destino en `next`
+      // para volver al panel tras autenticarse.
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("next", path);
       return NextResponse.redirect(loginUrl);
     }
     return supabaseResponse;
@@ -106,9 +108,9 @@ export async function updateSession(request: NextRequest) {
   // ── Protección de rutas /admin/* ───────────────────────────────
   if (isAdminRoute) {
     if (!profile || profile.role !== "admin") {
-      const redirectUrl = new URL("/admin/login", request.url);
-      redirectUrl.searchParams.set("error", "not-admin");
-      return NextResponse.redirect(redirectUrl);
+      // Ya está logueado pero no es admin: lo mandamos a su app de
+      // comunidad en vez de a una pantalla de login confusa.
+      return NextResponse.redirect(new URL("/", request.url));
     }
   }
 

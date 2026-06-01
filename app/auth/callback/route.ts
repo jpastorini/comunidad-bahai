@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 /**
- * Magic-link callback. Supabase redirects here with `?code=...`; we exchange
- * it for a session and forward to:
+ * Magic-link / OAuth callback. Supabase redirects here con `?code=...`;
+ * intercambiamos el code por sesión y reenviamos a:
  *   1. /seleccionar-localidad si el usuario no tiene locality_id (primer login)
- *   2. El path explícito en `?next=...` si fue dado
- *   3. /admin si el usuario es admin
- *   4. / si es miembro normal
+ *   2. El path explícito en `?next=...` si fue dado (deep-link, ej. /admin)
+ *   3. / en cualquier otro caso — TODOS aterrizan en la app de comunidad,
+ *      incluidos los admins. Al panel se entra a propósito desde el perfil,
+ *      no por rol. Esto evita rebotes confusos y unifica la puerta de entrada.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
 
         // Sin localidad → selección obligatoria antes de ir a cualquier lado.
         if (profile && !profile.locality_id) {
-          const next = nextParam ?? (profile.role === "admin" ? "/admin" : "/");
+          const next = nextParam ?? "/";
           return NextResponse.redirect(
             new URL(
               `/seleccionar-localidad?next=${encodeURIComponent(next)}`,
@@ -40,13 +41,13 @@ export async function GET(request: Request) {
           );
         }
 
-        // Honor explicit `next` si fue dado.
+        // Honor explicit `next` si fue dado (ej. deep-link a /admin/...).
         if (nextParam && nextParam.startsWith("/")) {
           return NextResponse.redirect(new URL(nextParam, url.origin));
         }
-        // Default por rol.
-        const target = profile?.role === "admin" ? "/admin" : "/";
-        return NextResponse.redirect(new URL(target, url.origin));
+        // Default: todos a la app de comunidad. El admin entra al panel
+        // desde el perfil, no automáticamente por su rol.
+        return NextResponse.redirect(new URL("/", url.origin));
       }
       return NextResponse.redirect(new URL("/", url.origin));
     }
