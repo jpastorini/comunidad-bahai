@@ -13,7 +13,7 @@ import {
   IconTesoreria,
 } from "@/components/Icons";
 import { requireAdmin } from "@/lib/auth";
-import { getAvailabilityFillStats } from "@/lib/availability";
+import { getAvailabilityFillStats } from "@/lib/availability-data";
 import { getLocalityPushReach } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { ROLE_LABELS } from "@/lib/types";

@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import {
   getLocalityAvailability,
   getMyAvailability,
-} from "@/lib/availability";
+} from "@/lib/availability-data";
 import { AvailabilityEditor } from "./AvailabilityEditor";
 import { AvailabilityHeatmap } from "./AvailabilityHeatmap";
 
