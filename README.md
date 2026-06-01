@@ -48,10 +48,15 @@ backend.
 |---|---|---|
 | `/` y subrutas | **Miembros** — PWA móvil con las 10 pantallas del handoff | Lee Supabase, cae a datos demo si no está configurado |
 | `/admin/*` | **Asamblea Local** — panel responsive (laptop + móvil) | **Requiere Supabase real**. Protegido por middleware con verificación de rol |
-| `/admin/login` | Login con magic link (sin contraseña) | Recibe enlace por email |
+| `/login` | Puerta única de entrada (Google OAuth + magic link). `/admin/login` redirige aquí | Recibe enlace por email |
+
+Login unificado: hay **una sola puerta** (`/login`). Los admins también son
+miembros, así que tras autenticar aterrizan en la app de comunidad y entran al
+panel desde un acceso en su perfil (`/admin`). La vieja URL `/admin/login` se
+conserva pero solo redirige a `/login`.
 
 El acceso a `/admin/*` se valida en dos capas:
-- **Middleware** (`middleware.ts`): redirige a `/admin/login` si no hay sesión o el perfil no es `admin`.
+- **Middleware** (`middleware.ts`): sin sesión redirige a `/login?next=`; si está logueado pero el perfil no es `admin`, lo manda a `/` (su app de comunidad).
 - **Server components** (`requireAdmin`, `ensureChatTag`, `ensureTreasuryTag` en `lib/auth.ts`): validan permisos finos en cada página.
 
 ## Estructura
@@ -347,7 +352,7 @@ Fuentes (Google Fonts vía `next/font`): **Cormorant Garamond** (display),
 
 ## Siguientes pasos sugeridos
 
-- [x] Auth UI: magic-link + middleware Supabase (`/admin/login`).
+- [x] Auth UI: login unificado (`/login`) + middleware Supabase.
 - [x] Panel admin (`/admin/...`) para que la Secretaría edite mensajes,
       actividades, calendario, materiales, metas, servicio, tesorería y
       miembros — con tags `can_respond_chat` y `can_manage_treasury`.
