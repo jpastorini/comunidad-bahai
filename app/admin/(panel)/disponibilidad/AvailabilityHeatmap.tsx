@@ -1,15 +1,30 @@
+"use client";
+
+import { useState } from "react";
 import {
   HOURS,
   WEEKDAYS,
   cellKey,
   formatHourRange,
+  type CellEntry,
   type LocalityAvailability,
 } from "@/lib/availability";
+
+type TipState = {
+  weekday: number;
+  hour: number;
+  available: CellEntry[];
+  sometimes: CellEntry[];
+  x: number;
+  y: number;
+  above: boolean;
+};
 
 /**
  * Heatmap del equipo (pensado para PC): semana × hora. Cada celda se pinta
  * según cuántos miembros están "Disponible" ahí; el "+N" ámbar suma los
- * "A veces puedo". Al pasar el mouse (title) se ven los nombres.
+ * "A veces puedo". Al pasar el mouse (o tocar) se despliega un tooltip con
+ * los nombres, separados por nivel y con un puntito de color.
  */
 export function AvailabilityHeatmap({ data }: { data: LocalityAvailability }) {
   const { members, filledMemberIds, cells } = data;
@@ -20,6 +35,29 @@ export function AvailabilityHeatmap({ data }: { data: LocalityAvailability }) {
   // Denominador para la intensidad: cantidad de miembros que ya cargaron
   // (si nadie cargó, evitamos dividir por cero).
   const denom = Math.max(filled.size, 1);
+
+  const [tip, setTip] = useState<TipState | null>(null);
+
+  function showTip(
+    e: React.MouseEvent<HTMLButtonElement>,
+    weekday: number,
+    hour: number,
+    available: CellEntry[],
+    sometimes: CellEntry[]
+  ) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    // Si hay poco lugar arriba, lo mostramos abajo de la celda.
+    const above = rect.top > 200;
+    setTip({
+      weekday,
+      hour,
+      available,
+      sometimes,
+      x: rect.left + rect.width / 2,
+      y: above ? rect.top - 8 : rect.bottom + 8,
+      above,
+    });
+  }
 
   return (
     <div>
@@ -76,10 +114,46 @@ export function AvailabilityHeatmap({ data }: { data: LocalityAvailability }) {
               hour={hour}
               cells={cells}
               denom={denom}
+              onEnter={showTip}
+              onLeave={() => setTip(null)}
             />
           ))}
         </div>
       </div>
+
+      {/* Tooltip flotante con nombres */}
+      {tip && (tip.available.length > 0 || tip.sometimes.length > 0) && (
+        <div
+          className="pointer-events-none fixed z-50 min-w-[170px] max-w-[240px] rounded-xl border border-black/10 bg-white px-3 py-2.5 text-[12px] shadow-card-elevated"
+          style={{
+            left: tip.x,
+            top: tip.y,
+            transform: `translate(-50%, ${tip.above ? "-100%" : "0"})`,
+          }}
+        >
+          <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
+            {WEEKDAYS[tip.weekday].long} · {formatHourRange(tip.hour)}
+          </div>
+          {tip.available.length > 0 && (
+            <NameList
+              title="Disponible"
+              titleClass="text-emerald-700"
+              dotClass="bg-emerald-500"
+              entries={tip.available}
+            />
+          )}
+          {tip.sometimes.length > 0 && (
+            <div className={tip.available.length > 0 ? "mt-2" : ""}>
+              <NameList
+                title="A veces puedo"
+                titleClass="text-yellow-700"
+                dotClass="bg-yellow-400"
+                entries={tip.sometimes}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Quién falta */}
       {notFilled.length > 0 && (
@@ -109,14 +183,54 @@ export function AvailabilityHeatmap({ data }: { data: LocalityAvailability }) {
   );
 }
 
+function NameList({
+  title,
+  titleClass,
+  dotClass,
+  entries,
+}: {
+  title: string;
+  titleClass: string;
+  dotClass: string;
+  entries: CellEntry[];
+}) {
+  return (
+    <div>
+      <div
+        className={`mb-1 text-[10px] font-semibold uppercase tracking-wide ${titleClass}`}
+      >
+        {title} ({entries.length})
+      </div>
+      <ul className="flex flex-col gap-0.5">
+        {entries.map((e) => (
+          <li key={e.userId} className="flex items-center gap-1.5 text-dark">
+            <span className={`h-2 w-2 shrink-0 rounded-full ${dotClass}`} />
+            <span className="truncate">{e.name}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function Row({
   hour,
   cells,
   denom,
+  onEnter,
+  onLeave,
 }: {
   hour: number;
   cells: LocalityAvailability["cells"];
   denom: number;
+  onEnter: (
+    e: React.MouseEvent<HTMLButtonElement>,
+    weekday: number,
+    hour: number,
+    available: CellEntry[],
+    sometimes: CellEntry[]
+  ) => void;
+  onLeave: () => void;
 }) {
   return (
     <>
@@ -129,22 +243,15 @@ function Row({
         const sometimes = entries.filter((e) => e.level === 1);
         const intensity = available.length / denom;
         const strong = intensity > 0.5;
-        const title = [
-          available.length > 0
-            ? `Disponible: ${available.map((e) => e.name).join(", ")}`
-            : null,
-          sometimes.length > 0
-            ? `A veces: ${sometimes.map((e) => e.name).join(", ")}`
-            : null,
-        ]
-          .filter(Boolean)
-          .join("\n");
 
         return (
-          <div
+          <button
             key={d.index}
-            title={title || "Nadie disponible"}
-            className="flex h-11 items-center justify-center rounded-md border border-black/[0.05] text-[13px] font-semibold"
+            type="button"
+            onMouseEnter={(e) => onEnter(e, d.index, hour, available, sometimes)}
+            onMouseLeave={onLeave}
+            onClick={(e) => onEnter(e, d.index, hour, available, sometimes)}
+            className="flex h-11 items-center justify-center rounded-md border border-black/[0.05] text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-terra/40"
             style={{
               background:
                 available.length > 0
@@ -161,7 +268,7 @@ function Row({
                 +{sometimes.length}
               </span>
             )}
-          </div>
+          </button>
         );
       })}
     </>
