@@ -116,7 +116,7 @@ export default async function ProfilePage() {
         {session.profile.role === "admin" && (
           <Link
             href="/admin"
-            className="tap mb-5 flex items-center justify-between rounded-2xl bg-gold-grad px-4 py-3.5 shadow-card-elevated"
+            className="tap mb-5 flex items-center justify-between rounded-2xl bg-terra-grad px-4 py-3.5 shadow-card-elevated"
           >
             <div className="flex items-center gap-3">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25">
