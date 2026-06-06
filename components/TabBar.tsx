@@ -39,7 +39,12 @@ export function TabBar({ aelHasUnseen = false }: { aelHasUnseen?: boolean }) {
   return (
     <nav
       className="shrink-0 rounded-t-[20px] border-t border-black/[0.06] bg-card shadow-[0_-6px_20px_-10px_rgba(0,0,0,0.18)]"
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 18px)" }}
+      // Con viewport-fit=cover el shell (100dvh) se dibuja por detrás de la barra
+      // de gestos de Android. En iOS env(safe-area-inset-bottom) la compensa, pero
+      // Android suele reportarla en 0 aunque la barra exista, dejando las etiquetas
+      // del menú ocultas detrás del gesto. El max() garantiza un piso de 46px de
+      // separación aunque el inset venga en 0.
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px) + 18px, 46px)" }}
     >
       <ul className="flex items-center justify-around pt-2.5">
         {TABS.map((tab) => {
