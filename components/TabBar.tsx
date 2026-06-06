@@ -44,7 +44,7 @@ export function TabBar({ aelHasUnseen = false }: { aelHasUnseen?: boolean }) {
       // Android suele reportarla en 0 aunque la barra exista, dejando las etiquetas
       // del menú ocultas detrás del gesto. El max() garantiza un piso de separación
       // aunque el inset venga en 0, sin dejar demasiado espacio en blanco.
-      style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px) + 18px, 30px)" }}
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px) + 18px, 22px)" }}
     >
       <ul className="flex items-center justify-around pt-2.5">
         {TABS.map((tab) => {
