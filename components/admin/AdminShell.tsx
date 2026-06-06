@@ -23,8 +23,14 @@ export function AdminShell({ profile, locality, children, toast }: Props) {
   return (
     <div className="min-h-[100dvh] bg-bg">
       <Toaster toast={toast ?? null} />
-      {/* Mobile top bar */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-black/[0.06] bg-card px-4 py-3 md:hidden">
+      {/* Mobile top bar.
+          paddingTop con safe-area: en la PWA instalada el status bar es
+          translúcido (viewport-fit=cover), así que sin esto el botón
+          hamburguesa queda debajo de la barra del sistema y no recibe el tap. */}
+      <header
+        className="sticky top-0 z-20 flex items-center justify-between border-b border-black/[0.06] bg-card px-4 pb-3 md:hidden"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
+      >
         <button
           type="button"
           aria-label="Abrir menú"
