@@ -66,27 +66,31 @@ export type BahaiYearCalendar = {
 
 export const BAHAI_CALENDAR_YEARS: BahaiYearCalendar[] = [
   {
+    // Naw-Rúz 183 BE = 21 marzo 2026 (equinoccio en Teherán).
+    // Verificado contra bahai.org/action/devotional-life/calendar:
+    // mes 1 (Bahá) abre el 21 mar 2026, mes 19 ('Alá') el 2 mar 2027,
+    // con Ayyám-i-Há del 26 feb al 1 mar 2027 (4 días intercalares).
     bahaiYear: 183,
-    nawRuz: "2026-03-20",
+    nawRuz: "2026-03-21",
     feasts: [
-      { monthIndex: 1,  date: "2026-03-20" },
-      { monthIndex: 2,  date: "2026-04-08" },
-      { monthIndex: 3,  date: "2026-04-27" },
-      { monthIndex: 4,  date: "2026-05-16" },
-      { monthIndex: 5,  date: "2026-06-04" },
-      { monthIndex: 6,  date: "2026-06-23" },
-      { monthIndex: 7,  date: "2026-07-12" },
-      { monthIndex: 8,  date: "2026-07-31" },
-      { monthIndex: 9,  date: "2026-08-19" },
-      { monthIndex: 10, date: "2026-09-07" },
-      { monthIndex: 11, date: "2026-09-26" },
-      { monthIndex: 12, date: "2026-10-15" },
-      { monthIndex: 13, date: "2026-11-03" },
-      { monthIndex: 14, date: "2026-11-22" },
-      { monthIndex: 15, date: "2026-12-11" },
-      { monthIndex: 16, date: "2026-12-30" },
-      { monthIndex: 17, date: "2027-01-18" },
-      { monthIndex: 18, date: "2027-02-06" },
+      { monthIndex: 1,  date: "2026-03-21" },
+      { monthIndex: 2,  date: "2026-04-09" },
+      { monthIndex: 3,  date: "2026-04-28" },
+      { monthIndex: 4,  date: "2026-05-17" },
+      { monthIndex: 5,  date: "2026-06-05" },
+      { monthIndex: 6,  date: "2026-06-24" },
+      { monthIndex: 7,  date: "2026-07-13" },
+      { monthIndex: 8,  date: "2026-08-01" },
+      { monthIndex: 9,  date: "2026-08-20" },
+      { monthIndex: 10, date: "2026-09-08" },
+      { monthIndex: 11, date: "2026-09-27" },
+      { monthIndex: 12, date: "2026-10-16" },
+      { monthIndex: 13, date: "2026-11-04" },
+      { monthIndex: 14, date: "2026-11-23" },
+      { monthIndex: 15, date: "2026-12-12" },
+      { monthIndex: 16, date: "2026-12-31" },
+      { monthIndex: 17, date: "2027-01-19" },
+      { monthIndex: 18, date: "2027-02-07" },
       { monthIndex: 19, date: "2027-03-02" },
     ],
   },
@@ -288,15 +292,17 @@ export type HolyDayYearDates = {
 
 export const HOLY_DAY_DATES_BY_YEAR: HolyDayYearDates[] = [
   {
+    // Fechas oficiales verificadas contra bahai.org (calendario 183 BE)
+    // y Wikipedia el 2026-06-07. Naw-Rúz = 21 mar 2026.
     bahaiYear: 183,
     dates: {
-      naw_ruz: "2026-03-20",
-      ridvan_1: "2026-04-20",
-      ridvan_9: "2026-04-28",
-      ridvan_12: "2026-05-01",
-      declaration_bab: "2026-05-23",
+      naw_ruz: "2026-03-21",
+      ridvan_1: "2026-04-21",
+      ridvan_9: "2026-04-29",
+      ridvan_12: "2026-05-02",
+      declaration_bab: "2026-05-24",
       ascension_bahaullah: "2026-05-29",
-      martyrdom_bab: "2026-07-09",
+      martyrdom_bab: "2026-07-10",
       // Cumpleaños Gemelos verificados contra bahai.org / Bahaipedia (2026).
       birth_bab: "2026-11-10",
       birth_bahaullah: "2026-11-11",
@@ -311,7 +317,7 @@ export const HOLY_DAY_DATES_BY_YEAR: HolyDayYearDates[] = [
       ridvan_1: "2027-04-21",
       ridvan_9: "2027-04-29",
       ridvan_12: "2027-05-02",
-      declaration_bab: "2027-05-23",
+      declaration_bab: "2027-05-24",
       ascension_bahaullah: "2027-05-29",
       martyrdom_bab: "2027-07-10",
       // Cumpleaños Gemelos verificados contra bahai.org / Bahaipedia (2027).
