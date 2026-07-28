@@ -42,6 +42,13 @@ export type Profile = {
   locality_id: string | null;
   /** Puede crear/editar localidades y asignar roles cross-locality. */
   is_national_admin: boolean;
+  /**
+   * Soft-disable: si tiene fecha, el miembro fue deshabilitado por la
+   * Asamblea y el middleware le corta el acceso. NULL = activo.
+   */
+  disabled_at: string | null;
+  /** Admin que lo deshabilitó (auth.users.id). */
+  disabled_by: string | null;
   created_at: string;
 };
 

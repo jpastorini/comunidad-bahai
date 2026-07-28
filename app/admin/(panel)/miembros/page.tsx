@@ -15,7 +15,12 @@ import {
   type LocalityChangeRequest,
   type Profile,
 } from "@/lib/types";
-import { decideLocalityChangeAction, updateMemberAction } from "./actions";
+import {
+  decideLocalityChangeAction,
+  setMemberDisabledAction,
+  updateMemberAction,
+} from "./actions";
+import { ConfirmSubmit } from "./confirm-submit";
 
 export default async function AdminMiembrosPage() {
   const session = await requireAdmin();
@@ -25,7 +30,7 @@ export default async function AdminMiembrosPage() {
     supabase
       .from("profiles")
       .select(
-        "id, full_name, email, role, can_respond_chat, can_manage_treasury, locality_id, created_at"
+        "id, full_name, email, role, can_respond_chat, can_manage_treasury, locality_id, disabled_at, created_at"
       )
       .eq("locality_id", session.locality.id)
       .order("role", { ascending: false })
@@ -45,6 +50,8 @@ export default async function AdminMiembrosPage() {
   ]);
 
   const profiles = (data ?? []) as Profile[];
+  const activeProfiles = profiles.filter((p) => !p.disabled_at);
+  const disabledProfiles = profiles.filter((p) => p.disabled_at);
   const pendingRequests = (requestRows ?? []) as LocalityChangeRequest[];
 
   // Resolver nombres de las localidades de origen para mostrar contexto.
@@ -112,7 +119,7 @@ export default async function AdminMiembrosPage() {
       </div>
 
       <div className="grid gap-3">
-        {profiles.map((p) => (
+        {activeProfiles.map((p) => (
           <MemberCard
             // La key incluye los campos editables: si el server devuelve datos
             // nuevos tras guardar, la tarjeta se remonta y los inputs no
@@ -123,6 +130,26 @@ export default async function AdminMiembrosPage() {
           />
         ))}
       </div>
+
+      {disabledProfiles.length > 0 && (
+        <div className="mt-8">
+          <h2 className="mb-1 font-display text-[18px] font-semibold text-dark">
+            Miembros deshabilitados
+            <span className="ml-2 rounded-full bg-black/10 px-2 py-0.5 text-[11px] font-bold text-muted">
+              {disabledProfiles.length}
+            </span>
+          </h2>
+          <p className="mb-3 text-[12px] text-muted">
+            No pueden ingresar a la app. Su historial se conserva; podés
+            reactivarlos cuando quieras.
+          </p>
+          <div className="grid gap-3">
+            {disabledProfiles.map((p) => (
+              <DisabledMemberCard key={`${p.id}:${p.disabled_at}`} profile={p} />
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -236,6 +263,62 @@ function MemberCard({ profile, isMe }: { profile: Profile; isMe: boolean }) {
           </p>
         )}
       </form>
+
+      {/* Deshabilitar — form separado (no se puede anidar dentro del de
+          edición). No se ofrece sobre la propia cuenta. */}
+      {!isMe && (
+        <form
+          action={setMemberDisabledAction}
+          className="mt-3 flex items-center justify-between gap-3 border-t border-black/[0.06] pt-3"
+        >
+          <input type="hidden" name="id" value={profile.id} />
+          <input type="hidden" name="disable" value="1" />
+          <span className="text-[11.5px] text-muted">
+            Cortar el acceso de este miembro a la app.
+          </span>
+          <ConfirmSubmit
+            message={`¿Deshabilitar a ${
+              profile.full_name?.split(" ")[0] ?? "este miembro"
+            }? No podrá ingresar hasta que lo reactives.`}
+            className="tap shrink-0 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-[12.5px] font-semibold text-rose-600 hover:bg-rose-100"
+          >
+            Deshabilitar
+          </ConfirmSubmit>
+        </form>
+      )}
+    </Card>
+  );
+}
+
+function DisabledMemberCard({ profile }: { profile: Profile }) {
+  return (
+    <Card>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-display text-[16px] font-semibold text-muted line-through decoration-muted/40">
+            {profile.full_name || "Sin nombre"}
+          </div>
+          {profile.email && (
+            <div className="text-[12px] text-muted">{profile.email}</div>
+          )}
+          <div className="mt-1 text-[11.5px] text-muted">
+            Deshabilitado
+            {profile.disabled_at
+              ? ` el ${formatDate(profile.disabled_at)}`
+              : ""}
+          </div>
+        </div>
+        <form action={setMemberDisabledAction}>
+          <input type="hidden" name="id" value={profile.id} />
+          <input type="hidden" name="disable" value="0" />
+          <button
+            type="submit"
+            className="tap rounded-xl bg-terra px-3.5 py-2 text-[12.5px] font-semibold text-white shadow-card-soft"
+          >
+            Reactivar
+          </button>
+        </form>
+      </div>
     </Card>
   );
 }

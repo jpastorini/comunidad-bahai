@@ -32,6 +32,74 @@ export async function updateMemberAction(formData: FormData) {
 }
 
 /**
+ * Deshabilitar o reactivar un miembro de la comunidad (soft-disable).
+ *
+ * Marca/limpia `profiles.disabled_at`. Un miembro deshabilitado queda
+ * bloqueado por el middleware (lo redirige a /cuenta-deshabilitada). No se
+ * borra nada: es reversible.
+ *
+ * Reglas:
+ *   - No podés deshabilitarte a vos mismo.
+ *   - Solo miembros de TU localidad (la RLS de profiles no está scopeada por
+ *     localidad — un admin puede tocar cualquier perfil — así que validamos
+ *     acá).
+ */
+export async function setMemberDisabledAction(formData: FormData) {
+  const session = await requireAdmin();
+  const supabase = createSupabaseServer();
+
+  const id = formData.get("id") as string;
+  const disable = formData.get("disable") === "1";
+  if (!id) redirect("/admin/miembros");
+
+  if (id === session.user.id) {
+    setFlashToast({
+      tone: "error",
+      message: "No podés deshabilitar tu propia cuenta.",
+    });
+    revalidatePath("/admin/miembros");
+    redirect("/admin/miembros");
+  }
+
+  // Validar pertenencia a la localidad del admin.
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("id, locality_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!target || target.locality_id !== session.locality.id) {
+    setFlashToast({
+      tone: "error",
+      message: "Ese miembro no pertenece a tu localidad.",
+    });
+    revalidatePath("/admin/miembros");
+    redirect("/admin/miembros");
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update(
+      disable
+        ? { disabled_at: new Date().toISOString(), disabled_by: session.user.id }
+        : { disabled_at: null, disabled_by: null }
+    )
+    .eq("id", id);
+
+  setFlashToast(
+    error
+      ? { tone: "error", message: `Error: ${error.message}` }
+      : {
+          tone: "success",
+          message: disable ? "Miembro deshabilitado." : "Miembro reactivado.",
+        }
+  );
+
+  revalidatePath("/admin/miembros");
+  redirect("/admin/miembros");
+}
+
+/**
  * Aprobar o rechazar una solicitud de cambio de localidad.
  * Solo la Asamblea DESTINO (cuyo current_locality_id == to_locality_id)
  * puede decidir — la RLS lo garantiza, pero validamos igual.

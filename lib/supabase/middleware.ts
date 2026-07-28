@@ -105,6 +105,18 @@ export async function updateSession(request: NextRequest) {
     supabaseResponse = responseWithProfile;
   }
 
+  // ── Miembro deshabilitado: corte de acceso ─────────────────────
+  // Si la Asamblea desactivó este perfil, lo mandamos a la pantalla de
+  // aviso y bloqueamos todo lo demás. Dejamos pasar solo esa página y el
+  // cierre de sesión, para que pueda salir.
+  if (profile?.disabled_at) {
+    const disabledPage = "/cuenta-deshabilitada";
+    if (path !== disabledPage && path !== "/auth/signout") {
+      return NextResponse.redirect(new URL(disabledPage, request.url));
+    }
+    return supabaseResponse;
+  }
+
   // ── Protección de rutas /admin/* ───────────────────────────────
   if (isAdminRoute) {
     if (!profile || profile.role !== "admin") {
