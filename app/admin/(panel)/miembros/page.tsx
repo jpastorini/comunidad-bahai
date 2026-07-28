@@ -30,7 +30,7 @@ export default async function AdminMiembrosPage() {
     supabase
       .from("profiles")
       .select(
-        "id, full_name, email, role, can_respond_chat, can_manage_treasury, locality_id, disabled_at, created_at"
+        "id, full_name, email, role, can_respond_chat, can_manage_treasury, can_manage_bulletin, locality_id, disabled_at, created_at"
       )
       .eq("locality_id", session.locality.id)
       .order("role", { ascending: false })
@@ -124,7 +124,7 @@ export default async function AdminMiembrosPage() {
             // La key incluye los campos editables: si el server devuelve datos
             // nuevos tras guardar, la tarjeta se remonta y los inputs no
             // controlados (nombre, rol, checkboxes) reflejan el valor real.
-            key={`${p.id}:${p.full_name}:${p.role}:${p.can_respond_chat}:${p.can_manage_treasury}`}
+            key={`${p.id}:${p.full_name}:${p.role}:${p.can_respond_chat}:${p.can_manage_treasury}:${p.can_manage_bulletin}`}
             profile={p}
             isMe={p.id === session.user.id}
           />
@@ -245,6 +245,11 @@ function MemberCard({ profile, isMe }: { profile: Profile; isMe: boolean }) {
                 name="can_manage_treasury"
                 label="Puede editar Tesorería"
                 defaultChecked={profile.can_manage_treasury}
+              />
+              <Checkbox
+                name="can_manage_bulletin"
+                label="Puede editar el Boletín local"
+                defaultChecked={profile.can_manage_bulletin}
               />
             </div>
             <div className="flex justify-end pt-2">

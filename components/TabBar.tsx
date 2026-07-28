@@ -22,7 +22,7 @@ type Tab = {
 const BIBLIOTECA_ROUTES = ["/mensajes", "/materiales", "/oraciones"];
 const CALENDARIO_ROUTES = ["/calendario", "/fiestas", "/dias-sagrados", "/actividades"];
 // Hub AEL: todo lo directo de la Asamblea Espiritual Local.
-const AEL_ROUTES = ["/comunicados", "/chat", "/tesoreria"];
+const AEL_ROUTES = ["/comunicados", "/boletin-local", "/chat", "/tesoreria"];
 
 const TABS: Tab[] = [
   { href: "/", label: "Inicio", Icon: IconHome },

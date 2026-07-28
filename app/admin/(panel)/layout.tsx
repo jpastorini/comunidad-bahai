@@ -1,6 +1,6 @@
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ChatNotifier } from "@/components/ChatNotifier";
-import { requireAdmin } from "@/lib/auth";
+import { requirePanelAccess } from "@/lib/auth";
 import { consumeFlashToast } from "@/lib/toast";
 
 export const revalidate = 60;
@@ -10,7 +10,10 @@ export default async function PanelLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await requireAdmin();
+  // Admin local o editor designado del Boletín. Cada página del panel
+  // sigue auto-protegida (requireAdmin / ensure*Tag), así que esto solo
+  // abre el shell, no las secciones.
+  const session = await requirePanelAccess();
   const toast = consumeFlashToast();
   return (
     <AdminShell

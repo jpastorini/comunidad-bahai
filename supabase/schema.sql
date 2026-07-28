@@ -25,6 +25,9 @@ create table if not exists public.profiles (
   role text not null default 'member' check (role in ('member', 'admin')),
   can_respond_chat boolean not null default false,
   can_manage_treasury boolean not null default false,
+  -- Puede editar el Boletín local sin ser admin. Ver migración
+  -- 036_local_bulletins.sql (tabla bulletins + has_bulletin_tag).
+  can_manage_bulletin boolean not null default false,
   -- Soft-disable: la Asamblea Local puede desactivar el acceso de un
   -- miembro sin borrar su perfil. Ver migración 035_member_disabled.sql.
   disabled_at timestamptz,

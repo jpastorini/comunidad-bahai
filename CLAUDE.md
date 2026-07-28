@@ -105,7 +105,12 @@ chat (in-app + Web Push) · Botón "Instalar App" (PWA) · Tesorería con
 presupuesto · Contenido nacional · Disponibilidad para reuniones (grilla
 semanal por miembro AEL + consolidado/heatmap en `/admin/disponibilidad`;
 además, al crear/editar un evento "Reunión AEL" se despliega el consolidado
-compacto al costado del formulario, solo en PC).
+compacto al costado del formulario, solo en PC) · Boletín local (ediciones
+draft→published que compilan eventos/comunicados/fotos + editorial;
+editan admins locales o designados con tag `can_manage_bulletin` — pueden
+ser `role='member'`, con excepción en middleware/layout acotada a
+`/admin/boletin`; push al publicar; link público compartible `/b/<token>`
+resuelto con service-role, ver `lib/bulletins.ts` y migración 036).
 
 ## Pendientes conocidos
 

@@ -20,12 +20,13 @@ type NavItem = {
   href: string;
   label: string;
   Icon: typeof IconMensajes;
-  requires?: "chat" | "treasury";
+  requires?: "chat" | "treasury" | "bulletin";
 };
 
 const NAV: NavItem[] = [
   { href: "/admin", label: "Inicio", Icon: IconActividades },
   { href: "/admin/comunicados", label: "Comunicados (Asamblea Local)", Icon: IconMensajes },
+  { href: "/admin/boletin", label: "Boletín local", Icon: IconMensajes, requires: "bulletin" },
   { href: "/admin/tareas", label: "Tareas de la Asamblea", Icon: IconCheck },
   { href: "/admin/disponibilidad", label: "Disponibilidad (reuniones)", Icon: IconCalendario },
   { href: "/admin/fiestas", label: "Fiestas de 19 Días", Icon: IconCalendario },
@@ -49,10 +50,16 @@ type Props = {
 export function SidebarContent({ profile, locality, onNavigate }: Props) {
   const pathname = usePathname();
 
+  // Un editor designado del Boletín (role='member' + can_manage_bulletin)
+  // entra al panel pero solo ve su sección; el resto exige rol admin.
+  const isAdminRole = profile.role === "admin";
   const items = NAV.filter((item) => {
-    if (item.requires === "chat") return profile.can_respond_chat;
-    if (item.requires === "treasury") return profile.can_manage_treasury;
-    return true;
+    if (item.requires === "chat") return isAdminRole && profile.can_respond_chat;
+    if (item.requires === "treasury")
+      return isAdminRole && profile.can_manage_treasury;
+    if (item.requires === "bulletin")
+      return isAdminRole || profile.can_manage_bulletin;
+    return isAdminRole;
   });
 
   return (
@@ -177,6 +184,11 @@ export function SidebarContent({ profile, locality, onNavigate }: Props) {
           {profile.can_manage_treasury && (
             <span className="rounded bg-gold/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-gold-dark">
               Tesorería
+            </span>
+          )}
+          {profile.can_manage_bulletin && (
+            <span className="rounded bg-terra/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-terra">
+              Boletín
             </span>
           )}
         </div>

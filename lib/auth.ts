@@ -250,6 +250,70 @@ export async function requireAdmin(): Promise<AdminSession> {
 }
 
 /**
+ * Acceso al shell del panel: admin local O editor designado del Boletín
+ * (`can_manage_bulletin`). Lo usan el layout del panel y las pantallas de
+ * /admin/boletin — el resto de las páginas del panel siguen auto-protegidas
+ * con requireAdmin, así que un editor de boletín no-admin solo puede usar
+ * esa sección (el middleware además le bloquea las otras rutas /admin).
+ */
+export async function requirePanelAccess(): Promise<AdminSession> {
+  if (!isSupabaseConfigured()) {
+    redirect("/login?error=no-supabase");
+  }
+
+  const qualifies = (p: Profile) => p.role === "admin" || p.can_manage_bulletin;
+
+  // ── Fast path ─────────────────────────────────────────────────
+  const cached = getProfileFromHeaders();
+  if (cached) {
+    if (!qualifies(cached.profile)) {
+      redirect("/");
+    }
+    if (!cached.profile.locality_id) {
+      redirect("/seleccionar-localidad?next=%2Fadmin");
+    }
+    const locality = await loadLocality(cached.profile.locality_id, "/admin");
+    return {
+      user: { id: cached.userId, email: cached.email },
+      profile: cached.profile,
+      locality,
+    };
+  }
+
+  // ── Fallback ──────────────────────────────────────────────────
+  const supabase = createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login?next=%2Fadmin");
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!profile || !qualifies(profile as Profile)) {
+    redirect("/");
+  }
+
+  if (!profile.locality_id) {
+    redirect("/seleccionar-localidad?next=%2Fadmin");
+  }
+
+  const locality = await loadLocality(profile.locality_id, "/admin");
+
+  return {
+    user: { id: user.id, email: user.email ?? "" },
+    profile: profile as Profile,
+    locality,
+  };
+}
+
+/**
  * Admin Nacional: puede gestionar localidades y asignar roles globalmente.
  * Redirige si el usuario no tiene el flag.
  */

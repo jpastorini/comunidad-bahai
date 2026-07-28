@@ -38,6 +38,8 @@ export type Profile = {
   role: "member" | "admin";
   can_respond_chat: boolean;
   can_manage_treasury: boolean;
+  /** Puede editar el Boletín local (aunque no sea admin de Asamblea). */
+  can_manage_bulletin: boolean;
   /** Localidad a la que pertenece. NULL = todavía no eligió. */
   locality_id: string | null;
   /** Puede crear/editar localidades y asignar roles cross-locality. */
@@ -328,4 +330,56 @@ export type CalendarEvent = {
    * de horario exacto coinciden.
    */
   official_date?: string | null;
+};
+
+// ─── Boletín local ───────────────────────────────────────────────
+// Ediciones editoriales por localidad que compilan contenido existente
+// (eventos, comunicados, fotos) como snapshot JSON. Ver migración
+// 036_local_bulletins.sql y lib/bulletins.ts.
+
+export type BulletinStatus = "draft" | "published";
+
+export type BulletinEventItem = {
+  id: string;
+  title: string;
+  /** Fecha ya formateada (ej. "12 ago"), congelada en el snapshot. */
+  dateLabel: string;
+  time: string | null;
+  location: string | null;
+};
+
+export type BulletinAnnouncementItem = {
+  id: string;
+  title: string;
+  excerpt: string;
+  /** Fecha del comunicado (ISO yyyy-mm-dd). */
+  date: string;
+};
+
+export type BulletinPhotoItem = {
+  id: string;
+  url: string;
+  caption: string | null;
+  eventTitle: string;
+};
+
+export type BulletinContent = {
+  events: BulletinEventItem[];
+  announcements: BulletinAnnouncementItem[];
+  photos: BulletinPhotoItem[];
+};
+
+export type Bulletin = {
+  id: string;
+  locality_id: string;
+  title: string;
+  editorial: string | null;
+  content: BulletinContent;
+  status: BulletinStatus;
+  /** Token del link público /b/<token> (compartir fuera de la app). */
+  share_token: string;
+  published_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 };

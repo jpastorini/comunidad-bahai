@@ -119,7 +119,12 @@ export async function updateSession(request: NextRequest) {
 
   // ── Protección de rutas /admin/* ───────────────────────────────
   if (isAdminRoute) {
-    if (!profile || profile.role !== "admin") {
+    // Excepción acotada: un editor designado del Boletín local
+    // (can_manage_bulletin) puede entrar SOLO a /admin/boletin aunque
+    // no sea admin de Asamblea.
+    const isBulletinEditorAllowed =
+      path.startsWith("/admin/boletin") && profile?.can_manage_bulletin;
+    if ((!profile || profile.role !== "admin") && !isBulletinEditorAllowed) {
       // Ya está logueado pero no es admin: lo mandamos a su app de
       // comunidad en vez de a una pantalla de login confusa.
       return NextResponse.redirect(new URL("/", request.url));

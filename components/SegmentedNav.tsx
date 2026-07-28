@@ -57,6 +57,7 @@ export const BIBLIOTECA_SEGMENTS: SegmentItem[] = [
 /** Items del hub AEL — todo lo que emite/gestiona la Asamblea Espiritual Local. */
 export const AEL_SEGMENTS: SegmentItem[] = [
   { href: "/comunicados", label: "Comunicados", prefix: "/comunicados" },
+  { href: "/boletin-local", label: "Boletín", prefix: "/boletin-local" },
   { href: "/chat", label: "Chat", prefix: "/chat" },
   { href: "/tesoreria", label: "Tesorería", prefix: "/tesoreria" },
 ];

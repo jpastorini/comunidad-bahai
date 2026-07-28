@@ -15,6 +15,7 @@ export async function updateMemberAction(formData: FormData) {
     role: (formData.get("role") as string) === "admin" ? "admin" : "member",
     can_respond_chat: formData.get("can_respond_chat") === "on",
     can_manage_treasury: formData.get("can_manage_treasury") === "on",
+    can_manage_bulletin: formData.get("can_manage_bulletin") === "on",
     full_name: (formData.get("full_name") as string) || null,
   };
 
