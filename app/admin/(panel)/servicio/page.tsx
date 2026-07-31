@@ -52,7 +52,7 @@ export default async function AdminServicioPage() {
       <PageHeader
         eyebrow="Servicio"
         title="Necesidades de la comunidad"
-        description="Publica oportunidades para que los miembros se ofrezcan como voluntarios."
+        description="Publica oportunidades para que los creyentes se ofrezcan como voluntarios."
         actions={<Button href="/admin/servicio/nueva">+ Nueva necesidad</Button>}
       />
 
@@ -98,7 +98,7 @@ export default async function AdminServicioPage() {
                 href={`/admin/servicio/${n.id}/voluntarios`}
                 className="text-[12px] font-semibold text-terra hover:underline"
               >
-                {n.volunteer_count} {n.volunteer_count === 1 ? "miembro" : "miembros"}
+                {n.volunteer_count} {n.volunteer_count === 1 ? "creyente" : "creyentes"}
               </Link>
             ),
           },

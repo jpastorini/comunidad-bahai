@@ -35,8 +35,8 @@ export default async function ConversationPage({
     <>
       <PageHeader
         eyebrow={member.email ?? "Conversación"}
-        title={member.full_name ?? "Miembro"}
-        description="Este chat solo lo ve este miembro. Las respuestas aparecen como 'Secretaría'."
+        title={member.full_name ?? "Creyente"}
+        description="Este chat solo lo ve este creyente. Las respuestas aparecen como 'Secretaría'."
       />
       <Conversation
         memberId={params.memberId}

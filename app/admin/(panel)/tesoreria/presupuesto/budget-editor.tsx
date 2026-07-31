@@ -196,7 +196,7 @@ export function BudgetEditor({
           </li>
           <li>
             → El estado <strong className="text-dark">Activo</strong> indica que
-            el presupuesto está vigente y se muestra a los miembros.
+            el presupuesto está vigente y se muestra a los creyentes.
           </li>
         </ul>
       </Card>

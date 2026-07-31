@@ -19,7 +19,7 @@ export default async function AdminFotosPage() {
       <PageHeader
         eyebrow="Asamblea Espiritual Local"
         title="Fotos de la comunidad"
-        description={`Fotos que suben los miembros en cada evento. Destacá hasta ${MAX_FEATURED_PER_EVENT} por evento (se muestran en el Inicio) y enviá las mejores al boletín nacional que ven todas las comunidades.`}
+        description={`Fotos que suben los creyentes en cada evento. Destacá hasta ${MAX_FEATURED_PER_EVENT} por evento (se muestran en el Inicio) y enviá las mejores al boletín nacional que ven todas las comunidades.`}
       />
 
       <div className="mb-4">
@@ -33,7 +33,7 @@ export default async function AdminFotosPage() {
       <DataTable<AdminPhoto>
         rows={photos}
         rowKey={(p) => p.id}
-        empty="Todavía no hay fotos. Aparecerán acá cuando los miembros suban fotos a los eventos."
+        empty="Todavía no hay fotos. Aparecerán acá cuando los creyentes suban fotos a los eventos."
         columns={[
           {
             key: "thumb",

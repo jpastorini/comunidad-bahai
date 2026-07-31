@@ -110,7 +110,7 @@ export default async function LocalidadesPage() {
       <div className="mt-6">
         <Banner tone="info">
           Para borrar una localidad primero debes reasignar todos sus
-          miembros a otra. Esto evita perder datos por accidente.
+          creyentes a otra. Esto evita perder datos por accidente.
         </Banner>
       </div>
     </>
@@ -133,7 +133,7 @@ function LocalityCard({
           </div>
           <div className="mt-0.5 text-[12px] text-muted">
             {[loc.city, loc.country].filter(Boolean).join(" · ")} · {memberCount}{" "}
-            {memberCount === 1 ? "miembro" : "miembros"}
+            {memberCount === 1 ? "creyente" : "creyentes"}
           </div>
         </div>
         {!loc.is_active && (
@@ -183,7 +183,7 @@ function LocalityCard({
               disabled={memberCount > 0}
               title={
                 memberCount > 0
-                  ? `${memberCount} miembros la usan aún`
+                  ? `${memberCount} creyentes la usan aún`
                   : "Borrar localidad"
               }
             >

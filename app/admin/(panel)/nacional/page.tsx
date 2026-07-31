@@ -43,7 +43,7 @@ export default async function AdminNacionalPage() {
           className="tap group rounded-2xl border border-black/[0.04] bg-card p-6 shadow-card transition hover:-translate-y-0.5 hover:shadow-card-elevated"
         >
           <div className="text-[10px] font-semibold uppercase tracking-[1.5px] text-gold-dark">
-            Miembros registrados
+            Creyentes registrados
           </div>
           <div className="mt-1 font-display text-[36px] font-bold leading-none text-dark">
             {profiles.count ?? 0}
@@ -63,9 +63,9 @@ export default async function AdminNacionalPage() {
         </p>
         <ul className="mt-2 list-inside list-disc space-y-1 text-[13px] text-dark">
           <li>Crear nuevas localidades (Comunidades Bahá'ís)</li>
-          <li>Asignar la localidad de cada usuario</li>
+          <li>Asignar la localidad de cada creyente</li>
           <li>
-            Promover a Usuarios de la Comunidad a Miembros de la Asamblea Local
+            Promover a Creyentes a Miembros de la Asamblea Local
           </li>
           <li>
             Otorgar tags especiales (Chat Secretaría, Tesorería) a Miembros de

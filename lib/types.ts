@@ -57,10 +57,12 @@ export type Profile = {
 /**
  * Etiquetas visibles de los roles. Los valores en la base de datos siguen
  * siendo 'member' / 'admin' (RLS, triggers, tipos); esto es solo el texto
- * descriptivo que ve la gente, pensado para usuarios no técnicos.
+ * descriptivo que ve la gente. Convención cultural de la comunidad: a la
+ * gente de la comunidad se le dice "creyente"; "miembro" se reserva para
+ * los miembros de la Asamblea.
  */
 export const ROLE_LABELS: Record<Profile["role"], string> = {
-  member: "Usuario Comunidad",
+  member: "Creyente",
   admin: "Miembro Asamblea Local",
 };
 

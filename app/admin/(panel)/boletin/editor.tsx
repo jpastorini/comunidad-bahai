@@ -199,7 +199,7 @@ export function BulletinEditor({ candidates, defaultTitle, bulletin, action }: P
               if (
                 isPublished &&
                 !window.confirm(
-                  "El boletín volverá a borrador y los miembros dejarán de verlo. ¿Continuar?"
+                  "El boletín volverá a borrador y los creyentes dejarán de verlo. ¿Continuar?"
                 )
               ) {
                 ev.preventDefault();
@@ -217,7 +217,7 @@ export function BulletinEditor({ candidates, defaultTitle, bulletin, action }: P
               if (
                 !isPublished &&
                 !window.confirm(
-                  "Se publicará el boletín y se avisará por notificación a los miembros de la comunidad. ¿Continuar?"
+                  "Se publicará el boletín y se avisará por notificación a los creyentes de la comunidad. ¿Continuar?"
                 )
               ) {
                 ev.preventDefault();

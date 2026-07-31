@@ -125,8 +125,8 @@ export function MaterialForm({ material, national = false }: Props) {
         </h2>
         <p className="mb-4 text-[12px] text-muted">
           {isImageBased
-            ? "Sube la imagen que los miembros podrán descargar y compartir por WhatsApp."
-            : "Sube el PDF que los miembros podrán descargar."}
+            ? "Sube la imagen que los creyentes podrán descargar y compartir por WhatsApp."
+            : "Sube el PDF que los creyentes podrán descargar."}
         </p>
 
         {isImageBased ? (

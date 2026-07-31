@@ -88,7 +88,7 @@ export async function selectLocalityAction(formData: FormData) {
     .from("locality_change_requests")
     .insert({
       user_id: user.id,
-      user_name: profile?.full_name || user.email || "Miembro",
+      user_name: profile?.full_name || user.email || "Creyente",
       user_email: user.email,
       from_locality_id: currentLocalityId,
       to_locality_id: locality_id,

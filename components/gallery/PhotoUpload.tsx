@@ -83,7 +83,7 @@ export function PhotoUpload({ eventType, eventId }: Props) {
         Compartir una foto
       </h3>
       <p className="mb-3 text-[11.5px] text-muted">
-        Visible solo para los miembros de la comunidad.
+        Visible solo para los creyentes de la comunidad.
       </p>
 
       {preview ? (

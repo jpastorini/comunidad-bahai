@@ -57,7 +57,7 @@ export async function deleteLocalityAction(formData: FormData) {
   if ((profileCount ?? 0) > 0) {
     setFlashToast({
       tone: "error",
-      message: `No se puede borrar: ${profileCount} miembros aún la usan. Reasígnalos primero.`,
+      message: `No se puede borrar: ${profileCount} creyentes aún la usan. Reasígnalos primero.`,
     });
     redirect("/admin/nacional/localidades");
   }
@@ -101,7 +101,7 @@ export async function updateMemberLocalityAction(formData: FormData) {
   setFlashToast(
     error
       ? { tone: "error", message: `Error: ${error.message}` }
-      : { tone: "success", message: "Miembro actualizado." }
+      : { tone: "success", message: "Creyente actualizado." }
   );
 
   revalidatePath("/admin/nacional/miembros");

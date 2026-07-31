@@ -25,7 +25,7 @@ export default function TerminosPage() {
 
       <LegalSection heading="Acceso a tu cuenta">
         <p>
-          El acceso es para miembros de la comunidad. Iniciás sesión con tu
+          El acceso es para creyentes de la comunidad. Iniciás sesión con tu
           cuenta de Google. Sos responsable de mantener tu acceso seguro. La
           Asamblea de tu localidad y el administrador pueden gestionar o
           suspender cuentas cuando sea necesario para el buen funcionamiento de
@@ -53,7 +53,7 @@ export default function TerminosPage() {
         </ul>
         <p>
           Conservás la titularidad de tus fotos; al subirlas, autorizás a la app
-          a mostrarlas a los miembros de la comunidad. Podés pedir que se baje
+          a mostrarlas a los creyentes de la comunidad. Podés pedir que se baje
           una foto en cualquier momento.
         </p>
       </LegalSection>

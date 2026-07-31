@@ -38,7 +38,7 @@ const NAV: NavItem[] = [
   { href: "/admin/servicio", label: "Servicio", Icon: IconServicio },
   { href: "/admin/chat", label: "Chat con Secretaría", Icon: IconChat, requires: "chat" },
   { href: "/admin/tesoreria", label: "Tesorería", Icon: IconTesoreria, requires: "treasury" },
-  { href: "/admin/miembros", label: "Miembros (local)", Icon: IconActividades },
+  { href: "/admin/miembros", label: "Creyentes (local)", Icon: IconActividades },
 ];
 
 type Props = {
@@ -148,7 +148,7 @@ export function SidebarContent({ profile, locality, onNavigate }: Props) {
               />
               <NationalLink
                 href="/admin/nacional/miembros"
-                label="Miembros (todos)"
+                label="Creyentes (todos)"
                 pathname={pathname}
                 onNavigate={onNavigate}
                 Icon={IconActividades}

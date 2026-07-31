@@ -160,7 +160,7 @@ export default async function ProfilePage() {
               </div>
             )}
             <Field
-              label="Miembro desde"
+              label="Creyente desde"
               value={new Date(session.profile.created_at).toLocaleDateString(
                 "es-MX",
                 { year: "numeric", month: "long" }

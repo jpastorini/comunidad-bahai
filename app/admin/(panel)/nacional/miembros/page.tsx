@@ -41,7 +41,7 @@ export default async function NacionalMiembrosPage() {
     <>
       <PageHeader
         eyebrow="Admin Nacional"
-        title="Miembros"
+        title="Creyentes"
         description="Asigna localidad, promueve a admin local o admin nacional."
       />
 

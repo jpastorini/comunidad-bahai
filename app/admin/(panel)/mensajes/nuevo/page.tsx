@@ -11,7 +11,7 @@ export default async function NewMessagePage() {
       <PageHeader
         eyebrow="Casa Universal de Justicia"
         title="Nuevo mensaje"
-        description="Sube el PDF oficial. Los miembros lo verán en la sección Mensajes."
+        description="Sube el PDF oficial. Los creyentes lo verán en la sección Mensajes."
       />
       <MessageForm />
     </FormShell>

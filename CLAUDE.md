@@ -83,6 +83,12 @@ Para evitarlo:
 ## Convenciones
 
 - **UI en español** (es-UY/es-MX). Voseo aceptable en copy informal.
+- **Terminología de la comunidad:** a la gente de la comunidad se le dice
+  **"creyente(s)"** en todo texto visible; **"miembro(s)"** se reserva para
+  los miembros de la Asamblea (AEL). Los valores internos no cambian
+  (`role='member'`, rutas `/admin/miembros`, nombres de funciones). Las
+  citas de Escritos no se tocan. Etiquetas centrales en `ROLE_LABELS`
+  (`lib/types.ts`).
 - **Charlar el diseño antes de codear** cuando hay decisiones de producto;
   el usuario prefiere alinear conceptualmente primero.
 - **Pre-cargar datos conocidos** en vez de pedir que el usuario los cree

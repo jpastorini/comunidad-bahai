@@ -89,7 +89,7 @@ export async function addCommentAction(
   }
 
   const authorName =
-    session.profile.full_name || session.user.email || "Miembro";
+    session.profile.full_name || session.user.email || "Creyente";
 
   const { error } = await supabase.from("event_photo_comments").insert({
     photo_id: photoId,

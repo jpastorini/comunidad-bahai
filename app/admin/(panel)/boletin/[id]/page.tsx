@@ -28,8 +28,8 @@ export default async function EditarBoletinPage({
         title={bulletin.status === "published" ? "Editar edición publicada" : "Editar borrador"}
         description={
           bulletin.status === "published"
-            ? "Los cambios se ven al guardar. No se vuelve a notificar a los miembros."
-            : "El borrador no es visible para los miembros hasta que lo publiques."
+            ? "Los cambios se ven al guardar. No se vuelve a notificar a los creyentes."
+            : "El borrador no es visible para los creyentes hasta que lo publiques."
         }
         actions={
           bulletin.status === "published" ? (

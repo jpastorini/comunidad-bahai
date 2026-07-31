@@ -116,7 +116,7 @@ export default async function AdminSugerenciasPage({
       author_name:
         s.author_name ??
         profile?.full_name ??
-        (s.user_id ? "Miembro" : null),
+        (s.user_id ? "Creyente" : null),
       author_email: profile?.email ?? null,
       created_at: s.created_at,
       feast_id: feast.id,
@@ -192,7 +192,7 @@ export default async function AdminSugerenciasPage({
 
       <div className="mt-6">
         <Banner tone="info">
-          Las sugerencias también pueden ser enviadas por los miembros desde la
+          Las sugerencias también pueden ser enviadas por los creyentes desde la
           app de comunidad durante o después de cada Fiesta.
         </Banner>
       </div>

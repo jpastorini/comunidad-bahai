@@ -234,7 +234,7 @@ export async function setFeastStatusAction(formData: FormData) {
     published:
       "Fiesta publicada — aparece en el calendario de la comunidad.",
     in_progress:
-      "Fiesta iniciada — el programa ya es visible para los miembros.",
+      "Fiesta iniciada — el programa ya es visible para los creyentes.",
   };
   setFlashToast({ tone: "success", message: messages[newStatus] });
 

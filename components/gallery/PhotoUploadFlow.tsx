@@ -428,7 +428,7 @@ export function PhotoUploadFlow({ events }: Props) {
           {error && <ErrorBox>{error}</ErrorBox>}
 
           <p className="mt-3 text-center text-[10px] text-muted">
-            Las fotos son visibles solo para los miembros de la comunidad.
+            Las fotos son visibles solo para los creyentes de la comunidad.
           </p>
         </section>
       )}

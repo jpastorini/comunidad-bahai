@@ -89,7 +89,7 @@ export default async function AdminTesoreriaPage() {
       <div className="mb-4">
         <Banner tone="info">
           La cifra y el progreso aparecen automáticamente en la app de
-          miembros cuando guardas los cambios.
+          la comunidad cuando guardas los cambios.
         </Banner>
       </div>
 
@@ -121,7 +121,7 @@ export default async function AdminTesoreriaPage() {
               Compromisos mensuales
             </h2>
             <p className="mt-1 text-[12px] text-muted">
-              Declarados privadamente por los miembros. Solo tú (tesorero) los
+              Declarados privadamente por los creyentes. Solo tú (tesorero) los
               ves; ningún otro miembro de la Asamblea tiene acceso.
             </p>
           </div>
@@ -136,7 +136,7 @@ export default async function AdminTesoreriaPage() {
             <div className="mt-0.5 text-[11px] text-muted">
               total / mes
               {commitments.length > 0 && (
-                <> · {commitments.length} {commitments.length === 1 ? "miembro" : "miembros"}</>
+                <> · {commitments.length} {commitments.length === 1 ? "creyente" : "creyentes"}</>
               )}
             </div>
           </div>
@@ -144,7 +144,7 @@ export default async function AdminTesoreriaPage() {
 
         {commitments.length === 0 ? (
           <div className="mt-4 rounded-xl border border-dashed border-black/15 bg-bg/40 p-5 text-center text-[13px] text-muted">
-            Aún no hay compromisos registrados. Los miembros pueden declarar el
+            Aún no hay compromisos registrados. Los creyentes pueden declarar el
             suyo desde la app, en la sección Tesorería.
           </div>
         ) : (
@@ -206,7 +206,7 @@ export default async function AdminTesoreriaPage() {
         {wantReminderCount > 0 && (
           <p className="mt-3 text-[11.5px] text-muted">
             <strong className="text-dark">{wantReminderCount}</strong>{" "}
-            {wantReminderCount === 1 ? "miembro pidió" : "miembros pidieron"}{" "}
+            {wantReminderCount === 1 ? "creyente pidió" : "creyentes pidieron"}{" "}
             que se les recuerde si hay retraso en su aporte.
           </p>
         )}

@@ -25,7 +25,7 @@ export async function updateMemberAction(formData: FormData) {
   setFlashToast(
     error
       ? { tone: "error", message: `Error: ${error.message}` }
-      : { tone: "success", message: "Miembro actualizado." }
+      : { tone: "success", message: "Creyente actualizado." }
   );
 
   revalidatePath("/admin/miembros");
@@ -103,7 +103,7 @@ export async function setMemberDisabledAction(formData: FormData) {
   if (!target || target.locality_id !== session.locality.id) {
     setFlashToast({
       tone: "error",
-      message: "Ese miembro no pertenece a tu localidad.",
+      message: "Ese creyente no pertenece a tu localidad.",
     });
     revalidatePath("/admin/miembros");
     redirect("/admin/miembros");
@@ -123,7 +123,7 @@ export async function setMemberDisabledAction(formData: FormData) {
       ? { tone: "error", message: `Error: ${error.message}` }
       : {
           tone: "success",
-          message: disable ? "Miembro deshabilitado." : "Miembro reactivado.",
+          message: disable ? "Creyente deshabilitado." : "Creyente reactivado.",
         }
   );
 
@@ -196,7 +196,7 @@ export async function decideLocalityChangeAction(formData: FormData) {
     if (profileError) {
       setFlashToast({
         tone: "error",
-        message: `Solicitud aprobada pero no se pudo mover al miembro: ${profileError.message}`,
+        message: `Solicitud aprobada pero no se pudo mover al creyente: ${profileError.message}`,
       });
       revalidatePath("/admin/miembros");
       redirect("/admin/miembros");
@@ -207,7 +207,7 @@ export async function decideLocalityChangeAction(formData: FormData) {
     tone: "success",
     message:
       decision === "approve"
-        ? "Solicitud aprobada — el miembro ahora pertenece a tu localidad."
+        ? "Solicitud aprobada — el creyente ahora pertenece a tu localidad."
         : "Solicitud rechazada.",
   });
   revalidatePath("/admin/miembros");

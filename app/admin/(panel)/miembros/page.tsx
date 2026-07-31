@@ -80,8 +80,8 @@ export default async function AdminMiembrosPage() {
     <>
       <PageHeader
         eyebrow="Comunidad"
-        title="Miembros"
-        description="Gestiona el rol de cada usuario y los permisos especiales."
+        title="Creyentes"
+        description="Gestiona el rol de cada creyente y los permisos especiales."
       />
 
       {pendingRequests.length > 0 && (
@@ -138,7 +138,7 @@ export default async function AdminMiembrosPage() {
       {disabledProfiles.length > 0 && (
         <div className="mt-8">
           <h2 className="mb-1 font-display text-[18px] font-semibold text-dark">
-            Miembros deshabilitados
+            Creyentes deshabilitados
             <span className="ml-2 rounded-full bg-black/10 px-2 py-0.5 text-[11px] font-bold text-muted">
               {disabledProfiles.length}
             </span>
@@ -261,7 +261,7 @@ function MemberCard({ profile, isMe }: { profile: Profile; isMe: boolean }) {
                 type="submit"
                 className="tap rounded-xl bg-terra px-4 py-2 text-[13px] font-semibold text-white shadow-card-soft"
               >
-                Guardar {profile.full_name?.split(" ")[0] ?? "miembro"}
+                Guardar {profile.full_name?.split(" ")[0] ?? "creyente"}
               </button>
             </div>
           </div>
@@ -283,11 +283,11 @@ function MemberCard({ profile, isMe }: { profile: Profile; isMe: boolean }) {
           <input type="hidden" name="id" value={profile.id} />
           <input type="hidden" name="disable" value="1" />
           <span className="text-[11.5px] text-muted">
-            Cortar el acceso de este miembro a la app.
+            Cortar el acceso de este creyente a la app.
           </span>
           <ConfirmSubmit
             message={`¿Deshabilitar a ${
-              profile.full_name?.split(" ")[0] ?? "este miembro"
+              profile.full_name?.split(" ")[0] ?? "este creyente"
             }? No podrá ingresar hasta que lo reactives.`}
             className="tap shrink-0 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-[12.5px] font-semibold text-rose-600 hover:bg-rose-100"
           >

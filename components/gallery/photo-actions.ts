@@ -89,7 +89,7 @@ export async function uploadEventPhotoAction(
     event_type: eventType,
     event_id: eventId,
     uploader_user_id: session.user.id,
-    uploader_name: session.profile.full_name || session.user.email || "Miembro",
+    uploader_name: session.profile.full_name || session.user.email || "Creyente",
     storage_path: path,
     public_url: pub.publicUrl,
     caption: caption || null,

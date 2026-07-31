@@ -35,11 +35,11 @@ export default async function AdminComunicadosPage() {
       <div className="mb-4">
         <Banner tone="info">
           {pushReach.total === 0 ? (
-            "Aún no hay miembros en la comunidad."
+            "Aún no hay creyentes en la comunidad."
           ) : pushReach.withPush === 0 ? (
             <>
               Al publicar, la notificación push <strong>no llega a nadie</strong>{" "}
-              todavía: ninguno de los {pushReach.total} miembros activó las
+              todavía: ninguno de los {pushReach.total} creyentes activó las
               notificaciones.
             </>
           ) : (
@@ -48,7 +48,7 @@ export default async function AdminComunicadosPage() {
               <strong>
                 {pushReach.withPush} de {pushReach.total}
               </strong>{" "}
-              miembros con notificaciones activas.
+              creyentes con notificaciones activas.
             </>
           )}
         </Banner>

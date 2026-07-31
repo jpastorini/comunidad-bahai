@@ -48,7 +48,7 @@ export function CommitmentSection({ defaultName, commitment }: Props) {
         </svg>
         <div>
           Esta información es <strong className="font-bold">privada</strong>:
-          solo la ve el tesorero de la Asamblea Local. Ningún otro miembro de
+          solo la ve el tesorero de la Asamblea Local. Ningún otro creyente de
           la comunidad puede verla.
         </div>
       </div>

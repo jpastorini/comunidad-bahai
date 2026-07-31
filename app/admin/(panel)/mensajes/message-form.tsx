@@ -57,7 +57,7 @@ export function MessageForm({ message }: Props) {
           PDF del mensaje
         </h2>
         <p className="mb-4 text-[12px] text-muted">
-          Adjunta el documento oficial que los miembros podrán descargar.
+          Adjunta el documento oficial que los creyentes podrán descargar.
         </p>
         <PdfSlot
           currentUrl={message?.pdf_url ?? null}

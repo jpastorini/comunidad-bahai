@@ -55,7 +55,7 @@ export default async function EditFeastPage({
           <Banner tone="warning">
             <strong>Esta Fiesta está {status === "in_progress" ? "iniciada" : "publicada"} pero sin lugares cargados.</strong>
             {" "}
-            Los miembros no saben dónde ni a qué hora encontrarse. Agregá al
+            Los creyentes no saben dónde ni a qué hora encontrarse. Agregá al
             menos una casa anfitriona en la sección <em>"Lugares de celebración"</em> abajo.
           </Banner>
         </div>
@@ -76,7 +76,7 @@ export default async function EditFeastPage({
             {status === "published" &&
               "La comunidad ve esta Fiesta en su calendario y la página de la Fiesta, pero el programa interno aún no es visible. Al iniciar la Fiesta, el programa se hace visible a todos."}
             {status === "in_progress" &&
-              "El programa completo de esta Fiesta es visible para todos los miembros."}
+              "El programa completo de esta Fiesta es visible para todos los creyentes."}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <FeastStatusActions feastId={feast.id} status={status} />
@@ -128,7 +128,7 @@ export default async function EditFeastPage({
           Sugerencias recibidas
         </h2>
         <p className="mt-1 text-[12px] text-muted">
-          Comentarios y sugerencias enviadas por los miembros durante esta Fiesta.
+          Comentarios y sugerencias enviadas por los creyentes durante esta Fiesta.
           Solo los miembros de la Asamblea las ven.
         </p>
 

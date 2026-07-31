@@ -41,7 +41,7 @@ export default function PrivacidadPage() {
           </li>
           <li>
             <strong>Tu perfil en la comunidad:</strong> la localidad a la que
-            pertenecés y tu rol (miembro o Asamblea).
+            pertenecés y tu rol (creyente o Asamblea).
           </li>
           <li>
             <strong>Contenido que compartís:</strong> fotos que subís a la
@@ -77,7 +77,7 @@ export default function PrivacidadPage() {
       <LegalSection heading="Quién puede ver tu información">
         <p>
           El contenido de la comunidad (fotos, comentarios, calendario) es
-          visible para los miembros autenticados de tu localidad. El chat con
+          visible para los creyentes autenticados de tu localidad. El chat con
           la Secretaría lo ven solo vos y las personas de la Asamblea
           autorizadas a responder. Tu perfil y datos de cuenta los gestiona la
           Asamblea de tu localidad y el administrador de la app.

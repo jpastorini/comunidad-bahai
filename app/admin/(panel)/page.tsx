@@ -159,7 +159,7 @@ export default async function AdminHomePage({
     },
     {
       href: "/admin/miembros",
-      label: "Miembros",
+      label: "Creyentes",
       hint: "Comunidad",
       count: members.count ?? 0,
       Icon: IconActividades,
@@ -176,7 +176,7 @@ export default async function AdminHomePage({
     {
       href: "/admin/comunicados",
       label: "Push activo",
-      hint: "Miembros con notificaciones",
+      hint: "Creyentes con notificaciones",
       count: `${pushReach.withPush}/${pushReach.total}`,
       Icon: IconBell,
       color: COLOR_GOLD,
@@ -197,7 +197,7 @@ export default async function AdminHomePage({
     <>
       <PageHeader
         eyebrow="Panel"
-        title={`Hola, ${(session.profile.full_name?.split(" ")[0] ?? "miembro").trim()}`}
+        title={`Hola, ${(session.profile.full_name?.split(" ")[0] ?? "creyente").trim()}`}
         description="Gestiona los contenidos de la Comunidad Bahá'í desde un solo lugar."
       />
 

@@ -30,7 +30,7 @@ export default async function AdminChatListPage() {
       <PageHeader
         eyebrow="Secretaría"
         title="Conversaciones"
-        description="Responde a los miembros que han escrito a la Secretaría."
+        description="Responde a los creyentes que han escrito a la Secretaría."
       />
 
       <div className="mb-4">
