@@ -33,6 +33,37 @@ export async function updateMemberAction(formData: FormData) {
 }
 
 /**
+ * Regenera el link de invitación de la localidad: token nuevo, el
+ * anterior (y su QR impreso) dejan de funcionar al instante.
+ */
+export async function regenerateInviteAction(_formData: FormData) {
+  const session = await requireAdmin();
+  const supabase = createSupabaseServer();
+
+  // Mismo formato que el default de la DB: 64 hex chars.
+  const token = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "");
+  const { error } = await supabase
+    .from("locality_invites")
+    .update({
+      token,
+      regenerated_at: new Date().toISOString(),
+      regenerated_by: session.user.id,
+    })
+    .eq("locality_id", session.locality.id);
+
+  setFlashToast(
+    error
+      ? { tone: "error", message: `Error: ${error.message}` }
+      : {
+          tone: "success",
+          message: "Link regenerado. Compartí el nuevo — el anterior ya no sirve.",
+        }
+  );
+  revalidatePath("/admin/miembros");
+  redirect("/admin/miembros");
+}
+
+/**
  * Deshabilitar o reactivar un miembro de la comunidad (soft-disable).
  *
  * Marca/limpia `profiles.disabled_at`. Un miembro deshabilitado queda

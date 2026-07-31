@@ -110,7 +110,13 @@ draft→published que compilan eventos/comunicados/fotos + editorial;
 editan admins locales o designados con tag `can_manage_bulletin` — pueden
 ser `role='member'`, con excepción en middleware/layout acotada a
 `/admin/boletin`; push al publicar; link público compartible `/b/<token>`
-resuelto con service-role, ver `lib/bulletins.ts` y migración 036).
+resuelto con service-role, ver `lib/bulletins.ts` y migración 036) ·
+Onboarding amigable (link/QR de invitación reusable por localidad en
+`/admin/miembros` — quien lo abre queda incorporado automáticamente en su
+primer ingreso, cookie `cb_invite` + `/auth/callback`; asistente de
+bienvenida `/bienvenida` con pasos guiados: avisos push, instalar PWA y
+mini-tour; ver `lib/invites.ts` y migración 037. El cambio ENTRE
+localidades sigue requiriendo aprobación manual).
 
 ## Pendientes conocidos
 

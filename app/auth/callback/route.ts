@@ -1,12 +1,17 @@
+import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { INVITE_COOKIE, applyInviteToken } from "@/lib/invites";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 /**
  * Magic-link / OAuth callback. Supabase redirects here con `?code=...`;
  * intercambiamos el code por sesión y reenviamos a:
- *   1. /seleccionar-localidad si el usuario no tiene locality_id (primer login)
- *   2. El path explícito en `?next=...` si fue dado (deep-link, ej. /admin)
- *   3. / en cualquier otro caso — TODOS aterrizan en la app de comunidad,
+ *   1. /bienvenida si venía de un link de invitación (cookie cb_invite):
+ *      se lo incorpora a la localidad del link y arranca el asistente.
+ *   2. /seleccionar-localidad si el usuario no tiene locality_id (primer login)
+ *   3. El path explícito en `?next=...` si fue dado (deep-link, ej. /admin)
+ *   4. / en cualquier otro caso — TODOS aterrizan en la app de comunidad,
  *      incluidos los admins. Al panel se entra a propósito desde el perfil,
  *      no por rol. Esto evita rebotes confusos y unifica la puerta de entrada.
  */
@@ -30,8 +35,23 @@ export async function GET(request: Request) {
           .eq("id", user.id)
           .maybeSingle();
 
-        // Sin localidad → selección obligatoria antes de ir a cualquier lado.
+        // Sin localidad → ¿venía invitado? La cookie del link de
+        // invitación lo incorpora directo y arranca el asistente.
         if (profile && !profile.locality_id) {
+          const inviteToken = cookies().get(INVITE_COOKIE)?.value;
+          if (inviteToken) {
+            const result = await applyInviteToken(user.id, inviteToken);
+            if (result === "applied") {
+              revalidatePath("/", "layout");
+              const response = NextResponse.redirect(
+                new URL("/bienvenida", url.origin)
+              );
+              response.cookies.delete(INVITE_COOKIE);
+              return response;
+            }
+          }
+
+          // Sin invitación → selección obligatoria antes de ir a cualquier lado.
           const next = nextParam ?? "/";
           return NextResponse.redirect(
             new URL(

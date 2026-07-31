@@ -1,5 +1,4 @@
 import {
-  Banner,
   Card,
   Checkbox,
   Field,
@@ -9,6 +8,7 @@ import {
 } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
+import { getOrCreateLocalityInvite } from "@/lib/invites";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import {
   ROLE_LABELS,
@@ -17,16 +17,18 @@ import {
 } from "@/lib/types";
 import {
   decideLocalityChangeAction,
+  regenerateInviteAction,
   setMemberDisabledAction,
   updateMemberAction,
 } from "./actions";
 import { ConfirmSubmit } from "./confirm-submit";
+import { InviteCard } from "./invite-card";
 
 export default async function AdminMiembrosPage() {
   const session = await requireAdmin();
   const supabase = createSupabaseServer();
 
-  const [{ data }, { data: requestRows }] = await Promise.all([
+  const [{ data }, { data: requestRows }, inviteToken] = await Promise.all([
     supabase
       .from("profiles")
       .select(
@@ -47,6 +49,7 @@ export default async function AdminMiembrosPage() {
       .eq("to_locality_id", session.locality.id)
       .eq("status", "pending")
       .order("created_at", { ascending: true }),
+    getOrCreateLocalityInvite(session.locality.id),
   ]);
 
   const profiles = (data ?? []) as Profile[];
@@ -109,14 +112,15 @@ export default async function AdminMiembrosPage() {
         </div>
       )}
 
-      <div className="mb-4">
-        <Banner tone="warning">
-          Para invitar a una persona nueva: pídele que abra{" "}
-          <code className="rounded bg-amber-100 px-1">/login</code> con su
-          correo. Aparecerá aquí tras su primer ingreso (como{" "}
-          <strong>{ROLE_LABELS.member}</strong>).
-        </Banner>
-      </div>
+      {inviteToken && (
+        <div className="mb-4">
+          <InviteCard
+            path={`/invitacion/${inviteToken}`}
+            localityName={session.locality.name}
+            regenerateAction={regenerateInviteAction}
+          />
+        </div>
+      )}
 
       <div className="grid gap-3">
         {activeProfiles.map((p) => (
