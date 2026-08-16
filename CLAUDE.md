@@ -95,6 +95,12 @@ Para evitarlo:
   (ej. las 19 Fiestas y los 11 Días Sagrados se auto-siembran).
 - **Pre-producción:** borrar y recargar datos es aceptable cuando un
   rediseño lo justifica (confirmar con el usuario).
+- **Columnas nuevas en `profiles`:** la política `profiles_update_self`
+  (migración 039) congela por nombre las columnas privilegiadas y deja
+  editable todo lo demás de la propia fila. Si agregás una columna
+  **privilegiada** (un permiso, un estado que asigna la Asamblea), hay que
+  sumarla a esa lista o queda escribible por el propio usuario vía
+  PostgREST. Las preferencias personales no necesitan nada.
 - Commits descriptivos enfocados en el "por qué". El `git log` es parte
   de la memoria compartida.
 
