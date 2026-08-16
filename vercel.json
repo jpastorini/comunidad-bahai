@@ -1,8 +1,12 @@
 {
   "crons": [
     {
-      "path": "/api/cron/event-reminders",
-      "schedule": "0 13 * * *"
+      "path": "/api/cron/manana",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/oracion",
+      "schedule": "0 16 * * *"
     }
   ]
 }

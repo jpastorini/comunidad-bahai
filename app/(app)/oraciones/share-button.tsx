@@ -7,13 +7,20 @@ type Props = {
   title: string;
   body: string;
   reference: string;
+  /** Texto del botón. Se cambia para compartir citas en vez de oraciones. */
+  label?: string;
 };
 
 /**
  * Comparte el texto de una oración por la Web Share API nativa (mejor UX
  * en mobile). Fallback: abre WhatsApp con el texto.
  */
-export function SharePrayerButton({ title, body, reference }: Props) {
+export function SharePrayerButton({
+  title,
+  body,
+  reference,
+  label = "Compartir oración",
+}: Props) {
   const [sharing, setSharing] = useState(false);
 
   async function handleShare() {
@@ -43,7 +50,7 @@ export function SharePrayerButton({ title, body, reference }: Props) {
       className="tap inline-flex items-center gap-2 rounded-xl border border-terra/20 bg-terra/[0.05] px-3.5 py-2 text-[12px] font-semibold text-terra hover:bg-terra/10 disabled:opacity-60"
     >
       <IconSend size={14} />
-      Compartir oración
+      {label}
     </button>
   );
 }

@@ -122,13 +122,32 @@ Onboarding amigable (link/QR de invitación reusable por localidad en
 primer ingreso, cookie `cb_invite` + `/auth/callback`; asistente de
 bienvenida `/bienvenida` con pasos guiados: avisos push, instalar PWA y
 mini-tour; ver `lib/invites.ts` y migración 037. El cambio ENTRE
-localidades sigue requiriendo aprobación manual).
+localidades sigue requiriendo aprobación manual) ·
+**Vida devocional**: "Lectura de hoy" (cita de los Escritos Sagrados, la
+misma para toda la comunidad cada día, determinística por fecha — sin tabla
+ni estado, ver `lib/citas.ts`; corpus de 991 citas en `public/citas.json`
+generado por `scripts/build-citas.mjs` desde la compilación "La Fuente de
+Todo Bien") con tarjeta en Inicio, pantalla `/citas` navegable por tema y
+push a las 8:00 · recordatorio opt-in de la **Oración Obligatoria corta** a
+las 13:00, que se prende desde el perfil, el asistente de bienvenida o la
+propia pantalla de la oración (migración 038).
 
 ## Pendientes conocidos
 
-- **Notificaciones de comunicados y recordatorios de eventos** (24h antes).
-  Ya existe infra de Web Push para chat (`supabase/migrations/027_push_subscriptions.sql`)
-  que conviene reusar. Decidir cron: Vercel Cron vs pg_cron.
+- **Presupuesto de crons.** El plan Hobby de Vercel permite pocos crons
+  diarios, así que los dos avisos de la mañana (Lectura de hoy + eventos de
+  mañana) comparten `/api/cron/manana` (11:00 UTC = 8:00 local) y el de la
+  oración va en `/api/cron/oracion` (16:00 UTC = 13:00 local). Si hacen
+  falta más horarios —o granularidad menor a un día— el camino es pg_cron +
+  pg_net desde Supabase pegándole a la ruta con el `CRON_SECRET`.
+- **Abreviaturas de las referencias** (PEB, SEAB, TB, PO, MVB…). La
+  compilación de origen no trae la leyenda, así que las citas muestran la
+  referencia tal cual. Si se consigue la lista, conviene mostrarla en
+  `/citas`.
+- **Palabras Ocultas completas.** El corpus actual incluye 44 citas de PO
+  vía la compilación, pero no el libro entero. Si aparece el texto oficial
+  en español, se agrega como segunda fuente al mismo `citas.json` y el
+  selector diario no cambia.
 - **Fase 2 de fotos:** boletín nacional (los campos `visibility` y
   `featured` en `event_photos` ya están listos, sin UI todavía).
 - **Verificar fechas Badí' BE 185+** (2028 en adelante) contra bahai.org

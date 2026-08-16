@@ -8,6 +8,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { ROLE_LABELS, type EventPhoto, type LocalityChangeRequest } from "@/lib/types";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { PushToggle } from "@/components/PushToggle";
+import { DevotionalToggle } from "@/components/DevotionalToggle";
 import { AvatarEditor } from "./avatar-editor";
 import { MyPhotosSection } from "./my-photos";
 import { NameForm } from "./name-form";
@@ -175,6 +176,27 @@ export default async function ProfilePage() {
         {/* Notificaciones push */}
         <div className="mb-5">
           <PushToggle />
+        </div>
+
+        {/* Vida devocional — recordatorios personales */}
+        <div className="mb-5">
+          <h3 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Vida devocional
+          </h3>
+          <div className="space-y-2">
+            <DevotionalToggle
+              pref="prayer_reminder_enabled"
+              initialEnabled={session.profile.prayer_reminder_enabled ?? false}
+              title="Oración Obligatoria"
+              description="Un aviso todos los días a las 13:00 para rezar la oración obligatoria corta."
+            />
+            <DevotionalToggle
+              pref="daily_quote_push_enabled"
+              initialEnabled={session.profile.daily_quote_push_enabled ?? true}
+              title="Lectura de hoy"
+              description="La cita de los Escritos Sagrados del día, cada mañana a las 8:00."
+            />
+          </div>
         </div>
 
         {/* Mis fotos */}

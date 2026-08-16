@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { InstallAppButton } from "@/components/InstallAppButton";
+import { CitaDelDiaCard } from "@/components/home/CitaDelDiaCard";
 import { FeaturedMessageCard } from "@/components/home/FeaturedMessageCard";
 import { FeaturedPhotos } from "@/components/home/FeaturedPhotos";
 import { HomeFeed } from "@/components/home/HomeFeed";
@@ -14,6 +15,7 @@ import {
   getLatestLocalAnnouncement,
   getUpcomingCalendarEvents,
 } from "@/lib/data";
+import { getCitaDelDia } from "@/lib/citas";
 import { getFeaturedPhotos } from "@/lib/event-photos";
 import { getHomeFeed } from "@/lib/feed";
 import { getUnreadNotificationCount } from "@/lib/notifications";
@@ -31,6 +33,9 @@ export default async function HomePage() {
       getHomeFeed(10),
       getFeaturedPhotos(session.locality.id),
     ]);
+
+  // Cita del día: determinística por fecha, sin consulta a la base.
+  const citaDelDia = getCitaDelDia();
 
   return (
     <>
@@ -62,6 +67,7 @@ export default async function HomePage() {
             href="/comunicados"
           />
         )}
+        <CitaDelDiaCard cita={citaDelDia.cita} topic={citaDelDia.topic} />
         <SectionGrid badges={badges} />
         <UpcomingEvents events={upcoming} />
         <FeaturedPhotos photos={featuredPhotos} />

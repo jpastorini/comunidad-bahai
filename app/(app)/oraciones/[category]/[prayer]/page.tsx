@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { DevotionalToggle } from "@/components/DevotionalToggle";
 import { GoldHeader } from "@/components/GoldHeader";
 import { requireMember } from "@/lib/auth";
 import { findPrayer } from "@/lib/oraciones";
@@ -7,12 +8,19 @@ import { SharePrayerButton } from "../../share-button";
 
 export const revalidate = 60;
 
+/** La oración obligatoria corta: la única que ofrece el recordatorio diario
+ *  de las 13:00, porque es la que se reza entre el mediodía y la puesta del
+ *  sol (ver supabase/migrations/038_devotional_reminders.sql). */
+const SHORT_OBLIGATORY_CATEGORY = "oracion-obligatoria-corta";
+
 export default async function OracionLecturaPage({
   params,
 }: {
   params: { category: string; prayer: string };
 }) {
-  await requireMember(`/oraciones/${params.category}/${params.prayer}`);
+  const session = await requireMember(
+    `/oraciones/${params.category}/${params.prayer}`
+  );
 
   const found = findPrayer(params.category, params.prayer);
   if (!found) notFound();
@@ -36,6 +44,24 @@ export default async function OracionLecturaPage({
             />
           </div>
         </article>
+
+        {category.id === SHORT_OBLIGATORY_CATEGORY && (
+          <div className="mt-3 rounded-2xl bg-card p-4 shadow-card-soft">
+            <div className="mb-2.5 text-[12.5px] leading-relaxed text-muted">
+              La oración obligatoria corta se reza una vez al día, entre el
+              mediodía y la puesta del sol.
+            </div>
+            <DevotionalToggle
+              variant="button"
+              pref="prayer_reminder_enabled"
+              initialEnabled={session.profile.prayer_reminder_enabled ?? false}
+              title="Recordatorio de la Oración Obligatoria"
+              description="Un aviso todos los días a las 13:00."
+              callToAction="Recordármelo a las 13:00"
+              enabledLabel="Te avisamos a las 13:00"
+            />
+          </div>
+        )}
       </main>
     </>
   );

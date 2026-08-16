@@ -51,6 +51,10 @@ export type Profile = {
   disabled_at: string | null;
   /** Admin que lo deshabilitó (auth.users.id). */
   disabled_by: string | null;
+  /** Aviso diario de la Oración Obligatoria corta (13:00). Opt-in. */
+  prayer_reminder_enabled: boolean;
+  /** Aviso de las 8:00 con la Lectura de hoy. Prendido por defecto. */
+  daily_quote_push_enabled: boolean;
   created_at: string;
 };
 

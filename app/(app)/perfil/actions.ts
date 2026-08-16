@@ -30,6 +30,41 @@ export async function updateFullNameAction(formData: FormData): Promise<Result> 
   return { ok: true, error: null };
 }
 
+/** Preferencias de recordatorios devocionales que el usuario puede tocar. */
+export type DevotionalPref =
+  | "prayer_reminder_enabled"
+  | "daily_quote_push_enabled";
+
+const DEVOTIONAL_PREFS: DevotionalPref[] = [
+  "prayer_reminder_enabled",
+  "daily_quote_push_enabled",
+];
+
+/**
+ * Prende/apaga un recordatorio devocional del usuario.
+ *
+ * El nombre de la preferencia viene del cliente, así que se valida contra
+ * la lista blanca: sin eso, la acción sería un update arbitrario de columnas
+ * sobre la propia fila de profiles (role, tags, etc.).
+ */
+export async function setDevotionalPrefAction(
+  pref: DevotionalPref,
+  enabled: boolean
+): Promise<Result> {
+  const session = await requireMember();
+  if (!DEVOTIONAL_PREFS.includes(pref)) {
+    return { ok: false, error: "Preferencia desconocida." };
+  }
+  const supabase = createSupabaseServer();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ [pref]: enabled })
+    .eq("id", session.user.id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/perfil");
+  return { ok: true, error: null };
+}
+
 /** Sube un avatar manual al bucket y actualiza el perfil. */
 export async function uploadAvatarAction(formData: FormData): Promise<Result> {
   const session = await requireMember();

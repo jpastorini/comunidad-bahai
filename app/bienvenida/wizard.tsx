@@ -6,8 +6,9 @@ import { BahaiStar } from "@/components/BahaiStar";
 import { IconAEL, IconCalendario, IconHome } from "@/components/Icons";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { isPushSupported, subscribeToPush } from "@/lib/push-client";
+import { setDevotionalPrefAction } from "@/app/(app)/perfil/actions";
 
-type StepId = "welcome" | "notifications" | "install" | "tour";
+type StepId = "welcome" | "notifications" | "prayer" | "install" | "tour";
 
 /**
  * Asistente de bienvenida. Reglas de diseño para el público 60+:
@@ -27,6 +28,9 @@ export function WelcomeWizard({
     "idle" | "busy" | "enabled" | "denied" | "failed"
   >("idle");
   const [stepIndex, setStepIndex] = useState(0);
+  const [prayerState, setPrayerState] = useState<"idle" | "busy" | "enabled">(
+    "idle"
+  );
 
   // El paso de notificaciones solo aparece si el navegador lo soporta
   // (en iPhone recién funciona con la app instalada, así que ahí se
@@ -35,10 +39,12 @@ export function WelcomeWizard({
     setPushAvailable(isPushSupported());
   }, []);
 
+  // El recordatorio de la Oración Obligatoria solo se ofrece donde el aviso
+  // puede llegar; si no hay push, se activa después desde el perfil.
   const steps = useMemo<StepId[]>(
     () =>
       pushAvailable
-        ? ["welcome", "notifications", "install", "tour"]
+        ? ["welcome", "notifications", "prayer", "install", "tour"]
         : ["welcome", "install", "tour"],
     [pushAvailable]
   );
@@ -64,6 +70,15 @@ export function WelcomeWizard({
     } else {
       setPushState("failed");
     }
+  }
+
+  async function enablePrayerReminder() {
+    setPrayerState("busy");
+    const res = await setDevotionalPrefAction("prayer_reminder_enabled", true);
+    // Si falla el guardado no vale la pena frenar la bienvenida: se puede
+    // activar después desde el perfil o desde la propia oración.
+    setPrayerState(res.ok ? "enabled" : "idle");
+    setTimeout(advance, res.ok ? 900 : 0);
   }
 
   return (
@@ -175,6 +190,39 @@ export function WelcomeWizard({
                       perfil.
                     </p>
                   )}
+                  <SkipButton onClick={advance}>Ahora no</SkipButton>
+                </>
+              )}
+            </>
+          )}
+
+          {step === "prayer" && (
+            <>
+              <StepIcon>
+                <BahaiStar size={34} color="#fff" />
+              </StepIcon>
+              <h1 className="font-display text-[28px] font-bold leading-tight text-white">
+                ¿Te recordamos la Oración Obligatoria?
+              </h1>
+              <p className="mx-auto mt-4 max-w-sm font-body text-[15px] leading-relaxed text-white/85">
+                Todos los días a las 13:00 te llega un aviso para rezar la
+                oración obligatoria corta, con el texto listo para leer.
+              </p>
+
+              {prayerState === "enabled" ? (
+                <p className="mt-8 text-[16px] font-semibold text-white">
+                  ✓ Listo. Te avisamos a las 13:00.
+                </p>
+              ) : (
+                <>
+                  <PrimaryButton
+                    onClick={enablePrayerReminder}
+                    disabled={prayerState === "busy"}
+                  >
+                    {prayerState === "busy"
+                      ? "Guardando…"
+                      : "Sí, avisame a las 13:00"}
+                  </PrimaryButton>
                   <SkipButton onClick={advance}>Ahora no</SkipButton>
                 </>
               )}
