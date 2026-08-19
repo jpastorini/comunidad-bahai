@@ -15,7 +15,7 @@ import {
   getLatestLocalAnnouncement,
   getUpcomingCalendarEvents,
 } from "@/lib/data";
-import { getCitaDelDia } from "@/lib/citas";
+import { civilDateLabel, getCitaDelDia } from "@/lib/citas";
 import { getFeaturedPhotos } from "@/lib/event-photos";
 import { getHomeFeed } from "@/lib/feed";
 import { getUnreadNotificationCount } from "@/lib/notifications";
@@ -67,7 +67,11 @@ export default async function HomePage() {
             href="/comunicados"
           />
         )}
-        <CitaDelDiaCard cita={citaDelDia.cita} topic={citaDelDia.topic} />
+        <CitaDelDiaCard
+          cita={citaDelDia.cita}
+          topic={citaDelDia.topic}
+          dateLabel={civilDateLabel()}
+        />
         <SectionGrid badges={badges} />
         <UpcomingEvents events={upcoming} />
         <FeaturedPhotos photos={featuredPhotos} />

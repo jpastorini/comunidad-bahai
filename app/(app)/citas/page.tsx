@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { GoldHeader } from "@/components/GoldHeader";
 import { requireMember } from "@/lib/auth";
-import { getCitaDelDia, getCitasData } from "@/lib/citas";
+import { civilDateLabel, getCitaDelDia, getCitasData } from "@/lib/citas";
 import { SharePrayerButton } from "../oraciones/share-button";
 
 export const revalidate = 60;
@@ -24,8 +24,9 @@ export default async function CitasPage() {
       />
       <main className="scroll-area flex-1 px-4 pb-8 pt-4">
         <article className="rounded-2xl bg-card p-5 shadow-card-elevated ring-1 ring-gold/15">
-          <div className="mb-3 text-[9.5px] font-semibold uppercase tracking-[1.5px] text-gold-dark/70">
-            ✦ Lectura de hoy
+          <div className="mb-3 flex items-baseline justify-between gap-2 text-[9.5px] font-semibold uppercase tracking-[1.5px]">
+            <span className="text-gold-dark/70">✦ Lectura de hoy</span>
+            <span className="shrink-0 text-muted/70">{civilDateLabel()}</span>
           </div>
           <p className="font-display text-[18px] italic leading-[1.6] text-dark">
             “{cita.text}”

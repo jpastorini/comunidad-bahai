@@ -100,6 +100,21 @@ export function civilDateISO(now: Date = new Date()): string {
   }).format(now);
 }
 
+/**
+ * Fecha civil legible ("mié 19 de ago"), en el huso de la comunidad.
+ * Se muestra junto a la cita: si alguna vez la pantalla queda vieja
+ * —la PWA se suspende y al reabrirla se ve el render de ayer— la fecha
+ * lo delata a simple vista, en vez de parecer una cita repetida.
+ */
+export function civilDateLabel(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("es-UY", {
+    timeZone: TZ,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(now);
+}
+
 /** Día civil en TZ como número entero de días desde 1970-01-01. */
 export function civilDayNumber(now: Date = new Date()): number {
   const [y, m, d] = civilDateISO(now).split("-").map(Number);
