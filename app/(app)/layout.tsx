@@ -1,7 +1,9 @@
 import { ChatNotifier } from "@/components/ChatNotifier";
+import { DayChangeRefresh } from "@/components/DayChangeRefresh";
 import { PhotoFab } from "@/components/PhotoFab";
 import { TabBar } from "@/components/TabBar";
 import { requireMember } from "@/lib/auth";
+import { civilDateISO, getAppTimeZone } from "@/lib/citas";
 import { getBadges } from "@/lib/data";
 
 // Revalida cada 60s; se invalida al instante cuando el admin publica
@@ -22,6 +24,10 @@ export default async function AppLayout({
   return (
     <div id="app-shell">
       <ChatNotifier userId={session.user.id} side="member" />
+      <DayChangeRefresh
+        renderedDate={civilDateISO()}
+        timeZone={getAppTimeZone()}
+      />
       {children}
       <PhotoFab />
       <TabBar aelHasUnseen={aelHasUnseen} />
