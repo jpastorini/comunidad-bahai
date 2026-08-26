@@ -213,3 +213,79 @@ export function periodTotals(entries: TreasuryEntry[]) {
     a.currency.localeCompare(b.currency)
   );
 }
+
+/** Un movimiento con los nombres ya resueltos, para imprimir el recibo. */
+export type ReceiptData = {
+  id: string;
+  entry_date: string;
+  currency: string;
+  amount: number;
+  receipt_number: number | null;
+  description: string | null;
+  contributions_count: number;
+  receipt_issued: boolean;
+  receipt_issued_at: string | null;
+  account_name: string | null;
+  subcategory_name: string | null;
+  fund_name: string | null;
+  contributor_name: string | null;
+};
+
+type EmbeddedName = { name: string } | null;
+
+/**
+ * Trae un movimiento con los nombres resueltos en una sola consulta.
+ * La RLS ya limita a la localidad del tesorero, así que no hace falta
+ * filtrar por locality_id acá.
+ */
+export async function getEntryForReceipt(
+  supabase: SupabaseClient,
+  id: string
+): Promise<ReceiptData | null> {
+  const { data } = await supabase
+    .from("treasury_entries")
+    .select(
+      `id, entry_date, currency, amount, receipt_number, description,
+       contributions_count, receipt_issued, receipt_issued_at,
+       account:treasury_accounts(name),
+       subcategory:treasury_subcategories(name),
+       fund:treasury_funds(name),
+       contributor:treasury_contributors(name)`
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!data) return null;
+
+  const row = data as unknown as {
+    id: string;
+    entry_date: string;
+    currency: string;
+    amount: number | string;
+    receipt_number: number | null;
+    description: string | null;
+    contributions_count: number;
+    receipt_issued: boolean;
+    receipt_issued_at: string | null;
+    account: EmbeddedName;
+    subcategory: EmbeddedName;
+    fund: EmbeddedName;
+    contributor: EmbeddedName;
+  };
+
+  return {
+    id: row.id,
+    entry_date: row.entry_date,
+    currency: row.currency,
+    amount: Number(row.amount),
+    receipt_number: row.receipt_number,
+    description: row.description,
+    contributions_count: row.contributions_count,
+    receipt_issued: row.receipt_issued,
+    receipt_issued_at: row.receipt_issued_at,
+    account_name: row.account?.name ?? null,
+    subcategory_name: row.subcategory?.name ?? null,
+    fund_name: row.fund?.name ?? null,
+    contributor_name: row.contributor?.name ?? null,
+  };
+}

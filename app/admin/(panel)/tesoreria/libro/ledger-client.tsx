@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LedgerCatalog, TreasuryEntry } from "@/lib/treasury-ledger";
 import { formatMoney } from "@/lib/treasury-format";
@@ -198,7 +199,23 @@ export function LedgerClient({
                       : "—"}
                 </Td>
                 <Td className="text-right tabular-nums text-muted">
-                  {e.receipt_number ?? "—"}
+                  {e.receipt_number ? (
+                    <Link
+                      href={"/admin/tesoreria/recibo/" + e.id}
+                      onClick={(ev) => ev.stopPropagation()}
+                      className="font-semibold text-terra hover:underline"
+                      title="Ver el recibo"
+                    >
+                      {e.receipt_number}
+                      {e.receipt_issued && (
+                        <span className="ml-1 text-emerald-700" title="Ya emitido">
+                          ✓
+                        </span>
+                      )}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
                 </Td>
                 <Td className="text-right tabular-nums font-semibold text-emerald-700">
                   {e.amount > 0 ? `${formatMoney(e.amount)} ${e.currency}` : ""}
@@ -266,6 +283,16 @@ export function LedgerClient({
             }}
             onCancel={() => setEditing(null)}
           />
+          {editing.amount > 0 && editing.receipt_number && (
+            <div className="mt-3 border-t border-black/[0.06] pt-3">
+              <Link
+                href={"/admin/tesoreria/recibo/" + editing.id}
+                className="tap inline-flex items-center rounded-xl border border-terra/25 bg-terra/[0.06] px-3.5 py-2 text-[12px] font-semibold text-terra"
+              >
+                Ver recibo N.° {editing.receipt_number}
+              </Link>
+            </div>
+          )}
           <DeleteRow
             entry={editing}
             onDeleted={() => {

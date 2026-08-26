@@ -268,3 +268,33 @@ export async function saveTransferAction(formData: FormData): Promise<Result> {
   revalidatePath("/admin/tesoreria");
   return ok;
 }
+
+/**
+ * Marca el recibo como emitido. Es la columna que en la planilla era un
+ * TRUE/FALSE al lado del contribuyente y alimentaba el script de Apps
+ * Script; acá se prende sola al imprimir o compartir.
+ */
+export async function markReceiptIssuedAction(
+  formData: FormData
+): Promise<Result> {
+  const session = await requireAdmin();
+  ensureTreasuryTag(session.profile);
+  const supabase = createSupabaseServer();
+
+  const id = str(formData, "id");
+  if (!id) return fail("Falta el movimiento.");
+
+  const { error } = await supabase
+    .from("treasury_entries")
+    .update({
+      receipt_issued: true,
+      receipt_issued_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) return fail(error.message);
+
+  revalidatePath("/admin/tesoreria/libro");
+  return ok;
+}
