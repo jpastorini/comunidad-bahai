@@ -141,10 +141,13 @@ export function ReceiptView({
       )}
 
       {/* ─── La hoja A5 ─── */}
+      {/* El centrado va en el envoltorio: la hoja capturada no puede
+          tener márgenes automáticos (ver lib/share-image.ts). */}
+      <div className="flex justify-center">
       <div
         id="recibo"
         ref={sheetRef}
-        className="mx-auto flex flex-col overflow-hidden bg-[#fffdf7] shadow-card-elevated"
+        className="flex flex-col overflow-hidden bg-[#fffdf7] shadow-card-elevated"
         style={{ width: "148mm", height: "210mm" }}
       >
         <header
@@ -242,6 +245,7 @@ export function ReceiptView({
             Asamblea.
           </p>
         </footer>
+      </div>
       </div>
     </>
   );

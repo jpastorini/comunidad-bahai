@@ -22,10 +22,18 @@ export async function shareNodeAsImage(
       }
     }
 
+    // El lienzo mide lo que mide el nodo, así que hay que neutralizar sus
+    // márgenes: getComputedStyle devuelve los `auto` ya resueltos en
+    // píxeles (un `mx-auto` puede venir como margin-left: 370px), y el
+    // clon quedaría empujado hacia adentro del lienzo, recortado.
+    const rect = node.getBoundingClientRect();
     const dataUrl = await toPng(node, {
       pixelRatio: 3,
       cacheBust: true,
       backgroundColor: "#ffffff",
+      width: Math.ceil(rect.width),
+      height: Math.ceil(rect.height),
+      style: { margin: "0" },
     });
 
     const blob = await (await fetch(dataUrl)).blob();
