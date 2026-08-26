@@ -79,10 +79,16 @@ export default async function AdminTesoreriaPage() {
         title="Fondo de la Comunidad"
         description="Solo miembros con permiso de Tesorería pueden editar esta sección."
         actions={
-          <Button href="/admin/tesoreria/presupuesto">
-            Plan de Presupuesto
-            <IconArrowRight size={13} />
-          </Button>
+          <>
+            <Button href="/admin/tesoreria/libro">
+              Libro de movimientos
+              <IconArrowRight size={13} />
+            </Button>
+            <Button href="/admin/tesoreria/presupuesto">
+              Plan de Presupuesto
+              <IconArrowRight size={13} />
+            </Button>
+          </>
         }
       />
 
