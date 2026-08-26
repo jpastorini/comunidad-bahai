@@ -42,6 +42,10 @@ export function LedgerClient({
   const [transferOpen, setTransferOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [fundFilter, setFundFilter] = useState("");
+  // Los nombres de quienes aportan son confidenciales y la pantalla del
+  // tesorero no siempre está sola. Arrancan ocultos en cada carga; el
+  // estado sobrevive a los router.refresh() de la propia sesión de carga.
+  const [showNames, setShowNames] = useState(false);
 
   const names = useMemo(() => {
     const accounts = new Map(catalog.accounts.map((a) => [a.id, a.name]));
@@ -75,6 +79,16 @@ export function LedgerClient({
 
   function refresh() {
     router.refresh();
+  }
+
+  /** Nombre del contribuyente, o el antifaz si están ocultos. La cantidad
+   *  de aportes sí se muestra siempre: es anónima por definición. */
+  function contributorLabel(e: TreasuryEntry) {
+    if (!e.contributor_id) {
+      return e.contributions_count > 1 ? `${e.contributions_count} aportes` : "—";
+    }
+    if (!showNames) return null; // lo pinta el componente Masked
+    return names.contributors.get(e.contributor_id) ?? "—";
   }
 
   return (
@@ -113,6 +127,20 @@ export function LedgerClient({
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          onClick={() => setShowNames((v) => !v)}
+          aria-pressed={showNames}
+          className="tap inline-flex items-center gap-1.5 rounded-xl border border-black/10 px-3 py-2 text-[12.5px] font-semibold text-dark hover:bg-bg"
+          title={
+            showNames
+              ? "Ocultar los nombres de los contribuyentes"
+              : "Mostrar los nombres de los contribuyentes"
+          }
+        >
+          <EyeIcon off={!showNames} />
+          {showNames ? "Ocultar nombres" : "Mostrar nombres"}
+        </button>
         <button
           type="button"
           onClick={() => setTransferOpen(true)}
@@ -191,13 +219,7 @@ export function LedgerClient({
                   )}
                 </Td>
                 <Td className="text-muted">{e.description ?? "—"}</Td>
-                <Td>
-                  {e.contributor_id
-                    ? names.contributors.get(e.contributor_id)
-                    : e.contributions_count > 1
-                      ? `${e.contributions_count} aportes`
-                      : "—"}
-                </Td>
+                <Td>{contributorLabel(e) ?? <Masked />}</Td>
                 <Td className="text-right tabular-nums text-muted">
                   {e.receipt_number ? (
                     <Link
@@ -258,7 +280,7 @@ export function LedgerClient({
             </div>
             {(e.description || e.contributor_id) && (
               <div className="mt-1 text-[11.5px] text-dark/80">
-                {e.contributor_id ? names.contributors.get(e.contributor_id) : ""}
+                {e.contributor_id ? contributorLabel(e) ?? <Masked /> : ""}
                 {e.contributor_id && e.description ? " · " : ""}
                 {e.description ?? ""}
               </div>
@@ -346,6 +368,39 @@ function Td({
   className?: string;
 }) {
   return <td className={`px-3 py-2 align-top ${className}`}>{children}</td>;
+}
+
+/** Antifaz de un nombre oculto. Largo fijo: si variara con el nombre
+ *  real, se filtraría cuán largo es. */
+function Masked() {
+  return (
+    <span
+      className="select-none tracking-[0.18em] text-muted/70"
+      aria-label="Nombre oculto"
+    >
+      ••••••
+    </span>
+  );
+}
+
+function EyeIcon({ off }: { off: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="2.6" />
+      {off && <path d="M4 20 20 4" />}
+    </svg>
+  );
 }
 
 function Empty() {
