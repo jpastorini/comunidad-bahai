@@ -2,7 +2,18 @@
 
 import { useState } from "react";
 import { Field, Select, TextInput } from "@/components/admin/ui";
+import {
+  AUDIENCE_HINT,
+  AUDIENCE_LABEL,
+  type ReportAudience,
+} from "@/lib/treasury-report-content";
 import type { PeriodPreset } from "@/lib/treasury-reports";
+
+/** Título sugerido según el destinatario. */
+const DEFAULT_TITLE: Record<ReportAudience, string> = {
+  comunidad: "Fiesta de los Diecinueve Días",
+  internos: "Informe de Tesorería a la Asamblea",
+};
 
 /**
  * Elegir el período del informe.
@@ -27,6 +38,8 @@ export function PeriodPicker({
   const [to, setTo] = useState(initial?.to ?? today);
   const [subtitle, setSubtitle] = useState(initial?.subtitle ?? "");
   const [presetKey, setPresetKey] = useState(initial?.key ?? "custom");
+  const [audience, setAudience] = useState<ReportAudience>("comunidad");
+  const [title, setTitle] = useState(defaultTitle);
 
   function applyPreset(key: string) {
     setPresetKey(key);
@@ -37,8 +50,40 @@ export function PeriodPicker({
     setSubtitle(preset.subtitle);
   }
 
+  /** Al cambiar el destinatario se sugiere el título de ese formato, pero
+   *  solo si el tesorero no lo tocó: no le pisamos lo que escribió. */
+  function applyAudience(next: ReportAudience) {
+    setAudience(next);
+    const suggestions = Object.values(DEFAULT_TITLE);
+    if (title === "" || suggestions.includes(title)) {
+      setTitle(DEFAULT_TITLE[next]);
+    }
+  }
+
   return (
     <>
+      <Field
+        label="Destinatario"
+        name="audience"
+        hint="define el formato y quién lo puede leer"
+      >
+        <Select
+          id="audience"
+          name="audience"
+          value={audience}
+          onChange={(e) => applyAudience(e.target.value as ReportAudience)}
+        >
+          {(Object.keys(AUDIENCE_LABEL) as ReportAudience[]).map((a) => (
+            <option key={a} value={a}>
+              {AUDIENCE_LABEL[a]}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <p className="mb-4 mt-1 text-[11.5px] leading-snug text-muted">
+        {AUDIENCE_HINT[audience]}
+      </p>
+
       <Field
         label="Período"
         name="preset"
@@ -89,12 +134,13 @@ export function PeriodPicker({
       </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <Field label="Título de la portada" name="title" required>
+        <Field label="Título" name="title" required>
           <TextInput
             id="title"
             name="title"
             required
-            defaultValue={defaultTitle}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
             placeholder="Fiesta de los Diecinueve Días"
           />
         </Field>

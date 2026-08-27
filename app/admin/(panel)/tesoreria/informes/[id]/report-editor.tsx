@@ -12,12 +12,15 @@ import {
   TextInput,
 } from "@/components/admin/ui";
 import {
+  AUDIENCE_HINT,
+  AUDIENCE_LABEL,
   DESTINATION_TONES,
   NOTE_SECTIONS,
   fmtAmount,
   fmtDayMonth,
   type DestinationTone,
   type NoteKey,
+  type ReportAudience,
   type ReportEditorial,
   type ReportSnapshot,
 } from "@/lib/treasury-report-content";
@@ -34,6 +37,7 @@ type Props = {
   id: string;
   title: string;
   subtitle: string | null;
+  audience: ReportAudience;
   periodFrom: string;
   periodTo: string;
   status: "draft" | "published";
@@ -42,6 +46,17 @@ type Props = {
   today: string;
   saveAction: (formData: FormData) => void;
 };
+
+/** Las secciones que existen en la hoja del acta; el resto de las notas
+ *  solo tiene dónde aparecer en el deck de la comunidad. */
+const SHEET_NOTES: readonly string[] = [
+  "summary",
+  "income",
+  "expenses",
+  "funds",
+  "accounts",
+  "budget",
+];
 
 type DestRow = {
   uid: string;
@@ -55,6 +70,7 @@ export function ReportEditor({
   id,
   title,
   subtitle,
+  audience: initialAudience,
   periodFrom,
   periodTo,
   status,
@@ -66,6 +82,11 @@ export function ReportEditor({
   const [rows, setRows] = useState<DestRow[]>(
     editorial.destination.map((d, i) => ({ uid: `d${i}`, ...d }))
   );
+  const [audience, setAudience] = useState<ReportAudience>(initialAudience);
+  // El deck de la comunidad y la hoja del acta no comparten secciones:
+  // los gráficos, la meta destacada, el destino de los fondos y la cita
+  // son del deck; las observaciones y la aprobación, de la hoja.
+  const esInterno = audience === "internos";
 
   function addRow() {
     setRows((prev) => [
@@ -97,8 +118,31 @@ export function ReportEditor({
       {/* ─── Portada y período ─────────────────────────────────── */}
       <Card className="mb-4">
         <h2 className="mb-4 font-display text-[20px] font-semibold text-dark">
-          Portada y período
+          Destinatario, título y período
         </h2>
+        <div className="mb-4">
+          <Field
+            label="Destinatario"
+            name="audience"
+            hint="define el formato y quién lo puede leer"
+          >
+            <Select
+              id="audience"
+              name="audience"
+              value={audience}
+              onChange={(e) => setAudience(e.target.value as ReportAudience)}
+            >
+              {(Object.keys(AUDIENCE_LABEL) as ReportAudience[]).map((a) => (
+                <option key={a} value={a}>
+                  {AUDIENCE_LABEL[a]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <p className="mt-1 text-[11.5px] leading-snug text-muted">
+            {AUDIENCE_HINT[audience]}
+          </p>
+        </div>
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Título" name="title" required>
             <TextInput
@@ -197,7 +241,14 @@ export function ReportEditor({
           />
         </div>
 
-        <div className="mt-4 flex flex-col gap-2.5 border-t border-black/[0.06] pt-4">
+        {/* Los gráficos son del deck; la hoja del acta va sin ninguno.
+            Los inputs siguen en el DOM para no perder la preferencia del
+            deck si el informe vuelve a ser de la comunidad. */}
+        <div
+          className={`mt-4 flex flex-col gap-2.5 border-t border-black/[0.06] pt-4 ${
+            esInterno ? "hidden" : ""
+          }`}
+        >
           <Checkbox
             name="show_contributions"
             label="Mostrar el gráfico de aportes por mes"
@@ -217,7 +268,15 @@ export function ReportEditor({
           />
         </div>
 
-        {editorial.showBudget && !snapshot.budget && (
+        {esInterno && (
+          <p className="mt-4 border-t border-black/[0.06] pt-4 text-[12px] text-muted">
+            La hoja para el acta va sin gráficos: los ingresos y los egresos se
+            informan como totales por rubro, más la conciliación de fondos
+            contra cuentas y las transferencias internas del período.
+          </p>
+        )}
+
+        {!esInterno && editorial.showBudget && !snapshot.budget && (
           <div className="mt-4">
             <Banner tone="info">
               No hay presupuesto cargado para este año bahá'í, así que esa
@@ -259,25 +318,83 @@ export function ReportEditor({
         </p>
         <div className="grid gap-4">
           {NOTE_SECTIONS.map((section) => (
-            <Field
+            <div
               key={section.key}
-              label={section.label}
-              name={`note_${section.key}`}
-              hint="opcional"
+              // Las notas de los gráficos y del destino de los fondos no
+              // tienen sección donde aparecer en la hoja del acta. El
+              // input se oculta pero sigue enviándose, así que el texto
+              // no se pierde si el informe vuelve a ser de la comunidad.
+              className={
+                esInterno && !SHEET_NOTES.includes(section.key) ? "hidden" : ""
+              }
             >
-              <TextArea
-                id={`note_${section.key}`}
+              <Field
+                label={section.label}
                 name={`note_${section.key}`}
-                rows={2}
-                defaultValue={editorial.notes[section.key as NoteKey] ?? ""}
-              />
-            </Field>
+                hint="opcional"
+              >
+                <TextArea
+                  id={`note_${section.key}`}
+                  name={`note_${section.key}`}
+                  rows={2}
+                  defaultValue={editorial.notes[section.key as NoteKey] ?? ""}
+                />
+              </Field>
+            </div>
           ))}
         </div>
       </Card>
 
-      {/* ─── Meta de la Asamblea ───────────────────────────────── */}
-      <Card className="mb-4">
+      {/* ─── Solo hoja interna: observaciones y aprobación ──────── */}
+      {esInterno && (
+        <Card className="mb-4">
+          <h2 className="mb-1 font-display text-[20px] font-semibold text-dark">
+            Observaciones y aprobación
+          </h2>
+          <p className="mb-4 text-[12px] text-muted">
+            Lo que la Asamblea tiene que saber para aprobar: qué quedó en
+            gestión, qué falta documentar, qué necesita decisión.
+          </p>
+          <Field label="Observaciones y pendientes" name="observations" hint="opcional">
+            <TextArea
+              id="observations"
+              name="observations"
+              rows={4}
+              defaultValue={editorial.observations}
+              placeholder="Los materiales de la puerta siguen en gestión de devolución…"
+            />
+          </Field>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <Field
+              label="Aprobado en la reunión del"
+              name="approval_meeting_date"
+              hint="se completa después de aprobarlo"
+            >
+              <TextInput
+                id="approval_meeting_date"
+                name="approval_meeting_date"
+                defaultValue={editorial.approval?.meetingDate ?? ""}
+                placeholder="23 de agosto de 2026"
+              />
+            </Field>
+            <Field label="Acta N.º" name="approval_acta_number" hint="opcional">
+              <TextInput
+                id="approval_acta_number"
+                name="approval_acta_number"
+                defaultValue={editorial.approval?.actaNumber ?? ""}
+                placeholder="47"
+              />
+            </Field>
+          </div>
+          <p className="mt-3 text-[11.5px] text-muted">
+            Si los dejás vacíos, la hoja imprime líneas de puntos para
+            completar a mano en la reunión.
+          </p>
+        </Card>
+      )}
+
+      {/* ─── Meta de la Asamblea (solo deck) ───────────────────── */}
+      <Card className={`mb-4 ${esInterno ? "hidden" : ""}`}>
         <h2 className="mb-1 font-display text-[20px] font-semibold text-dark">
           Meta de la Asamblea
         </h2>
@@ -339,8 +456,8 @@ export function ReportEditor({
         </div>
       </Card>
 
-      {/* ─── Destino de los Fondos ─────────────────────────────── */}
-      <Card className="mb-4">
+      {/* ─── Destino de los Fondos (solo deck) ─────────────────── */}
+      <Card className={`mb-4 ${esInterno ? "hidden" : ""}`}>
         <div className="mb-1 flex items-start justify-between gap-3">
           <h2 className="font-display text-[20px] font-semibold text-dark">
             Destino de los Fondos
@@ -411,28 +528,34 @@ export function ReportEditor({
       </Card>
 
       {/* ─── Cierre ────────────────────────────────────────────── */}
+      {/* La cita es del deck; la firma la usan los dos formatos (en la
+          hoja va sobre la línea de firma del tesorero). */}
       <Card className="mb-4">
         <h2 className="mb-4 font-display text-[20px] font-semibold text-dark">
-          Cierre
+          {esInterno ? "Firma" : "Cierre"}
         </h2>
         <div className="grid gap-4">
-          <Field label="Cita" name="quote_text" hint="opcional">
-            <TextArea
-              id="quote_text"
-              name="quote_text"
-              rows={2}
-              defaultValue={editorial.quote?.text ?? ""}
-            />
-          </Field>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Field label="Fuente de la cita" name="quote_source">
-              <TextInput
-                id="quote_source"
-                name="quote_source"
-                defaultValue={editorial.quote?.source ?? ""}
-                placeholder="Bahá'u'lláh · Palabras Ocultas"
+          <div className={esInterno ? "hidden" : ""}>
+            <Field label="Cita" name="quote_text" hint="opcional">
+              <TextArea
+                id="quote_text"
+                name="quote_text"
+                rows={2}
+                defaultValue={editorial.quote?.text ?? ""}
               />
             </Field>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className={esInterno ? "hidden" : ""}>
+              <Field label="Fuente de la cita" name="quote_source">
+                <TextInput
+                  id="quote_source"
+                  name="quote_source"
+                  defaultValue={editorial.quote?.source ?? ""}
+                  placeholder="Bahá'u'lláh · Palabras Ocultas"
+                />
+              </Field>
+            </div>
             <Field label="Firma" name="signature_name">
               <TextInput
                 id="signature_name"

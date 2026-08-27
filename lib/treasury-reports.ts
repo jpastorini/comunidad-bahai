@@ -8,13 +8,16 @@ import {
   monthLabel,
   sanitizeReportEditorial,
   sanitizeReportSnapshot,
+  type ReportAudience,
   type ReportBalanceRow,
   type ReportBudgetLine,
   type ReportEditorial,
   type ReportExpenseLine,
+  type ReportInternalLine,
   type ReportMoney,
   type ReportMonth,
   type ReportReceipt,
+  type ReportRubro,
   type ReportSnapshot,
 } from "./treasury-report-content";
 import {
@@ -49,13 +52,14 @@ import {
  */
 
 const REPORT_FIELDS =
-  "id, locality_id, title, subtitle, period_from, period_to, bahai_year, editorial, snapshot, status, share_token, published_at, created_by, created_at, updated_at";
+  "id, locality_id, title, subtitle, audience, period_from, period_to, bahai_year, editorial, snapshot, status, share_token, published_at, created_by, created_at, updated_at";
 
 export type TreasuryReport = {
   id: string;
   locality_id: string;
   title: string;
   subtitle: string | null;
+  audience: ReportAudience;
   period_from: string;
   period_to: string;
   bahai_year: number | null;
@@ -74,6 +78,7 @@ function parseRow(row: Record<string, unknown>): TreasuryReport {
     locality_id: row.locality_id as string,
     title: row.title as string,
     subtitle: (row.subtitle as string | null) ?? null,
+    audience: row.audience === "internos" ? "internos" : "comunidad",
     period_from: row.period_from as string,
     period_to: row.period_to as string,
     bahai_year: (row.bahai_year as number | null) ?? null,
@@ -116,7 +121,11 @@ export async function getReport(
 
 /**
  * Informe por link público. Se resuelve con la service-role key porque
- * la página no exige login; solo devuelve informes publicados.
+ * la página no exige login.
+ *
+ * ⚠️ El filtro por audience es lo único que evita que un informe INTERNO
+ * —el que se adjunta al acta— quede accesible sin login. La service-role
+ * key ignora la RLS, así que este chequeo no lo cubre nadie más.
  */
 export async function getPublicReport(
   token: string
@@ -131,6 +140,7 @@ export async function getPublicReport(
     .select(REPORT_FIELDS)
     .eq("share_token", token)
     .eq("status", "published")
+    .eq("audience", "comunidad")
     .maybeSingle();
   if (!data) return null;
 
@@ -280,6 +290,41 @@ function currencyTotals(): {
   };
 }
 
+/**
+ * Acumulador de totales por rubro. La clave es categoría + subcategoría
+ * + moneda: dos rubros distintos no se suman, y una misma subcategoría
+ * en dos monedas tampoco.
+ */
+function rubroTotals() {
+  const map = new Map<string, ReportRubro>();
+  return {
+    add(
+      category: string,
+      subcategory: string,
+      currency: string,
+      amount: number,
+      count: number
+    ) {
+      const key = `${category}|${subcategory}|${currency}`;
+      const row = map.get(key);
+      if (row) {
+        row.amount = addMoney(row.amount, amount);
+        row.count += count;
+      } else {
+        map.set(key, { category, subcategory, currency, amount, count });
+      }
+    },
+    rows(): ReportRubro[] {
+      return [...map.values()].sort(
+        (a, b) =>
+          a.category.localeCompare(b.category, "es") ||
+          b.amount - a.amount ||
+          a.subcategory.localeCompare(b.subcategory, "es")
+      );
+    },
+  };
+}
+
 function balancesBy(
   entries: RawEntry[],
   dimension: "account_id" | "fund_id",
@@ -377,11 +422,20 @@ export async function computeReportSnapshot(
   let incomeCount = 0;
   const receipts: ReportReceipt[] = [];
   const expenseLines: ReportExpenseLine[] = [];
+  // Totales por rubro (subcategoría), que es el nivel al que la Asamblea
+  // aprueba. El informe interno se arma con estos.
+  const incomeRubros = rubroTotals();
+  const expenseRubros = rubroTotals();
 
   for (const e of movement) {
+    const category = (e.category_id && categoryNames.get(e.category_id)) || "";
+    const subcategory =
+      (e.subcategory_id && subcategoryNames.get(e.subcategory_id)) || "";
+
     if (e.amount > 0) {
       income.add(e.currency, e.amount);
       incomeCount += contributionsOf(e);
+      incomeRubros.add(category, subcategory, e.currency, e.amount, contributionsOf(e));
       receipts.push({
         number: e.receipt_number,
         date: e.entry_date,
@@ -392,12 +446,10 @@ export async function computeReportSnapshot(
       });
     } else {
       expense.add(e.currency, -e.amount);
+      expenseRubros.add(category, subcategory, e.currency, -e.amount, 1);
       expenseLines.push({
-        label:
-          e.description?.trim() ||
-          (e.subcategory_id && subcategoryNames.get(e.subcategory_id)) ||
-          "Gasto",
-        category: (e.category_id && categoryNames.get(e.category_id)) || null,
+        label: e.description?.trim() || subcategory || "Gasto",
+        category: category || null,
         fund: (e.fund_id && fundNames.get(e.fund_id)) || null,
         amount: -e.amount,
         currency: e.currency,
@@ -405,6 +457,28 @@ export async function computeReportSnapshot(
       });
     }
   }
+
+  // Las transferencias no son ingreso ni gasto, pero la Asamblea sí las
+  // revisa: van con sus dos patas para que se vea de dónde a dónde.
+  const internalLines: ReportInternalLine[] = inRange
+    .filter((e) => e.transfer_group_id)
+    .map((e) => ({
+      group: e.transfer_group_id as string,
+      date: e.entry_date,
+      account: (e.account_id && accountNames.get(e.account_id)) || "Sin cuenta",
+      currency: e.currency,
+      amount: e.amount,
+      label:
+        e.description?.trim() ||
+        (e.subcategory_id && subcategoryNames.get(e.subcategory_id)) ||
+        "Movimiento interno",
+    }))
+    .sort(
+      (a, b) =>
+        a.date.localeCompare(b.date) ||
+        a.group.localeCompare(b.group) ||
+        a.amount - b.amount
+    );
 
   receipts.sort(
     (a, b) =>
@@ -465,6 +539,9 @@ export async function computeReportSnapshot(
     receipts,
     expenses: expense.rows(),
     expenseLines,
+    incomeByRubro: incomeRubros.rows(),
+    expenseByRubro: expenseRubros.rows(),
+    internalLines,
     result: result.rows(),
     byFund: balancesBy(all, "fund_id", fundNames, "Sin fondo"),
     byAccount: balancesBy(all, "account_id", accountNames, "Sin cuenta"),

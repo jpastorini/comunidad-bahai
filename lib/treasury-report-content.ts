@@ -11,7 +11,60 @@
  *   · ReportEditorial — los textos que escribe el tesorero.
  */
 
+/**
+ * A quién está dirigido el informe. No es cosmético: define quién puede
+ * leerlo (ver migración 043) y qué formato se renderiza.
+ *
+ *   'comunidad' — deck de diapositivas, link público, se proyecta en la
+ *                 Fiesta.
+ *   'internos'  — hoja condensada sin gráficos, para adjuntar al acta de
+ *                 la Asamblea. Nunca sale por el link público.
+ */
+export type ReportAudience = "comunidad" | "internos";
+
+export const AUDIENCE_LABEL: Record<ReportAudience, string> = {
+  comunidad: "Comunidad",
+  internos: "Internos",
+};
+
+export const AUDIENCE_HINT: Record<ReportAudience, string> = {
+  comunidad:
+    "Deck de diapositivas para presentar en la Fiesta, con link público compartible.",
+  internos:
+    "Hoja condensada sin gráficos, para adjuntar al acta y aprobar en reunión de Asamblea. No se comparte con la comunidad.",
+};
+
 export type ReportMoney = { currency: string; amount: number };
+
+/**
+ * Un rubro con su total. "Rubro" es la subcategoría del libro, que es lo
+ * que el tesorero elige al cargar un movimiento; la categoría viene al
+ * lado para poder agrupar. Es el nivel al que la Asamblea aprueba.
+ */
+export type ReportRubro = {
+  category: string;
+  subcategory: string;
+  currency: string;
+  /** Positivo siempre: el signo lo da de qué lado de la tabla está. */
+  amount: number;
+  /** Cuántos movimientos (o aportes, del lado de los ingresos) agrupa. */
+  count: number;
+};
+
+/**
+ * Una pata de una transferencia interna (cambio de caja, compra de
+ * divisas). El informe de la comunidad las omite —no son movimiento del
+ * Fondo— pero la Asamblea sí las revisa.
+ */
+export type ReportInternalLine = {
+  group: string;
+  date: string;
+  account: string;
+  currency: string;
+  /** Con signo: negativo la salida, positivo la entrada. */
+  amount: number;
+  label: string;
+};
 
 /** Una línea del detalle de ingresos. Sin nombre de contribuyente: el
  *  informe es para la comunidad y los aportes son confidenciales. */
@@ -74,6 +127,12 @@ export type ReportSnapshot = {
   /** Egresos del período, por moneda, en valor absoluto. */
   expenses: ReportMoney[];
   expenseLines: ReportExpenseLine[];
+  /** Totales por rubro, que es como aprueba la Asamblea. El informe
+   *  interno usa estos y no las listas movimiento por movimiento. */
+  incomeByRubro: ReportRubro[];
+  expenseByRubro: ReportRubro[];
+  /** Las patas de las transferencias internas del período. */
+  internalLines: ReportInternalLine[];
   /** Ingresos menos egresos del período. Puede ser negativo. */
   result: ReportMoney[];
   /** Saldos ACUMULADOS al cierre (todo el libro hasta `to`). */
@@ -100,6 +159,9 @@ export const EMPTY_SNAPSHOT: ReportSnapshot = {
   receipts: [],
   expenses: [],
   expenseLines: [],
+  incomeByRubro: [],
+  expenseByRubro: [],
+  internalLines: [],
   result: [],
   byFund: [],
   byAccount: [],
@@ -150,12 +212,24 @@ export type ReportGoal = {
   note: string;
 };
 
+/**
+ * El pie del informe interno: cuándo lo aprobó la Asamblea y en qué
+ * acta quedó. Si viene vacío, la hoja imprime líneas de puntos para
+ * completar a mano en la reunión, que es como se usa en la práctica.
+ */
+export type ReportApproval = { meetingDate: string; actaNumber: string };
+
 export type ReportEditorial = {
   notes: Partial<Record<NoteKey, string>>;
   destination: ReportDestinationItem[];
   goal: ReportGoal | null;
   quote: { text: string; source: string } | null;
   signature: { name: string; role: string } | null;
+  /** Solo informe interno: qué quedó en gestión, qué falta documentar,
+   *  qué necesita decisión de la Asamblea. */
+  observations: string;
+  /** Solo informe interno. */
+  approval: ReportApproval | null;
   /** Los gráficos y el presupuesto se pueden apagar: en el primer mes
    *  del año no dicen nada todavía. */
   showContributionsChart: boolean;
@@ -169,6 +243,8 @@ export const EMPTY_EDITORIAL: ReportEditorial = {
   goal: null,
   quote: null,
   signature: null,
+  observations: "",
+  approval: null,
   showContributionsChart: true,
   showLocalFundChart: true,
   showBudget: true,
@@ -233,6 +309,12 @@ export function sanitizeReportEditorial(raw: unknown): ReportEditorial {
   const sigRaw = obj(o.signature);
   const signature = { name: str(sigRaw.name), role: str(sigRaw.role) };
 
+  const apprRaw = obj(o.approval);
+  const approval = {
+    meetingDate: str(apprRaw.meetingDate),
+    actaNumber: str(apprRaw.actaNumber),
+  };
+
   return {
     notes,
     destination,
@@ -240,6 +322,10 @@ export function sanitizeReportEditorial(raw: unknown): ReportEditorial {
     goal: goal.title ? goal : null,
     quote: quote.text ? quote : null,
     signature: signature.name ? signature : null,
+    observations: str(o.observations),
+    // Sin fecha de reunión no hay aprobación que informar: la hoja
+    // imprime las líneas en blanco.
+    approval: approval.meetingDate || approval.actaNumber ? approval : null,
     showContributionsChart: bool(o.showContributionsChart, true),
     showLocalFundChart: bool(o.showLocalFundChart, true),
     showBudget: bool(o.showBudget, true),
@@ -261,6 +347,18 @@ export function sanitizeReportSnapshot(raw: unknown): ReportSnapshot {
         currency: str(b.currency),
         amount: num(b.amount),
       }));
+
+  const rubros = (v: unknown): ReportRubro[] =>
+    arr(v)
+      .map((r) => obj(r))
+      .map((r) => ({
+        category: str(r.category),
+        subcategory: str(r.subcategory),
+        currency: str(r.currency),
+        amount: num(r.amount),
+        count: num(r.count),
+      }))
+      .filter((r) => r.currency.length > 0);
 
   const budgetRaw = obj(o.budget);
   const budgetLines: ReportBudgetLine[] = arr(budgetRaw.lines)
@@ -292,6 +390,18 @@ export function sanitizeReportSnapshot(raw: unknown): ReportSnapshot {
         fund: str(r.fund) || null,
       })),
     expenses: money(o.expenses),
+    incomeByRubro: rubros(o.incomeByRubro),
+    expenseByRubro: rubros(o.expenseByRubro),
+    internalLines: arr(o.internalLines)
+      .map((l) => obj(l))
+      .map((l) => ({
+        group: str(l.group),
+        date: str(l.date),
+        account: str(l.account),
+        currency: str(l.currency),
+        amount: num(l.amount),
+        label: str(l.label),
+      })),
     expenseLines: arr(o.expenseLines)
       .map((l) => obj(l))
       .map((l) => ({

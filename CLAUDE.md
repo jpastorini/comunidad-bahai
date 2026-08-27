@@ -210,11 +210,35 @@ márgenes `auto`**: `getComputedStyle` los devuelve resueltos en píxeles y
 el clon sale corrido y recortado. El helper ya fuerza `margin: 0`, pero el
 centrado va siempre en un envoltorio.
 
-### Informes de Tesorería (migración 041)
+### Informes de Tesorería (migraciones 041 y 043)
 
-El informe que se presenta en la Fiesta. El tesorero da un rango de
+**Dos formatos, según `audience`** (migración 043). No es cosmético:
+define quién puede leer el informe.
+
+- `comunidad` — el **deck** de diapositivas que se proyecta en la Fiesta.
+  Publicado, lo lee cualquier creyente de la localidad y se comparte por
+  el link público `/i/<token>`.
+- `internos` — la **hoja** condensada que se adjunta al acta y la
+  Asamblea aprueba en reunión. A4 vertical, sin gráficos, totales por
+  rubro, con conciliación, movimientos internos, observaciones y bloque
+  de aprobación. Publicada ("emitida"), la leen los miembros con rol
+  admin de la localidad; **nunca** sale por el link público.
+
+⚠️ Lo único que impide que un informe interno quede accesible sin login
+es el filtro `.eq("audience", "comunidad")` de `getPublicReport()`: esa
+función usa la service-role key, que ignora la RLS.
+
+`/admin/informe/[id]` renderiza el formato que corresponda y **no exige
+el tag** `can_manage_treasury`, porque un miembro de la Asamblea tiene
+que poder abrir el interno para aprobarlo; quién ve qué lo decide la RLS.
+Solo el tesorero ve el botón de volver al editor.
+
+Ninguno de los dos formatos lleva nombres de contribuyentes.
+
+El tesorero da un rango de
 fechas en `/admin/tesoreria/informes/nuevo` (los atajos son los meses
-bahá'ís, que es el corte natural) y sale un **deck de diapositivas**:
+bahá'ís, que es el corte natural) y, para la comunidad, sale un **deck de
+diapositivas**:
 portada, resumen, ingresos por recibo, egresos, fondos, cuentas, dos
 gráficos del año, presupuesto vs. ejecutado, meta, destino de los fondos
 y cierre. Ciclo `draft→published` como el Boletín, con link público
@@ -241,6 +265,29 @@ romper:
   meta, cita, firma), que el libro no puede saber.
 - **Sin nombres.** El detalle de ingresos es por número de recibo, fecha
   y monto. El informe es público; el libro no.
+
+**La hoja interna** vive en `components/treasury/ReportSheet.tsx` y lee
+el MISMO snapshot que el deck. Cuatro cosas de su diseño:
+
+- **Totales por rubro, no movimiento por movimiento.** La Asamblea
+  aprueba a nivel de rubro (= subcategoría del libro), así que el
+  snapshot trae `incomeByRubro` y `expenseByRubro`; el detalle asiento
+  por asiento queda en el libro. ⚠️ Un informe guardado ANTES de la 043
+  no tiene esos agregados: hay que volver a guardarlo para que el
+  snapshot se recalcule, o las secciones 2 y 3 salen vacías.
+- **La conciliación se dice, no se supone:** el total por fondos y el
+  total por cuentas tienen que coincidir moneda por moneda, y si no
+  coinciden la hoja lo muestra en rojo.
+- **El total del presupuesto suma solo lo comparable** (las líneas con
+  rubro del libro vinculado). Sumar una línea sin ejecutado conocido daría
+  un "saldo" que parece sobrante y no lo es.
+- **Termina en el bloque de aprobación**, con la fecha de reunión y el
+  N.º de acta; si están vacíos imprime líneas de puntos para completar a
+  mano, que es como se usa.
+
+Las tablas van envueltas en `.cb-wide` (scroll horizontal en pantalla
+angosta, desarmado al imprimir): una tabla de cuatro columnas no baja de
+su ancho mínimo y empujaría el ancho de todo el documento.
 
 **Presentar e imprimir:** el deck se maneja con flechas/espacio, swipe en
 el celular, y tiene botón de pantalla completa (Fullscreen API; en iPhone
@@ -363,6 +410,11 @@ los PDF viajan tal cual (media factura llega por mail).
   de la comunidad: la distribución es el link `/i/<token>` por WhatsApp.
   La RLS ya deja que un creyente lea los informes publicados de su
   localidad, así que sumar una pantalla en `/tesoreria` es solo UI.
+- **La Asamblea no tiene índice de informes internos.** Los puede abrir
+  por `/admin/informe/<id>` (el tesorero copia el link con el botón
+  "Link para la Asamblea"), pero no hay una lista propia: la de
+  `/admin/tesoreria/informes` exige el tag de Tesorería. Si molesta,
+  falta una pantalla de solo lectura para rol admin.
 - **Buscador del libro:** encuentra por nombre de contribuyente aunque los
   nombres estén ocultos. Decidido dejarlo así por ahora; si molesta, que
   ignore los nombres mientras estén ocultos.

@@ -11,6 +11,7 @@ import {
   sanitizeReportEditorial,
   type DestinationTone,
   type NoteKey,
+  type ReportAudience,
   type ReportEditorial,
 } from "@/lib/treasury-report-content";
 import {
@@ -37,6 +38,11 @@ function revalidateReports(id?: string) {
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** El destinatario define el formato y quién puede leer el informe. */
+function readAudience(formData: FormData): ReportAudience {
+  return formData.get("audience") === "internos" ? "internos" : "comunidad";
+}
 
 function readDate(formData: FormData, key: string): string | null {
   const raw = ((formData.get(key) as string) ?? "").trim();
@@ -83,6 +89,11 @@ function readEditorial(formData: FormData): ReportEditorial {
     },
     quote: { text: str("quote_text"), source: str("quote_source") },
     signature: { name: str("signature_name"), role: str("signature_role") },
+    observations: str("observations"),
+    approval: {
+      meetingDate: str("approval_meeting_date"),
+      actaNumber: str("approval_acta_number"),
+    },
     showContributionsChart: formData.get("show_contributions") === "on",
     showLocalFundChart: formData.get("show_local_fund") === "on",
     showBudget: formData.get("show_budget") === "on",
@@ -133,6 +144,7 @@ export async function createReportAction(formData: FormData) {
       created_by: session.user.id,
       title,
       subtitle,
+      audience: readAudience(formData),
       period_from: from,
       period_to: to,
       bahai_year: bahaiYear,
@@ -226,6 +238,7 @@ export async function saveReportAction(formData: FormData) {
     .update({
       title,
       subtitle,
+      audience: readAudience(formData),
       period_from: from,
       period_to: to,
       bahai_year: bahaiYear,

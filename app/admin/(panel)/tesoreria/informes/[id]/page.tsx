@@ -33,9 +33,14 @@ export default async function EditarInformePage({
         )}${report.bahai_year ? ` · ${report.bahai_year} E.B.` : ""}`}
         actions={
           <>
-            {report.status === "published" && (
+            {/* El link público es solo del informe de comunidad: el
+                interno se pasa por la ruta del panel. */}
+            {report.status === "published" && report.audience === "comunidad" && (
               <ShareReportButton token={report.share_token} title={report.title} />
             )}
+            <Button variant="secondary" href={`/admin/informe/${report.id}`}>
+              {report.audience === "internos" ? "Ver hoja" : "Ver deck"}
+            </Button>
             <Button variant="secondary" href="/admin/tesoreria/informes">
               Volver a Informes
             </Button>
@@ -47,6 +52,7 @@ export default async function EditarInformePage({
         id={report.id}
         title={report.title}
         subtitle={report.subtitle}
+        audience={report.audience}
         periodFrom={report.period_from}
         periodTo={report.period_to}
         status={report.status}
