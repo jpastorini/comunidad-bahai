@@ -103,6 +103,8 @@ export async function saveBudgetItemsAction(formData: FormData) {
   const ids = formData.getAll("item_id[]") as string[];
   const plannedAmounts = formData.getAll("planned_amount[]") as string[];
   const spentAmounts = formData.getAll("spent_amount[]") as string[];
+  // "cat:<uuid>" | "sub:<uuid>" | "" — el desplegable "Se ejecuta con".
+  const ledgerRefs = formData.getAll("ledger_ref[]") as string[];
 
   const supabase = createSupabaseServer();
 
@@ -122,11 +124,21 @@ export async function saveBudgetItemsAction(formData: FormData) {
   }
 
   // Actualizar cada línea
-  const updates = ids.map((id, i) => ({
-    id,
-    planned_amount: parseFloat(plannedAmounts[i] || "0"),
-    spent_amount: parseFloat(spentAmounts[i] || "0"),
-  }));
+  const UUID = /^[0-9a-f-]{36}$/i;
+  const updates = ids.map((id, i) => {
+    const ref = ledgerRefs[i] ?? "";
+    const [kind, refId] = ref.split(":");
+    const valid = UUID.test(refId ?? "");
+    return {
+      id,
+      planned_amount: parseFloat(plannedAmounts[i] || "0"),
+      spent_amount: parseFloat(spentAmounts[i] || "0"),
+      // Una línea apunta a una categoría O a una subcategoría, nunca a
+      // las dos: elegir una limpia la otra.
+      ledger_category_id: valid && kind === "cat" ? refId : null,
+      ledger_subcategory_id: valid && kind === "sub" ? refId : null,
+    };
+  });
 
   let hasError = false;
   for (const upd of updates) {
@@ -135,6 +147,8 @@ export async function saveBudgetItemsAction(formData: FormData) {
       .update({
         planned_amount: upd.planned_amount,
         spent_amount: upd.spent_amount,
+        ledger_category_id: upd.ledger_category_id,
+        ledger_subcategory_id: upd.ledger_subcategory_id,
       })
       .eq("id", upd.id);
     if (error) hasError = true;

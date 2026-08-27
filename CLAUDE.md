@@ -139,7 +139,9 @@ las 13:00, que se prende desde el perfil, el asistente de bienvenida o la
 propia pantalla de la oración (migración 038) ·
 **Tesorería como libro contable** (migración 040, reemplaza al Google
 Sheet del tesorero): los MOVIMIENTOS son la fuente de verdad y el saldo se
-calcula. Ver la sección "Tesorería" más abajo.
+calcula · **Informes de Tesorería** (migración 041): el deck que se
+presenta en la Fiesta, armado desde el libro por rango de fechas, con
+link público compartible. Ver la sección "Tesorería" más abajo.
 
 ## Tesorería (leer antes de tocarla)
 
@@ -181,15 +183,62 @@ márgenes `auto`**: `getComputedStyle` los devuelve resueltos en píxeles y
 el clon sale corrido y recortado. El helper ya fuerza `margin: 0`, pero el
 centrado va siempre en un envoltorio.
 
+### Informes de Tesorería (migración 041)
+
+El informe que se presenta en la Fiesta. El tesorero da un rango de
+fechas en `/admin/tesoreria/informes/nuevo` (los atajos son los meses
+bahá'ís, que es el corte natural) y sale un **deck de diapositivas**:
+portada, resumen, ingresos por recibo, egresos, fondos, cuentas, dos
+gráficos del año, presupuesto vs. ejecutado, meta, destino de los fondos
+y cierre. Ciclo `draft→published` como el Boletín, con link público
+`/i/<token>` resuelto con service-role. Deck en
+`components/treasury/ReportDeck.tsx`; vista previa full-screen en
+`/admin/informe/[id]`, **fuera** del grupo `(panel)` porque el shell del
+admin le comería la pantalla.
+
+Cuatro reglas del cálculo (`lib/treasury-reports.ts`) que conviene no
+romper:
+
+- **Ingresos y egresos son del rango; los saldos son acumulados.** Un
+  saldo no tiene período: es todo el libro hasta la fecha de cierre,
+  arrastre incluido.
+- **Las transferencias no son movimiento del Fondo.** Las dos patas
+  atadas por `transfer_group_id` se cancelan; contarlas infla las dos
+  columnas. Quedan fuera y el informe dice cuántas hubo. Ojo que los
+  "Gastos por transferencia" (el costo del giro) NO llevan grupo: son
+  gasto real y se cuentan.
+- **El snapshot se congela.** Las cifras viven en la columna `snapshot`
+  y se recalculan al guardar, nunca al renderizar: el informe que se
+  proyectó en la Fiesta no cambia porque después se cargó un movimiento.
+  La columna `editorial` guarda los textos (notas por sección, destino,
+  meta, cita, firma), que el libro no puede saber.
+- **Sin nombres.** El detalle de ingresos es por número de recibo, fecha
+  y monto. El informe es público; el libro no.
+
+**Presupuesto vs. ejecutado:** los nombres de las categorías del
+presupuesto (024) y del libro (040) no coinciden y no hay forma de
+adivinar el par, así que el tesorero lo declara con el desplegable "Se
+ejecuta con" en el editor del presupuesto. Son dos columnas
+(`ledger_category_id` y `ledger_subcategory_id`) porque la granularidad
+cambia según la línea: "Enseñanza" es una categoría entera, "Aporte al
+Fondo Nacional" es una subcategoría dentro de "Gastos Operativos". Una
+línea sin vincular se informa como tal, nunca como cero.
+
 ## Pendientes conocidos
 
-- **Reportes de Tesorería** (lo próximo). El presupuesto (024) tiene
-  `planned_amount` por categoría y ahora existe el ejecutado, pero nadie
-  los compara todavía. Además: cierre de período (generar los "Saldo
-  anterior" del 184), y `/tesoreria` de la comunidad y los dos
-  compartibles que ya existen (`MonthlyReportShare`, `BudgetReportShare`)
-  siguen leyendo el `current_amount` escrito a mano de la tabla
-  `treasury` vieja, que hay que jubilar.
+- **Jubilar la tabla `treasury` vieja.** `/tesoreria` de la comunidad y
+  los dos compartibles (`MonthlyReportShare`, `BudgetReportShare`) siguen
+  leyendo el `current_amount` escrito a mano, que ahora contradice al
+  libro. El informe (041) ya calcula todo desde los movimientos: falta
+  que esas tres pantallas tomen de ahí y que el formulario a mano
+  desaparezca.
+- **Cierre de período.** Generar los asientos "Saldo anterior" del 184 a
+  partir de los saldos al cierre del 183 (`is_opening_balance`), en vez
+  de cargarlos a mano.
+- **El informe no avisa.** Al publicar no sale push ni aparece en la app
+  de la comunidad: la distribución es el link `/i/<token>` por WhatsApp.
+  La RLS ya deja que un creyente lea los informes publicados de su
+  localidad, así que sumar una pantalla en `/tesoreria` es solo UI.
 - **Buscador del libro:** encuentra por nombre de contribuyente aunque los
   nombres estén ocultos. Decidido dejarlo así por ahora; si molesta, que
   ignore los nombres mientras estén ocultos.

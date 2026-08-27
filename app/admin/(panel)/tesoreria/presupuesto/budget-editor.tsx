@@ -13,6 +13,19 @@ export type EditorItem = {
   /** Gastado el AÑO PASADO — referencia (spent_amount). */
   spent: number;
   position: number;
+  /**
+   * Vínculo con el libro, para que el informe pueda calcular el
+   * ejecutado: "cat:<uuid>" o "sub:<uuid>", o "" si no está vinculada.
+   * Se guarda en dos columnas (ver migración 041) pero acá viaja como un
+   * solo valor porque en la pantalla es un solo desplegable.
+   */
+  ledgerRef: string;
+};
+
+/** Categorías y subcategorías del libro que se pueden vincular. */
+export type LedgerOptions = {
+  categories: { id: string; name: string }[];
+  subcategories: { id: string; name: string }[];
 };
 
 type Props = {
@@ -21,6 +34,7 @@ type Props = {
   status: "draft" | "active" | "closed";
   notes: string | null;
   items: EditorItem[];
+  ledgerOptions: LedgerOptions;
   saveAction: (formData: FormData) => void;
   addCategoryAction: (formData: FormData) => void;
 };
@@ -31,6 +45,7 @@ export function BudgetEditor({
   status: initialStatus,
   notes: initialNotes,
   items: initialItems,
+  ledgerOptions,
   saveAction,
   addCategoryAction,
 }: Props) {
@@ -46,6 +61,12 @@ export function BudgetEditor({
     },
     []
   );
+
+  const updateRef = useCallback((id: string, value: string) => {
+    setItems((prev) =>
+      prev.map((it) => (it.id === id ? { ...it, ledgerRef: value } : it))
+    );
+  }, []);
 
   // Solo cuentan en los totales las categorías presupuestadas este año.
   const activeItems = items.filter((i) => i.planned > 0);
@@ -137,7 +158,13 @@ export function BudgetEditor({
         {/* Ítems */}
         <div className="flex flex-col gap-2.5">
           {items.map((item) => (
-            <BudgetItemRow key={item.id} item={item} onUpdate={update} />
+            <BudgetItemRow
+              key={item.id}
+              item={item}
+              onUpdate={update}
+              onUpdateRef={updateRef}
+              ledgerOptions={ledgerOptions}
+            />
           ))}
         </div>
 
@@ -207,9 +234,13 @@ export function BudgetEditor({
 function BudgetItemRow({
   item,
   onUpdate,
+  onUpdateRef,
+  ledgerOptions,
 }: {
   item: EditorItem;
   onUpdate: (id: string, field: "planned" | "spent", value: number) => void;
+  onUpdateRef: (id: string, value: string) => void;
+  ledgerOptions: LedgerOptions;
 }) {
   const meta = categoryMeta(item.icon);
   const isZero = item.planned === 0;
@@ -274,6 +305,45 @@ function BudgetItemRow({
             placeholder="0 = no presupuestado"
           />
         </Field>
+      </div>
+
+      {/* Vínculo con el libro: de acá sale el "ejecutado" del informe.
+          Un solo desplegable con las categorías y las subcategorías,
+          porque la granularidad correcta cambia según la línea. */}
+      <div className="mt-3 border-t border-black/[0.06] pt-3">
+        <Field
+          label="Se ejecuta con"
+          name={`ledger_${item.id}`}
+          hint="movimientos del libro"
+        >
+          <Select
+            name="ledger_ref[]"
+            value={item.ledgerRef}
+            onChange={(e) => onUpdateRef(item.id, e.target.value)}
+          >
+            <option value="">Sin vincular</option>
+            <optgroup label="Categorías del libro">
+              {ledgerOptions.categories.map((c) => (
+                <option key={c.id} value={`cat:${c.id}`}>
+                  {c.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Subcategorías (más específico)">
+              {ledgerOptions.subcategories.map((s) => (
+                <option key={s.id} value={`sub:${s.id}`}>
+                  {s.name}
+                </option>
+              ))}
+            </optgroup>
+          </Select>
+        </Field>
+        {!item.ledgerRef && (
+          <p className="mt-1 text-[11px] italic text-muted">
+            Sin vincular, el informe no puede calcular cuánto se ejecutó de
+            esta categoría.
+          </p>
+        )}
       </div>
     </div>
   );

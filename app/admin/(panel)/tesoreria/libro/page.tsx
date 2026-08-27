@@ -51,7 +51,14 @@ export default async function LibroTesoreriaPage({
         eyebrow="Tesorería"
         title={`Libro ${year} E.B.`}
         description="Cada línea es un movimiento. El saldo se calcula solo."
-        actions={<Button href="/admin/tesoreria">Volver a Tesorería</Button>}
+        actions={
+          <>
+            <Button href="/admin/tesoreria/informes">Informes</Button>
+            <Button variant="secondary" href="/admin/tesoreria">
+              Volver a Tesorería
+            </Button>
+          </>
+        }
       />
 
       {catalogEmpty ? (

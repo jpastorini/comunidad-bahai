@@ -24,6 +24,8 @@ type ItemRow = {
   planned_amount: number;
   spent_amount: number;
   position: number;
+  ledger_category_id: string | null;
+  ledger_subcategory_id: string | null;
 };
 
 export default async function PresupuestoEditorPage({
@@ -49,20 +51,47 @@ export default async function PresupuestoEditorPage({
     notFound();
   }
 
-  const { data: itemsRaw } = await supabase
-    .from("treasury_budget_items")
-    .select("id, category, icon, planned_amount, spent_amount, position")
-    .eq("budget_id", budget.id)
-    .order("position", { ascending: true });
+  // El catálogo del libro alimenta el desplegable "Se ejecuta con": es
+  // lo que le permite al informe calcular el ejecutado de cada línea.
+  const [itemsRes, categoriesRes, subcategoriesRes] = await Promise.all([
+    supabase
+      .from("treasury_budget_items")
+      .select(
+        "id, category, icon, planned_amount, spent_amount, position, ledger_category_id, ledger_subcategory_id"
+      )
+      .eq("budget_id", budget.id)
+      .order("position", { ascending: true }),
+    supabase
+      .from("treasury_categories")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("sort_order"),
+    supabase
+      .from("treasury_subcategories")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("sort_order"),
+  ]);
 
-  const items: EditorItem[] = ((itemsRaw ?? []) as ItemRow[]).map((it) => ({
+  const items: EditorItem[] = ((itemsRes.data ?? []) as ItemRow[]).map((it) => ({
     id: it.id,
     category: it.category,
     icon: it.icon,
     planned: Number(it.planned_amount),
     spent: Number(it.spent_amount),
     position: it.position,
+    // La subcategoría manda si están las dos: es el vínculo más específico.
+    ledgerRef: it.ledger_subcategory_id
+      ? `sub:${it.ledger_subcategory_id}`
+      : it.ledger_category_id
+        ? `cat:${it.ledger_category_id}`
+        : "",
   }));
+
+  const ledgerOptions = {
+    categories: (categoriesRes.data ?? []) as { id: string; name: string }[],
+    subcategories: (subcategoriesRes.data ?? []) as { id: string; name: string }[],
+  };
 
   return (
     <>
@@ -83,6 +112,7 @@ export default async function PresupuestoEditorPage({
         status={budget.status}
         notes={budget.notes}
         items={items}
+        ledgerOptions={ledgerOptions}
         saveAction={saveBudgetItemsAction}
         addCategoryAction={addBudgetCategoryAction}
       />

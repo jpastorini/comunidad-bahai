@@ -84,6 +84,10 @@ export default async function AdminTesoreriaPage() {
               Libro de movimientos
               <IconArrowRight size={13} />
             </Button>
+            <Button href="/admin/tesoreria/informes">
+              Informes
+              <IconArrowRight size={13} />
+            </Button>
             <Button href="/admin/tesoreria/presupuesto">
               Plan de Presupuesto
               <IconArrowRight size={13} />
