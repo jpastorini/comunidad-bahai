@@ -1,6 +1,7 @@
 import { Banner, Button, Card, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { getAttachmentCounts } from "@/lib/treasury-attachments";
 import { formatMoney } from "@/lib/treasury-format";
 import {
   balancesBy,
@@ -29,10 +30,11 @@ export default async function LibroTesoreriaPage({
     ? requested
     : (years[0] ?? new Date().getUTCFullYear() - 1843);
 
-  const [catalog, entries, receiptResult] = await Promise.all([
+  const [catalog, entries, receiptResult, attachmentCounts] = await Promise.all([
     getLedgerCatalog(supabase),
     getLedgerEntries(supabase, year),
     supabase.rpc("next_receipt_number", { loc: session.locality.id }),
+    getAttachmentCounts(supabase),
   ]);
 
   const accountNames = new Map(catalog.accounts.map((a) => [a.id, a.name]));
@@ -187,6 +189,7 @@ export default async function LibroTesoreriaPage({
             years={years}
             today={todayISO()}
             nextReceipt={nextReceipt}
+            attachmentCounts={attachmentCounts}
           />
         </>
       )}

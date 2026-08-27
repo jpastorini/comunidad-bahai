@@ -15,6 +15,8 @@ type Props = {
   years: number[];
   today: string;
   nextReceipt: number;
+  /** Comprobantes por movimiento, para el clip de la lista. */
+  attachmentCounts: Record<string, number>;
 };
 
 /**
@@ -35,6 +37,7 @@ export function LedgerClient({
   years,
   today,
   nextReceipt,
+  attachmentCounts,
 }: Props) {
   const router = useRouter();
   const [openForm, setOpenForm] = useState(false);
@@ -218,7 +221,10 @@ export function LedgerClient({
                     </span>
                   )}
                 </Td>
-                <Td className="text-muted">{e.description ?? "—"}</Td>
+                <Td className="text-muted">
+                  {e.description ?? "—"}
+                  <Clip count={attachmentCounts[e.id] ?? 0} />
+                </Td>
                 <Td>{contributorLabel(e) ?? <Masked />}</Td>
                 <Td className="text-right tabular-nums text-muted">
                   {e.receipt_number ? (
@@ -277,6 +283,7 @@ export function LedgerClient({
             <div className="mt-0.5 text-[11px] text-muted">
               {formatDate(e.entry_date)} · {names.accounts.get(e.account_id)}
               {e.fund_id ? ` · ${names.funds.get(e.fund_id)}` : ""}
+              <Clip count={attachmentCounts[e.id] ?? 0} />
             </div>
             {(e.description || e.contributor_id) && (
               <div className="mt-1 text-[11.5px] text-dark/80">
@@ -299,6 +306,7 @@ export function LedgerClient({
             today={today}
             nextReceipt={nextReceipt}
             entry={editing}
+            attachmentCount={attachmentCounts[editing.id] ?? 0}
             onSaved={() => {
               setEditing(null);
               refresh();
@@ -368,6 +376,33 @@ function Td({
   className?: string;
 }) {
   return <td className={`px-3 py-2 align-top ${className}`}>{children}</td>;
+}
+
+/** Clip de comprobantes. No dice "0": la ausencia se nota sola y la
+ *  lista ya tiene bastante ruido. */
+function Clip({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <span
+      className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-bg px-1.5 py-0.5 align-middle text-[10px] text-muted"
+      title={count === 1 ? "1 comprobante" : `${count} comprobantes`}
+    >
+      <svg
+        width="9"
+        height="9"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M21.4 11.05 12.25 20.2a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.67 3.67 0 0 1 5.19 5.19l-9.2 9.19a1.83 1.83 0 0 1-2.59-2.6l8.49-8.48" />
+      </svg>
+      {count}
+    </span>
+  );
 }
 
 /** Antifaz de un nombre oculto. Largo fijo: si variara con el nombre

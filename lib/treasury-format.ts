@@ -18,3 +18,17 @@ export function formatMoney(amount: number, currency?: string): string {
   });
   return currency ? `${n} ${currency}` : n;
 }
+
+/**
+ * "1.500,50" o "1500.50" → 1500.5; NaN si no hay número.
+ *
+ * El tesorero escribe como le sale y las dos convenciones conviven en la
+ * misma tanda de carga. Si hay coma, la coma es el decimal y el punto
+ * separa miles.
+ */
+export function parseMoney(raw: string): number {
+  const s = (raw || "").trim();
+  if (!s) return NaN;
+  const normalized = s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s;
+  return Math.round(parseFloat(normalized) * 100) / 100;
+}

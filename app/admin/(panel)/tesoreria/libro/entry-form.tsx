@@ -1,10 +1,15 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import {
+  AttachmentsPanel,
+  type AttachmentsHandle,
+} from "@/components/treasury/AttachmentsPanel";
 import type {
   LedgerCatalog,
   TreasuryEntry,
 } from "@/lib/treasury-ledger";
+import { parseMoney } from "@/lib/treasury-format";
 import { saveEntryAction } from "./actions";
 
 type Props = {
@@ -16,6 +21,9 @@ type Props = {
   nextReceipt: number;
   /** Si viene, el formulario edita ese movimiento en vez de crear uno. */
   entry?: TreasuryEntry | null;
+  /** Cuántos comprobantes tiene ya. Solo se usa para decidir si mostrar
+   *  el panel en un ingreso: normalmente las facturas son de gastos. */
+  attachmentCount?: number;
   onSaved: () => void;
   onCancel?: () => void;
 };
@@ -34,12 +42,14 @@ export function EntryForm({
   today,
   nextReceipt,
   entry,
+  attachmentCount = 0,
   onSaved,
   onCancel,
 }: Props) {
   const isEdit = Boolean(entry);
   const formRef = useRef<HTMLFormElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
+  const attachmentsRef = useRef<AttachmentsHandle>(null);
 
   const [direction, setDirection] = useState<"ingreso" | "gasto">(
     entry ? (entry.amount < 0 ? "gasto" : "ingreso") : "ingreso"
@@ -54,6 +64,17 @@ export function EntryForm({
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // El monto se sigue en estado además del input: lo necesita el panel
+  // de comprobantes para avisar si las facturas no cuadran.
+  const [amountText, setAmountText] = useState(
+    entry ? Math.abs(entry.amount).toFixed(2) : ""
+  );
+
+  const amountValue = amountText.trim() ? parseMoney(amountText) : NaN;
+  // Las facturas son del gasto. En un ingreso el comprobante lo emitimos
+  // nosotros, así que el panel solo aparece si ese asiento ya tiene algo
+  // adjunto —para no esconderlo si alguna vez se cargó al revés.
+  const showAttachments = direction === "gasto" || attachmentCount > 0;
 
   const subcategory = catalog.subcategories.find((s) => s.id === subcategoryId);
   const categoryName = useMemo(() => {
@@ -88,12 +109,30 @@ export function EntryForm({
     setSaving(true);
     setError(null);
     const res = await saveEntryAction(fd);
-    setSaving(false);
 
     if (!res.ok) {
+      setSaving(false);
       setError(res.error);
       return;
     }
+
+    // Los comprobantes cuelgan del movimiento, así que en un alta recién
+    // ahora hay dónde colgarlos. Si alguno falla, el movimiento YA quedó
+    // guardado: se avisa sin deshacerlo, porque el asiento es lo que no
+    // se puede perder.
+    if (res.id && (attachmentsRef.current?.pendingCount() ?? 0) > 0) {
+      const uploadError = await attachmentsRef.current?.uploadPending(res.id);
+      if (uploadError) {
+        setSaving(false);
+        setError(
+          `El movimiento se guardó, pero un comprobante no subió: ${uploadError}`
+        );
+        onSaved();
+        return;
+      }
+    }
+
+    setSaving(false);
 
     if (!isEdit) {
       // Encadenar cargas: se limpia lo variable y se conserva el contexto
@@ -101,6 +140,7 @@ export function EntryForm({
       form.querySelectorAll<HTMLInputElement>("[data-clear-on-save]").forEach((el) => {
         el.value = "";
       });
+      setAmountText("");
       setContributorText("");
       amountRef.current?.focus();
     }
@@ -152,7 +192,8 @@ export function EntryForm({
               inputMode="decimal"
               name="amount"
               data-clear-on-save
-              defaultValue={entry ? Math.abs(entry.amount).toFixed(2) : ""}
+              value={amountText}
+              onChange={(e) => setAmountText(e.target.value)}
               placeholder="0,00"
               required
               className={`${inputClass} flex-1`}
@@ -236,6 +277,15 @@ export function EntryForm({
           className={inputClass}
         />
       </Field>
+
+      {showAttachments && (
+        <AttachmentsPanel
+          ref={attachmentsRef}
+          entryId={entry?.id ?? null}
+          entryAmount={Number.isFinite(amountValue) ? amountValue : null}
+          currency={currency}
+        />
+      )}
 
       {direction === "ingreso" && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

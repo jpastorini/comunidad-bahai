@@ -141,7 +141,9 @@ propia pantalla de la oración (migración 038) ·
 Sheet del tesorero): los MOVIMIENTOS son la fuente de verdad y el saldo se
 calcula · **Informes de Tesorería** (migración 041): el deck que se
 presenta en la Fiesta, armado desde el libro por rango de fechas, con
-link público compartible. Ver la sección "Tesorería" más abajo.
+link público compartible · **Comprobantes de gastos** (migración 043):
+las facturas adjuntas al movimiento, en bucket privado. Ver la sección
+"Tesorería" más abajo.
 
 ## Tesorería (leer antes de tocarla)
 
@@ -298,6 +300,48 @@ ejecuta con" en el editor del presupuesto. Son dos columnas
 cambia según la línea: "Enseñanza" es una categoría entera, "Aporte al
 Fondo Nacional" es una subcategoría dentro de "Gastos Operativos". Una
 línea sin vincular se informa como tal, nunca como cero.
+
+### Comprobantes de gastos (migración 043)
+
+Las facturas del gasto, colgadas del movimiento (`treasury_attachments`).
+El panel está dentro del formulario del libro y aparece cuando el
+movimiento es un **gasto** —en un ingreso el comprobante lo emitimos
+nosotros, así que solo se muestra si ese asiento ya tiene algo adjunto—.
+Componente en `components/treasury/AttachmentsPanel.tsx`, actions en
+`app/admin/(panel)/tesoreria/libro/attachment-actions.ts`.
+
+Tres cosas que sostienen el diseño:
+
+- **El desglose es respaldo, no contabilidad.** Un gasto de $ 3.500 por
+  una Fiesta suele venir con tres facturas (arreglos, comida,
+  invitaciones); el libro sigue viendo UNA línea de $ 3.500 y cada
+  factura declara su `amount` y su `label`. Por eso `amount` es
+  **opcional** (la mayoría de los gastos tiene una sola factura por el
+  total) y **positivo** (el signo lo pone el asiento, no el papel). Que
+  las facturas no sumen el total se **avisa**, no se bloquea: una puede
+  traer un ítem que no corresponde y el tesorero sabe mejor que la app.
+  Si algún día el desglose tiene que ser contable —rubros distintos del
+  presupuesto— eso son N asientos atados, no N adjuntos.
+- ⚠️ **El bucket `treasury-receipts` es PRIVADO**, a diferencia de los
+  cuatro que ya existían (`event-photos`, `comunicados`, `materiales`,
+  `avatars`). Una factura trae nombre, dirección y RUT del proveedor: es
+  tan reservada como el libro. Se lee por **URL firmada** de una hora,
+  emitida en el servidor (`signAttachments()`), nunca por `getPublicUrl`.
+  Los comprobantes **no van al informe**: el deck de la Fiesta es
+  público. Los paths son `<locality_id>/<entry_id>/<uuid>.<ext>` y las
+  storage policies aíslan por la primera carpeta.
+- **El archivo no lo borra el cascade.** La FK se lleva la fila cuando
+  se borra el movimiento, pero el objeto del bucket queda huérfano; por
+  eso `deleteEntryAction` llama a `purgeAttachmentFiles()` **antes** de
+  borrar el asiento, que es cuando la RLS todavía deja encontrarlo.
+
+En el alta el movimiento no existe todavía, así que los archivos quedan
+en espera y `EntryForm` los sube con `uploadPending(id)` recién después
+de guardar (`saveEntryAction` devuelve el `id` por eso). Si un
+comprobante falla ahí, el asiento **ya quedó guardado** y se avisa sin
+deshacerlo: perder el movimiento es peor que perder la foto. Las
+imágenes se comprimen en el navegador con `compressImage` de la galería;
+los PDF viajan tal cual (media factura llega por mail).
 
 ## Pendientes conocidos
 

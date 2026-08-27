@@ -4,20 +4,18 @@ import { revalidatePath } from "next/cache";
 import { randomUUID } from "node:crypto";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { RECEIPTS_BUCKET } from "@/lib/treasury-attachments";
+import { parseMoney } from "@/lib/treasury-format";
 
 type Result = { ok: boolean; error: string | null };
 
+/** El alta devuelve además el id: los comprobantes se suben después de
+ *  guardar, porque cuelgan del movimiento y antes no existe. */
+type SaveResult = Result & { id: string | null };
+
 const ok: Result = { ok: true, error: null };
 const fail = (error: string): Result => ({ ok: false, error });
-
-/** Monto a número, tolerando "1.500,50" y "1500.50". */
-function parseAmount(raw: string): number {
-  const s = (raw || "").trim();
-  if (!s) return NaN;
-  // Si hay coma, la coma es el decimal y el punto separa miles.
-  const normalized = s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s;
-  return Math.round(parseFloat(normalized) * 100) / 100;
-}
+const failSave = (error: string): SaveResult => ({ ok: false, error, id: null });
 
 function str(formData: FormData, key: string): string {
   return ((formData.get(key) as string) || "").trim();
@@ -61,8 +59,33 @@ async function resolveContributor(
   return (created as { id: string }).id;
 }
 
+/**
+ * Saca del bucket los archivos de los comprobantes de esos movimientos.
+ * No borra las filas: de eso se encarga el cascade de la FK.
+ */
+async function purgeAttachmentFiles(
+  supabase: ServerClient,
+  entryIds: string[]
+): Promise<void> {
+  if (entryIds.length === 0) return;
+  const { data } = await supabase
+    .from("treasury_attachments")
+    .select("storage_path")
+    .in("entry_id", entryIds);
+  const paths = ((data ?? []) as Array<{ storage_path: string }>).map(
+    (a) => a.storage_path
+  );
+  if (paths.length === 0) return;
+  const { error } = await supabase.storage.from(RECEIPTS_BUCKET).remove(paths);
+  if (error) {
+    // Un archivo huérfano en el bucket es molesto, no grave: no vale
+    // abortar el borrado del movimiento por eso.
+    console.error("[purgeAttachmentFiles]", error);
+  }
+}
+
 /** Alta o edición de un movimiento. */
-export async function saveEntryAction(formData: FormData): Promise<Result> {
+export async function saveEntryAction(formData: FormData): Promise<SaveResult> {
   const session = await requireAdmin();
   ensureTreasuryTag(session.profile);
   const supabase = createSupabaseServer();
@@ -73,14 +96,14 @@ export async function saveEntryAction(formData: FormData): Promise<Result> {
   const subcategoryId = str(formData, "subcategory_id");
   const currency = str(formData, "currency");
   const direction = str(formData, "direction"); // 'ingreso' | 'gasto'
-  const amountRaw = parseAmount(str(formData, "amount"));
+  const amountRaw = parseMoney(str(formData, "amount"));
 
-  if (!entryDate) return fail("Falta la fecha.");
-  if (!accountId) return fail("Elegí la cuenta.");
-  if (!subcategoryId) return fail("Elegí la subcategoría.");
-  if (!["UYU", "USD"].includes(currency)) return fail("Moneda inválida.");
+  if (!entryDate) return failSave("Falta la fecha.");
+  if (!accountId) return failSave("Elegí la cuenta.");
+  if (!subcategoryId) return failSave("Elegí la subcategoría.");
+  if (!["UYU", "USD"].includes(currency)) return failSave("Moneda inválida.");
   if (!Number.isFinite(amountRaw) || amountRaw <= 0) {
-    return fail("El monto tiene que ser mayor a cero.");
+    return failSave("El monto tiene que ser mayor a cero.");
   }
 
   // La categoría no se elige: la manda la subcategoría, como en la
@@ -90,7 +113,7 @@ export async function saveEntryAction(formData: FormData): Promise<Result> {
     .select("category_id, default_fund_id")
     .eq("id", subcategoryId)
     .maybeSingle();
-  if (!sub) return fail("La subcategoría no existe.");
+  if (!sub) return failSave("La subcategoría no existe.");
   const subcategory = sub as {
     category_id: string;
     default_fund_id: string | null;
@@ -102,14 +125,14 @@ export async function saveEntryAction(formData: FormData): Promise<Result> {
   const receiptRaw = str(formData, "receipt_number");
   const receiptNumber = receiptRaw ? parseInt(receiptRaw, 10) : null;
   if (receiptRaw && Number.isNaN(receiptNumber)) {
-    return fail("El número de recibo tiene que ser un número.");
+    return failSave("El número de recibo tiene que ser un número.");
   }
 
   let contributorId: string | null;
   try {
     contributorId = await resolveContributor(supabase, formData);
   } catch (err) {
-    return fail(
+    return failSave(
       err instanceof Error ? err.message : "Error con el contribuyente."
     );
   }
@@ -130,28 +153,32 @@ export async function saveEntryAction(formData: FormData): Promise<Result> {
     receipt_issued: str(formData, "receipt_issued") === "on",
   };
 
-  const { error } = id
+  const { data: saved, error } = id
     ? await supabase
         .from("treasury_entries")
         .update({ ...payload, updated_at: new Date().toISOString() })
         .eq("id", id)
+        .select("id")
+        .maybeSingle()
     : await supabase
         .from("treasury_entries")
-        .insert({ ...payload, created_by: session.user.id });
+        .insert({ ...payload, created_by: session.user.id })
+        .select("id")
+        .maybeSingle();
 
   if (error) {
     // El caso frecuente: repetir un número de recibo ya usado.
     if (error.code === "23505" && error.message.includes("receipt")) {
-      return fail(
+      return failSave(
         `El recibo N° ${receiptNumber} ya está usado en otro movimiento.`
       );
     }
-    return fail(error.message);
+    return failSave(error.message);
   }
 
   revalidatePath("/admin/tesoreria/libro");
   revalidatePath("/admin/tesoreria");
-  return ok;
+  return { ok: true, error: null, id: (saved as { id: string } | null)?.id ?? id ?? null };
 }
 
 export async function deleteEntryAction(formData: FormData): Promise<Result> {
@@ -172,6 +199,20 @@ export async function deleteEntryAction(formData: FormData): Promise<Result> {
 
   const group = (entry as { transfer_group_id: string | null } | null)
     ?.transfer_group_id;
+
+  // Qué asientos se van: el solo, o los dos de la transferencia.
+  const { data: doomed } = group
+    ? await supabase
+        .from("treasury_entries")
+        .select("id")
+        .eq("transfer_group_id", group)
+    : { data: [{ id }] };
+  const entryIds = ((doomed ?? []) as Array<{ id: string }>).map((e) => e.id);
+
+  // Los comprobantes: la fila se la lleva el cascade, el archivo no.
+  // Se borran ANTES del asiento, porque después la RLS ya no deja
+  // encontrarlos y quedarían ocupando el bucket para siempre.
+  await purgeAttachmentFiles(supabase, entryIds);
 
   const { error } = group
     ? await supabase
@@ -204,8 +245,8 @@ export async function saveTransferAction(formData: FormData): Promise<Result> {
   const subcategoryId = str(formData, "subcategory_id");
   const fromCurrency = str(formData, "from_currency");
   const toCurrency = str(formData, "to_currency");
-  const fromAmount = parseAmount(str(formData, "from_amount"));
-  const toAmount = parseAmount(str(formData, "to_amount"));
+  const fromAmount = parseMoney(str(formData, "from_amount"));
+  const toAmount = parseMoney(str(formData, "to_amount"));
 
   if (!entryDate) return fail("Falta la fecha.");
   if (!fromAccount || !toAccount) return fail("Elegí las dos cuentas.");
