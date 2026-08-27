@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BahaiStar } from "@/components/BahaiStar";
 import { categoryMeta } from "@/lib/budget";
 import {
@@ -50,6 +50,7 @@ export function ReportDeck({
 }) {
   const slides = useMemo(() => buildSlides(report, localityName), [report, localityName]);
   const [index, setIndex] = useState(0);
+  const [fullscreen, setFullscreen] = useState(false);
   const total = slides.length;
 
   const go = useCallback(
@@ -72,33 +73,102 @@ export function ReportDeck({
     return () => window.removeEventListener("keydown", onKey);
   }, [total]);
 
-  const current = slides[index];
+  // La pantalla completa se puede salir con Escape sin pasar por el botón,
+  // así que el estado se sincroniza con el evento del navegador.
+  useEffect(() => {
+    function onChange() {
+      setFullscreen(Boolean(document.fullscreenElement));
+    }
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      // Safari en iPhone no deja pedir pantalla completa: el botón queda
+      // sin efecto en vez de romper.
+    }
+  }
+
+  // Swipe en el celular: el mismo gesto que en cualquier galería.
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+
+  function onTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touchStart.current = t ? { x: t.clientX, y: t.clientY } : null;
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    const start = touchStart.current;
+    const t = e.changedTouches[0];
+    touchStart.current = null;
+    if (!start || !t) return;
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    // Solo horizontal y con recorrido suficiente, para no pisar el scroll
+    // vertical de una lista larga de recibos.
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    go(index + (dx < 0 ? 1 : -1));
+  }
 
   return (
     <div className="relative min-h-dvh w-full overflow-hidden bg-bg text-dark">
       <style>{DECK_CSS}</style>
 
       {/* Marca de la Asamblea y contador, fijos como en una presentación. */}
-      <div className="absolute left-4 top-4 z-20 flex items-center gap-2 sm:left-7 sm:top-6">
+      <div className="cb-chrome absolute left-4 top-4 z-20 flex items-center gap-2 sm:left-7 sm:top-6">
         <BahaiStar size={16} color="#C4A235" />
         <span className="hidden text-[11px] font-semibold tracking-[0.06em] text-muted sm:inline">
           A.E.L. de los Bahá'ís de {localityName}
         </span>
       </div>
-      <div className="absolute right-4 top-4 z-20 text-[12px] font-bold tracking-[0.1em] text-gold-dark sm:right-7 sm:top-6">
-        <span className="text-dark">{index + 1}</span> / {total}
+      <div className="cb-chrome absolute right-4 top-4 z-20 flex items-center gap-2 sm:right-7 sm:top-6">
+        <ToolButton
+          label={fullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
+          onClick={toggleFullscreen}
+        >
+          {fullscreen ? "Salir" : "Pantalla completa"}
+        </ToolButton>
+        {/* El navegador imprime TODAS las diapositivas, una por hoja, y su
+            propio diálogo ofrece "Guardar como PDF". */}
+        <ToolButton
+          label="Guardar el informe como PDF"
+          onClick={() => window.print()}
+        >
+          PDF
+        </ToolButton>
+        <span className="ml-1 text-[12px] font-bold tracking-[0.1em] text-gold-dark">
+          <span className="text-dark">{index + 1}</span> / {total}
+        </span>
       </div>
 
       {/* Escenario: la diapositiva ocupa la pantalla y scrollea sola si el
-          contenido no entra (celular en vertical, listas largas). */}
-      <div className="flex min-h-dvh w-full items-center justify-center px-4 pb-24 pt-16 sm:px-10">
-        <div key={current?.key} className="cb-slide w-full">
-          {current?.node}
+          contenido no entra (celular en vertical, listas largas).
+          Están TODAS en el DOM y se oculta la que no toca: así el
+          navegador puede imprimir el informe completo de una pasada. */}
+      <div
+        className="cb-stage flex min-h-dvh w-full items-center justify-center px-4 pb-24 pt-16 sm:px-10"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
+        <div className="w-full">
+          {slides.map((s, i) => (
+            <div
+              key={s.key}
+              className={i === index ? "cb-slide w-full" : "cb-off"}
+              aria-hidden={i !== index}
+            >
+              {s.node}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Navegación */}
-      <div className="fixed bottom-5 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-black/[0.06] bg-card/90 px-3 py-2 shadow-card-elevated backdrop-blur">
+      <div className="cb-chrome fixed bottom-5 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-black/[0.06] bg-card/90 px-3 py-2 shadow-card-elevated backdrop-blur">
         <NavButton
           label="Anterior"
           disabled={index === 0}
@@ -131,11 +201,65 @@ export function ReportDeck({
   );
 }
 
+/**
+ * CSS del deck. Va inline porque es específico de esta pantalla y buena
+ * parte solo existe para la impresión, que Tailwind no cubre: hay que
+ * desarmar el centrado a pantalla completa, mostrar las diapositivas
+ * ocultas, soltar las listas recortadas y pedirle al navegador que
+ * imprima los fondos de color (por defecto los descarta).
+ */
 const DECK_CSS = `
 .cb-slide { animation: cbSlideIn .55s cubic-bezier(.2,.7,.2,1) both; }
 @keyframes cbSlideIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .cb-slide { animation: none; } }
+
+.cb-off { display: none; }
+
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  html, body { background: #fff !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .cb-chrome { display: none !important; }
+  .cb-stage { display: block !important; min-height: 0 !important; padding: 0 !important; }
+  /* Una diapositiva por hoja, sin cortarla al medio. */
+  .cb-off, .cb-slide {
+    display: block !important;
+    animation: none !important;
+    opacity: 1 !important;
+    break-inside: avoid;
+    break-after: page;
+    padding: 6mm 0;
+  }
+  .cb-off:last-child, .cb-slide:last-child { break-after: auto; }
+  /* Las listas largas se imprimen enteras, no recortadas al alto de la
+     pantalla; si no entran en la hoja, siguen en la siguiente. */
+  .cb-scroll { max-height: none !important; overflow: visible !important; break-inside: auto; }
+  /* Los gráficos usan vh, que en la hoja no significa nada útil. */
+  .cb-chart { height: 85mm !important; min-height: 0 !important; }
+}
 `;
+
+function ToolButton({
+  children,
+  label,
+  onClick,
+}: {
+  children: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className="tap rounded-full border border-black/[0.07] bg-card/85 px-3 py-1.5 text-[11px] font-semibold text-gold-dark shadow-card-soft backdrop-blur transition-colors hover:bg-gold hover:text-white"
+    >
+      {children}
+    </button>
+  );
+}
 
 function NavButton({
   children,
@@ -629,7 +753,7 @@ function Income({ report }: { report: ReportDeckData }) {
             .map((t) => `${fmtAmount(t.amount, t.currency)} ${t.currency}`)
             .join("  ·  ")}
         >
-          <div className="max-h-[52vh] overflow-y-auto">
+          <div className="cb-scroll max-h-[52vh] overflow-y-auto">
             {s.receipts.map((r, i) => (
               <Row
                 key={`${r.number ?? "sn"}-${r.date}-${i}`}
@@ -699,7 +823,7 @@ function Expenses({ report }: { report: ReportDeckData }) {
             .map((t) => `${fmtAmount(t.amount, t.currency)} ${t.currency}`)
             .join("  ·  ")}
         >
-          <div className="max-h-[52vh] overflow-y-auto">
+          <div className="cb-scroll max-h-[52vh] overflow-y-auto">
             {s.expenseLines.map((l, i) => (
               <Row
                 key={`${l.date}-${i}`}
@@ -855,7 +979,7 @@ function BarChart({
       : "bg-gold/60 border-gold-dark";
 
   return (
-    <div className="flex h-[38vh] min-h-[220px] w-full items-end gap-2 px-1 pt-6 sm:gap-4">
+    <div className="cb-chart flex h-[38vh] min-h-[220px] w-full items-end gap-2 px-1 pt-6 sm:gap-4">
       {data.map((d) => {
         // Un mínimo visible para que el mes en cero no desaparezca.
         const pct = max > 0 ? Math.max((d.value / max) * 100, d.value > 0 ? 4 : 0) : 0;

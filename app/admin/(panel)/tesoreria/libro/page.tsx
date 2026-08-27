@@ -132,12 +132,19 @@ export default async function LibroTesoreriaPage({
             </div>
           </Card>
 
-          {/* Movimiento del período, sin contar el arrastre del año anterior. */}
+          {/* Movimiento del año: ingresos y gastos reales del Fondo. El
+              arrastre del año anterior y las transferencias entre cuentas
+              van en su propia línea, porque no son ni ingreso ni gasto. */}
           {totals.length > 0 && (
             <Card className="mb-5">
-              <h2 className="mb-3 font-display text-[18px] font-semibold text-dark">
+              <h2 className="mb-1 font-display text-[18px] font-semibold text-dark">
                 Movimiento del año
               </h2>
+              <p className="mb-3 text-[12px] text-muted">
+                Los cambios de caja y las compras de divisas no cuentan como
+                ingreso ni como gasto: mueven la plata de lugar. Van aparte,
+                como movimientos internos.
+              </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {totals.map((t) => (
                   <div
@@ -150,11 +157,19 @@ export default async function LibroTesoreriaPage({
                     <Row label="Saldo anterior" value={t.opening} />
                     <Row label="Ingresos" value={t.income} tone="income" />
                     <Row label="Gastos" value={t.expense} tone="expense" />
+                    {t.internalCount > 0 && (
+                      <Row
+                        label={`Movimientos internos (${t.internalCount})`}
+                        value={t.internal}
+                      />
+                    )}
                     <div className="mt-1 border-t border-black/[0.06] pt-1">
                       <Row
                         label="Saldo actual"
                         value={
-                          Math.round((t.opening + t.income + t.expense) * 100) / 100
+                          Math.round(
+                            (t.opening + t.income + t.expense + t.internal) * 100
+                          ) / 100
                         }
                         strong
                       />

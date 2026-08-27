@@ -215,6 +215,19 @@ romper:
 - **Sin nombres.** El detalle de ingresos es por número de recibo, fecha
   y monto. El informe es público; el libro no.
 
+**Presentar e imprimir:** el deck se maneja con flechas/espacio, swipe en
+el celular, y tiene botón de pantalla completa (Fullscreen API; en iPhone
+Safari no lo permite y el botón queda sin efecto a propósito). El botón
+"PDF" es `window.print()`: **las 12 diapositivas están siempre en el DOM**
+y se oculta la que no toca con `.cb-off`, justamente para que el navegador
+pueda imprimir el informe entero de una pasada. El bloque `@media print`
+de `DECK_CSS` desarma el centrado a pantalla, muestra las ocultas, suelta
+las listas recortadas (`.cb-scroll`), fija el alto de los gráficos en mm
+(`.cb-chart`, porque `vh` no significa nada en una hoja) y fuerza
+`print-color-adjust: exact`, que si no el navegador tira los fondos de
+color. Si agregás una sección con lista larga o gráfico, ponele esas
+clases o va a salir cortada.
+
 **Presupuesto vs. ejecutado:** los nombres de las categorías del
 presupuesto (024) y del libro (040) no coinciden y no hay forma de
 adivinar el par, así que el tesorero lo declara con el desplegable "Se

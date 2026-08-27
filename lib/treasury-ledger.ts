@@ -190,23 +190,60 @@ export function balancesBy(
   );
 }
 
-/** Totales de ingresos y gastos del período, por moneda. Los saldos de
- *  apertura no cuentan como ingreso: son arrastre del año anterior. */
+/**
+ * Totales de ingresos y gastos del período, por moneda.
+ *
+ * Dos clases de asiento NO son ingreso ni gasto del Fondo y van aparte:
+ *
+ *  · Los SALDOS DE APERTURA son arrastre del año anterior.
+ *  · Las TRANSFERENCIAS (cambio de caja, compra de divisas) mueven la
+ *    plata de lugar sin que entre ni salga nada. Contarlas infla las dos
+ *    columnas por igual: un cambio de caja de $ 25.000 sumaba $ 25.000 a
+ *    "Ingresos" y $ 25.000 a "Gastos". El saldo salía bien —se cancelan—
+ *    pero el movimiento del año quedaba irreconocible. Van a `internal`,
+ *    que suma cero por construcción y solo se muestra como referencia.
+ *
+ * Mismo criterio que el informe (lib/treasury-reports.ts): los dos leen
+ * el mismo libro y tienen que decir lo mismo.
+ */
 export function periodTotals(entries: TreasuryEntry[]) {
   const byCurrency = new Map<
     string,
-    { currency: string; income: number; expense: number; opening: number }
+    {
+      currency: string;
+      income: number;
+      expense: number;
+      opening: number;
+      internal: number;
+      internalCount: number;
+    }
   >();
+  const groupsSeen = new Set<string>();
   for (const e of entries) {
     const row = byCurrency.get(e.currency) ?? {
       currency: e.currency,
       income: 0,
       expense: 0,
       opening: 0,
+      internal: 0,
+      internalCount: 0,
     };
-    if (e.is_opening_balance) row.opening = addMoney(row.opening, e.amount);
-    else if (e.amount > 0) row.income = addMoney(row.income, e.amount);
-    else row.expense = addMoney(row.expense, e.amount);
+    if (e.is_opening_balance) {
+      row.opening = addMoney(row.opening, e.amount);
+    } else if (e.transfer_group_id) {
+      row.internal = addMoney(row.internal, e.amount);
+      // Una transferencia son dos asientos: se cuenta la operación, no
+      // las patas. Puede cruzar monedas, así que se cuenta en la moneda
+      // de cada pata.
+      if (!groupsSeen.has(`${e.transfer_group_id}|${e.currency}`)) {
+        groupsSeen.add(`${e.transfer_group_id}|${e.currency}`);
+        row.internalCount += 1;
+      }
+    } else if (e.amount > 0) {
+      row.income = addMoney(row.income, e.amount);
+    } else {
+      row.expense = addMoney(row.expense, e.amount);
+    }
     byCurrency.set(e.currency, row);
   }
   return [...byCurrency.values()].sort((a, b) =>
