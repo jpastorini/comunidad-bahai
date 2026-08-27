@@ -113,8 +113,8 @@ draft→published→in_progress) · Días Sagrados auto-sembrados con horarios
 especiales · Galería de fotos (con lightbox y vista full-screen) ·
 Google OAuth + magic link · Perfil de usuario (avatar, nombre, mis fotos) ·
 Aprobación de cambio de localidad por Asamblea destino · Notificaciones de
-chat (in-app + Web Push) · Botón "Instalar App" (PWA) · Tesorería con
-presupuesto · Contenido nacional · Disponibilidad para reuniones (grilla
+chat (in-app + Web Push) · Botón "Instalar App" (PWA) · Presupuesto anual
+de Tesorería · Contenido nacional · Disponibilidad para reuniones (grilla
 semanal por miembro AEL + consolidado/heatmap en `/admin/disponibilidad`;
 además, al crear/editar un evento "Reunión AEL" se despliega el consolidado
 compacto al costado del formulario, solo en PC) · Boletín local (ediciones
@@ -136,9 +136,63 @@ generado por `scripts/build-citas.mjs` desde la compilación "La Fuente de
 Todo Bien") con tarjeta en Inicio, pantalla `/citas` navegable por tema y
 push a las 8:00 · recordatorio opt-in de la **Oración Obligatoria corta** a
 las 13:00, que se prende desde el perfil, el asistente de bienvenida o la
-propia pantalla de la oración (migración 038).
+propia pantalla de la oración (migración 038) ·
+**Tesorería como libro contable** (migración 040, reemplaza al Google
+Sheet del tesorero): los MOVIMIENTOS son la fuente de verdad y el saldo se
+calcula. Ver la sección "Tesorería" más abajo.
+
+## Tesorería (leer antes de tocarla)
+
+El libro vive en `/admin/tesoreria/libro`, detrás del tag
+`can_manage_treasury` (no del rol admin). Migración 040; el catálogo y los
+54 movimientos del año 183 entraron con `supabase/seed_tesoreria_183.sql`,
+generado por `scripts/import-tesoreria.mjs` desde los CSV de la planilla.
+
+Cuatro cosas del dominio que el modelo respeta y conviene no romper:
+
+- **El saldo no es un número: es una matriz cuenta × moneda.** "Caja Chica
+  Tesorero" tiene pesos y dólares a la vez, así que las cuentas no llevan
+  moneda; la lleva el asiento. **Nunca sumar monedas distintas en un total.**
+- **La plata está "coloreada" por fondo** (Local, Enseñanza, Ayuda Social,
+  Retorno de Deuda AEN, Clases de Niños, Mantenimiento). Dos movimientos de
+  la misma cuenta pueden ser de fondos distintos y no se suman entre sí.
+- **Las transferencias** (cambio de caja, compra de divisas) son UNA
+  operación con dos asientos atados por `transfer_group_id`, y pueden
+  cruzar monedas: el tipo de cambio queda implícito en los dos montos.
+  Borrar una pata borra las dos.
+- **Los recibos son correlativos y sin huecos.** El próximo número lo da
+  `next_receipt_number()`, no la memoria de nadie. Una línea puede agrupar
+  varios aportes anónimos (`contributions_count`): es la canasta de la
+  Fiesta.
+
+**Confidencialidad:** el libro y los contribuyentes son exclusivos del
+tesorero; un miembro de la Asamblea sin el tag no los lee ni por API
+directa. En la pantalla, los nombres arrancan ocultos y se muestran con un
+botón. Los agregados para la Asamblea (cuando se hagan) tienen que salir
+por funciones security definer que no expongan nombres.
+
+Recibos en `/admin/tesoreria/recibo/[id]`: hoja A5, imprimible o
+compartible como PNG por WhatsApp. Logo y firma en `public/recibo/`,
+extraídos del Apps Script viejo con `scripts/extract-recibo-assets.mjs`; si
+faltan, el recibo se emite igual.
+
+⚠️ Al capturar un nodo con `lib/share-image.ts`, el nodo **no puede tener
+márgenes `auto`**: `getComputedStyle` los devuelve resueltos en píxeles y
+el clon sale corrido y recortado. El helper ya fuerza `margin: 0`, pero el
+centrado va siempre en un envoltorio.
 
 ## Pendientes conocidos
+
+- **Reportes de Tesorería** (lo próximo). El presupuesto (024) tiene
+  `planned_amount` por categoría y ahora existe el ejecutado, pero nadie
+  los compara todavía. Además: cierre de período (generar los "Saldo
+  anterior" del 184), y `/tesoreria` de la comunidad y los dos
+  compartibles que ya existen (`MonthlyReportShare`, `BudgetReportShare`)
+  siguen leyendo el `current_amount` escrito a mano de la tabla
+  `treasury` vieja, que hay que jubilar.
+- **Buscador del libro:** encuentra por nombre de contribuyente aunque los
+  nombres estén ocultos. Decidido dejarlo así por ahora; si molesta, que
+  ignore los nombres mientras estén ocultos.
 
 - **Presupuesto de crons.** El plan Hobby de Vercel permite pocos crons
   diarios, así que los dos avisos de la mañana (Lectura de hoy + eventos de
