@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BahaiStar } from "./BahaiStar";
+import { HeaderUserMenu } from "./HeaderUser";
 import { IconChevronLeft } from "./Icons";
 
 type GoldHeaderProps = {
@@ -12,8 +13,6 @@ type GoldHeaderProps = {
   backHref?: string;
   /** Texto del botón Volver. Default: "Inicio" si backHref es "/", sino "Volver". */
   backLabel?: string;
-  /** Custom right-side content (date, status, etc.). */
-  rightSlot?: ReactNode;
   /** Extra content below subtitle (search bar, avatar row…). */
   children?: ReactNode;
   /** Big star (130px) for landing header; small (100px) for inner screens. */
@@ -25,7 +24,6 @@ export function GoldHeader({
   subtitle,
   backHref,
   backLabel,
-  rightSlot,
   children,
   starSize = 100,
 }: GoldHeaderProps) {
@@ -46,33 +44,31 @@ export function GoldHeader({
         <BahaiStar size={starSize} color="#fff" />
       </div>
 
-      {backHref && (
-        <Link
-          href={backHref}
-          className="tap relative mb-3 inline-flex items-center gap-1 rounded-full bg-white/15 py-1.5 pl-2 pr-3.5 text-white ring-1 ring-white/15 active:scale-95"
-        >
-          <IconChevronLeft size={16} className="text-white" />
-          <span className="font-body text-[13px] font-medium">{backText}</span>
-        </Link>
-      )}
+      {/* Fila superior en flujo (no absoluta): así el menú de perfil nunca
+          se superpone al título, y queda a la misma altura que el Volver. */}
+      <div className="relative mb-3 flex min-h-[38px] items-center justify-between gap-2">
+        {backHref ? (
+          <Link
+            href={backHref}
+            className="tap inline-flex items-center gap-1 rounded-full bg-white/15 py-1.5 pl-2 pr-3.5 text-white ring-1 ring-white/15 active:scale-95"
+          >
+            <IconChevronLeft size={16} className="text-white" />
+            <span className="font-body text-[13px] font-medium">{backText}</span>
+          </Link>
+        ) : (
+          <span aria-hidden="true" />
+        )}
+        <HeaderUserMenu className="-mr-1" />
+      </div>
 
       <h1 className="relative font-display text-[27px] font-semibold leading-tight tracking-[0.3px] text-white">
         {title}
       </h1>
 
-      {(subtitle || rightSlot) && (
-        <div className="mt-1.5 flex items-center justify-between">
-          {subtitle && (
-            <span className="text-[10px] font-semibold uppercase tracking-[2.5px] text-white/50">
-              {subtitle}
-            </span>
-          )}
-          {rightSlot && (
-            <span className="font-body text-[11px] text-white/45">
-              {rightSlot}
-            </span>
-          )}
-        </div>
+      {subtitle && (
+        <span className="mt-1.5 block text-[10px] font-semibold uppercase tracking-[2.5px] text-white/50">
+          {subtitle}
+        </span>
       )}
 
       {children}

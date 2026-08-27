@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { BahaiStar } from "@/components/BahaiStar";
+import { HeaderUserMenu } from "@/components/HeaderUser";
 import { IconChevronLeft, IconSend } from "@/components/Icons";
 import {
   AEL_SEGMENTS,
@@ -171,13 +172,16 @@ export function ChatScreen({ mode, topic, memberId, initialMessages }: Props) {
         <div className="pointer-events-none absolute right-[-12px] top-5 opacity-[0.05]">
           <BahaiStar size={100} color="#fff" />
         </div>
-        <Link
-          href="/"
-          className="tap relative mb-3 inline-flex items-center gap-2 text-white/60"
-        >
-          <IconChevronLeft size={14} className="text-white/70" />
-          <span className="font-body text-[13px]">Inicio</span>
-        </Link>
+        <div className="relative mb-3 flex min-h-[38px] items-center justify-between gap-2">
+          <Link
+            href="/"
+            className="tap inline-flex items-center gap-2 text-white/60"
+          >
+            <IconChevronLeft size={14} className="text-white/70" />
+            <span className="font-body text-[13px]">Inicio</span>
+          </Link>
+          <HeaderUserMenu className="-mr-1" />
+        </div>
         <div className="relative flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 text-base font-semibold text-white">
             {copy.initial}
