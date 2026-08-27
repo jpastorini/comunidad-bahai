@@ -233,6 +233,23 @@ el tag** `can_manage_treasury`, porque un miembro de la Asamblea tiene
 que poder abrir el interno para aprobarlo; quién ve qué lo decide la RLS.
 Solo el tesorero ve el botón de volver al editor.
 
+**Tres pantallas, una por rol:**
+
+- `/admin/tesoreria/informes` — el taller del tesorero (crear, editar,
+  publicar, borrar). Exige el tag.
+- `/admin/informes` — **registro de solo lectura** para toda la Asamblea
+  (cualquier rol admin, en el sidebar). Lista los informes EMITIDOS con
+  su fecha y su estado Aprobado / No aprobado, y nada que modifique.
+  Vista en `components/treasury/ReportRegistry.tsx`, separada de la
+  página para que la página se ocupe de datos y permisos.
+- `/admin/informe/[id]` — el documento (hoja o deck), a pantalla completa.
+
+**"Aprobado" se deriva, no se guarda aparte:** un informe está aprobado
+cuando `editorial.approval.meetingDate` tiene algo, o sea cuando el
+tesorero registró la reunión en que la Asamblea lo aprobó. Si algún día
+la Asamblea tiene que poder aprobarlo desde la app, ahí sí conviene una
+columna con su propia RLS.
+
 Ninguno de los dos formatos lleva nombres de contribuyentes.
 
 El tesorero da un rango de
@@ -410,11 +427,11 @@ los PDF viajan tal cual (media factura llega por mail).
   de la comunidad: la distribución es el link `/i/<token>` por WhatsApp.
   La RLS ya deja que un creyente lea los informes publicados de su
   localidad, así que sumar una pantalla en `/tesoreria` es solo UI.
-- **La Asamblea no tiene índice de informes internos.** Los puede abrir
-  por `/admin/informe/<id>` (el tesorero copia el link con el botón
-  "Link para la Asamblea"), pero no hay una lista propia: la de
-  `/admin/tesoreria/informes` exige el tag de Tesorería. Si molesta,
-  falta una pantalla de solo lectura para rol admin.
+- **La Asamblea no puede aprobar desde la app.** El registro
+  (`/admin/informes`) muestra el estado, pero la aprobación la tipea el
+  tesorero en el editor. Si se quiere que la Asamblea marque "aprobado"
+  ella misma, eso es una columna propia (`approved_at`, `approved_by`)
+  con su RLS, no un campo del editorial.
 - **Buscador del libro:** encuentra por nombre de contribuyente aunque los
   nombres estén ocultos. Decidido dejarlo así por ahora; si molesta, que
   ignore los nombres mientras estén ocultos.

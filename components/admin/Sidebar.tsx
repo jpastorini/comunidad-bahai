@@ -38,6 +38,8 @@ const NAV: NavItem[] = [
   { href: "/admin/servicio", label: "Servicio", Icon: IconServicio },
   { href: "/admin/chat", label: "Chat con Secretaría", Icon: IconChat, requires: "chat" },
   { href: "/admin/tesoreria", label: "Tesorería", Icon: IconTesoreria, requires: "treasury" },
+  // Registro de solo lectura: lo ve toda la Asamblea, no solo el tesorero.
+  { href: "/admin/informes", label: "Informes de Tesorería", Icon: IconTesoreria },
   { href: "/admin/miembros", label: "Creyentes (local)", Icon: IconActividades },
 ];
 
