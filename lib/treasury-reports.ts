@@ -1,6 +1,5 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { BAHAI_CALENDAR_YEARS, getBahaiYearCalendar } from "./bahai-calendar";
 import { createSupabaseAdmin } from "./supabase/admin";
 import { addMoney } from "./treasury-format";
 import {
@@ -18,6 +17,13 @@ import {
   type ReportReceipt,
   type ReportSnapshot,
 } from "./treasury-report-content";
+import {
+  previousDay,
+  treasuryMonths,
+  treasuryYearEnd,
+  treasuryYearForDate,
+  treasuryYearStart,
+} from "./treasury-year";
 
 /**
  * Informes de Tesorería — capa de datos.
@@ -143,19 +149,6 @@ export async function getPublicReport(
 
 // ─── Período ─────────────────────────────────────────────────────
 
-/** El año bahá'í al que pertenece una fecha gregoriana, según las
- *  fechas oficiales de Naw-Rúz cargadas en lib/bahai-calendar.ts. */
-export function bahaiYearForDate(iso: string): number | null {
-  const sorted = [...BAHAI_CALENDAR_YEARS].sort((a, b) =>
-    a.nawRuz.localeCompare(b.nawRuz)
-  );
-  let found: number | null = null;
-  for (const y of sorted) {
-    if (iso >= y.nawRuz) found = y.bahaiYear;
-  }
-  return found;
-}
-
 export type PeriodPreset = {
   key: string;
   label: string;
@@ -167,43 +160,48 @@ export type PeriodPreset = {
 
 /**
  * Los períodos que el tesorero elige de una lista en vez de tipear dos
- * fechas: cada mes bahá'í del año, del día 1 al día previo al mes que
- * sigue. Es el corte natural del informe, porque el informe se presenta
- * en la Fiesta que abre el mes siguiente.
+ * fechas: cada mes bahá'í, del día 1 al día previo al mes que sigue. Es
+ * el corte natural del informe, porque el informe se presenta en la
+ * Fiesta que abre el mes siguiente.
+ *
+ * Los tramos salen del EJERCICIO (Riḍván a Riḍván), no del año del
+ * calendario: ofrecer los meses previos a Riḍván daría informes en cero,
+ * porque el libro de ese ejercicio todavía no existía. El primer tramo
+ * queda recortado al día de Riḍván.
  *
  * Las fechas quedan editables: en la práctica la Fiesta se celebra unos
  * días después de la fecha oficial y el tesorero corre el cierre.
  */
 export function periodPresets(bahaiYear: number, today: string): PeriodPreset[] {
-  const cal = getBahaiYearCalendar(bahaiYear);
-  if (!cal) return [];
-  const feasts = [...cal.feasts].sort((a, b) => a.monthIndex - b.monthIndex);
-  const next = getBahaiYearCalendar(bahaiYear + 1);
+  const months = treasuryMonths(bahaiYear);
+  if (months.length === 0) return [];
 
   const presets: PeriodPreset[] = [];
-  feasts.forEach((f, i) => {
-    const following = feasts[i + 1]?.date ?? next?.nawRuz ?? null;
-    const to = following ? previousDay(following) : today;
-    // No ofrecemos meses que todavía no empezaron.
-    if (f.date > today) return;
-    const month = MONTH_NAMES[f.monthIndex - 1];
+  for (const m of months) {
+    // No ofrecemos tramos que todavía no empezaron.
+    if (m.from > today) continue;
+    const to = m.to > today ? today : m.to;
+    const month = MONTH_NAMES[m.monthIndex - 1];
     presets.push({
-      key: `${bahaiYear}-${f.monthIndex}`,
-      label: `Mes ${f.monthIndex} · ${month.name} — ${shortRange(f.date, to)}`,
-      from: f.date,
-      to: to > today ? today : to,
+      key: m.key,
+      label: `${month.name}${m.partial ? " (parcial)" : ""} — ${shortRange(m.from, to)}`,
+      from: m.from,
+      to,
       subtitle: `${month.name} · «${month.meaning}» · ${bahaiYear} E.B.`,
     });
-  });
+  }
 
-  const yearEnd = next ? previousDay(next.nawRuz) : today;
-  presets.push({
-    key: `${bahaiYear}-full`,
-    label: `Año ${bahaiYear} completo — desde Naw-Rúz`,
-    from: cal.nawRuz,
-    to: yearEnd > today ? today : yearEnd,
-    subtitle: `Año ${bahaiYear} de la Era Bahá'í`,
-  });
+  const yearStart = treasuryYearStart(bahaiYear);
+  const yearEnd = treasuryYearEnd(bahaiYear);
+  if (yearStart && yearEnd) {
+    presets.push({
+      key: `${bahaiYear}-full`,
+      label: `Ejercicio ${bahaiYear} completo — desde Riḍván`,
+      from: yearStart,
+      to: yearEnd > today ? today : yearEnd,
+      subtitle: `Ejercicio ${bahaiYear} de la Era Bahá'í`,
+    });
+  }
 
   return presets.reverse();
 }
@@ -232,14 +230,6 @@ const MONTH_NAMES = [
   { name: "Mulk", meaning: "Dominio" },
   { name: "ʻAláʼ", meaning: "Sublimidad" },
 ];
-
-/** Aritmética de fechas sobre "YYYY-MM-DD" en UTC, para no arrastrar el
- *  huso local: acá las fechas son días de calendario, no instantes. */
-function previousDay(iso: string): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
-}
 
 function shortRange(from: string, to: string): string {
   const [, fm, fd] = from.split("-").map((p) => parseInt(p, 10));
@@ -340,7 +330,7 @@ export async function computeReportSnapshot(
   input: SnapshotInput
 ): Promise<ReportSnapshot> {
   const { from, to } = input;
-  const bahaiYear = input.bahaiYear ?? bahaiYearForDate(to);
+  const bahaiYear = input.bahaiYear ?? treasuryYearForDate(to);
 
   // Todo el libro hasta el cierre: los saldos son acumulados, así que
   // no alcanza con el rango. Son decenas de filas por año, no miles.
@@ -440,8 +430,10 @@ export async function computeReportSnapshot(
   );
 
   // ─── Serie mensual del año bahá'í ──────────────────────────────
-  const cal = bahaiYear ? getBahaiYearCalendar(bahaiYear) : undefined;
-  const seriesStart = cal?.nawRuz ?? from;
+  // El eje anual arranca en el primer día de Riḍván: el ejercicio
+  // contable de la Asamblea, no el año del calendario. Arrancar en
+  // Naw-Rúz metía en el gráfico un mes que el libro ni siquiera cubre.
+  const seriesStart = (bahaiYear ? treasuryYearStart(bahaiYear) : null) ?? from;
   const localFundId = pickLocalFund(fundNames, all);
   const localFundCurrency = "UYU";
   const months = monthlySeries(

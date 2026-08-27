@@ -1,7 +1,8 @@
 import { Banner, Button, Card, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { todayISO } from "@/lib/treasury-ledger";
-import { bahaiYearForDate, periodPresets } from "@/lib/treasury-reports";
+import { periodPresets } from "@/lib/treasury-reports";
+import { treasuryYearForDate } from "@/lib/treasury-year";
 import { createReportAction } from "../actions";
 import { PeriodPicker } from "./period-picker";
 
@@ -10,7 +11,7 @@ export default async function NuevoInformePage() {
   ensureTreasuryTag(session.profile);
 
   const today = todayISO();
-  const bahaiYear = bahaiYearForDate(today);
+  const bahaiYear = treasuryYearForDate(today);
   const presets = bahaiYear ? periodPresets(bahaiYear, today) : [];
 
   return (

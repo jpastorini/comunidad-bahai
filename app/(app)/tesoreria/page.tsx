@@ -2,11 +2,14 @@ import { GoldHeader } from "@/components/GoldHeader";
 import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { BudgetReportShare } from "@/components/treasury/BudgetReportShare";
 import { MonthlyReportShare } from "@/components/treasury/MonthlyReportShare";
+import { ProgressBoard } from "@/components/treasury/ProgressBoard";
 import { requireMember } from "@/lib/auth";
 import { getTreasury } from "@/lib/data";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { todayISO } from "@/lib/treasury-ledger";
+import { getTreasuryProgress } from "@/lib/treasury-progress";
 import type { TreasuryCommitment } from "@/lib/types";
-import { BudgetView, type BudgetViewItem } from "./budget-view";
+import type { BudgetViewItem } from "./budget-view";
 import { CommitmentSection } from "./commitment-section";
 
 // La Tesorería contiene información reservada — solo miembros autenticados.
@@ -23,7 +26,16 @@ export default async function TesoreriaPage() {
     .eq("user_id", session.user.id)
     .maybeSingle();
 
-  // Presupuesto vigente de la localidad (solo lectura para miembros).
+  // Progreso del ejercicio. Los totales vienen de la función security
+  // definer `treasury_progress`: un creyente no lee el libro, pero sí los
+  // agregados, que no llevan ningún nombre.
+  const progress = await getTreasuryProgress(supabase, {
+    localityId: session.locality.id,
+    asOf: todayISO(),
+  });
+
+  // Presupuesto vigente: se sigue leyendo solo para el compartible de
+  // imagen, que todavía no migró al libro.
   const { data: activeBudget } = await supabase
     .from("treasury_budgets")
     .select("id, period")
@@ -59,11 +71,6 @@ export default async function TesoreriaPage() {
     }));
   }
 
-  const pct = Math.max(0, Math.min(1, t.current_amount / t.goal_amount));
-  const r = 56;
-  const circ = 2 * Math.PI * r;
-  const dashOffset = circ * (1 - pct);
-
   const fmt = (n: number) =>
     n.toLocaleString("es-UY", {
       style: "currency",
@@ -76,49 +83,18 @@ export default async function TesoreriaPage() {
       <GoldHeader title="Asamblea Local" subtitle={session.locality.name} backHref="/" />
       <SegmentedNav items={AEL_SEGMENTS} />
       <main className="scroll-area flex-1 px-4 pt-4">
-        {/* Progress ring */}
-        <div className="mb-3.5 flex flex-col items-center rounded-[20px] bg-card p-5 shadow-card-elevated">
-          <div className="relative mb-3.5 h-32 w-32">
-            <svg
-              width="128"
-              height="128"
-              viewBox="0 0 128 128"
-              style={{ transform: "rotate(-90deg)" }}
-            >
-              <circle
-                cx="64"
-                cy="64"
-                r={r}
-                fill="none"
-                stroke="#7E44B818"
-                strokeWidth="9"
-              />
-              <circle
-                cx="64"
-                cy="64"
-                r={r}
-                fill="none"
-                stroke="#7E44B8"
-                strokeWidth="9"
-                strokeLinecap="round"
-                strokeDasharray={circ}
-                strokeDashoffset={dashOffset}
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="font-display text-[30px] font-bold text-dark">
-                {Math.round(pct * 100)}%
-              </div>
-              <div className="font-body text-[10px] text-muted">de la meta</div>
-            </div>
+        {/* Progreso del ejercicio: presupuesto y metas, calculado desde el
+            libro. Reemplaza al anillo que leía un porcentaje escrito a
+            mano y que ya contradecía a los movimientos. */}
+        {progress ? (
+          <div className="mb-3.5">
+            <ProgressBoard data={progress} compact />
           </div>
-          <div className="text-[15px] font-semibold text-dark">
-            {fmt(t.current_amount)} de {fmt(t.goal_amount)}
+        ) : (
+          <div className="mb-3.5 rounded-[20px] bg-card p-5 text-center text-[12.5px] text-muted shadow-card-elevated">
+            La Tesorería todavía no publicó el progreso de este ejercicio.
           </div>
-          <div className="mt-0.5 font-body text-[11px] text-muted">
-            Meta anual del Fondo
-          </div>
-        </div>
+        )}
 
         {/* Contribution methods */}
         <div className="mb-3.5">
@@ -169,14 +145,6 @@ export default async function TesoreriaPage() {
             </div>
           ))}
         </div>
-
-        {/* Presupuesto vigente (solo lectura) */}
-        {activeBudget && (
-          <BudgetView
-            period={(activeBudget as { period: string }).period}
-            items={budgetItems}
-          />
-        )}
 
         {/* Compartir reportes (imagen para WhatsApp) */}
         <section className="mb-3.5">

@@ -14,10 +14,10 @@ import {
   type ReportEditorial,
 } from "@/lib/treasury-report-content";
 import {
-  bahaiYearForDate,
   computeReportSnapshot,
   suggestEditorial,
 } from "@/lib/treasury-reports";
+import { treasuryYearForDate } from "@/lib/treasury-year";
 
 /**
  * Informes de Tesorería — server actions.
@@ -118,7 +118,7 @@ export async function createReportAction(formData: FormData) {
     redirect("/admin/tesoreria/informes/nuevo");
   }
 
-  const bahaiYear = bahaiYearForDate(to);
+  const bahaiYear = treasuryYearForDate(to);
   const snapshot = await computeReportSnapshot(supabase, {
     localityId: session.locality.id,
     from,
@@ -208,7 +208,7 @@ export async function saveReportAction(formData: FormData) {
     redirect(`/admin/tesoreria/informes/${id}`);
   }
 
-  const bahaiYear = bahaiYearForDate(to);
+  const bahaiYear = treasuryYearForDate(to);
   // Las cifras se recalculan siempre al guardar: es el único momento en
   // que el informe mira el libro.
   const snapshot = await computeReportSnapshot(supabase, {

@@ -145,6 +145,31 @@ link público compartible. Ver la sección "Tesorería" más abajo.
 
 ## Tesorería (leer antes de tocarla)
 
+### ⚠️ El año contable empieza en Riḍván, no en Naw-Rúz
+
+Distinción que es la fuente de todos los errores de un mes en esta parte
+del código:
+
+- El año bahá'í del **calendario** empieza en **Naw-Rúz** (~21 de marzo).
+  Rige Fiestas y Días Sagrados; es el de `getCurrentBahaiYear()`.
+- El **ejercicio contable** de la Asamblea —la que se elige en Riḍván—
+  empieza el **primer día de Riḍván** (13 de Jalál, ~21 de abril) y
+  termina el día anterior al Riḍván siguiente.
+
+Los dos se llaman "183" y se solapan casi todo el año, pero difieren en
+un mes en cada punta. Para la Tesorería manda el administrativo: los
+saldos de apertura del libro 183 están fechados el **2026-04-21**, que es
+exactamente el primer día de Riḍván. Helpers en `lib/treasury-year.ts`
+(`treasuryYearStart/End/ForDate`, `treasuryMonths`); **no usar
+`bahaiYearForDate` ni `nawRuz` para nada contable.**
+
+Ojo con `treasuryMonths()`: el ejercicio arranca en mitad de Jalál, así
+que devuelve **20 tramos** con el primero y el último parciales (los dos
+Jalál). El ejercicio igual tiene 19 meses, que es lo que divide el
+presupuesto. Y cada tramo va del día 1 de un mes al día anterior del
+siguiente, con lo cual **Mulk absorbe Ayyám-i-Há**: si los intercalares
+quedaran afuera, un aporte recibido ahí desaparecería de los gráficos.
+
 El libro vive en `/admin/tesoreria/libro`, detrás del tag
 `can_manage_treasury` (no del rol admin). Migración 040; el catálogo y los
 54 movimientos del año 183 entraron con `supabase/seed_tesoreria_183.sql`,
@@ -228,6 +253,43 @@ las listas recortadas (`.cb-scroll`), fija el alto de los gráficos en mm
 color. Si agregás una sección con lista larga o gráfico, ponele esas
 clases o va a salir cortada.
 
+### Progreso: presupuesto y metas (migración 042)
+
+Tablero en `/admin/tesoreria/progreso` y, con el mismo componente, en
+`/tesoreria` de la comunidad (reemplazó al anillo que leía el
+`current_amount` a mano). Cuatro bloques: la pauta del año, mes a mes,
+categorías del presupuesto, metas. Componente en
+`components/treasury/ProgressBoard.tsx`, cálculo en
+`lib/treasury-progress.ts`.
+
+Tres cosas que sostienen el diseño:
+
+- **La idea del presupuesto como meta de ingresos.** Las categorías del
+  presupuesto son todas salidas o asignaciones, así que la suma de
+  `planned_amount` es lo que tiene que ENTRAR al Fondo en el ejercicio.
+  De ahí sale la pauta y el "necesario por mes bahá'í" (÷ 19).
+- **La referencia se dibuja, no se calcula mentalmente.** Cada barra
+  lleva una marca vertical en el punto del ejercicio transcurrido. Un
+  43 % ejecutado no dice nada solo; un 43 % con la marca en el 65 % dice
+  "vamos lentos". La pauta se mide en **días**, no en meses cerrados.
+- **Los agregados salen por `treasury_progress()`**, security definer,
+  porque un creyente no lee `treasury_entries` ni por API directa. La
+  función devuelve solo totales (nunca un nombre, nunca una fila) y el
+  panel usa la MISMA función que la comunidad, así que las dos pantallas
+  no pueden divergir. El calendario queda en TypeScript: la función
+  recibe `year_from` y `as_of` resueltos y no sabe de meses bahá'ís.
+  ⚠️ El guard de localidad usa `coalesce(... , false)`: sin eso, un
+  usuario sin localidad pasaría el chequeo (comparar contra NULL da NULL
+  y un IF sobre NULL no dispara).
+
+**Metas** (`treasury_goals`): dejaron de ser texto del informe. Una meta
+declara **cómo se mide** — `direction` ('gasto' para financiar algo,
+'ingreso' para juntar algo) más el vínculo al libro (fondo, categoría o
+subcategoría; manda el más específico). `target_amount` puede ser NULL:
+"conseguir un POS propio" es una meta real sin cifra y se informa por su
+etiqueta de estado. Una meta `mensual` se compara contra el acumulado de
+los meses transcurridos, no contra un mes suelto.
+
 **Presupuesto vs. ejecutado:** los nombres de las categorías del
 presupuesto (024) y del libro (040) no coinciden y no hay forma de
 adivinar el par, así que el tesorero lo declara con el desplegable "Se
@@ -239,12 +301,17 @@ línea sin vincular se informa como tal, nunca como cero.
 
 ## Pendientes conocidos
 
-- **Jubilar la tabla `treasury` vieja.** `/tesoreria` de la comunidad y
-  los dos compartibles (`MonthlyReportShare`, `BudgetReportShare`) siguen
-  leyendo el `current_amount` escrito a mano, que ahora contradice al
-  libro. El informe (041) ya calcula todo desde los movimientos: falta
-  que esas tres pantallas tomen de ahí y que el formulario a mano
-  desaparezca.
+- **Jubilar la tabla `treasury` vieja.** El anillo de `/tesoreria` ya se
+  fue (lo reemplazó el tablero de progreso, 042), pero siguen leyendo el
+  `current_amount` escrito a mano el "Informe mensual" de esa pantalla y
+  los dos compartibles de imagen (`MonthlyReportShare`,
+  `BudgetReportShare`), más el formulario de `/admin/tesoreria`. Todo eso
+  se puede calcular desde el libro; falta hacerlo y borrar el formulario.
+- **Las metas viven en dos lados.** `treasury_goals` (042) es el dato,
+  pero el editor del informe (041) todavía tiene sus propios campos de
+  texto para "Meta de la Asamblea" y "Destino de los Fondos". Conviene
+  que las diapositivas del informe se alimenten de `treasury_goals` y
+  esos campos desaparezcan, o el tesorero carga lo mismo dos veces.
 - **Cierre de período.** Generar los asientos "Saldo anterior" del 184 a
   partir de los saldos al cierre del 183 (`is_opening_balance`), en vez
   de cargarlos a mano.
