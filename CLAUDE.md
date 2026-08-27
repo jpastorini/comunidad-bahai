@@ -210,9 +210,9 @@ márgenes `auto`**: `getComputedStyle` los devuelve resueltos en píxeles y
 el clon sale corrido y recortado. El helper ya fuerza `margin: 0`, pero el
 centrado va siempre en un envoltorio.
 
-### Informes de Tesorería (migraciones 041 y 043)
+### Informes de Tesorería (migraciones 041 y 044)
 
-**Dos formatos, según `audience`** (migración 043). No es cosmético:
+**Dos formatos, según `audience`** (migración 044). No es cosmético:
 define quién puede leer el informe.
 
 - `comunidad` — el **deck** de diapositivas que se proyecta en la Fiesta.
@@ -272,7 +272,7 @@ el MISMO snapshot que el deck. Cuatro cosas de su diseño:
 - **Totales por rubro, no movimiento por movimiento.** La Asamblea
   aprueba a nivel de rubro (= subcategoría del libro), así que el
   snapshot trae `incomeByRubro` y `expenseByRubro`; el detalle asiento
-  por asiento queda en el libro. ⚠️ Un informe guardado ANTES de la 043
+  por asiento queda en el libro. ⚠️ Un informe guardado ANTES de la 044
   no tiene esos agregados: hay que volver a guardarlo para que el
   snapshot se recalcule, o las secciones 2 y 3 salen vacías.
 - **La conciliación se dice, no se supone:** el total por fondos y el
