@@ -38,6 +38,8 @@ const NAV: NavItem[] = [
   { href: "/admin/servicio", label: "Servicio", Icon: IconServicio },
   { href: "/admin/chat", label: "Chat con Secretaría", Icon: IconChat, requires: "chat" },
   { href: "/admin/tesoreria", label: "Tesorería", Icon: IconTesoreria, requires: "treasury" },
+  // Canal propio del tesorero: los avisos de aportes por giro directo.
+  { href: "/admin/tesoreria/chat", label: "Mensajes al tesorero", Icon: IconChat, requires: "treasury" },
   // Registro de solo lectura: lo ve toda la Asamblea, no solo el tesorero.
   { href: "/admin/informes", label: "Informes de Tesorería", Icon: IconTesoreria },
   { href: "/admin/miembros", label: "Creyentes (local)", Icon: IconActividades },
@@ -63,6 +65,16 @@ export function SidebarContent({ profile, locality, onNavigate }: Props) {
       return isAdminRole || profile.can_manage_bulletin;
     return isAdminRole;
   });
+
+  // Prende UN solo ítem: el de coincidencia más larga. Sin esto,
+  // /admin/tesoreria/chat prendería también "Tesorería", que es prefijo.
+  const activeHref = items.reduce((best, item) => {
+    const hit =
+      item.href === "/admin"
+        ? pathname === "/admin"
+        : pathname.startsWith(item.href);
+    return hit && item.href.length > best.length ? item.href : best;
+  }, "");
 
   return (
     <div className="flex h-full flex-col">
@@ -90,10 +102,7 @@ export function SidebarContent({ profile, locality, onNavigate }: Props) {
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="flex flex-col gap-1">
           {items.map((item) => {
-            const active =
-              item.href === "/admin"
-                ? pathname === "/admin"
-                : pathname.startsWith(item.href);
+            const active = item.href === activeHref;
             return (
               <li key={item.href}>
                 <Link

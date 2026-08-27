@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { sendChatReplyAction } from "@/app/admin/(panel)/chat/actions";
 import { formatChatTime } from "@/lib/format";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
-import type { ChatMessage } from "@/lib/types";
-import { sendChatReplyAction } from "../actions";
+import type { ChatMessage, ChatTopic } from "@/lib/types";
 
 /**
  * Merge an incoming realtime message into the local list, replacing the
@@ -34,10 +34,18 @@ function mergeIncoming(prev: ChatMessage[], incoming: ChatMessage): ChatMessage[
 type Props = {
   memberId: string;
   adminId: string;
+  adminName: string | null;
+  topic: ChatTopic;
   initialMessages: ChatMessage[];
 };
 
-export function Conversation({ memberId, adminId, initialMessages }: Props) {
+export function Conversation({
+  memberId,
+  adminId,
+  adminName,
+  topic,
+  initialMessages,
+}: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [pending, startTransition] = useTransition();
@@ -65,23 +73,24 @@ export function Conversation({ memberId, adminId, initialMessages }: Props) {
       if (cancelled) return;
 
       channel = supabase
-        .channel(`chat-admin-${memberId}`)
+        .channel(`chat-admin-${topic}-${memberId}`)
         .on(
           "postgres_changes",
           {
             event: "INSERT",
             schema: "public",
             table: "chat_messages",
+            // Realtime admite un solo filtro: suscribimos la conversación
+            // del creyente y descartamos el otro canal acá.
             filter: `member_id=eq.${memberId}`,
           },
           (payload) => {
-            console.log("[chat:admin] INSERT received", payload.new);
             const m = payload.new as ChatMessage;
+            if ((m.topic ?? "secretaria") !== topic) return;
             setMessages((prev) => mergeIncoming(prev, m));
           }
         )
         .subscribe((status, err) => {
-          console.log(`[chat:admin] subscribe status: ${status}`);
           if (err) console.error("[chat:admin] subscribe error:", err);
         });
     })();
@@ -90,7 +99,7 @@ export function Conversation({ memberId, adminId, initialMessages }: Props) {
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [memberId]);
+  }, [memberId, topic]);
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -108,6 +117,8 @@ export function Conversation({ memberId, adminId, initialMessages }: Props) {
         created_at: new Date().toISOString(),
         read: true,
         is_admin_reply: true,
+        topic,
+        from_name: adminName,
       },
     ]);
     setDraft("");
@@ -115,6 +126,7 @@ export function Conversation({ memberId, adminId, initialMessages }: Props) {
     const fd = new FormData();
     fd.set("member_id", memberId);
     fd.set("text", text);
+    fd.set("topic", topic);
     startTransition(async () => {
       try {
         await sendChatReplyAction(fd);
@@ -123,6 +135,8 @@ export function Conversation({ memberId, adminId, initialMessages }: Props) {
       }
     });
   }
+
+  const signature = topic === "tesoreria" ? "Tesorería" : "Secretaría";
 
   return (
     <>
@@ -135,15 +149,30 @@ export function Conversation({ memberId, adminId, initialMessages }: Props) {
             Sin mensajes en esta conversación.
           </div>
         )}
-        {messages.map((m) => {
+        {messages.map((m, i) => {
           // From the admin's perspective: "mine" = an admin reply.
           // Works even when admin and member are the same user (self-testing).
           const mine = m.is_admin_reply;
+          // Quién respondió, una vez por tanda: acá también sirve para ver
+          // si contestó otra persona de la Asamblea.
+          const prev = messages[i - 1];
+          const startsBlock =
+            mine &&
+            (!prev ||
+              !prev.is_admin_reply ||
+              prev.from_user_id !== m.from_user_id);
           return (
             <div
               key={m.id}
-              className={`max-w-[80%] ${mine ? "self-end" : "self-start"}`}
+              className={`max-w-[80%] ${mine ? "self-end" : "self-start"} ${
+                startsBlock && i > 0 ? "mt-2" : ""
+              }`}
             >
+              {startsBlock && (
+                <div className="mb-0.5 px-1 text-right text-[10.5px] font-semibold text-terra">
+                  {m.from_name || signature}
+                </div>
+              )}
               <div
                 className={
                   mine
@@ -176,7 +205,7 @@ export function Conversation({ memberId, adminId, initialMessages }: Props) {
               }
             }}
             rows={2}
-            placeholder="Responder como Secretaría... (Ctrl/⌘+Enter para enviar)"
+            placeholder={`Responder como ${signature}... (Ctrl/⌘+Enter para enviar)`}
             className="flex-1 resize-none bg-transparent font-body text-[13px] text-dark outline-none placeholder:text-muted"
           />
           <button
@@ -188,6 +217,10 @@ export function Conversation({ memberId, adminId, initialMessages }: Props) {
           </button>
         </div>
       </form>
+      <p className="mt-2 px-1 text-[11.5px] text-muted">
+        El creyente ve tu nombre sobre la respuesta, así sabe con quién está
+        hablando.
+      </p>
     </>
   );
 }

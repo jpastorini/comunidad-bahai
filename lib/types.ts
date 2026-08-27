@@ -16,6 +16,14 @@ export type Message = {
   image_url?: string | null;
 };
 
+/**
+ * Canal del chat. La conversación es una por (creyente, tema): a la
+ * Secretaría se le escribe de todo, al tesorero se le avisa del giro que
+ * se hizo al Fondo. Quién atiende cada canal lo decide el tag
+ * (`can_respond_chat` / `can_manage_treasury`), no el rol.
+ */
+export type ChatTopic = "secretaria" | "tesoreria";
+
 export type ChatMessage = {
   id: string;
   member_id: string;
@@ -25,8 +33,33 @@ export type ChatMessage = {
   read: boolean;
   /** True when sent by Secretaría (admin) — decouples from from_user_id. */
   is_admin_reply: boolean;
+  topic: ChatTopic;
+  /**
+   * Nombre de quien respondió, congelado al insertar (ver migración 045).
+   * Null en los mensajes del creyente y en respuestas anteriores a esa
+   * migración cuyo autor ya no tenía nombre cargado.
+   */
+  from_name: string | null;
   // For UI rendering only
   mine?: boolean;
+};
+
+/** Etiquetas visibles de cada canal del chat. */
+export const CHAT_TOPIC_LABELS: Record<ChatTopic, string> = {
+  secretaria: "Secretaría Local",
+  tesoreria: "Tesorería",
+};
+
+/** Ruta de cada canal en la app del creyente. */
+export const CHAT_TOPIC_PATHS: Record<ChatTopic, string> = {
+  secretaria: "/chat",
+  tesoreria: "/chat/tesoreria",
+};
+
+/** Ruta de la bandeja de cada canal en el panel. */
+export const CHAT_TOPIC_ADMIN_PATHS: Record<ChatTopic, string> = {
+  secretaria: "/admin/chat",
+  tesoreria: "/admin/tesoreria/chat",
 };
 
 export type Profile = {

@@ -85,6 +85,18 @@ export default async function AdminHomePage({
         .select("id", { count: "exact", head: true })
         .eq("read", false)
         .eq("is_admin_reply", false)
+        .eq("topic", "secretaria")
+    : { count: 0 };
+
+  // El canal del tesorero se cuenta aparte: quien tiene los dos tags no
+  // debería ver los avisos de aportes mezclados con los de Secretaría.
+  const treasuryChatUnread = session.profile.can_manage_treasury
+    ? await supabase
+        .from("chat_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("read", false)
+        .eq("is_admin_reply", false)
+        .eq("topic", "tesoreria")
     : { count: 0 };
 
   const stats: Stat[] = [
@@ -155,6 +167,16 @@ export default async function AdminHomePage({
       Icon: IconChat,
       color: COLOR_AMBER,
       requires: "chat",
+      featured: true,
+    },
+    {
+      href: "/admin/tesoreria/chat",
+      label: "Mensajes al tesorero",
+      hint: "Aportes por avisar",
+      count: treasuryChatUnread.count ?? 0,
+      Icon: IconChat,
+      color: COLOR_AMBER,
+      requires: "treasury",
       featured: true,
     },
     {

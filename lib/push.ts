@@ -1,6 +1,7 @@
 import "server-only";
 import webpush from "web-push";
 import { createSupabaseAdmin } from "./supabase/admin";
+import type { ChatTopic } from "./types";
 
 const PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
@@ -131,19 +132,24 @@ export async function getLocalityAdminIds(
   return ((data ?? []) as Array<{ id: string }>).map((d) => d.id);
 }
 
-/** IDs de los admins con tag de chat en una localidad (para avisar mensajes
- *  entrantes). Usa service-role para no chocar con RLS de profiles. */
+/** IDs de quienes atienden un canal del chat en una localidad (para avisar
+ *  mensajes entrantes). Cada tema tiene su tag: 'secretaria' avisa a los
+ *  `can_respond_chat`, 'tesoreria' a los `can_manage_treasury`. Usa
+ *  service-role para no chocar con RLS de profiles. */
 export async function getChatAdminIds(
   localityId: string,
-  excludeUserId?: string
+  excludeUserId?: string,
+  topic: ChatTopic = "secretaria"
 ): Promise<string[]> {
   const supabase = createSupabaseAdmin();
   if (!supabase) return [];
+  const tagColumn =
+    topic === "tesoreria" ? "can_manage_treasury" : "can_respond_chat";
   const { data } = await supabase
     .from("profiles")
     .select("id")
     .eq("locality_id", localityId)
-    .eq("can_respond_chat", true);
+    .eq(tagColumn, true);
   return ((data ?? []) as Array<{ id: string }>)
     .map((d) => d.id)
     .filter((id) => id !== excludeUserId);

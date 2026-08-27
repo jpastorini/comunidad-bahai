@@ -4,10 +4,14 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { BahaiStar } from "@/components/BahaiStar";
 import { IconChevronLeft, IconSend } from "@/components/Icons";
-import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
+import {
+  AEL_SEGMENTS,
+  CHAT_SEGMENTS,
+  SegmentedNav,
+} from "@/components/SegmentedNav";
 import { formatChatTime } from "@/lib/format";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
-import type { ChatMessage } from "@/lib/types";
+import { CHAT_TOPIC_LABELS, type ChatMessage, type ChatTopic } from "@/lib/types";
 import { sendMemberMessageAction } from "./actions";
 
 /** Replace optimistic placeholder with realtime payload (matched by sender+text+~10s). */
@@ -31,17 +35,40 @@ function mergeIncoming(prev: ChatMessage[], incoming: ChatMessage): ChatMessage[
   return [...prev, tagged];
 }
 
+/** Copy propio de cada canal. */
+const TOPIC_COPY: Record<
+  ChatTopic,
+  { initial: string; caption: string; empty: string; placeholder: string }
+> = {
+  secretaria: {
+    initial: "S",
+    caption: "Chat con la Asamblea",
+    empty:
+      "Aún no hay mensajes. Escribe el primero y la Secretaría te responderá.",
+    placeholder: "Escribe un mensaje...",
+  },
+  tesoreria: {
+    initial: "T",
+    caption: "Chat con el tesorero",
+    empty:
+      "Aún no hay mensajes. Si hiciste un giro al Fondo, avisale acá al tesorero: fecha, monto y a qué fondo lo destinás.",
+    placeholder: "Contale al tesorero...",
+  },
+};
+
 type Props = {
   mode: "demo" | "live";
+  topic: ChatTopic;
   memberId: string;
   initialMessages: ChatMessage[];
 };
 
-export function ChatScreen({ mode, memberId, initialMessages }: Props) {
+export function ChatScreen({ mode, topic, memberId, initialMessages }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [pending, startTransition] = useTransition();
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const copy = TOPIC_COPY[topic];
 
   // Autoscroll on new message
   useEffect(() => {
@@ -67,23 +94,25 @@ export function ChatScreen({ mode, memberId, initialMessages }: Props) {
       if (cancelled) return;
 
       channel = supabase
-        .channel(`chat-member-${memberId}`)
+        .channel(`chat-member-${topic}-${memberId}`)
         .on(
           "postgres_changes",
           {
             event: "INSERT",
             schema: "public",
             table: "chat_messages",
+            // El filtro de Realtime admite una sola condición, así que
+            // suscribimos la conversación entera y descartamos el otro
+            // canal acá.
             filter: `member_id=eq.${memberId}`,
           },
           (payload) => {
-            console.log("[chat:member] INSERT received", payload.new);
             const m = payload.new as ChatMessage;
+            if ((m.topic ?? "secretaria") !== topic) return;
             setMessages((prev) => mergeIncoming(prev, m));
           }
         )
         .subscribe((status, err) => {
-          console.log(`[chat:member] subscribe status: ${status}`);
           if (err) console.error("[chat:member] subscribe error:", err);
         });
     })();
@@ -92,7 +121,7 @@ export function ChatScreen({ mode, memberId, initialMessages }: Props) {
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [mode, memberId]);
+  }, [mode, memberId, topic]);
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -111,6 +140,8 @@ export function ChatScreen({ mode, memberId, initialMessages }: Props) {
         created_at: new Date().toISOString(),
         read: false,
         is_admin_reply: false,
+        topic,
+        from_name: null,
         mine: true,
       },
     ]);
@@ -120,6 +151,7 @@ export function ChatScreen({ mode, memberId, initialMessages }: Props) {
 
     const fd = new FormData();
     fd.set("text", text);
+    fd.set("topic", topic);
     startTransition(async () => {
       try {
         await sendMemberMessageAction(fd);
@@ -148,16 +180,16 @@ export function ChatScreen({ mode, memberId, initialMessages }: Props) {
         </Link>
         <div className="relative flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 text-base font-semibold text-white">
-            S
+            {copy.initial}
           </div>
           <div>
             <div className="font-sans text-[16px] font-semibold text-white">
-              Secretaría Local
+              {CHAT_TOPIC_LABELS[topic]}
             </div>
             <div className="mt-0.5 flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-online" />
               <span className="text-[11px] text-white/55">
-                {mode === "demo" ? "Modo demo" : "En línea"}
+                {mode === "demo" ? "Modo demo" : copy.caption}
               </span>
             </div>
           </div>
@@ -165,25 +197,42 @@ export function ChatScreen({ mode, memberId, initialMessages }: Props) {
       </header>
 
       <SegmentedNav items={AEL_SEGMENTS} />
+      <div className="-mt-1">
+        <SegmentedNav items={CHAT_SEGMENTS} />
+      </div>
 
       <div
         ref={scrollRef}
         className="scroll-area flex flex-1 flex-col gap-1.5 px-4 py-3.5 font-body"
       >
         {messages.length === 0 && (
-          <div className="my-auto text-center text-[13px] text-muted">
-            Aún no hay mensajes. Escribe el primero y la Secretaría te
-            responderá.
+          <div className="my-auto max-w-[280px] self-center text-center text-[13px] text-muted">
+            {copy.empty}
           </div>
         )}
-        {messages.map((m) => {
+        {messages.map((m, i) => {
           // Mine = the member wrote it (i.e. NOT an admin reply).
           const mine = m.mine ?? !m.is_admin_reply;
+          // El nombre de quien atiende va una vez por tanda: sobre la
+          // primera burbuja de cada bloque del mismo autor.
+          const prev = messages[i - 1];
+          const startsBlock =
+            !mine &&
+            (!prev ||
+              (prev.mine ?? !prev.is_admin_reply) ||
+              prev.from_user_id !== m.from_user_id);
           return (
             <div
               key={m.id}
-              className={`max-w-[80%] ${mine ? "self-end" : "self-start"}`}
+              className={`max-w-[80%] ${mine ? "self-end" : "self-start"} ${
+                startsBlock && i > 0 ? "mt-2" : ""
+              }`}
             >
+              {startsBlock && (
+                <div className="mb-0.5 px-1 text-[10.5px] font-semibold text-terra">
+                  {m.from_name || CHAT_TOPIC_LABELS[topic]}
+                </div>
+              )}
               <div
                 className={
                   mine
@@ -217,7 +266,7 @@ export function ChatScreen({ mode, memberId, initialMessages }: Props) {
             placeholder={
               mode === "demo"
                 ? "Modo demo — los mensajes no se envían"
-                : "Escribe un mensaje..."
+                : copy.placeholder
             }
             className="flex-1 bg-transparent font-body text-[13px] text-dark outline-none placeholder:text-[#aaa]"
             disabled={pending}

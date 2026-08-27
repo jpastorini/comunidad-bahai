@@ -5,28 +5,39 @@ import { redirect } from "next/navigation";
 import { requireMember } from "@/lib/auth";
 import { getChatAdminIds, sendPushToUsers } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import {
+  CHAT_TOPIC_ADMIN_PATHS,
+  CHAT_TOPIC_PATHS,
+  type ChatTopic,
+} from "@/lib/types";
+
+function parseTopic(value: unknown): ChatTopic {
+  return value === "tesoreria" ? "tesoreria" : "secretaria";
+}
 
 /**
- * Marca todas las respuestas de la Secretaría dirigidas a este miembro
- * como leídas. Se invoca al abrir /chat para apagar el indicador "!"
- * del home.
+ * Marca como leídas las respuestas dirigidas a este creyente en un canal.
+ * Se invoca al abrir el chat para apagar el indicador "!" del home.
+ *
+ * Va por RPC (`mark_chat_seen`, migración 045) y no por UPDATE directo:
+ * la RLS no acota columnas, así que darle permiso de escritura al creyente
+ * sobre sus propias filas le permitiría también tocar `read` o el texto.
+ * Es por tema: abrir Secretaría no apaga el aviso de Tesorería.
  */
-export async function markChatSeenByMemberAction(memberId: string) {
+export async function markChatSeenAction(topic: ChatTopic) {
   const supabase = createSupabaseServer();
-  await supabase
-    .from("chat_messages")
-    .update({ read_by_member: true })
-    .eq("member_id", memberId)
-    .eq("is_admin_reply", true)
-    .eq("read_by_member", false);
+  await supabase.rpc("mark_chat_seen", { p_topic: topic });
   revalidatePath("/");
-  revalidatePath("/chat");
+  revalidatePath(CHAT_TOPIC_PATHS[topic]);
 }
 
 export async function sendMemberMessageAction(formData: FormData) {
-  const session = await requireMember("/chat");
+  const topic = parseTopic(formData.get("topic"));
+  const path = CHAT_TOPIC_PATHS[topic];
+
+  const session = await requireMember(path);
   const text = (formData.get("text") as string)?.trim();
-  if (!text) redirect("/chat");
+  if (!text) redirect(path);
 
   const supabase = createSupabaseServer();
   await supabase.from("chat_messages").insert({
@@ -34,16 +45,25 @@ export async function sendMemberMessageAction(formData: FormData) {
     from_user_id: session.user.id,
     text,
     is_admin_reply: false,
+    topic,
   });
 
-  // Push a la Secretaría (admins con tag de chat de la localidad).
-  const adminIds = await getChatAdminIds(session.locality.id, session.user.id);
+  // Push a quien atiende el canal: la Secretaría (tag de chat) o el
+  // tesorero (tag de tesorería), siempre de la misma localidad.
+  const adminIds = await getChatAdminIds(
+    session.locality.id,
+    session.user.id,
+    topic
+  );
   await sendPushToUsers(adminIds, {
-    title: "Nuevo mensaje de chat",
+    title:
+      topic === "tesoreria"
+        ? "Nuevo mensaje para Tesorería"
+        : "Nuevo mensaje de chat",
     body: text.slice(0, 120),
-    url: `/admin/chat/${session.user.id}`,
-    tag: `chat-${session.user.id}`,
+    url: `${CHAT_TOPIC_ADMIN_PATHS[topic]}/${session.user.id}`,
+    tag: `chat-${topic}-${session.user.id}`,
   });
 
-  revalidatePath("/chat");
+  revalidatePath(path);
 }

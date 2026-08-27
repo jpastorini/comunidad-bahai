@@ -1,13 +1,19 @@
 import Link from "next/link";
 import { BahaiStar } from "@/components/BahaiStar";
 import { IconChevronLeft } from "@/components/Icons";
+import {
+  CHAT_TOPIC_LABELS,
+  CHAT_TOPIC_PATHS,
+  type ChatTopic,
+} from "@/lib/types";
 
 /**
  * Login wall mostrado dentro del shell de la app cuando un usuario
- * no autenticado abre /chat. Mantiene el header dorado para no romper
+ * no autenticado abre el chat. Mantiene el header dorado para no romper
  * el lenguaje visual.
  */
-export function ChatGate() {
+export function ChatGate({ topic }: { topic: ChatTopic }) {
+  const isTreasury = topic === "tesoreria";
   return (
     <>
       <header
@@ -25,10 +31,10 @@ export function ChatGate() {
           <span className="font-body text-[13px]">Inicio</span>
         </Link>
         <h1 className="relative font-display text-[27px] font-semibold leading-tight text-white">
-          Secretaría Local
+          {CHAT_TOPIC_LABELS[topic]}
         </h1>
         <div className="mt-1.5 text-[10px] font-semibold uppercase tracking-[2.5px] text-white/50">
-          Chat con la Asamblea
+          {isTreasury ? "Chat con el tesorero" : "Chat con la Asamblea"}
         </div>
       </header>
 
@@ -42,11 +48,12 @@ export function ChatGate() {
           Inicia sesión para chatear
         </h2>
         <p className="mt-2 max-w-xs font-body text-[13px] text-muted">
-          Necesitamos identificarte para que la Secretaría pueda responderte
-          en privado.
+          {isTreasury
+            ? "Necesitamos identificarte para que el tesorero sepa quién hizo el aporte y pueda responderte en privado."
+            : "Necesitamos identificarte para que la Secretaría pueda responderte en privado."}
         </p>
         <Link
-          href="/login?next=%2Fchat"
+          href={`/login?next=${encodeURIComponent(CHAT_TOPIC_PATHS[topic])}`}
           className="tap mt-5 inline-flex rounded-xl bg-terra px-5 py-2.5 text-[13px] font-semibold text-white shadow-card-soft"
         >
           Iniciar sesión con correo

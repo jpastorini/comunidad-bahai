@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 /**
- * Drop this in the conversations-list page so it refreshes whenever a
- * new chat message hits the database. Lightweight: it doesn't render
- * anything and only triggers a server re-render via router.refresh().
+ * Drop this in a conversations-list page so it refreshes whenever a new
+ * chat message hits the database. Lightweight: it doesn't render anything
+ * and only triggers a server re-render via router.refresh().
+ *
+ * No filtra por tema: la RLS ya decide qué filas ve quien mira, y un
+ * refresh de más no muestra nada que no corresponda.
  */
-export function RealtimeRefresher() {
+export function ChatListRefresher({ channel: name }: { channel: string }) {
   const router = useRouter();
 
   useEffect(() => {
@@ -24,7 +27,7 @@ export function RealtimeRefresher() {
       if (cancelled) return;
 
       channel = supabase
-        .channel("admin-chat-list")
+        .channel(name)
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "chat_messages" },
@@ -39,7 +42,7 @@ export function RealtimeRefresher() {
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [router]);
+  }, [router, name]);
 
   return null;
 }

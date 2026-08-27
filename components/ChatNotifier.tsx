@@ -4,14 +4,25 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { playChime } from "@/lib/notification-sound";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
-import type { ChatMessage } from "@/lib/types";
+import {
+  CHAT_TOPIC_ADMIN_PATHS,
+  CHAT_TOPIC_LABELS,
+  CHAT_TOPIC_PATHS,
+  type ChatMessage,
+  type ChatTopic,
+} from "@/lib/types";
 
 type Props = {
   /** Usuario actual. */
   userId: string;
-  /** "member" recibe respuestas de la Secretaría; "admin" recibe mensajes
-   *  entrantes de los miembros (solo se monta para admins con tag de chat). */
+  /** "member" recibe respuestas de quien atiende; "admin" recibe mensajes
+   *  entrantes de los creyentes. */
   side: "member" | "admin";
+  /** Solo del lado admin: canales que este usuario atiende, según sus tags
+   *  ('secretaria' con can_respond_chat, 'tesoreria' con
+   *  can_manage_treasury). La RLS ya no le manda los otros, pero el filtro
+   *  también va acá para no depender de eso. */
+  topics?: ChatTopic[];
 };
 
 /**
@@ -23,11 +34,14 @@ type Props = {
  *     notificación del sistema (Capa 2).
  * No renderiza nada.
  */
-export function ChatNotifier({ userId, side }: Props) {
+export function ChatNotifier({ userId, side, topics }: Props) {
   const router = useRouter();
+  // Estable entre renders para no re-suscribir el canal en cada uno.
+  const topicKey = (topics ?? []).join(",");
 
   useEffect(() => {
     const supabase = createSupabaseBrowser();
+    const allowed = topicKey ? (topicKey.split(",") as ChatTopic[]) : [];
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
 
@@ -55,24 +69,26 @@ export function ChatNotifier({ userId, side }: Props) {
         .channel(`chat-notify-${side}-${userId}`)
         .on("postgres_changes", config, (payload) => {
           const m = payload.new as ChatMessage;
+          const topic: ChatTopic = m.topic ?? "secretaria";
 
           // Relevancia según el lado.
           if (side === "member") {
-            // Solo respuestas de la Secretaría (no mis propios mensajes).
+            // Solo respuestas de quien atiende (no mis propios mensajes).
             if (!m.is_admin_reply) return;
           } else {
-            // Solo mensajes entrantes de miembros (no respuestas de admin
-            // ni los que envié yo).
+            // Solo mensajes entrantes de creyentes (no respuestas de admin
+            // ni los que envié yo), y solo de los canales que atiendo.
             if (m.is_admin_reply) return;
             if (m.from_user_id === userId) return;
+            if (!allowed.includes(topic)) return;
           }
 
-          handleIncoming(m);
+          handleIncoming(m, topic);
         })
         .subscribe();
     })();
 
-    function handleIncoming(m: ChatMessage) {
+    function handleIncoming(m: ChatMessage, topic: ChatTopic) {
       playChime();
       // Refresca los badges del servidor (tab AEL / chat sin leer).
       router.refresh();
@@ -86,12 +102,19 @@ export function ChatNotifier({ userId, side }: Props) {
           document.visibilityState === "hidden"
         ) {
           const title =
-            side === "member" ? "Secretaría Local" : "Nuevo mensaje de chat";
+            side === "member"
+              ? CHAT_TOPIC_LABELS[topic]
+              : topic === "tesoreria"
+                ? "Nuevo mensaje para Tesorería"
+                : "Nuevo mensaje de chat";
           const body = (m.text ?? "").slice(0, 120) || "Tenés un mensaje nuevo";
-          const url = side === "member" ? "/chat" : `/admin/chat/${m.member_id}`;
+          const url =
+            side === "member"
+              ? CHAT_TOPIC_PATHS[topic]
+              : `${CHAT_TOPIC_ADMIN_PATHS[topic]}/${m.member_id}`;
           const n = new Notification(title, {
             body,
-            tag: `chat-${m.member_id}`,
+            tag: `chat-${topic}-${m.member_id}`,
             icon: "/icon.svg",
           });
           n.onclick = () => {
@@ -113,7 +136,7 @@ export function ChatNotifier({ userId, side }: Props) {
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [router, userId, side]);
+  }, [router, userId, side, topicKey]);
 
   return null;
 }

@@ -95,6 +95,8 @@ export const seedChat: ChatMessage[] = [
     created_at: "2026-05-17T09:15:00Z",
     read: true,
     is_admin_reply: true,
+    topic: "secretaria",
+    from_name: "Laura Fernández",
     mine: false,
   },
   {
@@ -105,6 +107,8 @@ export const seedChat: ChatMessage[] = [
     created_at: "2026-05-17T09:16:00Z",
     read: true,
     is_admin_reply: false,
+    topic: "secretaria",
+    from_name: null,
     mine: true,
   },
   {
@@ -115,6 +119,8 @@ export const seedChat: ChatMessage[] = [
     created_at: "2026-05-17T09:17:00Z",
     read: true,
     is_admin_reply: true,
+    topic: "secretaria",
+    from_name: "Laura Fernández",
     mine: false,
   },
   {
@@ -125,6 +131,8 @@ export const seedChat: ChatMessage[] = [
     created_at: "2026-05-17T09:18:00Z",
     read: true,
     is_admin_reply: false,
+    topic: "secretaria",
+    from_name: null,
     mine: true,
   },
   {
@@ -135,6 +143,8 @@ export const seedChat: ChatMessage[] = [
     created_at: "2026-05-17T09:19:00Z",
     read: false,
     is_admin_reply: true,
+    topic: "secretaria",
+    from_name: "Laura Fernández",
     mine: false,
   },
 ];

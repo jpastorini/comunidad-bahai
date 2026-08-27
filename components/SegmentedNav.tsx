@@ -62,6 +62,13 @@ export const AEL_SEGMENTS: SegmentItem[] = [
   { href: "/tesoreria", label: "Tesorería", prefix: "/tesoreria" },
 ];
 
+/** Canales del chat: a la Secretaría se le escribe de todo, al tesorero se
+ *  le avisa del aporte hecho por giro directo a la cuenta. */
+export const CHAT_SEGMENTS: SegmentItem[] = [
+  { href: "/chat", label: "Secretaría" },
+  { href: "/chat/tesoreria", label: "Tesorería", prefix: "/chat/tesoreria" },
+];
+
 /** Items del hub Calendario (todo lo que ocurre en el tiempo). */
 export const CALENDARIO_SEGMENTS: SegmentItem[] = [
   { href: "/calendario", label: "Calendario", prefix: "/calendario" },

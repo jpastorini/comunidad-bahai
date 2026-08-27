@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { GoldHeader } from "@/components/GoldHeader";
+import { IconChat, IconChevronRight } from "@/components/Icons";
 import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { BudgetReportShare } from "@/components/treasury/BudgetReportShare";
 import { MonthlyReportShare } from "@/components/treasury/MonthlyReportShare";
@@ -122,6 +124,27 @@ export default async function TesoreriaPage() {
               </div>
             ))}
           </div>
+
+          {/* Un giro a la cuenta no le dice al tesorero de quién es ni a qué
+              fondo va. Este es el atajo para avisarle, acá donde la persona
+              se acuerda. */}
+          <Link
+            href="/chat/tesoreria"
+            className="tap mt-2.5 flex items-center gap-3 rounded-2xl bg-card p-3.5 shadow-card-soft"
+          >
+            <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[11px] bg-terra/10 text-terra">
+              <IconChat size={17} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[12.5px] font-semibold text-dark">
+                ¿Hiciste un giro a la cuenta?
+              </div>
+              <div className="mt-0.5 font-body text-[10.5px] text-muted">
+                Avisale al tesorero en privado: fecha, monto y destino.
+              </div>
+            </div>
+            <IconChevronRight size={14} className="shrink-0 text-muted" />
+          </Link>
         </div>
 
         {/* Monthly report */}

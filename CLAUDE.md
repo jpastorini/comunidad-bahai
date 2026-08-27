@@ -143,7 +143,52 @@ calcula · **Informes de Tesorería** (migración 041): el deck que se
 presenta en la Fiesta, armado desde el libro por rango de fechas, con
 link público compartible · **Comprobantes de gastos** (migración 043):
 las facturas adjuntas al movimiento, en bucket privado. Ver la sección
-"Tesorería" más abajo.
+"Tesorería" más abajo. ·
+**Chat con dos canales** (migración 045): Secretaría y Tesorería, con el
+nombre de quien responde a la vista. Ver la sección "Chat" más abajo.
+
+## Chat (dos canales)
+
+La conversación NO es una por creyente: es una por **(creyente, tema)**.
+La columna `topic` de `chat_messages` vale `'secretaria'` o `'tesoreria'`
+(migración 045). El segundo canal existe porque mucha gente aporta al
+Fondo con un giro directo a la cuenta, y un giro no le dice al tesorero
+de quién es ni a qué fondo va.
+
+Tres cosas que sostienen el diseño:
+
+- **Quién lee y responde cada canal lo decide el TAG, no el rol.**
+  `can_respond_chat` para Secretaría, `can_manage_treasury` para
+  Tesorería. Un miembro de la Asamblea con tag de chat **no** lee los
+  mensajes al tesorero, ni por API directa: la RLS de `chat_messages`
+  parte por `topic`, igual que el libro contable. Cada bandeja tiene su
+  ruta y su guard: `/admin/chat` (`ensureChatTag`) y
+  `/admin/tesoreria/chat` (`ensureTreasuryTag`).
+- **El nombre de quien responde se denormaliza** en `from_name`, que el
+  server action llena con el `full_name` de quien contesta. No se resuelve
+  por join al leer, por dos razones: el payload de Realtime llega con la
+  fila y nada más, y un creyente no lee el perfil de quien le contesta.
+  Además queda el registro histórico de quién respondió esa vez. En la
+  pantalla el nombre sale **una vez por tanda** del mismo autor; si falta
+  (respuestas anteriores a la 045) cae a la etiqueta del canal.
+- **El filtro de Realtime admite una sola condición**, así que las dos
+  pantallas se suscriben a `member_id=eq.<id>` y descartan el otro canal
+  en el cliente. Y las dos rutas del creyente renderizan el MISMO
+  componente en la misma posición del árbol: sin el `key={topic}` de
+  `ChatTopicPage`, React reusaría la instancia y quedarían a la vista los
+  mensajes del otro canal.
+
+⚠️ Marcar visto va por la RPC `mark_chat_seen(p_topic)` y no por UPDATE
+directo: la RLS no acota columnas, así que dejar al creyente escribir en
+sus propias filas le permitiría también tocar `read` (y esconderle
+mensajes sin leer a quien atiende) o el propio texto. De paso arregla un
+bug que estaba desde siempre: la única policy de UPDATE exigía tag de
+chat, así que el indicador "!" del home no se apagaba **nunca** para un
+creyente común.
+
+Puntos de entrada: pestañas Secretaría / Tesorería dentro de `/chat`
+(`CHAT_SEGMENTS`), y un atajo en la sección "Cómo aportar" de
+`/tesoreria`, que es donde la persona se acuerda del giro que hizo.
 
 ## Tesorería (leer antes de tocarla)
 
@@ -432,6 +477,13 @@ los PDF viajan tal cual (media factura llega por mail).
   tesorero en el editor. Si se quiere que la Asamblea marque "aprobado"
   ella misma, eso es una columna propia (`approved_at`, `approved_by`)
   con su RLS, no un campo del editorial.
+- **El aviso de aporte no se convierte en asiento.** El creyente le dice
+  al tesorero por el chat de Tesorería que hizo el giro, y el tesorero lo
+  carga a mano en el libro (la conversación tiene el botón "Registrar en
+  el libro", que solo abre `/admin/tesoreria/libro`). Lo natural sería
+  prellenar el formulario del movimiento con el contribuyente y lo que
+  dice el mensaje, y dejar el vínculo mensaje↔asiento para no cargar dos
+  veces el mismo aporte.
 - **Buscador del libro:** encuentra por nombre de contribuyente aunque los
   nombres estén ocultos. Decidido dejarlo así por ahora; si molesta, que
   ignore los nombres mientras estén ocultos.

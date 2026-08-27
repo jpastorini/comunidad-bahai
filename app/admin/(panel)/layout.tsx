@@ -2,6 +2,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { ChatNotifier } from "@/components/ChatNotifier";
 import { requirePanelAccess } from "@/lib/auth";
 import { consumeFlashToast } from "@/lib/toast";
+import type { ChatTopic } from "@/lib/types";
 
 export const revalidate = 60;
 
@@ -15,15 +16,25 @@ export default async function PanelLayout({
   // abre el shell, no las secciones.
   const session = await requirePanelAccess();
   const toast = consumeFlashToast();
+
+  const chatTopics: ChatTopic[] = [];
+  if (session.profile.can_respond_chat) chatTopics.push("secretaria");
+  if (session.profile.can_manage_treasury) chatTopics.push("tesoreria");
+
   return (
     <AdminShell
       profile={session.profile}
       locality={session.locality}
       toast={toast}
     >
-      {/* Aviso de chat para la Secretaría (solo con tag de chat). */}
-      {session.profile.can_respond_chat && (
-        <ChatNotifier userId={session.user.id} side="admin" />
+      {/* Aviso de chat de los canales que atiende: Secretaría con el tag de
+          chat, Tesorería con el de tesorería. */}
+      {chatTopics.length > 0 && (
+        <ChatNotifier
+          userId={session.user.id}
+          side="admin"
+          topics={chatTopics}
+        />
       )}
       {children}
     </AdminShell>
