@@ -56,6 +56,15 @@ export function TabBar({ aelHasUnseen = false }: { aelHasUnseen?: boolean }) {
             <li key={tab.href}>
               <Link
                 href={tab.href}
+                // Prefetch COMPLETO, no el de por defecto. Como las rutas
+                // son dinámicas, el prefetch "auto" solo trae el esqueleto
+                // de loading.tsx y los datos igual se piden al tocar; con
+                // prefetch={true} la pantalla entera queda en memoria y el
+                // cambio de pestaña es instantáneo. Se paga con 5 renders
+                // en segundo plano al abrir, que no bloquean nada y no se
+                // repiten mientras la entrada siga fresca (staleTimes en
+                // next.config.mjs).
+                prefetch
                 aria-current={isActive ? "page" : undefined}
                 className="tap relative flex flex-col items-center gap-1"
               >

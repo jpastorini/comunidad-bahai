@@ -80,6 +80,56 @@ Para evitarlo:
 
 ---
 
+## Rendimiento (leer antes de tocar auth o caché)
+
+**Todas las rutas son dinámicas** (`ƒ` en el build): autentican con
+cookies, así que Next no puede pre-renderizar ninguna y los
+`export const revalidate = 60` que quedan en los layouts **no hacen
+nada**. Lo que se paga en cada navegación no es descarga de JS (~90 kB
+compartidos, que el service worker cachea con CacheFirst) sino idas y
+vueltas a Supabase **en serie**. Eran cuatro; hoy es una. Tres cosas lo
+sostienen:
+
+- **El middleware no sale a la red para autenticar.** `getClaims()` lee
+  el token de la cookie, lo refresca solo si está por vencer y verifica
+  la **firma localmente** con WebCrypto contra el JWKS del proyecto, que
+  la librería cachea 10 min en un global del isolate.
+  ⚠️ Depende de que el proyecto firme con **clave asimétrica**
+  (ES256/RS256, Settings → JWT Keys). Si volviera al secreto HS256
+  legacy, `getClaims()` cae sola a `getUser()` —una llamada HTTP por
+  request, prefetch incluidos— y se pierde el ahorro **sin que nada
+  falle ni se vuelva inseguro**, que es justamente lo que lo hace difícil
+  de notar. Medido: token con firma inválida rechazado en ~15 ms, contra
+  ~150 ms del camino de red.
+- **Lo que no cambia por request sale del caché.** `getLocality()`
+  (`lib/auth.ts`) va por `unstable_cache` (entre requests, con tag
+  `locality-<id>`) + `cache()` de React (dentro del render). El segundo
+  no es de más: el layout y la página llaman al MISMO guard en el mismo
+  render, así que la localidad se pedía dos veces por navegación.
+  `getBadges()` estaba igual —el layout de `(app)` y la home, 3
+  consultas cada uno— y también quedó envuelta en `cache()`.
+  ⚠️ Adentro de `unstable_cache` no se puede leer `cookies()`; de ahí
+  `createSupabaseAnonNoCookies()`. Vale **solo** para `localities`, cuya
+  policy de lectura es `using (true)` (012). Y si se edita una
+  localidad hay que llamar a `revalidateTag(localityTag(id))`, o el
+  cambio tarda hasta una hora en verse.
+- **Las pantallas ya visitadas viven en memoria del navegador.**
+  `experimental.staleTimes` (`next.config.mjs`) más `prefetch` en los
+  `<Link>` de la TabBar. El detalle que importa: en una ruta dinámica el
+  prefetch por defecto trae **solo el esqueleto de `loading.tsx`** y los
+  datos se piden igual al tocar; con `prefetch` completo quedan los
+  datos. Lo urgente no se atrasa: `router.refresh()` (ChatNotifier) y el
+  `revalidatePath` de los server actions tiran ese caché abajo al
+  instante.
+
+⚠️ **La región manda por encima de todo esto.** Las funciones de Vercel
+corren en `iad1` (Washington) y Supabase está en `sa-east-1` (São
+Paulo): cada consulta cruza el continente. Mientras siga así, sacar una
+consulta vale ~120 ms; con las dos puntas en São Paulo (`gru1`) valdría
+~5 ms, y de paso el servidor quedaría más cerca de la gente en Uruguay.
+
+---
+
 ## Convenciones
 
 - **UI en español** (es-UY/es-MX). Voseo aceptable en copy informal.

@@ -1,6 +1,12 @@
+import { unstable_cache } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
+import { cache } from "react";
+import {
+  createSupabaseAnonNoCookies,
+  createSupabaseServer,
+  isSupabaseConfigured,
+} from "./supabase/server";
 import type { Locality, Profile } from "./types";
 
 export type AdminSession = {
@@ -46,27 +52,59 @@ function getProfileFromHeaders(): {
   }
 }
 
+/** Tag para invalidar la localidad cacheada cuando el admin nacional la edita. */
+export const localityTag = (localityId: string) => `locality-${localityId}`;
+
 /**
- * Carga la localidad dado un locality_id. Única query que queda en
- * los server components (el middleware ya resolvió auth + profile).
+ * Localidad por id. Era la única query que quedaba en cada render de cada
+ * página del panel y de la app — y salía DOS veces por navegación, porque
+ * el layout y la página llaman al mismo guard. Ahora va por dos cachés:
+ *
+ *   - unstable_cache la guarda entre requests, con tag propio para tirarla
+ *     abajo cuando se edita (ver app/admin/(panel)/nacional/actions.ts).
+ *     El revalidate de una hora es solo la red de seguridad: la
+ *     invalidación real es por tag.
+ *   - cache() de React deduplica las llamadas dentro de un mismo render,
+ *     que es lo que arregla el layout+página.
+ *
+ * ⚠️ Adentro de unstable_cache no se puede leer cookies(), así que va con
+ * el cliente anónimo. Es válido acá y solo acá porque la policy de lectura
+ * de `localities` es `using (true)` (migración 012): el dato es el mismo
+ * para todos y no depende de quién pregunta.
+ */
+const getLocality = cache(
+  async (localityId: string): Promise<Locality | null> =>
+    unstable_cache(
+      async () => {
+        const supabase = createSupabaseAnonNoCookies();
+        const { data } = await supabase
+          .from("localities")
+          .select("*")
+          .eq("id", localityId)
+          .maybeSingle();
+        return (data as Locality | null) ?? null;
+      },
+      ["locality", localityId],
+      { tags: [localityTag(localityId)], revalidate: 3600 }
+    )()
+);
+
+/**
+ * Igual que getLocality, pero manda a elegir localidad si no existe.
+ * El redirect queda AFUERA del caché a propósito: redirect() lanza una
+ * excepción de control de Next y no tiene por qué quedar guardada.
  */
 async function loadLocality(
   localityId: string,
   redirectOnMissing: string
 ): Promise<Locality> {
-  const supabase = createSupabaseServer();
-  const { data: locality } = await supabase
-    .from("localities")
-    .select("*")
-    .eq("id", localityId)
-    .maybeSingle();
-
+  const locality = await getLocality(localityId);
   if (!locality) {
     redirect(
       `/seleccionar-localidad?error=missing&next=${encodeURIComponent(redirectOnMissing)}`
     );
   }
-  return locality as Locality;
+  return locality;
 }
 
 // ── Funciones públicas ────────────────────────────────────────────
@@ -141,16 +179,9 @@ export async function getOptionalMember(): Promise<MemberSession | null> {
   // ── Fast path ─────────────────────────────────────────────────
   const cached = getProfileFromHeaders();
   if (cached) {
-    let locality: Locality | null = null;
-    if (cached.profile.locality_id) {
-      const supabase = createSupabaseServer();
-      const { data: loc } = await supabase
-        .from("localities")
-        .select("*")
-        .eq("id", cached.profile.locality_id)
-        .maybeSingle();
-      locality = (loc as Locality | null) ?? null;
-    }
+    const locality = cached.profile.locality_id
+      ? await getLocality(cached.profile.locality_id)
+      : null;
     return {
       user: { id: cached.userId, email: cached.email },
       profile: cached.profile,
@@ -171,15 +202,9 @@ export async function getOptionalMember(): Promise<MemberSession | null> {
     .maybeSingle();
   if (!profile) return null;
 
-  let locality: Locality | null = null;
-  if (profile.locality_id) {
-    const { data: loc } = await supabase
-      .from("localities")
-      .select("*")
-      .eq("id", profile.locality_id)
-      .maybeSingle();
-    locality = (loc as Locality | null) ?? null;
-  }
+  const locality = profile.locality_id
+    ? await getLocality(profile.locality_id)
+    : null;
 
   return {
     user: { id: user.id, email: user.email ?? "" },

@@ -1,8 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireNationalAdmin } from "@/lib/auth";
+import { localityTag, requireNationalAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 
@@ -37,6 +37,10 @@ export async function upsertLocalityAction(formData: FormData) {
       : { tone: "success", message: id ? "Localidad actualizada." : "Localidad creada." }
   );
 
+  // La localidad se sirve desde el Data Cache en cada página (ver
+  // getLocality en lib/auth.ts); sin esto, el cambio de nombre tardaría
+  // hasta una hora en verse.
+  if (id) revalidateTag(localityTag(id));
   revalidatePath("/admin/nacional/localidades");
   revalidatePath("/seleccionar-localidad");
   redirect("/admin/nacional/localidades");
@@ -68,6 +72,7 @@ export async function deleteLocalityAction(formData: FormData) {
       ? { tone: "error", message: `Error: ${error.message}` }
       : { tone: "success", message: "Localidad eliminada." }
   );
+  revalidateTag(localityTag(id));
   revalidatePath("/admin/nacional/localidades");
   redirect("/admin/nacional/localidades");
 }

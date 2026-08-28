@@ -8,10 +8,14 @@ import { NextResponse, type NextRequest } from "next/server";
  * Server Components can read it via headers() without making duplicate
  * Supabase queries (saving 2-3 round-trips per page navigation).
  *
- * BEFORE: middleware(getUser) → page(getUser + profiles + localities)
- *         = 4 sequential Supabase calls per navigation
- * AFTER:  middleware(getUser + profiles) → page(reads header + 1 locality query)
- *         = 2 sequential Supabase calls per navigation
+ * Costo en llamadas de red a Supabase, por navegación:
+ *   Original:  middleware(getUser) → page(getUser + profiles + localities)
+ *              = 4 idas y vueltas EN SERIE.
+ *   Con header: middleware(getUser + profiles) → page(1 query de localidad)
+ *              = 3 en serie.
+ *   Hoy:       middleware(getClaims + profiles) → page(localidad cacheada)
+ *              = 1 en serie. getClaims valida la firma en el proceso y la
+ *              localidad sale del Data Cache (ver lib/auth.ts).
  *
  * IMPORTANTE: los headers se inyectan en el REQUEST (vía
  * NextResponse.next({ request: { headers } })), no en la respuesta, por
@@ -60,10 +64,42 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  // Refresca el token si está cerca de expirar.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Verifica la sesión SIN salir a la red.
+  //
+  // getUser() hacía una llamada HTTP al Auth de Supabase en CADA request
+  // (incluidos los prefetch de la TabBar): un ida y vuelta completo que se
+  // pagaba antes de empezar a renderizar. getClaims() hace lo mismo pero:
+  //   1. lee el token de la cookie (sin red),
+  //   2. lo refresca solo si está por vencer (ahí sí, una vez por hora),
+  //   3. valida la FIRMA localmente con WebCrypto contra el JWKS público
+  //      del proyecto, que la librería cachea 10 min en un global del
+  //      isolate (y Supabase además lo sirve desde su edge).
+  //
+  // La garantía es la misma que la de getUser(): un token con firma
+  // inválida no pasa. ⚠️ Requiere que el proyecto firme con clave
+  // asimétrica (ES256/RS256, Settings → JWT Keys). Si volviera al secreto
+  // HS256 legacy, la librería cae sola a getUser() y quedamos como antes:
+  // más lento, nunca inseguro.
+  // El try/catch no es decorativo: getClaims() relanza lo que no sea un
+  // AuthError, y esto corre en el middleware, o sea en TODAS las rutas.
+  // Una excepción acá sería un 500 en la app entera. Degradar a "sin
+  // sesión" deja al creyente en el login, que es lo mismo que hacía el
+  // getUser() anterior ante un fallo de red.
+  let claims: Record<string, unknown> | null = null;
+  try {
+    const { data } = await supabase.auth.getClaims();
+    claims = (data?.claims as Record<string, unknown> | undefined) ?? null;
+  } catch (err) {
+    console.error("[middleware] getClaims falló:", err);
+  }
+
+  const sub = typeof claims?.sub === "string" ? claims.sub : null;
+  const user = sub
+    ? {
+        id: sub,
+        email: typeof claims?.email === "string" ? claims.email : "",
+      }
+    : null;
 
   const path = request.nextUrl.pathname;
   const isAdminRoute = path.startsWith("/admin") && path !== "/admin/login";
@@ -91,7 +127,7 @@ export async function updateSession(request: NextRequest) {
     // Los Server Components leen estos headers con headers().get()
     // y evitan repetir auth.getUser() + profiles query.
     requestHeaders.set("x-user-id", user.id);
-    requestHeaders.set("x-user-email", user.email ?? "");
+    requestHeaders.set("x-user-email", user.email);
     requestHeaders.set("x-profile", JSON.stringify(profile));
 
     // Reconstruimos la respuesta para que los headers actualizados del

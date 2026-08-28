@@ -6,6 +6,7 @@
  * a no-op for screens.
  */
 
+import { cache } from "react";
 import { celebrationDateFor } from "./bahai-calendar";
 import { CALENDAR_KINDS, effectiveEventColor } from "./calendar-kinds";
 import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
@@ -303,7 +304,17 @@ export async function getCurrentFeast(): Promise<Feast | null> {
  *   Local publicados después de la última vez que abrió la sección
  *   (`profiles.comunicados_seen_at`). Apaga al visitar /comunicados.
  */
-export async function getBadges(userId?: string | null): Promise<{
+/**
+ * Avisos de novedades del Inicio y la TabBar.
+ *
+ * Envuelta en cache() de React: el layout de (app) y la home la llaman
+ * las dos con el mismo userId en el mismo render, y son 3 consultas cada
+ * vez. El caché es por request, así que no queda estado entre usuarios ni
+ * entre navegaciones — solo evita preguntar dos veces lo mismo.
+ */
+export const getBadges = cache(async function getBadges(
+  userId?: string | null
+): Promise<{
   chat_has_unseen: boolean;
   comunicados_has_unseen: boolean;
 }> {
@@ -343,7 +354,7 @@ export async function getBadges(userId?: string | null): Promise<{
     chat_has_unseen: (chatRes.count ?? 0) > 0,
     comunicados_has_unseen: (comunicadosCount ?? 0) > 0,
   };
-}
+});
 
 /** Próximos N eventos del calendario, ordenados por fecha. */
 export async function getUpcomingCalendarEvents(
