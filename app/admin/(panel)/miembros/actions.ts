@@ -7,19 +7,33 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 
 export async function updateMemberAction(formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const supabase = createSupabaseServer();
 
   const id = formData.get("id") as string;
-  const payload = {
-    role: (formData.get("role") as string) === "admin" ? "admin" : "member",
+  if (!id) redirect("/admin/miembros");
+
+  const payload: {
+    can_respond_chat: boolean;
+    can_manage_treasury: boolean;
+    can_manage_bulletin: boolean;
+    full_name: string | null;
+    role?: "member" | "admin";
+  } = {
     can_respond_chat: formData.get("can_respond_chat") === "on",
     can_manage_treasury: formData.get("can_manage_treasury") === "on",
     can_manage_bulletin: formData.get("can_manage_bulletin") === "on",
     full_name: (formData.get("full_name") as string) || null,
   };
 
-  if (!id) redirect("/admin/miembros");
+  // ⚠️ El propio rol NO se toca acá. El <Select> viene `disabled` cuando
+  // editás tu ficha, y un control disabled NO se envía con el form: leerlo
+  // devolvía null y el ternario lo colapsaba a "member", así que guardar
+  // tus propios tags te degradaba de Asamblea a creyente sin decir nada.
+  // La regla "no cambiás tu propio rol" vive en el server, no en el markup.
+  if (id !== session.user.id) {
+    payload.role = formData.get("role") === "admin" ? "admin" : "member";
+  }
   const { error } = await supabase.from("profiles").update(payload).eq("id", id);
 
   setFlashToast(

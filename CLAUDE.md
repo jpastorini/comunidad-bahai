@@ -151,6 +151,14 @@ consulta vale ~120 ms; con las dos puntas en São Paulo (`gru1`) valdría
   **privilegiada** (un permiso, un estado que asigna la Asamblea), hay que
   sumarla a esa lista o queda escribible por el propio usuario vía
   PostgREST. Las preferencias personales no necesitan nada.
+- **Un control `disabled` NO se envía con el formulario.** Los server
+  actions no pueden derivar el valor de un campo ausente: `formData.get()`
+  devuelve null y el ternario de turno lo colapsa al default. Fue
+  exactamente el bug de auto-degradación en `/admin/miembros` (el
+  `<Select>` de Rol viene disabled para tu propia ficha, así que guardar
+  tus tags te ponía `role='member'`). Si un campo está bloqueado para
+  alguien, la regla va en el action —omitir la columna del payload—, no
+  solo en el markup.
 - Commits descriptivos enfocados en el "por qué". El `git log` es parte
   de la memoria compartida.
 

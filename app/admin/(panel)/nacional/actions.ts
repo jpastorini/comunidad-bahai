@@ -79,7 +79,7 @@ export async function deleteLocalityAction(formData: FormData) {
 
 // ── Miembros (asignar localidad / roles) ─────────────────────────
 export async function updateMemberLocalityAction(formData: FormData) {
-  await requireNationalAdmin();
+  const session = await requireNationalAdmin();
   const supabase = createSupabaseServer();
 
   const id = formData.get("id") as string;
@@ -87,21 +87,28 @@ export async function updateMemberLocalityAction(formData: FormData) {
 
   const localityRaw = formData.get("locality_id") as string;
   const locality_id = localityRaw && localityRaw !== "" ? localityRaw : null;
-  const role = formData.get("role") === "admin" ? "admin" : "member";
-  const is_national_admin = formData.get("is_national_admin") === "on";
-  const can_respond_chat = formData.get("can_respond_chat") === "on";
-  const can_manage_treasury = formData.get("can_manage_treasury") === "on";
 
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      locality_id,
-      role,
-      is_national_admin,
-      can_respond_chat,
-      can_manage_treasury,
-    })
-    .eq("id", id);
+  const payload: {
+    locality_id: string | null;
+    can_respond_chat: boolean;
+    can_manage_treasury: boolean;
+    role?: "member" | "admin";
+    is_national_admin?: boolean;
+  } = {
+    locality_id,
+    can_respond_chat: formData.get("can_respond_chat") === "on",
+    can_manage_treasury: formData.get("can_manage_treasury") === "on",
+  };
+
+  // ⚠️ Mismo motivo que en /admin/miembros: el rol y el flag de Nacional
+  // vienen `disabled` para tu propia ficha, y un control disabled no se
+  // envía. Derivarlos de un campo ausente te degradaba solo al guardar.
+  if (id !== session.user.id) {
+    payload.role = formData.get("role") === "admin" ? "admin" : "member";
+    payload.is_national_admin = formData.get("is_national_admin") === "on";
+  }
+
+  const { error } = await supabase.from("profiles").update(payload).eq("id", id);
 
   setFlashToast(
     error
