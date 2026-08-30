@@ -48,6 +48,7 @@ export function Conversation({
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [draft, setDraft] = useState("");
+  const [sendError, setSendError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -122,6 +123,15 @@ export function Conversation({
       },
     ]);
     setDraft("");
+    setSendError(null);
+
+    // La respuesta no se guardó: se saca la burbuja optimista y se le
+    // devuelve el texto al recuadro, para no perder lo escrito.
+    const fail = (message: string) => {
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+      setDraft((current) => current || text);
+      setSendError(message);
+    };
 
     const fd = new FormData();
     fd.set("member_id", memberId);
@@ -129,9 +139,12 @@ export function Conversation({
     fd.set("topic", topic);
     startTransition(async () => {
       try {
-        await sendChatReplyAction(fd);
+        const result = await sendChatReplyAction(fd);
+        if (result && !result.ok) fail(result.message);
       } catch {
-        setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+        fail(
+          "No pudimos enviar la respuesta. Revisá tu conexión y probá de nuevo."
+        );
       }
     });
   }
@@ -194,11 +207,23 @@ export function Conversation({
         })}
       </div>
 
+      {sendError && (
+        <div
+          role="alert"
+          className="mt-4 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-[13px] text-rose-700"
+        >
+          {sendError}
+        </div>
+      )}
+
       <form onSubmit={handleSend} className="mt-4">
         <div className="flex items-end gap-3 rounded-2xl border border-black/[0.06] bg-card p-3 shadow-card-soft">
           <textarea
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (sendError) setSendError(null);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 handleSend(e);

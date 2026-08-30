@@ -56,7 +56,7 @@ export function ChatDutyCard({ duties }: { duties: ChatDuty[] }) {
                 style={{ background: `${color}14`, color }}
               >
                 <Icon size={17} />
-                {d.pending > 0 && (
+                {d.pending !== null && d.pending > 0 && (
                   <span className="absolute -right-1 -top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-terra px-1 text-[9.5px] font-bold text-white">
                     {d.pending > 9 ? "9+" : d.pending}
                   </span>
@@ -66,12 +66,18 @@ export function ChatDutyCard({ duties }: { duties: ChatDuty[] }) {
                 <div className="truncate text-[12.5px] font-semibold text-dark">
                   {CHAT_TOPIC_LABELS[d.topic]}
                 </div>
-                <div className="mt-0.5 font-body text-[10.5px] text-muted">
-                  {d.pending === 0
-                    ? "Al día"
-                    : d.pending === 1
-                      ? "1 sin leer"
-                      : `${d.pending} sin leer`}
+                <div
+                  className={`mt-0.5 font-body text-[10.5px] ${
+                    d.pending === null ? "text-rose-600" : "text-muted"
+                  }`}
+                >
+                  {d.pending === null
+                    ? "No se pudo consultar"
+                    : d.pending === 0
+                      ? "Al día"
+                      : d.pending === 1
+                        ? "1 sin leer"
+                        : `${d.pending} sin leer`}
                 </div>
               </div>
             </Link>

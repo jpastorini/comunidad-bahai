@@ -1,4 +1,5 @@
 import { getOptionalMember } from "@/lib/auth";
+import { chatFailure } from "@/lib/chat-errors";
 import { seedChat } from "@/lib/seed-data";
 import { createSupabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { ChatMessage, ChatTopic } from "@/lib/types";
@@ -35,12 +36,20 @@ export async function ChatTopicPage({ topic }: { topic: ChatTopic }) {
   }
 
   const supabase = createSupabaseServer();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("chat_messages")
     .select("*")
     .eq("member_id", session.user.id)
     .eq("topic", topic)
     .order("created_at", { ascending: true });
+
+  // Una consulta que falla y una conversación vacía se ven igual si el
+  // error se descarta, y eso hace parecer que se perdieron los mensajes.
+  const loadError = chatFailure(
+    `select(${topic})`,
+    error,
+    "No pudimos cargar la conversación. Revisá tu conexión y volvé a entrar."
+  );
 
   // Apaga el indicador "!" del home — el creyente acaba de abrir el canal.
   await markChatSeenAction(topic);
@@ -51,6 +60,7 @@ export async function ChatTopicPage({ topic }: { topic: ChatTopic }) {
       mode="live"
       topic={topic}
       memberId={session.user.id}
+      loadError={loadError}
       initialMessages={((data ?? []) as ChatMessage[]).map((m) => ({
         ...m,
         // On the member side, "mine" means the member wrote it.

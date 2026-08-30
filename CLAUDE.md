@@ -244,9 +244,24 @@ bug que estaba desde siempre: la única policy de UPDATE exigía tag de
 chat, así que el indicador "!" del home no se apagaba **nunca** para un
 creyente común.
 
+⚠️ **Ningún error de Supabase se descarta en el chat.** Todos pasan por
+`chatFailure()` (`lib/chat-errors.ts`), que loguea con contexto y
+devuelve el texto a mostrar. La razón es concreta: cuando se desplegó
+antes de correr la 045, la lectura fallaba y se veía **igual** que una
+conversación vacía, y el insert fallaba sin que el server action lo
+notara —así que la burbuja optimista quedaba en pantalla como enviada y
+desaparecía en la próxima navegación—. El síntoma parecía pérdida de
+historial y era un 400. Los códigos de esquema (42703, 42883, PGRST202,
+PGRST204) tienen mensaje propio: "falta una actualización de la base".
+Si agregás una consulta al chat, mirá el `error`.
+
 Puntos de entrada: pestañas Secretaría / Tesorería dentro de `/chat`
-(`CHAT_SEGMENTS`), y un atajo en la sección "Cómo aportar" de
-`/tesoreria`, que es donde la persona se acuerda del giro que hizo.
+(`CHAT_SEGMENTS`), un atajo en la sección "Cómo aportar" de `/tesoreria`
+—donde la persona se acuerda del giro que hizo— y, para quien atiende,
+una tarjeta por canal en el Inicio (`ChatDutyCard`, `getChatDuty`) que
+lleva a la bandeja del panel. Esa tarjeta exige `role='admin'` además
+del tag, porque el destino es el panel y el middleware no deja entrar a
+un `role='member'`.
 
 ## Tesorería (leer antes de tocarla)
 

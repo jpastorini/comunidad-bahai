@@ -3,9 +3,10 @@ import {
   ConversationList,
   type ConversationSummary,
 } from "@/components/admin/chat/ConversationList";
-import { PageHeader } from "@/components/admin/ui";
+import { Banner, PageHeader } from "@/components/admin/ui";
 import { PushToggle } from "@/components/PushToggle";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
+import { chatFailure } from "@/lib/chat-errors";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 /**
@@ -19,10 +20,18 @@ export default async function TreasuryChatListPage() {
   ensureTreasuryTag(session.profile);
   const supabase = createSupabaseServer();
 
-  const { data } = await supabase.rpc("get_chat_conversation_summaries", {
-    p_topic: "tesoreria",
-  });
+  const { data, error } = await supabase.rpc(
+    "get_chat_conversation_summaries",
+    { p_topic: "tesoreria" }
+  );
   const conversations = (data ?? []) as ConversationSummary[];
+  // Sin esto, una consulta fallida se ve igual que "nadie escribió", y el
+  // tesorero se perdería un aviso de aporte sin enterarse.
+  const loadError = chatFailure(
+    "inbox(tesoreria)",
+    error,
+    "No pudimos cargar los mensajes. Recargá la página en un momento."
+  );
 
   return (
     <>
@@ -37,10 +46,20 @@ export default async function TreasuryChatListPage() {
         <PushToggle />
       </div>
 
+      {loadError && (
+        <div className="mb-4">
+          <Banner tone="danger">{loadError}</Banner>
+        </div>
+      )}
+
       <ConversationList
         conversations={conversations}
         basePath="/admin/tesoreria/chat"
-        emptyText="No hay mensajes todavía. Cuando un creyente avise de un giro al Fondo, aparece acá."
+        emptyText={
+          loadError
+            ? "No pudimos leer la bandeja."
+            : "No hay mensajes todavía. Cuando un creyente avise de un giro al Fondo, aparece acá."
+        }
       />
     </>
   );

@@ -62,11 +62,20 @@ type Props = {
   topic: ChatTopic;
   memberId: string;
   initialMessages: ChatMessage[];
+  /** Falló la lectura en el servidor. Distinto de "no hay mensajes". */
+  loadError?: string | null;
 };
 
-export function ChatScreen({ mode, topic, memberId, initialMessages }: Props) {
+export function ChatScreen({
+  mode,
+  topic,
+  memberId,
+  initialMessages,
+  loadError,
+}: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [draft, setDraft] = useState("");
+  const [sendError, setSendError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const copy = TOPIC_COPY[topic];
@@ -147,18 +156,29 @@ export function ChatScreen({ mode, topic, memberId, initialMessages }: Props) {
       },
     ]);
     setDraft("");
+    setSendError(null);
 
     if (mode !== "live") return;
+
+    // El mensaje no se guardó: sacamos la burbuja optimista (si no, queda
+    // en pantalla como enviada y desaparece recién al recargar, que es lo
+    // que parecía pérdida de historial) y le devolvemos el texto al
+    // recuadro, salvo que ya haya empezado a escribir otra cosa.
+    const fail = (message: string) => {
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+      setDraft((current) => current || text);
+      setSendError(message);
+    };
 
     const fd = new FormData();
     fd.set("text", text);
     fd.set("topic", topic);
     startTransition(async () => {
       try {
-        await sendMemberMessageAction(fd);
+        const result = await sendMemberMessageAction(fd);
+        if (result && !result.ok) fail(result.message);
       } catch {
-        // Roll back optimistic message on failure.
-        setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+        fail("No pudimos enviar el mensaje. Revisá tu conexión y probá de nuevo.");
       }
     });
   }
@@ -209,10 +229,21 @@ export function ChatScreen({ mode, topic, memberId, initialMessages }: Props) {
         ref={scrollRef}
         className="scroll-area flex flex-1 flex-col gap-1.5 px-4 py-3.5 font-body"
       >
-        {messages.length === 0 && (
-          <div className="my-auto max-w-[280px] self-center text-center text-[13px] text-muted">
-            {copy.empty}
+        {loadError ? (
+          <div className="my-auto max-w-[280px] self-center text-center">
+            <div className="mx-auto mb-2.5 flex h-10 w-10 items-center justify-center rounded-full bg-rose-50 text-[18px] text-rose-600">
+              !
+            </div>
+            <p className="text-[13px] leading-relaxed text-rose-700">
+              {loadError}
+            </p>
           </div>
+        ) : (
+          messages.length === 0 && (
+            <div className="my-auto max-w-[280px] self-center text-center text-[13px] text-muted">
+              {copy.empty}
+            </div>
+          )
         )}
         {messages.map((m, i) => {
           // Mine = the member wrote it (i.e. NOT an admin reply).
@@ -258,6 +289,15 @@ export function ChatScreen({ mode, topic, memberId, initialMessages }: Props) {
         })}
       </div>
 
+      {sendError && (
+        <div
+          role="alert"
+          className="shrink-0 border-t border-rose-200 bg-rose-50 px-4 py-2 text-[11.5px] leading-snug text-rose-700"
+        >
+          {sendError}
+        </div>
+      )}
+
       <form
         onSubmit={handleSend}
         className="shrink-0 border-t border-black/[0.05] bg-card px-4 py-2.5"
@@ -266,7 +306,10 @@ export function ChatScreen({ mode, topic, memberId, initialMessages }: Props) {
           <input
             type="text"
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (sendError) setSendError(null);
+            }}
             placeholder={
               mode === "demo"
                 ? "Modo demo — los mensajes no se envían"

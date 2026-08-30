@@ -3,9 +3,10 @@ import {
   ConversationList,
   type ConversationSummary,
 } from "@/components/admin/chat/ConversationList";
-import { PageHeader } from "@/components/admin/ui";
+import { Banner, PageHeader } from "@/components/admin/ui";
 import { PushToggle } from "@/components/PushToggle";
 import { ensureChatTag, requireAdmin } from "@/lib/auth";
+import { chatFailure } from "@/lib/chat-errors";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 export default async function AdminChatListPage() {
@@ -15,10 +16,19 @@ export default async function AdminChatListPage() {
 
   // Una sola RPC agrega por creyente (último mensaje + sin leer), filtrando
   // por localidad, canal y tag en SQL. Ver migraciones 022 y 045.
-  const { data } = await supabase.rpc("get_chat_conversation_summaries", {
-    p_topic: "secretaria",
-  });
+  const { data, error } = await supabase.rpc(
+    "get_chat_conversation_summaries",
+    { p_topic: "secretaria" }
+  );
   const conversations = (data ?? []) as ConversationSummary[];
+  // Una bandeja vacía por error se ve igual que una bandeja sin mensajes,
+  // y en esta pantalla esa confusión cuesta caro: la Secretaría creería
+  // que nadie escribió.
+  const loadError = chatFailure(
+    "inbox(secretaria)",
+    error,
+    "No pudimos cargar las conversaciones. Recargá la página en un momento."
+  );
 
   return (
     <>
@@ -33,10 +43,20 @@ export default async function AdminChatListPage() {
         <PushToggle />
       </div>
 
+      {loadError && (
+        <div className="mb-4">
+          <Banner tone="danger">{loadError}</Banner>
+        </div>
+      )}
+
       <ConversationList
         conversations={conversations}
         basePath="/admin/chat"
-        emptyText="No hay conversaciones todavía."
+        emptyText={
+          loadError
+            ? "No pudimos leer la bandeja."
+            : "No hay conversaciones todavía."
+        }
       />
     </>
   );

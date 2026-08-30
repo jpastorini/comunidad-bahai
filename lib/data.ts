@@ -8,6 +8,7 @@
 
 import { cache } from "react";
 import { celebrationDateFor } from "./bahai-calendar";
+import { chatFailure } from "./chat-errors";
 import { CALENDAR_KINDS, effectiveEventColor } from "./calendar-kinds";
 import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
 import {
@@ -358,8 +359,12 @@ export const getBadges = cache(async function getBadges(
   };
 });
 
-/** Un canal del chat que este usuario atiende, con lo que tiene pendiente. */
-export type ChatDuty = { topic: ChatTopic; pending: number };
+/**
+ * Un canal del chat que este usuario atiende, con lo que tiene pendiente.
+ * `pending: null` = no se pudo consultar. Es distinto de cero y hay que
+ * decirlo: un "Al día" falso esconde justamente lo que hay que atender.
+ */
+export type ChatDuty = { topic: ChatTopic; pending: number | null };
 
 /**
  * Canales del chat que la persona atiende y cuántos mensajes tiene sin
@@ -387,12 +392,17 @@ export async function getChatDuty(profile: Profile): Promise<ChatDuty[]> {
   const supabase = createSupabaseServer();
   // La RLS ya acota por localidad y por tag: un admin con tag de chat no
   // ve las filas de 'tesoreria' aunque el `in` las pida.
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("chat_messages")
     .select("topic")
     .eq("read", false)
     .eq("is_admin_reply", false)
     .in("topic", topics);
+
+  if (error) {
+    chatFailure("duty", error, "");
+    return topics.map((topic) => ({ topic, pending: null }));
+  }
 
   const rows = (data ?? []) as Array<{ topic: ChatTopic }>;
   return topics.map((topic) => ({

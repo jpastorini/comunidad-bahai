@@ -1,13 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import {
   ensureChatTag,
   ensureTreasuryTag,
   requireAdmin,
   type AdminSession,
 } from "@/lib/auth";
+import { chatFailure } from "@/lib/chat-errors";
 import { sendPushToUsers } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import {
@@ -15,6 +15,9 @@ import {
   CHAT_TOPIC_PATHS,
   type ChatTopic,
 } from "@/lib/types";
+
+/** Resultado de responder: la pantalla necesita saber si quedó guardado. */
+export type ReplyResult = { ok: true } | { ok: false; message: string };
 
 function parseTopic(value: unknown): ChatTopic {
   return value === "tesoreria" ? "tesoreria" : "secretaria";
@@ -32,19 +35,26 @@ async function requireTopicAccess(topic: ChatTopic): Promise<AdminSession> {
   return session;
 }
 
-export async function sendChatReplyAction(formData: FormData) {
+export async function sendChatReplyAction(
+  formData: FormData
+): Promise<ReplyResult> {
   const topic = parseTopic(formData.get("topic"));
   const session = await requireTopicAccess(topic);
 
   const memberId = formData.get("member_id") as string;
   const text = (formData.get("text") as string)?.trim();
   const basePath = CHAT_TOPIC_ADMIN_PATHS[topic];
-  if (!memberId || !text) {
-    redirect(`${basePath}/${memberId}?error=empty`);
+  if (!memberId) {
+    return { ok: false, message: "No sabemos a quién responder." };
+  }
+  if (!text) {
+    return { ok: false, message: "Escribí una respuesta antes de enviar." };
   }
 
   const supabase = createSupabaseServer();
-  await supabase.from("chat_messages").insert({
+  // Igual que del lado del creyente: si el error no se mira, el action
+  // termina bien y la respuesta queda solo en pantalla.
+  const { error } = await supabase.from("chat_messages").insert({
     member_id: memberId,
     from_user_id: session.user.id,
     text,
@@ -59,14 +69,17 @@ export async function sendChatReplyAction(formData: FormData) {
     // solo aplica a mensajes entrantes que esperan respuesta.
     read: true,
   });
+  const failure = chatFailure(
+    `reply(${topic})`,
+    error,
+    "No pudimos enviar la respuesta. Probá de nuevo en un momento."
+  );
+  if (failure) return { ok: false, message: failure };
 
   // Push al creyente (a menos que sea uno mismo en pruebas).
   if (memberId !== session.user.id) {
     await sendPushToUsers([memberId], {
-      title:
-        topic === "tesoreria"
-          ? "Tesorería"
-          : "Secretaría Local",
+      title: topic === "tesoreria" ? "Tesorería" : "Secretaría Local",
       body: text.slice(0, 120),
       url: CHAT_TOPIC_PATHS[topic],
       tag: `chat-${topic}-${memberId}`,
@@ -76,9 +89,14 @@ export async function sendChatReplyAction(formData: FormData) {
   revalidatePath(`${basePath}/${memberId}`);
   revalidatePath(basePath);
   revalidatePath("/admin");
-  redirect(`${basePath}/${memberId}`);
+  revalidatePath("/");
+  return { ok: true };
 }
 
+/**
+ * Best-effort al abrir la conversación. Si falla no se interrumpe nada
+ * —lo único que queda mal es el contador de sin leer— pero se loguea.
+ */
 export async function markConversationReadAction(
   memberId: string,
   topic: ChatTopic
@@ -89,13 +107,14 @@ export async function markConversationReadAction(
   // marcan como leídos al abrir la conversación. Usamos is_admin_reply en
   // vez de from_user_id porque admin y creyente pueden ser el mismo
   // usuario en pruebas/self-test.
-  await supabase
+  const { error } = await supabase
     .from("chat_messages")
     .update({ read: true })
     .eq("member_id", memberId)
     .eq("topic", topic)
     .eq("is_admin_reply", false)
     .eq("read", false);
+  chatFailure(`mark_read(${topic})`, error, "");
 
   const basePath = CHAT_TOPIC_ADMIN_PATHS[topic];
   revalidatePath(`${basePath}/${memberId}`);
