@@ -1,4 +1,5 @@
 import { InstallAppButton } from "@/components/InstallAppButton";
+import { ChatDutyCard } from "@/components/home/ChatDutyCard";
 import { CitaDelDiaCard } from "@/components/home/CitaDelDiaCard";
 import { FeaturedMessageCard } from "@/components/home/FeaturedMessageCard";
 import { FeaturedPhotos } from "@/components/home/FeaturedPhotos";
@@ -9,6 +10,7 @@ import { UpcomingEvents } from "@/components/home/UpcomingEvents";
 import { requireMember } from "@/lib/auth";
 import {
   getBadges,
+  getChatDuty,
   getLatestLocalAnnouncement,
   getUpcomingCalendarEvents,
 } from "@/lib/data";
@@ -20,13 +22,16 @@ export const revalidate = 60;
 
 export default async function HomePage() {
   const session = await requireMember("/");
-  const [featured, upcoming, badges, feed, featuredPhotos] =
+  const [featured, upcoming, badges, feed, featuredPhotos, chatDuty] =
     await Promise.all([
       getLatestLocalAnnouncement(),
       getUpcomingCalendarEvents(2),
       getBadges(session.user.id),
       getHomeFeed(10),
       getFeaturedPhotos(session.locality.id),
+      // Solo consulta si la persona atiende algún canal; para la
+      // comunidad no agrega ninguna ida a Supabase.
+      getChatDuty(session.profile),
     ]);
 
   // Cita del día: determinística por fecha, sin consulta a la base.
@@ -56,6 +61,7 @@ export default async function HomePage() {
           dateLabel={civilDateLabel()}
         />
         <SectionGrid badges={badges} />
+        <ChatDutyCard duties={chatDuty} />
         <UpcomingEvents events={upcoming} />
         <FeaturedPhotos photos={featuredPhotos} />
         <HomeFeed items={feed} />

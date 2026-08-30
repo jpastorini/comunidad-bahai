@@ -29,10 +29,12 @@ import type {
   Activity,
   CalendarEvent,
   ChatMessage,
+  ChatTopic,
   Feast,
   FeastLocation,
   FeastPrayer,
   Message,
+  Profile,
   ServiceNeed,
   StudyMaterial,
   TeachingGoal,
@@ -355,6 +357,49 @@ export const getBadges = cache(async function getBadges(
     comunicados_has_unseen: (comunicadosCount ?? 0) > 0,
   };
 });
+
+/** Un canal del chat que este usuario atiende, con lo que tiene pendiente. */
+export type ChatDuty = { topic: ChatTopic; pending: number };
+
+/**
+ * Canales del chat que la persona atiende y cuántos mensajes tiene sin
+ * leer en cada uno. Alimenta el atajo del Inicio: quien contesta entraba
+ * al panel y buscaba en el sidebar, así que el lugar para responder
+ * quedaba escondido.
+ *
+ * Devuelve vacío para casi todo el mundo — es lo normal, la comunidad no
+ * atiende nada. Exige `role='admin'` además del tag porque el destino es
+ * el panel, y el middleware no deja entrar a un `role='member'`: sin eso
+ * el atajo llevaría a una pared.
+ *
+ * Una sola consulta para los dos canales; los mensajes sin leer son
+ * pocos, así que contar en JS sale más barato que dos head-counts (que
+ * en esta región cuestan ~120 ms cada uno).
+ */
+export async function getChatDuty(profile: Profile): Promise<ChatDuty[]> {
+  const topics: ChatTopic[] = [];
+  if (profile.role === "admin") {
+    if (profile.can_respond_chat) topics.push("secretaria");
+    if (profile.can_manage_treasury) topics.push("tesoreria");
+  }
+  if (topics.length === 0 || !isSupabaseConfigured()) return [];
+
+  const supabase = createSupabaseServer();
+  // La RLS ya acota por localidad y por tag: un admin con tag de chat no
+  // ve las filas de 'tesoreria' aunque el `in` las pida.
+  const { data } = await supabase
+    .from("chat_messages")
+    .select("topic")
+    .eq("read", false)
+    .eq("is_admin_reply", false)
+    .in("topic", topics);
+
+  const rows = (data ?? []) as Array<{ topic: ChatTopic }>;
+  return topics.map((topic) => ({
+    topic,
+    pending: rows.filter((r) => r.topic === topic).length,
+  }));
+}
 
 /** Próximos N eventos del calendario, ordenados por fecha. */
 export async function getUpcomingCalendarEvents(
