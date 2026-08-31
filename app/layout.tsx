@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Outfit, Sora } from "next/font/google";
+import { SplashScreen } from "@/components/SplashScreen";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -59,8 +60,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="es"
       className={`${cormorant.variable} ${sora.variable} ${outfit.variable}`}
+      // El script de SplashScreen marca <html data-splash> antes de que
+      // React hidrate; sin esto, dev loguea "Extra attributes from the
+      // server" en cada arranque de la PWA.
+      suppressHydrationWarning
     >
-      <body className="bg-bg font-sans text-dark">{children}</body>
+      <body className="bg-bg font-sans text-dark">
+        <SplashScreen />
+        {children}
+      </body>
     </html>
   );
 }

@@ -68,3 +68,146 @@ body {
 .tap:active {
   transform: scale(0.98);
 }
+
+/* ---- Splash de arranque de la PWA --------------------------------------
+   Solo existe cuando el script inline de SplashScreen puso data-splash en
+   <html> (app instalada, primer paint de este arranque, o ?splash=1 para
+   probar). Continúa la splash del sistema —mismo fondo, mismo mosaico— y
+   se desvanece sola por CSS: nada de JS puede dejarla tapando la app. */
+
+#cb-splash {
+  display: none;
+}
+
+html[data-splash] #cb-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #F8F7F2;
+  overflow: hidden;
+  pointer-events: none;
+  animation: cb-splash-out 450ms ease 1900ms forwards;
+}
+
+/* Estrella gigante de marca de agua, girando apenas (misma que usan los
+   headers dorados). La opacidad va inline en el SVG; acá solo posición. */
+.cb-splash-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -280px 0 0 -280px;
+  animation: cb-splash-spin 90s linear infinite;
+}
+
+.cb-splash-center {
+  position: relative;
+}
+
+.cb-splash-halo {
+  position: absolute;
+  inset: -48px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(196, 162, 53, 0.32),
+    rgba(196, 162, 53, 0) 70%
+  );
+  animation: cb-splash-halo 1.8s ease-in-out infinite;
+}
+
+/* Réplica del ícono del manifest (generate-icons.ps1): radio 22 % del
+   lado, degradé diagonal oro, estrella blanca al 64 %. Es lo que hace que
+   el pasaje desde la splash del sistema no tenga costura. */
+.cb-splash-tile {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  border-radius: 25px;
+  background: linear-gradient(135deg, #96790e, #c4a235);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 10px 30px rgba(150, 121, 14, 0.25);
+  animation: cb-splash-pop 700ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+.cb-splash-name {
+  margin-top: 28px;
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #96790e;
+  opacity: 0;
+  animation: cb-splash-rise 600ms ease 350ms forwards;
+}
+
+.cb-splash-rule {
+  margin-top: 14px;
+  height: 2px;
+  width: 64px;
+  border-radius: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(196, 162, 53, 0),
+    #c4a235,
+    rgba(196, 162, 53, 0)
+  );
+  transform: scaleX(0);
+  animation: cb-splash-rule 700ms ease 600ms forwards;
+}
+
+@keyframes cb-splash-pop {
+  from {
+    transform: scale(0.92);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes cb-splash-halo {
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+@keyframes cb-splash-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes cb-splash-rule {
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes cb-splash-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes cb-splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-splash] #cb-splash {
+    display: none;
+  }
+}
