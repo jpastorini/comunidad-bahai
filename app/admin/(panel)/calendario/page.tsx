@@ -6,6 +6,7 @@ import { getUnifiedCalendarItems } from "@/lib/data";
 import type { UnifiedCalendarItem } from "@/lib/data";
 import { ensureYearSeeded } from "@/lib/year-seed";
 import { deleteEventAction } from "./actions";
+import { MonthGrid, parseMonthParam } from "./MonthGrid";
 
 const WEEKDAYS_ES = [
   "Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb",
@@ -23,15 +24,22 @@ type MonthGroup = {
   items: UnifiedCalendarItem[];
 };
 
-export default async function AdminCalendarPage() {
+export default async function AdminCalendarPage({
+  searchParams,
+}: {
+  searchParams: { vista?: string; m?: string };
+}) {
   const session = await requireAdmin();
   await ensureYearSeeded(session.locality.id);
   const items = await getUnifiedCalendarItems();
+
+  const vista = searchParams?.vista === "lista" ? "lista" : "mes";
 
   const today = new Date();
   const todayKey =
     today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
   const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const { month, year } = parseMonthParam(searchParams?.m, today);
 
   // Marcamos la próxima entrada (hoy o futura) como destacada visualmente.
   const nextId = items.find(
@@ -46,18 +54,28 @@ export default async function AdminCalendarPage() {
       <PageHeader
         eyebrow="Comunidad"
         title="Calendario"
-        description="Vista general agrupada por mes gregoriano. Si vas a crear un nuevo evento, revisa primero esta lista para evitar solapamientos."
-        actions={<Button href="/admin/calendario/nuevo">+ Nuevo evento</Button>}
+        description="La vista centralizada de todo lo que tiene la Asamblea entre manos: eventos, Fiestas, Días Sagrados y reuniones. Si vas a crear un nuevo evento, revisá primero acá para evitar solapamientos."
+        actions={
+          <>
+            <ViewToggle vista={vista} />
+            <Button href="/admin/calendario/nuevo">+ Nuevo evento</Button>
+          </>
+        }
       />
 
       <Banner tone="info">
         Las <strong>Fiestas</strong> se siembran automáticamente — desde acá las
         ves para evitar superposición. Para editar el programa, oraciones,
-        publicar o iniciar una Fiesta, abrí su detalle desde la columna
-        "Acciones" o desde el sidebar "Fiestas de 19 Días".
+        publicar o iniciar una Fiesta, abrí su detalle{" "}
+        {vista === "mes" ? "haciendo clic en la entrada" : 'desde la columna "Acciones"'}{" "}
+        o desde el sidebar "Fiestas de 19 Días".
       </Banner>
 
-      {groups.length === 0 ? (
+      {vista === "mes" ? (
+        <div className="mt-5">
+          <MonthGrid items={items} month={month} year={year} />
+        </div>
+      ) : groups.length === 0 ? (
         <div className="mt-5 rounded-2xl bg-card px-4 py-12 text-center text-[14px] text-muted shadow-card-soft">
           Aún no hay eventos ni Fiestas en el calendario.
         </div>
@@ -74,6 +92,29 @@ export default async function AdminCalendarPage() {
         </div>
       )}
     </>
+  );
+}
+
+function ViewToggle({ vista }: { vista: "mes" | "lista" }) {
+  const base =
+    "rounded-[10px] px-3 py-1.5 text-[12px] font-semibold transition";
+  const active = "bg-terra text-white shadow-card-soft";
+  const inactive = "text-muted hover:text-dark";
+  return (
+    <div className="inline-flex items-center gap-0.5 rounded-xl border border-black/10 bg-card p-1">
+      <Link
+        href="/admin/calendario"
+        className={`${base} ${vista === "mes" ? active : inactive}`}
+      >
+        Mes
+      </Link>
+      <Link
+        href="/admin/calendario?vista=lista"
+        className={`${base} ${vista === "lista" ? active : inactive}`}
+      >
+        Lista
+      </Link>
+    </div>
   );
 }
 

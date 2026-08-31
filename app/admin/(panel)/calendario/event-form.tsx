@@ -10,7 +10,7 @@ import {
 import { upsertEventAction } from "./actions";
 import type { CalendarEvent } from "@/lib/types";
 
-type Props = { event?: CalendarEvent };
+type Props = { event?: CalendarEvent; defaultDate?: string };
 
 const COLORS = [
   { value: "#2A3F8F", label: "Terra (azul)" },
@@ -19,10 +19,10 @@ const COLORS = [
   { value: "#C4A235", label: "Dorado" },
 ];
 
-export function EventForm({ event }: Props) {
+export function EventForm({ event, defaultDate }: Props) {
   const date = event
     ? `${event.year}-${String(event.month).padStart(2, "0")}-${String(event.day).padStart(2, "0")}`
-    : "";
+    : defaultDate ?? "";
 
   const isProtected = event?.is_system_seeded === true;
   const officialDateLabel = event?.official_date
