@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { GoldHeader } from "@/components/GoldHeader";
 import { IconMateriales } from "@/components/Icons";
 import { OracionDelMesCard } from "@/components/materials/OracionDelMesCard";
 import { BIBLIOTECA_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { requireMember } from "@/lib/auth";
+import { getCitasData } from "@/lib/citas";
 import {
   getEscritos,
   getLatestOracionDelMes,
@@ -29,6 +31,10 @@ export default async function MaterialesPage() {
   const pastOraciones = latestOracion
     ? allOraciones.filter((o) => o.id !== latestOracion.id)
     : allOraciones;
+
+  // El corpus de la "Lectura de hoy": se linkea desde acá para que quien
+  // quiere leer los Escritos lo encuentre en la Biblioteca, no solo en Inicio.
+  const citas = getCitasData();
 
   return (
     <>
@@ -100,6 +106,31 @@ export default async function MaterialesPage() {
           Escritos y Oraciones
         </h2>
         <ul className="flex flex-col gap-1.5 pb-5">
+          <li>
+            <Link
+              href="/citas"
+              className="tap flex items-center gap-3 rounded-xl bg-card px-3.5 py-2.5 shadow-card-soft ring-1 ring-gold/25"
+            >
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-[14px] text-gold-dark"
+                style={{ background: "#C4A23514" }}
+              >
+                ✦
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[12px] font-semibold text-dark">
+                  Escritos Sagrados — {citas.source}
+                </div>
+                <div className="mt-0.5 text-[10px] text-muted">
+                  {citas.quoteCount} citas para leer por tema · la fuente de la
+                  Lectura de hoy
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1 rounded-lg border border-gold/30 bg-gold/[0.07] px-2 py-1 text-[10.5px] font-semibold text-gold-dark">
+                Leer
+              </span>
+            </Link>
+          </li>
           {otros.map((o) => (
             <li
               key={o.id}
