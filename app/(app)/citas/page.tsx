@@ -3,12 +3,18 @@ import { GoldHeader } from "@/components/GoldHeader";
 import { requireMember } from "@/lib/auth";
 import { civilDateLabel, getCitaDelDia, getCitasData } from "@/lib/citas";
 import { SharePrayerButton } from "../oraciones/share-button";
+import { backTarget, withVolver } from "./back";
 
 export const revalidate = 60;
 
-export default async function CitasPage() {
+export default async function CitasPage({
+  searchParams,
+}: {
+  searchParams?: { volver?: string };
+}) {
   await requireMember("/citas");
 
+  const back = backTarget(searchParams?.volver);
   const { cita, topic } = getCitaDelDia();
   const data = getCitasData();
   const topics = [...data.topics].sort((a, b) =>
@@ -20,7 +26,8 @@ export default async function CitasPage() {
       <GoldHeader
         title="Escritos Sagrados"
         subtitle="Lectura de hoy"
-        backHref="/"
+        backHref={back.href}
+        backLabel={back.label}
       />
       <main className="scroll-area flex-1 px-4 pb-8 pt-4">
         <article className="rounded-2xl bg-card p-5 shadow-card-elevated ring-1 ring-gold/15">
@@ -42,7 +49,7 @@ export default async function CitasPage() {
               label="Compartir cita"
             />
             <Link
-              href={`/citas/${topic.id}`}
+              href={withVolver(`/citas/${topic.id}`, searchParams?.volver)}
               className="tap inline-flex items-center rounded-xl border border-black/10 px-3.5 py-2 text-[12px] font-semibold text-dark hover:bg-bg"
             >
               Más sobre {topic.name}
@@ -57,7 +64,7 @@ export default async function CitasPage() {
           {topics.map((t) => (
             <Link
               key={t.id}
-              href={`/citas/${t.id}`}
+              href={withVolver(`/citas/${t.id}`, searchParams?.volver)}
               className="tap rounded-full bg-card px-3 py-1.5 text-[12px] font-medium text-dark shadow-card-soft hover:bg-bg"
             >
               {t.name}

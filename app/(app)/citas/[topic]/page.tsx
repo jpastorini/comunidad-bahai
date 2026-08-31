@@ -2,13 +2,16 @@ import { notFound } from "next/navigation";
 import { GoldHeader } from "@/components/GoldHeader";
 import { requireMember } from "@/lib/auth";
 import { findTopic } from "@/lib/citas";
+import { withVolver } from "../back";
 
 export const revalidate = 60;
 
 export default async function CitasTemaPage({
   params,
+  searchParams,
 }: {
   params: { topic: string };
+  searchParams?: { volver?: string };
 }) {
   await requireMember(`/citas/${params.topic}`);
 
@@ -20,7 +23,7 @@ export default async function CitasTemaPage({
       <GoldHeader
         title={topic.name}
         subtitle={`${topic.quotes.length} citas`}
-        backHref="/citas"
+        backHref={withVolver("/citas", searchParams?.volver)}
       />
       <main className="scroll-area flex-1 px-4 pb-8 pt-4">
         <div className="space-y-2.5">

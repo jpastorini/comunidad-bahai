@@ -108,7 +108,7 @@ export default async function MaterialesPage() {
         <ul className="flex flex-col gap-1.5 pb-5">
           <li>
             <Link
-              href="/citas"
+              href="/citas?volver=biblioteca"
               className="tap flex items-center gap-3 rounded-xl bg-card px-3.5 py-2.5 shadow-card-soft ring-1 ring-gold/25"
             >
               <div
