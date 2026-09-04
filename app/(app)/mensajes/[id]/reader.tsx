@@ -1,3 +1,10 @@
+"use client";
+
+import {
+  ReadingSizeControl,
+  readingStyle,
+  useReadingSize,
+} from "@/components/ReadingSize";
 import { formatMessageDate } from "@/lib/format";
 import type { Message } from "@/lib/types";
 
@@ -5,6 +12,7 @@ import type { Message } from "@/lib/types";
 // la página (que se ocupa de auth y datos). full_text lleva párrafos
 // separados por líneas en blanco (ver scripts/import-ridvan.mjs).
 export function MessageReader({ message }: { message: Message }) {
+  const [size, setSize] = useReadingSize();
   const paragraphs = (message.full_text ?? "")
     .split(/\n\s*\n/)
     .map((p) => p.trim())
@@ -36,11 +44,17 @@ export function MessageReader({ message }: { message: Message }) {
 
       {paragraphs.length > 0 ? (
         <article className="rounded-2xl bg-card p-5 shadow-card-soft">
+          <ReadingSizeControl
+            value={size}
+            onChange={setSize}
+            className="mb-4 border-b border-black/[0.06] pb-3"
+          />
           <div className="space-y-4">
             {paragraphs.map((p, i) => (
               <p
                 key={i}
-                className="font-body text-[14px] leading-[1.7] text-dark"
+                className="font-body text-dark"
+                style={readingStyle(14, size)}
               >
                 {p}
               </p>
