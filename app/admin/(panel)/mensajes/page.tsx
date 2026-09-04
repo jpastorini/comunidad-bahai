@@ -24,7 +24,7 @@ export default async function AdminMensajesPage() {
       <PageHeader
         eyebrow="Casa Universal de Justicia"
         title="Mensajes"
-        description="Publica los mensajes oficiales de la Casa Universal de Justicia. Cada mensaje consta de un título, fecha y el PDF correspondiente."
+        description="Publica los mensajes oficiales de la Casa Universal de Justicia. Cada mensaje lleva título y fecha, y puede incluir el texto completo (se lee en la app) y/o el PDF."
         actions={<Button href="/admin/mensajes/nuevo">+ Nuevo mensaje</Button>}
       />
 
@@ -70,6 +70,19 @@ export default async function AdminMensajesPage() {
                   </svg>
                   PDF
                 </a>
+              ) : (
+                <span className="text-[11px] text-muted">—</span>
+              ),
+          },
+          {
+            key: "text",
+            label: "Texto",
+            width: "80px",
+            render: (m) =>
+              m.full_text ? (
+                <span className="rounded bg-terra/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-terra">
+                  Sí
+                </span>
               ) : (
                 <span className="text-[11px] text-muted">—</span>
               ),

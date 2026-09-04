@@ -54,6 +54,21 @@ export async function getMessages(): Promise<Message[]> {
   return data as Message[];
 }
 
+/** Un mensaje de la Casa Universal por id, con su texto completo. */
+export async function getMessage(id: string): Promise<Message | null> {
+  if (!isSupabaseConfigured()) {
+    return seedMessages.find((m) => m.id === id) ?? null;
+  }
+  const supabase = createSupabaseServer();
+  const { data } = await supabase
+    .from("messages")
+    .select("*")
+    .eq("id", id)
+    .eq("source", "casa_universal")
+    .maybeSingle();
+  return (data as Message | null) ?? null;
+}
+
 export async function getLocalAnnouncements(): Promise<Message[]> {
   if (!isSupabaseConfigured()) return seedLocalAnnouncements;
   const supabase = createSupabaseServer();

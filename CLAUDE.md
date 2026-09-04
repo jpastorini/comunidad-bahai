@@ -203,7 +203,13 @@ link público compartible · **Comprobantes de gastos** (migración 043):
 las facturas adjuntas al movimiento, en bucket privado. Ver la sección
 "Tesorería" más abajo. ·
 **Chat con dos canales** (migración 045): Secretaría y Tesorería, con el
-nombre de quien responde a la vista. Ver la sección "Chat" más abajo.
+nombre de quien responde a la vista. Ver la sección "Chat" más abajo. ·
+**Mensajes de la Casa Universal con texto completo**: 51 mensajes de
+Riḍván (1967–2026) sembrados desde los txt del usuario con
+`scripts/import-ridvan.mjs` → `supabase/seed_mensajes_ridvan.sql`
+(idempotente: UPDATE por título + INSERT si falta; no toca `pdf_url`).
+Lectura en `/mensajes/[id]` (`reader.tsx`); el admin nacional puede
+cargar texto completo y/o PDF en `/admin/mensajes`.
 
 ## Chat (dos canales)
 

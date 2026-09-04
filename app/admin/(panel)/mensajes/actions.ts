@@ -37,12 +37,14 @@ export async function upsertMessageAction(formData: FormData) {
     redirect("/admin/mensajes");
   }
 
-  // Casa Universal: el "mensaje" ES el PDF. excerpt es solo para listas.
+  // Casa Universal: el mensaje puede ser texto completo (se lee en
+  // /mensajes/[id]), PDF, o ambos. excerpt alimenta listas.
+  const fullText = ((formData.get("full_text") as string | null) ?? "").trim();
   const payload: Record<string, unknown> = {
     date,
     title,
-    excerpt: title, // satisface el NOT NULL del schema; no se muestra
-    full_text: null,
+    excerpt: fullText ? `${fullText.slice(0, 180)}…` : title,
+    full_text: fullText || null,
     subject: null,
     image_url: null,
     is_new: formData.get("is_new") === "on",

@@ -3,6 +3,7 @@ import {
   Card,
   Checkbox,
   Field,
+  TextArea,
   TextInput,
 } from "@/components/admin/ui";
 import { upsertMessageAction } from "./actions";
@@ -47,6 +48,22 @@ export function MessageForm({ message }: Props) {
               required
               defaultValue={message?.title ?? ""}
               placeholder="Mensaje del Riḍván 2026"
+            />
+          </Field>
+        </div>
+
+        <div className="mt-4">
+          <Field
+            label="Texto completo"
+            name="full_text"
+            hint="Opcional — párrafos separados por una línea en blanco"
+          >
+            <TextArea
+              id="full_text"
+              name="full_text"
+              rows={14}
+              defaultValue={message?.full_text ?? ""}
+              placeholder="Pegá acá el texto del mensaje para que se pueda leer directo en la app…"
             />
           </Field>
         </div>
