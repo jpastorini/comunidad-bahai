@@ -4,6 +4,7 @@ import { requireMember } from "@/lib/auth";
 import { civilDateLabel, getCitaDelDia, getCitasData } from "@/lib/citas";
 import { SharePrayerButton } from "../oraciones/share-button";
 import { backTarget, withVolver } from "./back";
+import { QuoteReader } from "./quote-reader";
 
 export const revalidate = 60;
 
@@ -35,9 +36,7 @@ export default async function CitasPage({
             <span className="text-gold-dark/70">✦ Lectura de hoy</span>
             <span className="shrink-0 text-muted/70">{civilDateLabel()}</span>
           </div>
-          <p className="font-display text-[18px] italic leading-[1.6] text-dark">
-            “{cita.text}”
-          </p>
+          <QuoteReader text={cita.text} />
           <div className="mt-3 font-body text-[12px] text-muted">
             — {cita.reference}
           </div>
