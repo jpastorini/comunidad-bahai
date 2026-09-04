@@ -2,6 +2,12 @@
 // los mensajes de Riḍván de la Casa Universal de Justicia en .txt.
 //
 //   node scripts/import-ridvan.mjs "C:\ruta\a\RidvanMessages"
+//   node scripts/import-ridvan.mjs "C:\ruta\a\RidvanMessages" --apply
+//
+// Con --apply, además de generar el SQL, aplica el upsert directamente
+// contra Supabase vía PostgREST con la SERVICE_ROLE_KEY de .env.local.
+// Existe porque el SQL Editor de Supabase rechaza consultas de este
+// tamaño ("Query is too large"): el seed trae ~600 KB de texto.
 //
 // Formato esperado de cada archivo:
 //   <AAAA>-<NNN>BE[ <destinatario>].txt
@@ -203,3 +209,77 @@ console.log(
   `✔ ${rows.length} mensajes únicos de ${files.length} archivos → ${OUT}`
 );
 for (const r of rows) console.log(`  · ${r.title}`);
+
+// ─── --apply: upsert directo vía PostgREST ─────────────────────────
+if (process.argv.includes("--apply")) {
+  const envPath = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "..",
+    ".env.local"
+  );
+  const env = Object.fromEntries(
+    readFileSync(envPath, "utf8")
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("#") && l.includes("="))
+      .map((l) => {
+        const i = l.indexOf("=");
+        return [l.slice(0, i), l.slice(i + 1)];
+      })
+  );
+  const url = env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    console.error("Faltan NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY en .env.local");
+    process.exit(1);
+  }
+  const headers = {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/json",
+  };
+
+  let updated = 0;
+  let inserted = 0;
+  for (const r of rows) {
+    const date = `${r.year}-04-21`;
+    const excerpt = makeExcerpt(r.body);
+    const filter = `source=eq.casa_universal&title=eq.${encodeURIComponent(r.title)}`;
+
+    // UPDATE por título (no toca pdf_url/is_new); si no matcheó, INSERT.
+    const upd = await fetch(`${url}/rest/v1/messages?${filter}`, {
+      method: "PATCH",
+      headers: { ...headers, Prefer: "return=representation" },
+      body: JSON.stringify({ date, excerpt, full_text: r.body }),
+    });
+    if (!upd.ok) {
+      console.error(`✖ UPDATE falló en "${r.title}": ${upd.status} ${await upd.text()}`);
+      process.exit(1);
+    }
+    const touched = await upd.json();
+    if (touched.length > 0) {
+      updated++;
+      continue;
+    }
+
+    const ins = await fetch(`${url}/rest/v1/messages`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        date,
+        title: r.title,
+        excerpt,
+        full_text: r.body,
+        is_new: false,
+        source: "casa_universal",
+        locality_id: null,
+      }),
+    });
+    if (!ins.ok) {
+      console.error(`✖ INSERT falló en "${r.title}": ${ins.status} ${await ins.text()}`);
+      process.exit(1);
+    }
+    inserted++;
+  }
+  console.log(`✔ Aplicado en Supabase: ${inserted} insertados, ${updated} actualizados.`);
+}
