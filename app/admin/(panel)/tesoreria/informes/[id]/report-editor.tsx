@@ -627,10 +627,23 @@ export function ReportEditor({
         >
           Recalcular cifras
         </button>
+        {/* En un informe publicado, guardar como borrador lo despublica:
+            el action escribe status='draft'. Se avisa igual que en
+            "Despublicar", porque el link compartido deja de funcionar. */}
         <button
           type="submit"
           name="intent"
           value="draft"
+          onClick={(ev) => {
+            if (
+              status === "published" &&
+              !window.confirm(
+                "El informe está publicado. Guardarlo como borrador lo despublica y el link compartido deja de funcionar. Si solo querés refrescar las cifras, usá «Recalcular cifras». ¿Continuar?"
+              )
+            ) {
+              ev.preventDefault();
+            }
+          }}
           className="tap inline-flex items-center justify-center rounded-xl border border-black/10 bg-card px-4 py-2.5 text-[13px] font-semibold text-dark transition hover:bg-bg"
         >
           Guardar borrador
