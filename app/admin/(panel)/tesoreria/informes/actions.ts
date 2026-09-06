@@ -8,6 +8,7 @@ import { setFlashToast } from "@/lib/toast";
 import {
   DESTINATION_TONES,
   NOTE_SECTIONS,
+  fmtDayMonth,
   sanitizeReportEditorial,
   type DestinationTone,
   type NoteKey,
@@ -179,12 +180,16 @@ export async function saveReportAction(formData: FormData) {
 
   const id = (formData.get("id") as string) ?? "";
   const intentRaw = formData.get("intent");
+  // "recalc" guarda igual que "draft" pero sin tocar el estado: un informe
+  // publicado se puede refrescar contra el libro sin despublicarlo.
   const intent =
     intentRaw === "publish"
       ? "publish"
       : intentRaw === "unpublish"
         ? "unpublish"
-        : "draft";
+        : intentRaw === "recalc"
+          ? "recalc"
+          : "draft";
 
   const { data: existing } = await supabase
     .from("treasury_reports")
@@ -231,6 +236,7 @@ export async function saveReportAction(formData: FormData) {
   });
 
   const publishing = intent === "publish";
+  const keepStatus = intent === "recalc";
   const now = new Date().toISOString();
 
   const { error } = await supabase
@@ -244,9 +250,13 @@ export async function saveReportAction(formData: FormData) {
       bahai_year: bahaiYear,
       editorial: readEditorial(formData),
       snapshot,
-      status: publishing ? "published" : "draft",
+      status: keepStatus ? prev.status : publishing ? "published" : "draft",
       // Al despublicar se limpia; al re-publicar conserva la fecha original.
-      published_at: publishing ? (prev.published_at ?? now) : null,
+      published_at: keepStatus
+        ? prev.published_at
+        : publishing
+          ? (prev.published_at ?? now)
+          : null,
       updated_at: now,
     })
     .eq("id", id);
@@ -260,13 +270,15 @@ export async function saveReportAction(formData: FormData) {
             ? "Informe publicado. El link ya se puede compartir."
             : intent === "unpublish"
               ? "Informe despublicado: el link dejó de funcionar."
-              : "Informe guardado con las cifras al día.",
+              : intent === "recalc"
+                ? `Cifras recalculadas del libro al ${fmtDayMonth(to)}.`
+                : "Informe guardado con las cifras al día.",
         }
   );
 
   revalidateReports(id);
   redirect(
-    intent === "draft"
+    intent === "draft" || intent === "recalc"
       ? `/admin/tesoreria/informes/${id}`
       : "/admin/tesoreria/informes"
   );

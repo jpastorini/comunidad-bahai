@@ -193,7 +193,8 @@ export function ReportEditor({
           Cifras del período
         </h2>
         <p className="mb-4 text-[12px] text-muted">
-          Salen del libro y se recalculan cada vez que guardás. No se editan
+          Salen del libro y se recalculan cada vez que guardás (o con el botón
+          «Recalcular cifras», al pie). No se editan
           acá: si algo no cuadra, se corrige el movimiento en el libro.
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -230,15 +231,45 @@ export function ReportEditor({
               .join(" · ")}
             meta={`${fmtDayMonth(snapshot.from)} al ${fmtDayMonth(snapshot.to)}`}
           />
-          <Figure
-            label="Saldos al cierre"
-            value={`${snapshot.byFund.length} filas de fondo · ${snapshot.byAccount.length} de cuenta`}
-            meta={
-              snapshot.internalTransfers > 0
-                ? `${snapshot.internalTransfers} operaciones internas excluidas`
-                : "sin operaciones internas en el período"
-            }
-          />
+        </div>
+
+        {/* Los saldos por fondo con sus montos: es la única forma de ver,
+            sin abrir la hoja o el deck, que el recálculo tomó la fecha de
+            cierre nueva. Un saldo es acumulado desde el principio del
+            libro, así que cambiar "Desde" no lo mueve; "Hasta" sí. */}
+        <div className="mt-2 rounded-xl border border-black/[0.06] bg-bg/40 px-3.5 py-3">
+          <div className="text-[10.5px] font-bold uppercase tracking-wide text-muted">
+            Saldos por fondo al {fmtDayMonth(snapshot.to)}
+          </div>
+          {snapshot.byFund.length === 0 ? (
+            <div className="mt-0.5 text-[15px] font-semibold text-dark">—</div>
+          ) : (
+            <ul className="mt-1.5 divide-y divide-black/[0.05]">
+              {snapshot.byFund.map((row) => (
+                <li
+                  key={`${row.label}|${row.currency}`}
+                  className="flex items-baseline justify-between gap-3 py-1 text-[13.5px]"
+                >
+                  <span className="text-dark">{row.label}</span>
+                  <span className="shrink-0 tabular-nums font-semibold text-dark">
+                    {fmtAmount(row.amount, row.currency)}{" "}
+                    <span className="text-[11px] font-medium text-muted">
+                      {row.currency}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-1.5 text-[11.5px] text-muted">
+            Acumulados desde el inicio del libro hasta la fecha de cierre; la
+            fecha de inicio no los cambia. {snapshot.byAccount.length} filas
+            de cuenta ·{" "}
+            {snapshot.internalTransfers > 0
+              ? `${snapshot.internalTransfers} operaciones internas excluidas`
+              : "sin operaciones internas en el período"}
+            .
+          </div>
         </div>
 
         {/* Los gráficos son del deck; la hoja del acta va sin ninguno.
@@ -582,6 +613,20 @@ export function ReportEditor({
         <Button variant="secondary" href={`/admin/informe/${id}`}>
           Ver informe
         </Button>
+        {/* Hace lo mismo que guardar (todo guardado relee el libro), pero
+            con el nombre queda claro que es el camino para refrescar las
+            cifras tras cargar movimientos o cambiar las fechas. A
+            diferencia de "Guardar borrador", no toca el estado: un informe
+            publicado sigue publicado. */}
+        <button
+          type="submit"
+          name="intent"
+          value="recalc"
+          title="Vuelve a leer el libro hasta la fecha de cierre y guarda las cifras nuevas"
+          className="tap inline-flex items-center justify-center rounded-xl border border-black/10 bg-card px-4 py-2.5 text-[13px] font-semibold text-dark transition hover:bg-bg"
+        >
+          Recalcular cifras
+        </button>
         <button
           type="submit"
           name="intent"
