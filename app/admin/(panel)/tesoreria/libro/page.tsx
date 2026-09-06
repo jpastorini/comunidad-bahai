@@ -31,7 +31,7 @@ export default async function LibroTesoreriaPage({
     : (years[0] ?? new Date().getUTCFullYear() - 1843);
 
   const [catalog, entries, receiptResult, attachmentCounts] = await Promise.all([
-    getLedgerCatalog(supabase),
+    getLedgerCatalog(supabase, session.locality.id),
     getLedgerEntries(supabase, year),
     supabase.rpc("next_receipt_number", { loc: session.locality.id }),
     getAttachmentCounts(supabase),

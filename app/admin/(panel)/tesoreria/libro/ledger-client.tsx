@@ -62,6 +62,19 @@ export function LedgerClient({
     return { accounts, funds, subcategories, contributors };
   }, [catalog]);
 
+  // El último seudónimo que usó cada contribuyente, para que el
+  // formulario lo proponga. Las entradas vienen de la más nueva a la más
+  // vieja, así que la primera que se ve es la última que se usó.
+  const lastReceiptNames = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const e of entries) {
+      if (e.contributor_id && e.receipt_name && !(e.contributor_id in out)) {
+        out[e.contributor_id] = e.receipt_name;
+      }
+    }
+    return out;
+  }, [entries]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return entries.filter((e) => {
@@ -72,6 +85,7 @@ export function LedgerClient({
         names.subcategories.get(e.subcategory_id) ?? "",
         names.accounts.get(e.account_id) ?? "",
         e.contributor_id ? names.contributors.get(e.contributor_id) ?? "" : "",
+        e.receipt_name ?? "",
         e.receipt_number ? String(e.receipt_number) : "",
       ]
         .join(" ")
@@ -91,7 +105,10 @@ export function LedgerClient({
       return e.contributions_count > 1 ? `${e.contributions_count} aportes` : "—";
     }
     if (!showNames) return null; // lo pinta el componente Masked
-    return names.contributors.get(e.contributor_id) ?? "—";
+    const name = names.contributors.get(e.contributor_id) ?? "—";
+    // El seudónimo del recibo, si lo hay, va al lado: el libro sabe quién
+    // aportó y también cómo quiso figurar.
+    return e.receipt_name ? `${name} (${e.receipt_name})` : name;
   }
 
   return (
@@ -174,6 +191,7 @@ export function LedgerClient({
           year={year}
           today={today}
           nextReceipt={nextReceipt}
+          lastReceiptNames={lastReceiptNames}
           onSaved={refresh}
         />
       </div>
@@ -307,6 +325,7 @@ export function LedgerClient({
             nextReceipt={nextReceipt}
             entry={editing}
             attachmentCount={attachmentCounts[editing.id] ?? 0}
+            lastReceiptNames={lastReceiptNames}
             onSaved={() => {
               setEditing(null);
               refresh();

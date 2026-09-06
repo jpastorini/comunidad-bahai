@@ -11,6 +11,7 @@ import type {
 } from "@/lib/treasury-ledger";
 import { parseMoney } from "@/lib/treasury-format";
 import { saveEntryAction } from "./actions";
+import { ContributorPicker, type ContributorSelection } from "./contributor-picker";
 
 type Props = {
   catalog: LedgerCatalog;
@@ -24,6 +25,9 @@ type Props = {
   /** Cuántos comprobantes tiene ya. Solo se usa para decidir si mostrar
    *  el panel en un ingreso: normalmente las facturas son de gastos. */
   attachmentCount?: number;
+  /** Último seudónimo usado por contribuyente ("Familia Pérez"), para
+   *  proponerlo al elegirlo de nuevo. Lo arma el libro desde los asientos. */
+  lastReceiptNames?: Record<string, string>;
   onSaved: () => void;
   onCancel?: () => void;
 };
@@ -43,6 +47,7 @@ export function EntryForm({
   nextReceipt,
   entry,
   attachmentCount = 0,
+  lastReceiptNames = {},
   onSaved,
   onCancel,
 }: Props) {
@@ -57,11 +62,33 @@ export function EntryForm({
   const [subcategoryId, setSubcategoryId] = useState(entry?.subcategory_id ?? "");
   const [fundId, setFundId] = useState(entry?.fund_id ?? "");
   const [currency, setCurrency] = useState(entry?.currency ?? "UYU");
-  const [contributorText, setContributorText] = useState(
-    entry?.contributor_id
-      ? catalog.contributors.find((c) => c.id === entry.contributor_id)?.name ?? ""
-      : ""
+  const [contributor, setContributor] = useState<ContributorSelection | null>(
+    () => {
+      const c = entry?.contributor_id
+        ? catalog.contributors.find((x) => x.id === entry.contributor_id)
+        : null;
+      return c
+        ? { kind: "contributor", id: c.id, name: c.name, profileId: c.profile_id }
+        : null;
+    }
   );
+  // El seudónimo del aporte ("Familia Pérez"). Al elegir un contribuyente
+  // se propone el último que usó, salvo que el tesorero ya haya escrito
+  // otra cosa.
+  const [receiptName, setReceiptName] = useState(entry?.receipt_name ?? "");
+  const [receiptNameDirty, setReceiptNameDirty] = useState(Boolean(entry?.receipt_name));
+
+  function onContributorChange(sel: ContributorSelection | null) {
+    setContributor(sel);
+    if (receiptNameDirty) return;
+    const contributorId =
+      sel?.kind === "contributor"
+        ? sel.id
+        : sel?.kind === "profile"
+          ? catalog.contributors.find((c) => c.profile_id === sel.id)?.id
+          : undefined;
+    setReceiptName((contributorId && lastReceiptNames[contributorId]) || "");
+  }
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // El monto se sigue en estado además del input: lo necesita el panel
@@ -95,16 +122,19 @@ export function EntryForm({
     const form = e.currentTarget;
     const fd = new FormData(form);
 
-    // El contribuyente se escribe libre con autocompletado. Si el texto
-    // coincide con uno existente mandamos el id; si no, el nombre para
-    // que la action lo dé de alta.
-    const typed = contributorText.trim();
-    const match = catalog.contributors.find(
-      (c) => c.name.trim().toLowerCase() === typed.toLowerCase()
-    );
-    fd.delete("contributor_text");
-    if (match) fd.set("contributor_id", match.id);
-    else if (typed) fd.set("contributor_name", typed);
+    // Un gasto no tiene contribuyente ni recibo, aunque el picker haya
+    // quedado con algo de antes de cambiar el segmento.
+    if (direction === "gasto") {
+      for (const k of [
+        "contributor_id",
+        "contributor_profile_id",
+        "contributor_name",
+        "link_profile_id",
+        "receipt_name",
+      ]) {
+        fd.delete(k);
+      }
+    }
 
     setSaving(true);
     setError(null);
@@ -141,7 +171,9 @@ export function EntryForm({
         el.value = "";
       });
       setAmountText("");
-      setContributorText("");
+      setContributor(null);
+      setReceiptName("");
+      setReceiptNameDirty(false);
       amountRef.current?.focus();
     }
     onSaved();
@@ -289,20 +321,67 @@ export function EntryForm({
 
       {direction === "ingreso" && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Field label="Contribuyente" className="col-span-2">
+          {/* Lo que eligió el picker viaja en hidden inputs; la action
+              resuelve el contribuyente (ver resolveContributor). */}
+          {contributor?.kind === "contributor" && (
+            <input type="hidden" name="contributor_id" value={contributor.id} />
+          )}
+          {contributor?.kind === "profile" && (
+            <input type="hidden" name="contributor_profile_id" value={contributor.id} />
+          )}
+          {contributor?.kind === "new" && (
+            <input type="hidden" name="contributor_name" value={contributor.name} />
+          )}
+
+          <div className="col-span-2">
+            <span className="mb-1 block text-[10.5px] uppercase tracking-wide text-muted">
+              Contribuyente
+            </span>
+            <ContributorPicker
+              contributors={catalog.contributors}
+              members={catalog.members}
+              value={contributor}
+              onChange={onContributorChange}
+              inputClass={inputClass}
+            />
+            {/* Un contribuyente que vino de la planilla no está vinculado a
+                nadie: acá se lo empareja con el creyente, y desde ese
+                momento la persona ve sus aportes en "Mis aportes". */}
+            {contributor?.kind === "contributor" && !contributor.profileId && (
+              <select
+                name="link_profile_id"
+                defaultValue=""
+                className={`${inputClass} mt-1.5 text-[12.5px]`}
+                title="Vincular este contribuyente con un creyente de la app"
+              >
+                <option value="">¿Es un creyente de la app? Vincular…</option>
+                {catalog.members
+                  .filter((m) => m.full_name)
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.full_name}
+                    </option>
+                  ))}
+              </select>
+            )}
+          </div>
+
+          <Field label="En el recibo figura como" className="col-span-2">
             <input
               type="text"
-              list="contribuyentes"
-              value={contributorText}
-              onChange={(e) => setContributorText(e.target.value)}
-              placeholder="Nombre o dejar vacío"
-              className={inputClass}
+              name="receipt_name"
+              value={receiptName}
+              onChange={(e) => {
+                setReceiptName(e.target.value);
+                setReceiptNameDirty(true);
+              }}
+              placeholder={
+                contributor ? `Igual: ${contributor.name}` : "Igual que el contribuyente"
+              }
+              disabled={!contributor}
+              className={`${inputClass} disabled:opacity-50`}
+              title='Seudónimo para el recibo, por ejemplo "Familia Pérez". El libro sigue registrando al contribuyente.'
             />
-            <datalist id="contribuyentes">
-              {catalog.contributors.map((c) => (
-                <option key={c.id} value={c.name} />
-              ))}
-            </datalist>
           </Field>
 
           <Field label="N° recibo" className="col-span-1">

@@ -61,9 +61,18 @@ export type TreasuryEntry = {
   receipt_number: number | null;
   contributions_count: number;
   contributor_id: string | null;
+  /** Cómo figura el contribuyente en el recibo de ESTE aporte ("Familia
+   *  Pérez"). NULL = el nombre del contribuyente. */
+  receipt_name: string | null;
   receipt_issued: boolean;
   transfer_group_id: string | null;
   is_opening_balance: boolean;
+};
+
+/** Un creyente de la localidad, para vincularlo como contribuyente. */
+export type LedgerMember = {
+  id: string;
+  full_name: string | null;
 };
 
 export type LedgerCatalog = {
@@ -72,6 +81,9 @@ export type LedgerCatalog = {
   categories: TreasuryCategory[];
   subcategories: TreasurySubcategory[];
   contributors: TreasuryContributor[];
+  /** Los creyentes de la localidad, que el buscador de contribuyentes
+   *  ofrece junto a los contribuyentes ya cargados. */
+  members: LedgerMember[];
 };
 
 /** Zona horaria civil de la comunidad, igual que en lib/format.ts: la
@@ -90,9 +102,10 @@ export function todayISO(now: Date = new Date()): string {
 }
 
 export async function getLedgerCatalog(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  localityId: string
 ): Promise<LedgerCatalog> {
-  const [accounts, funds, categories, subcategories, contributors] =
+  const [accounts, funds, categories, subcategories, contributors, members] =
     await Promise.all([
       supabase
         .from("treasury_accounts")
@@ -114,6 +127,15 @@ export async function getLedgerCatalog(
         .from("treasury_contributors")
         .select("id, name, kind, profile_id, is_active")
         .order("name"),
+      // Los creyentes activos de la localidad. El tesorero es admin, así
+      // que la RLS de profiles ya lo deja leerlos (es la misma lista de
+      // /admin/miembros).
+      supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("locality_id", localityId)
+        .is("disabled_at", null)
+        .order("full_name"),
     ]);
 
   return {
@@ -122,6 +144,7 @@ export async function getLedgerCatalog(
     categories: (categories.data ?? []) as TreasuryCategory[],
     subcategories: (subcategories.data ?? []) as TreasurySubcategory[],
     contributors: (contributors.data ?? []) as TreasuryContributor[],
+    members: (members.data ?? []) as LedgerMember[],
   };
 }
 
@@ -147,7 +170,7 @@ export async function getLedgerEntries(
   const { data } = await supabase
     .from("treasury_entries")
     .select(
-      "id, entry_date, bahai_year, account_id, subcategory_id, category_id, fund_id, currency, amount, description, receipt_number, contributions_count, contributor_id, receipt_issued, transfer_group_id, is_opening_balance"
+      "id, entry_date, bahai_year, account_id, subcategory_id, category_id, fund_id, currency, amount, description, receipt_number, contributions_count, contributor_id, receipt_name, receipt_issued, transfer_group_id, is_opening_balance"
     )
     .eq("bahai_year", year)
     .order("entry_date", { ascending: false })
@@ -266,6 +289,8 @@ export type ReceiptData = {
   subcategory_name: string | null;
   fund_name: string | null;
   contributor_name: string | null;
+  /** Seudónimo de este aporte; manda sobre `contributor_name` al imprimir. */
+  receipt_name: string | null;
 };
 
 type EmbeddedName = { name: string } | null;
@@ -283,7 +308,7 @@ export async function getEntryForReceipt(
     .from("treasury_entries")
     .select(
       `id, entry_date, currency, amount, receipt_number, description,
-       contributions_count, receipt_issued, receipt_issued_at,
+       contributions_count, receipt_issued, receipt_issued_at, receipt_name,
        account:treasury_accounts(name),
        subcategory:treasury_subcategories(name),
        fund:treasury_funds(name),
@@ -304,6 +329,7 @@ export async function getEntryForReceipt(
     contributions_count: number;
     receipt_issued: boolean;
     receipt_issued_at: string | null;
+    receipt_name: string | null;
     account: EmbeddedName;
     subcategory: EmbeddedName;
     fund: EmbeddedName;
@@ -324,5 +350,14 @@ export async function getEntryForReceipt(
     subcategory_name: row.subcategory?.name ?? null,
     fund_name: row.fund?.name ?? null,
     contributor_name: row.contributor?.name ?? null,
+    receipt_name: row.receipt_name ?? null,
   };
+}
+
+/** Lo que se imprime en "Nombre del contribuyente": el seudónimo del
+ *  aporte si lo hay, si no el contribuyente. */
+export function receiptDisplayName(
+  entry: Pick<ReceiptData, "receipt_name" | "contributor_name">
+): string {
+  return entry.receipt_name?.trim() || entry.contributor_name || "(sin nombre)";
 }

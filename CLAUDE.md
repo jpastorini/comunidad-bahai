@@ -209,7 +209,55 @@ Riḍván (1967–2026) sembrados desde los txt del usuario con
 `scripts/import-ridvan.mjs` → `supabase/seed_mensajes_ridvan.sql`
 (idempotente: UPDATE por título + INSERT si falta; no toca `pdf_url`).
 Lectura en `/mensajes/[id]` (`reader.tsx`); el admin nacional puede
-cargar texto completo y/o PDF en `/admin/mensajes`.
+cargar texto completo y/o PDF en `/admin/mensajes`. ·
+**Mis aportes** (migración 046): el creyente ve sus contribuciones en
+`/perfil/aportes` y baja el recibo. Ver la sección "Mis aportes" más
+abajo.
+
+## Mis aportes (migración 046)
+
+El tesorero elige al contribuyente de un buscador y el creyente ve ese
+aporte, con su recibo, en `/perfil/aportes` (entrada desde `/perfil`).
+Cuatro cosas que sostienen el diseño:
+
+- **El vínculo es `treasury_contributors.profile_id`**, que existía desde
+  la 040 pero nadie llenaba. El buscador (`contributor-picker.tsx`) ofrece
+  dos fuentes: los contribuyentes del libro y los creyentes de la
+  localidad (`catalog.members`). Elegir un creyente usa o crea su
+  contribuyente vinculado; si ya existe uno suelto con su mismo nombre
+  (los importados de la planilla) se lo vincula en vez de duplicar. Un
+  contribuyente sin perfil muestra un desplegable "¿Es un creyente de la
+  app? Vincular…", que es como se van emparejando los viejos. Escribir un
+  nombre que no está en ningún lado lo crea suelto: bahá'ís de otras
+  comunidades, empresas, grupos. Todo en `resolveContributor()`.
+- **El seudónimo es POR APORTE**, en `treasury_entries.receipt_name`
+  ("Familia Pérez"), no un contribuyente aparte. El libro sigue sabiendo
+  quién aportó y el recibo imprime el seudónimo (`receiptDisplayName`).
+  Se eligió así porque si los dos cónyuges están en la app y se alternan,
+  cada uno ve los aportes que hizo; un contribuyente "Familia X" solo
+  puede apuntar a un perfil (índice único por nombre). El formulario
+  propone el último seudónimo que usó ese contribuyente
+  (`lastReceiptNames`, armado en `ledger-client.tsx` desde los asientos
+  del año en pantalla).
+- **El creyente no lee el libro.** La RLS de `treasury_entries` no
+  cambió. Las filas salen por `my_contributions()` y `my_receipt()`,
+  security definer con el mismo criterio que `treasury_progress()`: solo
+  los aportes cuyo contribuyente apunta a `auth.uid()`, solo las columnas
+  de la lista y del recibo, sin gastos, aperturas ni transferencias. La
+  canasta de la Fiesta no tiene perfil y nunca aparece. El corte por
+  ejercicio (Riḍván a Riḍván) lo hace el TypeScript
+  (`lib/my-contributions.ts`), por defecto el corriente.
+- **Una sola hoja de recibo** (`components/treasury/ReceiptSheet.tsx`)
+  para el tesorero (`/admin/tesoreria/recibo/[id]`) y para la copia del
+  creyente (`/perfil/aportes/recibo/[id]`). La firma de la copia lleva a
+  quien emitió (`receipt_issued_by`, que llena `markReceiptIssuedAction`)
+  y, si nadie lo marcó emitido, al tesorero actual de esa localidad. En
+  el celular la hoja se escala con `transform` para entrar en el ancho;
+  la captura PNG sale a tamaño real igual, porque se genera del nodo.
+
+⚠️ Hasta que corra la 046, guardar un movimiento falla con PGRST204
+(`receipt_name` no existe): el formulario del libro manda la columna
+siempre. No desplegar sin aplicar la migración antes.
 
 ## Chat (dos canales)
 
@@ -562,7 +610,15 @@ los PDF viajan tal cual (media factura llega por mail).
   el libro", que solo abre `/admin/tesoreria/libro`). Lo natural sería
   prellenar el formulario del movimiento con el contribuyente y lo que
   dice el mensaje, y dejar el vínculo mensaje↔asiento para no cargar dos
-  veces el mismo aporte.
+  veces el mismo aporte. Con la 046 el formulario ya acepta un creyente
+  por `contributor_profile_id`, así que el prellenado es solo pasarle el
+  `member_id` de la conversación.
+- **Aviso al creyente cuando se registra su aporte.** Con la 046 el
+  aporte ya aparece en `/perfil/aportes`, pero nadie le avisa; un push
+  "Se registró tu aporte, recibo N.° X" ahorraría el WhatsApp del
+  tesorero. También falta una pantalla de contribuyentes para el tesorero
+  (fusionar duplicados, desvincular); hoy solo se vincula desde el
+  formulario.
 - **Buscador del libro:** encuentra por nombre de contribuyente aunque los
   nombres estén ocultos. Decidido dejarlo así por ahora; si molesta, que
   ignore los nombres mientras estén ocultos.

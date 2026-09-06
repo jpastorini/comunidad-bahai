@@ -1,19 +1,16 @@
-import { existsSync } from "node:fs";
-import path from "node:path";
 import { notFound } from "next/navigation";
 import { Banner, Button, PageHeader } from "@/components/admin/ui";
+import {
+  formatReceiptDate,
+  receiptLocalityName,
+} from "@/components/treasury/ReceiptSheet";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
+import { receiptAssets } from "@/lib/receipt-assets";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { getEntryForReceipt } from "@/lib/treasury-ledger";
+import { getEntryForReceipt, receiptDisplayName } from "@/lib/treasury-ledger";
 import { ReceiptView } from "./receipt-view";
 
 export const dynamic = "force-dynamic";
-
-/** "2026-08-22" → "22/08/2026", sin pasar por Date (no hay huso que corra). */
-function formatReceiptDate(iso: string): string {
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
-}
 
 export default async function ReciboPage({
   params,
@@ -27,11 +24,7 @@ export default async function ReciboPage({
   const entry = await getEntryForReceipt(supabase, params.id);
   if (!entry) notFound();
 
-  // El logo y la firma son opcionales: si todavía no se cargaron los
-  // archivos, el recibo se emite igual (ver scripts/extract-recibo-assets.mjs).
-  const publicDir = path.join(process.cwd(), "public", "recibo");
-  const hasLogo = existsSync(path.join(publicDir, "logo.png"));
-  const hasSignature = existsSync(path.join(publicDir, "firma.png"));
+  const { hasLogo, hasSignature } = receiptAssets();
 
   const destination = [entry.subcategory_name, entry.fund_name]
     .filter(Boolean)
@@ -64,15 +57,24 @@ export default async function ReciboPage({
         </div>
       )}
 
+      {entry.receipt_name && entry.contributor_name && (
+        <div className="mb-4">
+          <Banner tone="info">
+            El recibo figura a nombre de <strong>{entry.receipt_name}</strong>;
+            en el libro el aporte es de {entry.contributor_name}.
+          </Banner>
+        </div>
+      )}
+
       <ReceiptView
         id={entry.id}
         receiptNumber={entry.receipt_number}
         dateLabel={formatReceiptDate(entry.entry_date)}
-        contributor={entry.contributor_name ?? "(sin nombre)"}
+        contributor={receiptDisplayName(entry)}
         currency={entry.currency}
         amount={Math.abs(entry.amount)}
         destination={destination || "—"}
-        localityName={session.locality.name.replace(/^Comunidad Bahá'í de\s*/i, "")}
+        localityName={receiptLocalityName(session.locality.name)}
         treasurerName={session.profile.full_name ?? ""}
         issued={entry.receipt_issued}
         hasLogo={hasLogo}

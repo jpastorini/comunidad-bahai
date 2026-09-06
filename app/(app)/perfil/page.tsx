@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { BahaiStar } from "@/components/BahaiStar";
 import { GoldHeader } from "@/components/GoldHeader";
-import { IconChevronRight } from "@/components/Icons";
+import { IconChevronRight, IconTesoreria } from "@/components/Icons";
 import { requireMember } from "@/lib/auth";
 import { cancelLocalityChangeAction } from "@/app/seleccionar-localidad/actions";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -198,6 +198,27 @@ export default async function ProfilePage() {
             />
           </div>
         </div>
+
+        {/* Mis aportes: las contribuciones registradas a nombre de la
+            persona, con su recibo. La lista sale de una función acotada
+            (046); el libro sigue siendo del tesorero. */}
+        <Link
+          href="/perfil/aportes"
+          className="tap mb-5 flex items-center justify-between rounded-2xl bg-card px-4 py-3.5 shadow-card-soft"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#C4A235]/15 text-gold-dark">
+              <IconTesoreria size={18} />
+            </span>
+            <div>
+              <div className="text-[13.5px] font-semibold text-dark">Mis aportes</div>
+              <div className="mt-0.5 font-body text-[11px] text-muted">
+                Tus contribuciones al Fondo y sus recibos
+              </div>
+            </div>
+          </div>
+          <IconChevronRight size={14} className="text-muted" />
+        </Link>
 
         {/* Mis fotos */}
         <MyPhotosSection
