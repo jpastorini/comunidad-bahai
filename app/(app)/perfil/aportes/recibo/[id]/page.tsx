@@ -1,13 +1,10 @@
 import { notFound } from "next/navigation";
 import { GoldHeader } from "@/components/GoldHeader";
-import {
-  formatReceiptDate,
-  receiptLocalityName,
-} from "@/components/treasury/ReceiptSheet";
 import { requireMember } from "@/lib/auth";
 import { getMyReceipt } from "@/lib/my-contributions";
 import { receiptAssets } from "@/lib/receipt-assets";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { formatReceiptDate, receiptLocalityName } from "@/lib/treasury-format";
 import { MyReceiptView } from "./my-receipt-view";
 
 export const dynamic = "force-dynamic";

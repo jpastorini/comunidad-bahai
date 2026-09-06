@@ -1,12 +1,9 @@
 import { notFound } from "next/navigation";
 import { Banner, Button, PageHeader } from "@/components/admin/ui";
-import {
-  formatReceiptDate,
-  receiptLocalityName,
-} from "@/components/treasury/ReceiptSheet";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { receiptAssets } from "@/lib/receipt-assets";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { formatReceiptDate, receiptLocalityName } from "@/lib/treasury-format";
 import { getEntryForReceipt, receiptDisplayName } from "@/lib/treasury-ledger";
 import { ReceiptView } from "./receipt-view";
 

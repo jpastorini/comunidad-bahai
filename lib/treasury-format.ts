@@ -4,6 +4,25 @@
 // (hace queries): si el cliente importara algo de ahí, aunque sea una
 // función pura, se arrastraría el módulo entero al bundle y el build falla.
 
+/**
+ * "2026-08-22" → "22/08/2026", sin pasar por Date (no hay huso que corra).
+ *
+ * Vive acá y no en ReceiptSheet.tsx a propósito: ese archivo es
+ * `"use client"`, y todo lo que se exporta de un módulo de cliente llega
+ * al servidor como referencia de cliente. Llamarlo desde un server
+ * component (las páginas del recibo) tiraba "Application error".
+ */
+export function formatReceiptDate(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+/** El encabezado del recibo dice "…de los Bahá'ís de X": se le saca el
+ *  prefijo al nombre de la localidad para no repetirlo. */
+export function receiptLocalityName(name: string): string {
+  return name.replace(/^Comunidad Bahá'í de\s*/i, "");
+}
+
 /** Suma redondeada a centavos: evita el arrastre del punto flotante al
  *  acumular muchos movimientos. */
 export function addMoney(a: number, b: number): number {

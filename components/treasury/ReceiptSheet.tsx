@@ -189,15 +189,3 @@ function Field({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-
-/** "2026-08-22" → "22/08/2026", sin pasar por Date (no hay huso que corra). */
-export function formatReceiptDate(iso: string): string {
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
-}
-
-/** El encabezado dice "…de los Bahá'ís de X": se le saca el prefijo al
- *  nombre de la localidad para no repetirlo. */
-export function receiptLocalityName(name: string): string {
-  return name.replace(/^Comunidad Bahá'í de\s*/i, "");
-}
