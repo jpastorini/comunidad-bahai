@@ -211,3 +211,19 @@ html[data-splash] #cb-splash {
     display: none;
   }
 }
+
+/* Hoja de instalación de la PWA (components/InstallSheet.tsx): sube desde
+   abajo al aparecer. */
+.cb-sheet-up {
+  animation: cb-sheet-up 380ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+@keyframes cb-sheet-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

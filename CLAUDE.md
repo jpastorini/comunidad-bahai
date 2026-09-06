@@ -187,6 +187,15 @@ primer ingreso, cookie `cb_invite` + `/auth/callback`; asistente de
 bienvenida `/bienvenida` con pasos guiados: avisos push, instalar PWA y
 mini-tour; ver `lib/invites.ts` y migración 037. El cambio ENTRE
 localidades sigue requiriendo aprobación manual) ·
+**Hoja de instalación de la PWA** (`components/InstallSheet.tsx`, montada
+en el layout de `(app)`): en celular y sin la app instalada, sube una hoja
+que tapa la pantalla y pide instalar. Android: solo si disparó
+`beforeinstallprompt`, y con `appinstalled` pasa a la confirmación "ya
+podés cerrar el navegador". iOS: pasos de Safari + botón "Ya la instalé"
+(no hay evento); se saltea a los webviews sin menú Compartir. "Ahora no"
+la esconde 3 días en `localStorage` (`cb-install-snooze-until`), sin
+límite de veces: la tarjeta `InstallAppButton` queda en `/perfil` como
+camino manual (se sacó del Inicio por redundante) ·
 **Vida devocional**: "Lectura de hoy" (cita de los Escritos Sagrados, la
 misma para toda la comunidad cada día, determinística por fecha — sin tabla
 ni estado, ver `lib/citas.ts`; corpus de 991 citas en `public/citas.json`

@@ -1,4 +1,3 @@
-import { InstallAppButton } from "@/components/InstallAppButton";
 import { ChatDutyCard } from "@/components/home/ChatDutyCard";
 import { CitaDelDiaCard } from "@/components/home/CitaDelDiaCard";
 import { FeaturedMessageCard } from "@/components/home/FeaturedMessageCard";
@@ -45,7 +44,6 @@ export default async function HomePage() {
         starSize={130}
       />
       <main className="scroll-area flex-1 px-3.5 pt-3">
-        <InstallAppButton />
         {featured && (
           <FeaturedMessageCard
             eyebrow="✦ Asamblea Local"

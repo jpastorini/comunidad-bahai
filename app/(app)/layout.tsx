@@ -1,6 +1,7 @@
 import { ChatNotifier } from "@/components/ChatNotifier";
 import { DayChangeRefresh } from "@/components/DayChangeRefresh";
 import { HeaderUserProvider } from "@/components/HeaderUser";
+import { InstallSheet } from "@/components/InstallSheet";
 import { PhotoFab } from "@/components/PhotoFab";
 import { TabBar } from "@/components/TabBar";
 import { requireMember } from "@/lib/auth";
@@ -46,6 +47,8 @@ export default async function AppLayout({
         {children}
       </HeaderUserProvider>
       <PhotoFab />
+      {/* Hoja de instalación: solo en celular, sin la app instalada. */}
+      <InstallSheet />
       <TabBar aelHasUnseen={aelHasUnseen} />
     </div>
   );
