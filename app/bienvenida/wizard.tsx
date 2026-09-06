@@ -18,9 +18,12 @@ type StepId = "welcome" | "notifications" | "prayer" | "install" | "tour";
 export function WelcomeWizard({
   firstName,
   localityName,
+  isBahai = true,
 }: {
   firstName: string | null;
   localityName: string;
+  /** false = Amigo/a de la Fe (047): el tour no le promete la Fiesta. */
+  isBahai?: boolean;
 }) {
   const router = useRouter();
   const [pushAvailable, setPushAvailable] = useState(false);
@@ -159,8 +162,8 @@ export function WelcomeWizard({
                 ¿Te avisamos cuando haya novedades?
               </h1>
               <p className="mx-auto mt-4 max-w-sm font-body text-[15px] leading-relaxed text-white/85">
-                Cuando la Asamblea publique un comunicado o se acerque una
-                Fiesta, te llega un aviso al teléfono. Tu dispositivo te va a
+                Cuando la Asamblea publique un comunicado o se acerque un
+                evento, te llega un aviso al teléfono. Tu dispositivo te va a
                 pedir confirmación: tocá <strong className="text-white">Permitir</strong>.
               </p>
 
@@ -278,7 +281,11 @@ export function WelcomeWizard({
                 <TourRow
                   icon={<IconCalendario size={22} />}
                   title="Calendario"
-                  detail="Fiestas de 19 Días, Días Sagrados y actividades, con fecha y lugar."
+                  detail={
+                    isBahai
+                      ? "Fiestas de 19 Días, Días Sagrados y actividades, con fecha y lugar."
+                      : "Días Sagrados y actividades de la comunidad, con fecha y lugar."
+                  }
                 />
                 <TourRow
                   icon={<IconAEL size={22} />}

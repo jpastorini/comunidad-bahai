@@ -88,7 +88,11 @@ export async function saveBulletinAction(formData: FormData) {
   }
 
   if (!error && notify) {
-    const recipients = await getLocalityMemberIds(session.locality.id);
+    // El Boletín es "solo creyentes" (047): compila la Fiesta y su RLS
+    // no lo muestra a un Amigo/a de la Fe, así que tampoco se le avisa.
+    const recipients = await getLocalityMemberIds(session.locality.id, {
+      bahaiOnly: true,
+    });
     await sendPushToUsers(recipients, {
       title: "Nuevo boletín de la Asamblea",
       body: title,

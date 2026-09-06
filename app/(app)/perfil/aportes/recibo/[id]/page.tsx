@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { GoldHeader } from "@/components/GoldHeader";
-import { requireMember } from "@/lib/auth";
+import { requireBahai } from "@/lib/auth";
 import { getMyReceipt } from "@/lib/my-contributions";
 import { receiptAssets } from "@/lib/receipt-assets";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -19,7 +19,7 @@ export default async function MiReciboPage({
 }: {
   params: { id: string };
 }) {
-  const session = await requireMember(`/perfil/aportes/recibo/${params.id}`);
+  const session = await requireBahai(`/perfil/aportes/recibo/${params.id}`);
   const supabase = createSupabaseServer();
 
   const receipt = await getMyReceipt(supabase, params.id);

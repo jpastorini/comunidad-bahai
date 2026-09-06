@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { GoldHeader } from "@/components/GoldHeader";
 import { IconChevronRight } from "@/components/Icons";
-import { requireMember } from "@/lib/auth";
+import { requireBahai } from "@/lib/auth";
 import { getMyContributions, type MyContribution } from "@/lib/my-contributions";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { addMoney, formatMoney } from "@/lib/treasury-format";
@@ -23,7 +23,7 @@ export default async function MisAportesPage({
 }: {
   searchParams: { year?: string };
 }) {
-  const session = await requireMember("/perfil/aportes");
+  const session = await requireBahai("/perfil/aportes");
   const supabase = createSupabaseServer();
 
   const all = await getMyContributions(supabase);

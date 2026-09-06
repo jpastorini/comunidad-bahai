@@ -5,17 +5,27 @@ import QRCode from "qrcode";
 import { ConfirmSubmit } from "./confirm-submit";
 
 /**
- * Tarjeta del link de invitación de la localidad: compartir/copiar el
- * link, ver el QR (para imprimir y llevar a la Fiesta) y regenerarlo
- * si se filtró. El link incorpora automáticamente a quien lo abre.
+ * Tarjeta de UN link de invitación de la localidad: compartir/copiar el
+ * link, ver el QR (para imprimir) y regenerarlo si se filtró. El link
+ * incorpora automáticamente a quien lo abre. Hay dos por localidad
+ * (047): el de creyentes y el de Amigos de la Fe; `which` le dice al
+ * action cuál regenerar.
  */
 export function InviteCard({
+  which,
   path,
   localityName,
+  title,
+  description,
+  qrHint,
   regenerateAction,
 }: {
+  which: "creyentes" | "amigos";
   path: string;
   localityName: string;
+  title: string;
+  description: string;
+  qrHint: string;
   regenerateAction: (formData: FormData) => Promise<void>;
 }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -83,12 +93,10 @@ export function InviteCard({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="font-display text-[16px] font-semibold text-dark">
-            Link de invitación
+            {title}
           </div>
           <p className="mt-0.5 max-w-xl text-[12px] leading-relaxed text-muted">
-            Compartilo por WhatsApp o imprimí el QR. Quien lo abra entra con
-            su cuenta y queda incorporado a {localityName} automáticamente,
-            con una bienvenida guiada paso a paso.
+            {description}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -130,10 +138,7 @@ export function InviteCard({
             alt={`QR de invitación a ${localityName}`}
             className="h-52 w-52 rounded-lg bg-white p-2 shadow-card-soft"
           />
-          <p className="text-center text-[11px] text-muted">
-            Guardá la imagen (mantené presionado / clic derecho) para
-            imprimirla o proyectarla en la Fiesta.
-          </p>
+          <p className="text-center text-[11px] text-muted">{qrHint}</p>
         </div>
       )}
 
@@ -141,6 +146,7 @@ export function InviteCard({
         action={regenerateAction}
         className="mt-3 flex items-center justify-between gap-3 border-t border-black/[0.06] pt-3"
       >
+        <input type="hidden" name="which" value={which} />
         <span className="text-[11.5px] text-muted">
           ¿Se compartió donde no debía? Generá un link nuevo.
         </span>

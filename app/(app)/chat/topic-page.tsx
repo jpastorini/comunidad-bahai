@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getOptionalMember } from "@/lib/auth";
 import { chatFailure } from "@/lib/chat-errors";
 import { seedChat } from "@/lib/seed-data";
@@ -33,6 +34,10 @@ export async function ChatTopicPage({ topic }: { topic: ChatTopic }) {
   const session = await getOptionalMember();
   if (!session) {
     return <ChatGate topic={topic} />;
+  }
+  // El canal de Tesorería no existe para un Amigo/a de la Fe (047).
+  if (topic === "tesoreria" && !session.profile.is_bahai) {
+    redirect("/chat");
   }
 
   const supabase = createSupabaseServer();

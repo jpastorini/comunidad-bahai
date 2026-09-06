@@ -144,7 +144,7 @@ export default async function CalendarioPage({
 
         {/* Legend */}
         <div className="mb-3 flex flex-wrap gap-x-3 gap-y-1.5 text-[10.5px] text-muted">
-          <LegendDot kind="fiesta_19_dias" />
+          {session.profile.is_bahai && <LegendDot kind="fiesta_19_dias" />}
           <LegendDot kind="dia_sagrado_no_trabajo" />
           <LegendDot kind="dia_sagrado_con_trabajo" />
           <LegendDot kind="actividad_general" />

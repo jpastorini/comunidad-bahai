@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { GoldHeader } from "@/components/GoldHeader";
 import { CALENDARIO_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
-import { requireMember } from "@/lib/auth";
+import { requireBahai } from "@/lib/auth";
 import { celebrationDateFor, getBahaiMonth } from "@/lib/bahai-calendar";
 import { getFeasts } from "@/lib/data";
 
@@ -12,7 +12,7 @@ const WEEKDAYS_ES = [
 ];
 export default async function FiestasPage() {
   const [session, feasts] = await Promise.all([
-    requireMember("/fiestas"),
+    requireBahai("/fiestas"),
     getFeasts(),
   ]);
   const todayIso = new Date().toISOString().slice(0, 10);

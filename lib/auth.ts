@@ -394,3 +394,19 @@ export function ensureTreasuryTag(profile: Profile) {
     redirect("/admin?error=no-treasury-tag");
   }
 }
+
+/**
+ * Como requireMember, pero además exige ser creyente. Es el guard de las
+ * pantallas que un Amigo/a de la Fe no tiene (Tesorería, Fiestas, Mis
+ * aportes, chat con el tesorero): la RLS ya no le devolvería nada, esto
+ * evita mostrarle una pantalla vacía y lo manda al Inicio. Migración 047.
+ */
+export async function requireBahai(
+  redirectTo: string = "/"
+): Promise<MemberSession & { locality: Locality }> {
+  const session = await requireMember(redirectTo);
+  if (!session.profile.is_bahai) {
+    redirect("/");
+  }
+  return session;
+}

@@ -212,7 +212,58 @@ Lectura en `/mensajes/[id]` (`reader.tsx`); el admin nacional puede
 cargar texto completo y/o PDF en `/admin/mensajes`. ·
 **Mis aportes** (migración 046): el creyente ve sus contribuciones en
 `/perfil/aportes` y baja el recibo. Ver la sección "Mis aportes" más
-abajo.
+abajo. ·
+**Amigos de la Fe** (migración 047): la app también para quien no es
+bahá'í, sin Tesorería ni Fiesta de los 19 Días. Ver la sección "Amigos
+de la Fe" más abajo.
+
+## Amigos de la Fe (migración 047)
+
+La comunidad tiene dos tipos de persona: el **creyente** y el **Amigo/a
+de la Fe** (`profiles.is_bahai = false`), que usa la misma app menos dos
+zonas: la Tesorería (tablero, chat con el tesorero, Mis aportes,
+informes, presupuesto) y la Fiesta de los 19 Días (calendario, pantalla
+de Fiestas, fotos de la Fiesta, Boletín, y los comunicados marcados
+"solo creyentes"). Etiquetas en `CONDITION_LABELS` (`lib/types.ts`).
+
+Cuatro cosas que sostienen el diseño:
+
+- **La regla vive en la RLS, no en la UI.** Helper SQL `is_bahai(uid)`,
+  mismo molde que `is_admin`. Un amigo no lee una Fiesta ni un informe ni
+  por API directa. La UI solo esconde lo que la base no devolvería:
+  `bahaiOnly` en los segmentos de `SegmentedNav` (lee `useIsBahai()` del
+  contexto de `HeaderUser`), la tarjeta Fiestas del Inicio, la leyenda
+  del calendario, "Mis aportes" en el perfil. Las rutas que un amigo no
+  tiene usan `requireBahai()` (`lib/auth.ts`) y redirigen al Inicio.
+  Las funciones security definer (`treasury_progress`,
+  `my_contributions`, `my_receipt`, `mark_chat_seen`) llevan el guard
+  adentro, porque saltan la RLS.
+- **`is_bahai` es una condición que asigna la Asamblea**, como un tag:
+  está congelada para el propio usuario en `profiles_update_self` y la
+  constraint `profiles_amigo_sin_cargos` impide que un amigo sea admin o
+  tenga tags. Se asigna desde la ficha en `/admin/miembros` (desplegable
+  "Condición", disabled en la propia ficha y omitido del payload, igual
+  que el rol) o desde el **segundo link de invitación** por localidad
+  (`locality_invites.friends_token`). Por eso `applyInviteToken()` pasó
+  a escribir con service-role: el cliente del usuario ya no puede tocar
+  `is_bahai`. Quien entra sin invitación es creyente por default.
+- **Cada comunicado declara su audiencia** (`messages.audience`:
+  `'todos'` | `'creyentes'`). El default de la **columna** es `'todos'`
+  (los mensajes de la Casa Universal se insertan sin decir nada y son
+  para todo el mundo); el default del **formulario** de la Asamblea es
+  `'creyentes'`, porque mandarle la invitación a la Fiesta a un amigo es
+  el error caro y que se pierda un aviso general es el barato. El push
+  respeta lo mismo: `getLocalityMemberIds(id, { bahaiOnly })`, también
+  en el Boletín (que es "solo creyentes" siempre) y en el recordatorio
+  de una Fiesta cargada a mano en el calendario.
+- **Lo que no se puede tapar.** Los links públicos del informe
+  (`/i/<token>`) y del boletín (`/b/<token>`) no tienen login: quien
+  tenga el link lo ve, amigo o no. Decidido dejarlo así.
+
+⚠️ Hasta que corra la 047, el listado de `/admin/miembros` y el panel de
+comunicados fallan (`is_bahai` / `audience` no existen), y
+`resolveInviteToken()` no encuentra ningún link. No desplegar sin
+aplicar la migración antes.
 
 ## Mis aportes (migración 046)
 

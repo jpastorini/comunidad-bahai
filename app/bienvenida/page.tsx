@@ -18,6 +18,7 @@ export default async function BienvenidaPage() {
     <WelcomeWizard
       firstName={firstName}
       localityName={session.locality.name}
+      isBahai={session.profile.is_bahai}
     />
   );
 }

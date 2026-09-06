@@ -14,7 +14,15 @@ export type Message = {
   pdf_url?: string | null;
   /** Imagen de invitación adjunta (URL pública desde Supabase Storage). */
   image_url?: string | null;
+  /**
+   * Quién lo lee: 'todos' (creyentes y amigos de la Fe) o 'creyentes'
+   * (p. ej. la invitación a la Fiesta). La RLS lo aplica; el push lo
+   * respeta. Migración 047.
+   */
+  audience?: MessageAudience;
 };
+
+export type MessageAudience = "todos" | "creyentes";
 
 /**
  * Canal del chat. La conversación es una por (creyente, tema): a la
@@ -88,8 +96,21 @@ export type Profile = {
   prayer_reminder_enabled: boolean;
   /** Aviso de las 8:00 con la Lectura de hoy. Prendido por defecto. */
   daily_quote_push_enabled: boolean;
+  /**
+   * false = "Amigo/a de la Fe": persona que no es bahá'í y usa la app
+   * sin Tesorería ni Fiesta de los 19 Días (migración 047). Lo asigna la
+   * Asamblea o el link de invitación para amigos; el propio usuario no
+   * puede cambiarlo. Un amigo es siempre role='member' y sin tags.
+   */
+  is_bahai: boolean;
   created_at: string;
 };
+
+/** Etiquetas visibles de la condición en la comunidad. */
+export const CONDITION_LABELS = {
+  bahai: "Creyente",
+  amigo: "Amigo/a de la Fe",
+} as const;
 
 /**
  * Etiquetas visibles de los roles. Los valores en la base de datos siguen

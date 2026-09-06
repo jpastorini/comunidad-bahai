@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { EventGallery } from "@/components/gallery/EventGallery";
 import { GoldHeader } from "@/components/GoldHeader";
 import { getOptionalMember } from "@/lib/auth";
@@ -31,6 +31,9 @@ export default async function FeastDetailPage({
     getOptionalMember(),
   ]);
 
+  // Un Amigo/a de la Fe no tiene Fiesta (047): la RLS ya devolvió null,
+  // pero el destino correcto es el Inicio, no un 404.
+  if (session && !session.profile.is_bahai) redirect("/");
   if (!feast) notFound();
 
   const month = getBahaiMonth(feast.bahai_month_index);

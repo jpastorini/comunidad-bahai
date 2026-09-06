@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BahaiStar } from "@/components/BahaiStar";
 import { getOptionalMember } from "@/lib/auth";
-import { resolveInviteToken } from "@/lib/invites";
+import { resolveInviteToken, type InviteAudience } from "@/lib/invites";
 
 // Página PÚBLICA (sin login): es el link/QR que la Asamblea comparte.
 // Diseñada para gente mayor: un solo mensaje, un solo botón grande.
@@ -41,6 +41,7 @@ export default async function InvitacionPage({
             <ValidInvite
               token={params.token}
               localityName={invite.localityName}
+              audience={invite.audience}
               memberState={
                 !session
                   ? "anonymous"
@@ -81,10 +82,13 @@ function InvalidInvite() {
 function ValidInvite({
   token,
   localityName,
+  audience,
   memberState,
 }: {
   token: string;
   localityName: string;
+  /** Link de creyentes o de Amigos de la Fe (047): cambia el texto. */
+  audience: InviteAudience;
   memberState: "anonymous" | "no-locality" | "same-locality" | "other-locality";
 }) {
   if (memberState === "same-locality") {
@@ -142,9 +146,9 @@ function ValidInvite({
         Comunidad Bahá'í de {localityName}
       </h1>
       <p className="mx-auto mt-4 max-w-sm font-body text-[15px] leading-relaxed text-white/85">
-        Tu Asamblea te invita a la app de la comunidad: comunicados,
-        calendario de Fiestas y actividades, fotos y más — todo en un
-        solo lugar.
+        {audience === "amigos"
+          ? "La comunidad te invita a su app: comunicados, calendario de actividades y Días Sagrados, lecturas, fotos y más — todo en un solo lugar."
+          : "Tu Asamblea te invita a la app de la comunidad: comunicados, calendario de Fiestas y actividades, fotos y más — todo en un solo lugar."}
       </p>
       <a
         href={`/invitacion/${token}/comenzar`}

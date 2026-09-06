@@ -5,7 +5,7 @@ import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { BudgetReportShare } from "@/components/treasury/BudgetReportShare";
 import { MonthlyReportShare } from "@/components/treasury/MonthlyReportShare";
 import { ProgressBoard } from "@/components/treasury/ProgressBoard";
-import { requireMember } from "@/lib/auth";
+import { requireBahai } from "@/lib/auth";
 import { getTreasury } from "@/lib/data";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/treasury-ledger";
@@ -18,7 +18,7 @@ import { CommitmentSection } from "./commitment-section";
 export const revalidate = 60;
 
 export default async function TesoreriaPage() {
-  const session = await requireMember("/tesoreria");
+  const session = await requireBahai("/tesoreria");
   const t = await getTreasury();
 
   const supabase = createSupabaseServer();

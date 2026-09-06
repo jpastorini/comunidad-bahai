@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getLocalityMemberIds, sendPushToUsers } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
+import type { MessageAudience } from "@/lib/types";
 
 const BUCKET = "comunicados";
 
@@ -42,6 +43,12 @@ export async function upsertComunicadoAction(formData: FormData) {
       ? excerptInput
       : (fullText ?? subject ?? title ?? "").trim().slice(0, 160);
 
+  // Audiencia (047): 'todos' incluye a los Amigos de la Fe; cualquier
+  // otro valor colapsa a 'creyentes', que es el lado seguro (la
+  // invitación a la Fiesta no puede llegarle a quien no es bahá'í).
+  const audience: MessageAudience =
+    formData.get("audience") === "todos" ? "todos" : "creyentes";
+
   const payload: Record<string, unknown> = {
     date: formData.get("date") as string,
     title,
@@ -50,6 +57,7 @@ export async function upsertComunicadoAction(formData: FormData) {
     full_text: fullText,
     is_new: formData.get("is_new") === "on",
     source: "asamblea_local",
+    audience,
   };
 
   if (!payload.date || !payload.title) {
@@ -84,10 +92,12 @@ export async function upsertComunicadoAction(formData: FormData) {
         .from("messages")
         .insert({ ...payload, locality_id: session.locality.id });
 
-  // Push solo al PUBLICAR uno nuevo (no al editar), a todos los miembros de
-  // la localidad — incluido quien publica, sirve como confirmación.
+  // Push solo al PUBLICAR uno nuevo (no al editar), a la audiencia del
+  // comunicado — incluido quien publica, sirve como confirmación.
   if (!id && !error) {
-    const recipients = await getLocalityMemberIds(session.locality.id);
+    const recipients = await getLocalityMemberIds(session.locality.id, {
+      bahaiOnly: audience === "creyentes",
+    });
     await sendPushToUsers(recipients, {
       title: "Nuevo comunicado",
       body: title,

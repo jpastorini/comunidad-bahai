@@ -60,7 +60,7 @@ export default async function HomePage() {
           topic={citaDelDia.topic}
           dateLabel={civilDateLabel()}
         />
-        <SectionGrid badges={badges} />
+        <SectionGrid badges={badges} isBahai={session.profile.is_bahai} />
         <ChatDutyCard duties={chatDuty} />
         <UpcomingEvents events={upcoming} />
         <FeaturedPhotos photos={featuredPhotos} />

@@ -79,14 +79,24 @@ export async function sendPushToUsers(
 /** IDs de TODOS los miembros de una localidad (para avisar un comunicado
  *  nuevo). Usa service-role para no chocar con RLS de profiles. */
 export async function getLocalityMemberIds(
-  localityId: string
+  localityId: string,
+  opts: {
+    /**
+     * Solo creyentes (047): lo que un Amigo/a de la Fe no puede leer
+     * tampoco se le avisa — comunicados "solo creyentes", Boletín,
+     * recordatorio de una Fiesta cargada a mano en el calendario.
+     */
+    bahaiOnly?: boolean;
+  } = {}
 ): Promise<string[]> {
   const supabase = createSupabaseAdmin();
   if (!supabase) return [];
-  const { data } = await supabase
+  let query = supabase
     .from("profiles")
     .select("id")
     .eq("locality_id", localityId);
+  if (opts.bahaiOnly) query = query.eq("is_bahai", true);
+  const { data } = await query;
   return ((data ?? []) as Array<{ id: string }>).map((d) => d.id);
 }
 

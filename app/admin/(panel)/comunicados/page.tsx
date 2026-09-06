@@ -113,6 +113,19 @@ export default async function AdminComunicadosPage() {
             },
           },
           {
+            key: "audience",
+            label: "Audiencia",
+            width: "110px",
+            render: (m) =>
+              m.audience === "todos" ? (
+                <span className="rounded bg-green/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-green">
+                  Todos
+                </span>
+              ) : (
+                <span className="text-[11px] text-muted">Creyentes</span>
+              ),
+          },
+          {
             key: "new",
             label: "Nuevo",
             width: "70px",

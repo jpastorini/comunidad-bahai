@@ -3,6 +3,7 @@ import {
   Card,
   Checkbox,
   Field,
+  Select,
   TextArea,
   TextInput,
 } from "@/components/admin/ui";
@@ -49,6 +50,26 @@ export function ComunicadoForm({ comunicado }: Props) {
               defaultValue={comunicado?.title ?? ""}
               placeholder="Convocatoria a la Fiesta de 19 días"
             />
+          </Field>
+        </div>
+
+        {/* Audiencia (047). Por defecto "solo creyentes": la app también
+            la usan Amigos de la Fe, y la invitación a la Fiesta no puede
+            llegarles. Incluirlos es una decisión explícita por comunicado. */}
+        <div className="mt-4">
+          <Field
+            label="Quién lo recibe"
+            name="audience"
+            hint="Los Amigos de la Fe solo ven (y reciben el aviso de) los comunicados marcados para toda la comunidad."
+          >
+            <Select
+              id="audience"
+              name="audience"
+              defaultValue={comunicado?.audience ?? "creyentes"}
+            >
+              <option value="creyentes">Solo creyentes</option>
+              <option value="todos">Toda la comunidad, incluidos Amigos de la Fe</option>
+            </Select>
           </Field>
         </div>
 

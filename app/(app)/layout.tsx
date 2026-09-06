@@ -40,6 +40,7 @@ export default async function AppLayout({
           avatarUrl: session.profile.avatar_url,
           fullName: session.profile.full_name,
           unreadCount: unreadNotifs,
+          isBahai: session.profile.is_bahai,
         }}
       >
         {children}

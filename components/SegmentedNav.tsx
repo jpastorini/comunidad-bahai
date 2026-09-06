@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useIsBahai } from "./HeaderUser";
 
 export type SegmentItem = {
   href: string;
   label: string;
   /** Match by prefix (para sub-rutas como /fiestas/[id]); default exacto. */
   prefix?: string;
+  /** Solo para creyentes: un Amigo/a de la Fe no ve este segmento (047). */
+  bahaiOnly?: boolean;
 };
 
 /**
@@ -17,6 +20,8 @@ export type SegmentItem = {
  */
 export function SegmentedNav({ items }: { items: SegmentItem[] }) {
   const pathname = usePathname();
+  const isBahai = useIsBahai();
+  const visible = isBahai ? items : items.filter((i) => !i.bahaiOnly);
 
   return (
     <div className="shrink-0 px-4 pb-2 pt-3">
@@ -24,7 +29,7 @@ export function SegmentedNav({ items }: { items: SegmentItem[] }) {
         className="flex gap-1 rounded-full bg-black/[0.04] p-1"
         aria-label="Secciones"
       >
-        {items.map((item) => {
+        {visible.map((item) => {
           const isActive = item.prefix
             ? pathname.startsWith(item.prefix)
             : pathname === item.href;
@@ -59,20 +64,20 @@ export const AEL_SEGMENTS: SegmentItem[] = [
   { href: "/comunicados", label: "Comunicados", prefix: "/comunicados" },
   { href: "/boletin-local", label: "Boletín", prefix: "/boletin-local" },
   { href: "/chat", label: "Chat", prefix: "/chat" },
-  { href: "/tesoreria", label: "Tesorería", prefix: "/tesoreria" },
+  { href: "/tesoreria", label: "Tesorería", prefix: "/tesoreria", bahaiOnly: true },
 ];
 
 /** Canales del chat: a la Secretaría se le escribe de todo, al tesorero se
  *  le avisa del aporte hecho por giro directo a la cuenta. */
 export const CHAT_SEGMENTS: SegmentItem[] = [
   { href: "/chat", label: "Secretaría" },
-  { href: "/chat/tesoreria", label: "Tesorería", prefix: "/chat/tesoreria" },
+  { href: "/chat/tesoreria", label: "Tesorería", prefix: "/chat/tesoreria", bahaiOnly: true },
 ];
 
 /** Items del hub Calendario (todo lo que ocurre en el tiempo). */
 export const CALENDARIO_SEGMENTS: SegmentItem[] = [
   { href: "/calendario", label: "Calendario", prefix: "/calendario" },
-  { href: "/fiestas", label: "Fiestas", prefix: "/fiestas" },
+  { href: "/fiestas", label: "Fiestas", prefix: "/fiestas", bahaiOnly: true },
   { href: "/dias-sagrados", label: "Días Sagrados", prefix: "/dias-sagrados" },
   { href: "/actividades", label: "Actividades", prefix: "/actividades" },
 ];

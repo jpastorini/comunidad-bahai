@@ -19,6 +19,7 @@ export async function updateMemberAction(formData: FormData) {
     can_manage_bulletin: boolean;
     full_name: string | null;
     role?: "member" | "admin";
+    is_bahai?: boolean;
   } = {
     can_respond_chat: formData.get("can_respond_chat") === "on",
     can_manage_treasury: formData.get("can_manage_treasury") === "on",
@@ -31,8 +32,32 @@ export async function updateMemberAction(formData: FormData) {
   // devolvía null y el ternario lo colapsaba a "member", así que guardar
   // tus propios tags te degradaba de Asamblea a creyente sin decir nada.
   // La regla "no cambiás tu propio rol" vive en el server, no en el markup.
+  //
+  // Lo mismo con la condición (047): el <Select> de "Condición" también
+  // viene disabled en la propia ficha (un miembro de la Asamblea es
+  // creyente por definición), así que se omite del payload.
   if (id !== session.user.id) {
     payload.role = formData.get("role") === "admin" ? "admin" : "member";
+    payload.is_bahai = formData.get("condition") !== "amigo";
+
+    // Un Amigo/a de la Fe no puede tener cargos. La base lo rechaza
+    // igual (constraint profiles_amigo_sin_cargos), pero el mensaje de
+    // un check constraint no le dice nada a quien está en el panel.
+    if (
+      !payload.is_bahai &&
+      (payload.role === "admin" ||
+        payload.can_respond_chat ||
+        payload.can_manage_treasury ||
+        payload.can_manage_bulletin)
+    ) {
+      setFlashToast({
+        tone: "error",
+        message:
+          "Un Amigo/a de la Fe no puede ser miembro de la Asamblea ni tener permisos especiales. Quitá el rol y los permisos, o marcalo como creyente.",
+      });
+      revalidatePath("/admin/miembros");
+      redirect("/admin/miembros");
+    }
   }
   const { error } = await supabase.from("profiles").update(payload).eq("id", id);
 
@@ -50,16 +75,21 @@ export async function updateMemberAction(formData: FormData) {
  * Regenera el link de invitación de la localidad: token nuevo, el
  * anterior (y su QR impreso) dejan de funcionar al instante.
  */
-export async function regenerateInviteAction(_formData: FormData) {
+export async function regenerateInviteAction(formData: FormData) {
   const session = await requireAdmin();
   const supabase = createSupabaseServer();
+
+  // Cuál de los dos links (047): el de creyentes o el de Amigos de la Fe.
+  // Cada uno se regenera por separado; el otro sigue valiendo.
+  const column =
+    formData.get("which") === "amigos" ? "friends_token" : "token";
 
   // Mismo formato que el default de la DB: 64 hex chars.
   const token = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "");
   const { error } = await supabase
     .from("locality_invites")
     .update({
-      token,
+      [column]: token,
       regenerated_at: new Date().toISOString(),
       regenerated_by: session.user.id,
     })

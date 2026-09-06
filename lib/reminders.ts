@@ -79,12 +79,16 @@ export async function sendTomorrowEventReminders(): Promise<{
   for (const ev of events) {
     if (!ev.locality_id) continue;
     const adminOnly = ev.kind === "reunion_ael";
-    const cacheKey = `${ev.locality_id}:${adminOnly ? "admin" : "all"}`;
+    // Una Fiesta cargada a mano en el calendario no existe para un
+    // Amigo/a de la Fe (047): tampoco se le recuerda.
+    const bahaiOnly = ev.kind === "fiesta_19_dias";
+    const audience = adminOnly ? "admin" : bahaiOnly ? "bahai" : "all";
+    const cacheKey = `${ev.locality_id}:${audience}`;
     let recipients = recipientsByKey.get(cacheKey);
     if (!recipients) {
       recipients = adminOnly
         ? await getLocalityAdminIds(ev.locality_id)
-        : await getLocalityMemberIds(ev.locality_id);
+        : await getLocalityMemberIds(ev.locality_id, { bahaiOnly });
       recipientsByKey.set(cacheKey, recipients);
     }
     await sendPushToUsers(recipients, {

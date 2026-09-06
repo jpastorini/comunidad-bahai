@@ -5,7 +5,12 @@ import { IconChevronRight, IconTesoreria } from "@/components/Icons";
 import { requireMember } from "@/lib/auth";
 import { cancelLocalityChangeAction } from "@/app/seleccionar-localidad/actions";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { ROLE_LABELS, type EventPhoto, type LocalityChangeRequest } from "@/lib/types";
+import {
+  CONDITION_LABELS,
+  ROLE_LABELS,
+  type EventPhoto,
+  type LocalityChangeRequest,
+} from "@/lib/types";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { PushToggle } from "@/components/PushToggle";
 import { DevotionalToggle } from "@/components/DevotionalToggle";
@@ -161,7 +166,7 @@ export default async function ProfilePage() {
               </div>
             )}
             <Field
-              label="Creyente desde"
+              label={session.profile.is_bahai ? "Creyente desde" : "En la comunidad desde"}
               value={new Date(session.profile.created_at).toLocaleDateString(
                 "es-MX",
                 { year: "numeric", month: "long" }
@@ -202,6 +207,7 @@ export default async function ProfilePage() {
         {/* Mis aportes: las contribuciones registradas a nombre de la
             persona, con su recibo. La lista sale de una función acotada
             (046); el libro sigue siendo del tesorero. */}
+        {session.profile.is_bahai && (
         <Link
           href="/perfil/aportes"
           className="tap mb-5 flex items-center justify-between rounded-2xl bg-card px-4 py-3.5 shadow-card-soft"
@@ -219,6 +225,7 @@ export default async function ProfilePage() {
           </div>
           <IconChevronRight size={14} className="text-muted" />
         </Link>
+        )}
 
         {/* Mis fotos */}
         <MyPhotosSection
@@ -332,6 +339,12 @@ function buildRoleChips(
   profile: Awaited<ReturnType<typeof requireMember>>["profile"]
 ) {
   const chips: { label: string; className: string }[] = [];
+  if (!profile.is_bahai) {
+    chips.push({
+      label: CONDITION_LABELS.amigo,
+      className: "bg-green/15 text-green",
+    });
+  }
   if (profile.is_national_admin) {
     chips.push({
       label: "Nacional",

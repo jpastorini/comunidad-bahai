@@ -22,6 +22,8 @@ type Props = {
     chat_has_unseen?: boolean;
     comunicados_has_unseen?: boolean;
   };
+  /** false = Amigo/a de la Fe: sin el acceso a Fiestas (047). */
+  isBahai?: boolean;
 };
 
 /**
@@ -29,11 +31,18 @@ type Props = {
  * surfacea destinos de alta intención o que quedan a 2 toques dentro de
  * un hub (Chat y Comunicados viven en AEL; Fiestas vive en Calendario).
  */
-export function SectionGrid({ badges }: Props) {
+export function SectionGrid({ badges, isBahai = true }: Props) {
   const TERRA = "#2A3F8F";
   const AMBER = "#7E44B8";
   const GOLD = "#96790E";
   const GREEN = "#6A8B5F";
+
+  const fiestas: SectionItem = {
+    href: "/fiestas",
+    title: "Fiestas",
+    Icon: IconCalendario,
+    color: GREEN,
+  };
 
   const sections: SectionItem[] = [
     {
@@ -56,12 +65,8 @@ export function SectionGrid({ badges }: Props) {
       color: TERRA,
       hasUnseen: badges?.comunicados_has_unseen ?? false,
     },
-    {
-      href: "/fiestas",
-      title: "Fiestas",
-      Icon: IconCalendario,
-      color: GREEN,
-    },
+    // Un Amigo/a de la Fe no tiene Fiesta: la grilla queda de tres.
+    ...(isBahai ? [fiestas] : []),
   ];
 
   return (
@@ -69,7 +74,9 @@ export function SectionGrid({ badges }: Props) {
       <h2 className="mb-2 px-1 text-[13px] font-semibold text-dark">
         Accesos rápidos
       </h2>
-      <div className="grid grid-cols-4 gap-2">
+      <div
+        className={`grid gap-2 ${sections.length === 3 ? "grid-cols-3" : "grid-cols-4"}`}
+      >
         {sections.map((s) => (
           <SectionCard key={s.href} {...s} />
         ))}

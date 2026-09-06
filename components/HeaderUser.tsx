@@ -9,6 +9,12 @@ export type HeaderUser = {
   avatarUrl: string | null;
   fullName: string | null;
   unreadCount: number;
+  /**
+   * false = Amigo/a de la Fe (047): la navegación esconde Tesorería y
+   * Fiestas. Va por contexto porque quien lo necesita (SegmentedNav) es
+   * un componente cliente al que todas las páginas le pasan constantes.
+   */
+  isBahai: boolean;
 };
 
 /**
@@ -32,6 +38,15 @@ export function HeaderUserProvider({
       {children}
     </HeaderUserContext.Provider>
   );
+}
+
+/**
+ * ¿La persona logueada es creyente? Fuera del provider (modo demo, sin
+ * sesión) devuelve true: ahí no hay nada que esconder.
+ */
+export function useIsBahai(): boolean {
+  const user = useContext(HeaderUserContext);
+  return user?.isBahai ?? true;
 }
 
 /**

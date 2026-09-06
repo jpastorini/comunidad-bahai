@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/format";
 import { getOrCreateLocalityInvite } from "@/lib/invites";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import {
+  CONDITION_LABELS,
   ROLE_LABELS,
   type LocalityChangeRequest,
   type Profile,
@@ -28,11 +29,11 @@ export default async function AdminMiembrosPage() {
   const session = await requireAdmin();
   const supabase = createSupabaseServer();
 
-  const [{ data }, { data: requestRows }, inviteToken] = await Promise.all([
+  const [{ data }, { data: requestRows }, invite] = await Promise.all([
     supabase
       .from("profiles")
       .select(
-        "id, full_name, email, role, can_respond_chat, can_manage_treasury, can_manage_bulletin, locality_id, disabled_at, created_at"
+        "id, full_name, email, role, can_respond_chat, can_manage_treasury, can_manage_bulletin, is_bahai, locality_id, disabled_at, created_at"
       )
       .eq("locality_id", session.locality.id)
       .order("role", { ascending: false })
@@ -112,11 +113,28 @@ export default async function AdminMiembrosPage() {
         </div>
       )}
 
-      {inviteToken && (
-        <div className="mb-4">
+      {invite && (
+        <div className="mb-4 grid gap-3">
           <InviteCard
-            path={`/invitacion/${inviteToken}`}
+            which="creyentes"
+            path={`/invitacion/${invite.token}`}
             localityName={session.locality.name}
+            title="Link de invitación para creyentes"
+            description={`Compartilo por WhatsApp o imprimí el QR. Quien lo abra entra con su cuenta y queda incorporado a ${session.locality.name} automáticamente, con una bienvenida guiada paso a paso.`}
+            qrHint="Guardá la imagen (mantené presionado / clic derecho) para imprimirla o proyectarla en la Fiesta."
+            regenerateAction={regenerateInviteAction}
+          />
+          {/* Segundo link (047): quien entra por acá queda como Amigo/a
+              de la Fe, sin Tesorería ni Fiesta de los 19 Días. Si un
+              amigo entra por el link de creyentes, se corrige en su
+              ficha con el desplegable "Condición". */}
+          <InviteCard
+            which="amigos"
+            path={`/invitacion/${invite.friendsToken}`}
+            localityName={session.locality.name}
+            title="Link de invitación para Amigos de la Fe"
+            description={`Para quienes no son bahá'ís. Quien lo abra queda incorporado a ${session.locality.name} como Amigo/a de la Fe: ve la app entera menos la Tesorería, la Fiesta de los 19 Días y los comunicados marcados "solo creyentes".`}
+            qrHint="Guardá la imagen para imprimirla o compartirla en una reunión devocional o una clase."
             regenerateAction={regenerateInviteAction}
           />
         </div>
@@ -128,7 +146,7 @@ export default async function AdminMiembrosPage() {
             // La key incluye los campos editables: si el server devuelve datos
             // nuevos tras guardar, la tarjeta se remonta y los inputs no
             // controlados (nombre, rol, checkboxes) reflejan el valor real.
-            key={`${p.id}:${p.full_name}:${p.role}:${p.can_respond_chat}:${p.can_manage_treasury}:${p.can_manage_bulletin}`}
+            key={`${p.id}:${p.full_name}:${p.role}:${p.is_bahai}:${p.can_respond_chat}:${p.can_manage_treasury}:${p.can_manage_bulletin}`}
             profile={p}
             isMe={p.id === session.user.id}
           />
@@ -231,12 +249,27 @@ function MemberCard({ profile, isMe }: { profile: Profile; isMe: boolean }) {
             </Field>
           </div>
 
-          <Field label="Rol" name="role">
-            <Select name="role" defaultValue={profile.role} disabled={isMe}>
-              <option value="member">{ROLE_LABELS.member}</option>
-              <option value="admin">{ROLE_LABELS.admin}</option>
-            </Select>
-          </Field>
+          <div className="grid gap-3">
+            <Field label="Rol" name="role">
+              <Select name="role" defaultValue={profile.role} disabled={isMe}>
+                <option value="member">{ROLE_LABELS.member}</option>
+                <option value="admin">{ROLE_LABELS.admin}</option>
+              </Select>
+            </Field>
+            {/* Condición (047). Un Amigo/a de la Fe usa la app sin
+                Tesorería ni Fiesta. Disabled en la propia ficha: el
+                action lo omite del payload, igual que el rol. */}
+            <Field label="Condición" name="condition">
+              <Select
+                name="condition"
+                defaultValue={profile.is_bahai ? "bahai" : "amigo"}
+                disabled={isMe}
+              >
+                <option value="bahai">{CONDITION_LABELS.bahai}</option>
+                <option value="amigo">{CONDITION_LABELS.amigo}</option>
+              </Select>
+            </Field>
+          </div>
 
           <div className="flex flex-col gap-2 md:col-span-3">
             <div className="grid gap-3 md:grid-cols-2">
