@@ -21,7 +21,7 @@ export function AdminShell({ profile, locality, children, toast }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
-    <div className="min-h-[100dvh] bg-bg">
+    <div className="min-h-[calc(100dvh/var(--ui-zoom,1))] bg-bg">
       <Toaster toast={toast ?? null} />
       {/* Mobile top bar.
           paddingTop con safe-area: en la PWA instalada el status bar es

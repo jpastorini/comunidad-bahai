@@ -21,7 +21,7 @@ export default async function InvitacionPage({
   const session = invite ? await getOptionalMember() : null;
 
   return (
-    <div className="relative flex min-h-[100dvh] flex-col overflow-hidden bg-gold-grad">
+    <div className="relative flex min-h-[calc(100dvh/var(--ui-zoom,1))] flex-col overflow-hidden bg-gold-grad">
       <div className="pointer-events-none absolute -right-20 -top-24 opacity-[0.07]">
         <BahaiStar size={300} color="#fff" />
       </div>

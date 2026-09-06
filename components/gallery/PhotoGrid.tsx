@@ -241,7 +241,7 @@ function Lightbox({
 
       {/* Foto: swipe entre fotos a escala 1, pinch/doble toque agranda a
           pantalla completa (ver ZoomableImage). */}
-      <div className="relative shrink-0" style={{ height: "min(45vh, 420px)" }}>
+      <div className="relative shrink-0" style={{ height: "min(calc(45vh / var(--ui-zoom, 1)), 420px)" }}>
         <ZoomableImage
           src={photo.public_url}
           alt={photo.caption ?? "Foto del evento"}

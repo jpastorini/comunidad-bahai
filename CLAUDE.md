@@ -207,6 +207,18 @@ lugar con comentarios. El swipe entre fotos solo actúa a escala 1; en PC,
 doble clic y rueda. ⚠️ El transform se aplica al `<img>` por ref, sin
 pasar por React en cada movimiento: re-renderizar el lightbox 60 veces
 por segundo se siente pegajoso en celulares viejos ·
+**Tamaño de letra global** (`lib/ui-zoom.ts`, selector `UiZoomControl`
+en `/perfil`, sección "Pantalla"): tres pasos (100/115/130 %) con `zoom`
+en `<html>`, no font-size, porque hay ~870 clases con px fijos y porque
+agrandar solo el texto dentro de botones que no crecen rompe más de lo
+que arregla. Preferencia POR DISPOSITIVO en la cookie `cb_ui_zoom` (un
+año), que el layout raíz lee en el servidor para renderizar ya escalado.
+El control de lecturas (`ReadingSize`) se suma al global.
+⚠️ **`zoom` también escala las unidades de viewport y `env()`**: `100dvh`
+a zoom 1.3 mide 130 % de la pantalla. Todo vh/dvh de la app va dividido
+por `var(--ui-zoom, 1)` (`calc(100dvh/var(--ui-zoom,1))`), igual que
+`--safe-top/--safe-bottom`. Si agregás una altura en vh, dividila o el
+shell desborda en "Grande" ·
 **Vida devocional**: "Lectura de hoy" (cita de los Escritos Sagrados, la
 misma para toda la comunidad cada día, determinística por fecha — sin tabla
 ni estado, ver `lib/citas.ts`; corpus de 991 citas en `public/citas.json`

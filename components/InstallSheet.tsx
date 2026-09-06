@@ -176,7 +176,7 @@ export function InstallSheet() {
       onClick={mode === "done" ? finish : dismiss}
     >
       <div
-        className="cb-sheet-up max-h-[94dvh] w-full max-w-[480px] overflow-y-auto rounded-t-[28px] bg-card px-6 pt-7 text-center shadow-[0_-10px_40px_rgba(0,0,0,0.25)]"
+        className="cb-sheet-up max-h-[calc(94dvh/var(--ui-zoom,1))] w-full max-w-[480px] overflow-y-auto rounded-t-[28px] bg-card px-6 pt-7 text-center shadow-[0_-10px_40px_rgba(0,0,0,0.25)]"
         style={{ paddingBottom: "calc(var(--safe-bottom) + 24px)" }}
         onClick={(e) => e.stopPropagation()}
       >

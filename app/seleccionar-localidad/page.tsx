@@ -65,7 +65,7 @@ export default async function SeleccionarLocalidadPage({
   const isExistingMember = !!profile?.locality_id;
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-bg">
+    <div className="flex min-h-[calc(100dvh/var(--ui-zoom,1))] flex-col bg-bg">
       <header
         className="relative overflow-hidden bg-gold-grad px-6 pb-10"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 28px)" }}

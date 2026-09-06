@@ -753,7 +753,7 @@ function Income({ report }: { report: ReportDeckData }) {
             .map((t) => `${fmtAmount(t.amount, t.currency)} ${t.currency}`)
             .join("  ·  ")}
         >
-          <div className="cb-scroll max-h-[52vh] overflow-y-auto">
+          <div className="cb-scroll max-h-[calc(52vh/var(--ui-zoom,1))] overflow-y-auto">
             {s.receipts.map((r, i) => (
               <Row
                 key={`${r.number ?? "sn"}-${r.date}-${i}`}
@@ -823,7 +823,7 @@ function Expenses({ report }: { report: ReportDeckData }) {
             .map((t) => `${fmtAmount(t.amount, t.currency)} ${t.currency}`)
             .join("  ·  ")}
         >
-          <div className="cb-scroll max-h-[52vh] overflow-y-auto">
+          <div className="cb-scroll max-h-[calc(52vh/var(--ui-zoom,1))] overflow-y-auto">
             {s.expenseLines.map((l, i) => (
               <Row
                 key={`${l.date}-${i}`}
@@ -979,7 +979,7 @@ function BarChart({
       : "bg-gold/60 border-gold-dark";
 
   return (
-    <div className="cb-chart flex h-[38vh] min-h-[220px] w-full items-end gap-2 px-1 pt-6 sm:gap-4">
+    <div className="cb-chart flex h-[calc(38vh/var(--ui-zoom,1))] min-h-[220px] w-full items-end gap-2 px-1 pt-6 sm:gap-4">
       {data.map((d) => {
         // Un mínimo visible para que el mes en cero no desaparezca.
         const pct = max > 0 ? Math.max((d.value / max) * 100, d.value > 0 ? 4 : 0) : 0;

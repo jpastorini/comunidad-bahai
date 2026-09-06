@@ -12,6 +12,9 @@ import {
   type LocalityChangeRequest,
 } from "@/lib/types";
 import { InstallAppButton } from "@/components/InstallAppButton";
+import { UiZoomControl } from "@/components/UiZoomControl";
+import { UI_ZOOM_COOKIE, parseUiZoom } from "@/lib/ui-zoom";
+import { cookies } from "next/headers";
 import { PushToggle } from "@/components/PushToggle";
 import { DevotionalToggle } from "@/components/DevotionalToggle";
 import { AvatarEditor } from "./avatar-editor";
@@ -177,6 +180,16 @@ export default async function ProfilePage() {
 
         {/* Instalar app (se oculta si ya está instalada) */}
         <InstallAppButton />
+
+        {/* Tamaño de letra global: por dispositivo, en cookie (lib/ui-zoom.ts) */}
+        <div className="mb-5">
+          <h3 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Pantalla
+          </h3>
+          <UiZoomControl
+            initial={parseUiZoom(cookies().get(UI_ZOOM_COOKIE)?.value)}
+          />
+        </div>
 
         {/* Notificaciones push */}
         <div className="mb-5">

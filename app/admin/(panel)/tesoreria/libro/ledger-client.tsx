@@ -728,7 +728,7 @@ function Modal({
       onClick={onClose}
     >
       <div
-        className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-card p-4 shadow-card-elevated sm:rounded-2xl"
+        className="max-h-[calc(92dvh/var(--ui-zoom,1))] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-card p-4 shadow-card-elevated sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">

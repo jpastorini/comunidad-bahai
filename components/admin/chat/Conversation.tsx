@@ -155,7 +155,7 @@ export function Conversation({
     <>
       <div
         ref={scrollRef}
-        className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto rounded-2xl border border-black/[0.04] bg-card p-5 shadow-card md:p-6"
+        className="flex max-h-[calc(60vh/var(--ui-zoom,1))] flex-col gap-2 overflow-y-auto rounded-2xl border border-black/[0.04] bg-card p-5 shadow-card md:p-6"
       >
         {messages.length === 0 && (
           <div className="py-10 text-center text-[13px] text-muted">
