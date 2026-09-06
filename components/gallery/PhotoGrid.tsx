@@ -9,6 +9,7 @@ import type {
 import { formatDate } from "@/lib/format";
 import { CommentSection } from "./CommentSection";
 import { ReactionBar } from "./ReactionBar";
+import { ZoomableImage } from "./ZoomableImage";
 import { deleteEventPhotoAction } from "./photo-actions";
 
 type Props = {
@@ -206,20 +207,6 @@ function Lightbox({
   onPrev,
   onDelete,
 }: LightboxProps) {
-  const touchStartX = useRef<number | null>(null);
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current == null) return;
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    touchStartX.current = null;
-    const threshold = 50;
-    if (dx > threshold) onPrev();
-    else if (dx < -threshold) onNext();
-  };
-
   const hasPrev = index > 0;
   const hasNext = index < total - 1;
 
@@ -252,21 +239,15 @@ function Lightbox({
         </div>
       </div>
 
-      {/* Photo (swipe enabled here only) */}
-      <div
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        className="relative shrink-0"
-        style={{ height: "min(45vh, 420px)" }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+      {/* Foto: swipe entre fotos a escala 1, pinch/doble toque agranda a
+          pantalla completa (ver ZoomableImage). */}
+      <div className="relative shrink-0" style={{ height: "min(45vh, 420px)" }}>
+        <ZoomableImage
           src={photo.public_url}
           alt={photo.caption ?? "Foto del evento"}
-          className="h-full w-full select-none object-contain"
-          draggable={false}
-        />
-
+          onPrev={hasPrev ? onPrev : undefined}
+          onNext={hasNext ? onNext : undefined}
+        >
         {hasPrev && (
           <button
             type="button"
@@ -291,6 +272,7 @@ function Lightbox({
             </svg>
           </button>
         )}
+        </ZoomableImage>
       </div>
 
       {/* Caption + author */}

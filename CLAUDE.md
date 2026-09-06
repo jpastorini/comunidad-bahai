@@ -196,6 +196,17 @@ podés cerrar el navegador". iOS: pasos de Safari + botón "Ya la instalé"
 la esconde 3 días en `localStorage` (`cb-install-snooze-until`), sin
 límite de veces: la tarjeta `InstallAppButton` queda en `/perfil` como
 camino manual (se sacó del Inicio por redundante) ·
+**Pinch-zoom en las fotos** (`components/gallery/ZoomableImage.tsx`,
+dentro del `Lightbox` de `PhotoGrid.tsx`): el zoom del navegador sigue
+bloqueado en toda la app (`userScalable: false`, rompe el layout de la
+PWA), así que el gesto es propio, con Pointer Events y `touch-action:
+none`. Pinch o doble toque llevan la foto a pantalla completa (modo
+inmersivo, `z-[60]` sobre el lightbox) y escalan hasta 4x desde el punto
+tocado; volver a 1 (doble toque, achicar, ✕, Escape) la devuelve a su
+lugar con comentarios. El swipe entre fotos solo actúa a escala 1; en PC,
+doble clic y rueda. ⚠️ El transform se aplica al `<img>` por ref, sin
+pasar por React en cada movimiento: re-renderizar el lightbox 60 veces
+por segundo se siente pegajoso en celulares viejos ·
 **Vida devocional**: "Lectura de hoy" (cita de los Escritos Sagrados, la
 misma para toda la comunidad cada día, determinística por fecha — sin tabla
 ni estado, ver `lib/citas.ts`; corpus de 991 citas en `public/citas.json`
