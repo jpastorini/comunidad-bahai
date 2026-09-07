@@ -369,7 +369,12 @@ salidas, sin que nadie escriba un HTML a mano cada 19 días:
   fotos, a propósito: una imagen remota que falle rompería el PDF.
   ⚠️ Las TTF están en `public/fonts/` y viajan a la función por
   `outputFileTracingIncludes` (`next.config.mjs`); react-pdf va en
-  `serverComponentsExternalPackages`. Los nombres de meses llevan ḥ, ẕ,
+  `serverComponentsExternalPackages`. En ese mismo include van las
+  fuentes estándar de pdfkit (`node_modules/pdfkit/js/standard-fonts`):
+  pdfkit las carga con un require dinámico que el trace no sigue, y sin
+  ellas la función falla en Vercel con "Cannot find module
+  …/Helvetica.cjs" aunque en local ande. Si react-pdf falla en
+  producción y en local no, mirar primero ahí. Los nombres de meses llevan ḥ, ẕ,
   ṭ, ʻ, que Outfit no tiene: todo lo que pueda contener un nombre
   bahá'í va en Cormorant.
 

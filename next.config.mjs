@@ -29,8 +29,16 @@ const nextConfig = {
     // public/fonts en la función, porque en Vercel `public/` se sirve
     // desde el CDN y no está en el filesystem de la función.
     serverComponentsExternalPackages: ["@react-pdf/renderer"],
+    // ⚠️ pdfkit (dentro de react-pdf) carga las fuentes estándar de PDF
+    // (Helvetica, Courier…) con un require dinámico que el trace de Vercel
+    // no sigue: sin este include la función falla con "Cannot find module
+    // …/pdfkit/js/standard-fonts/Helvetica.cjs" aunque en local ande.
     outputFileTracingIncludes: {
-      "/programa/[id]/pdf": ["./public/fonts/**"],
+      "/programa/[id]/pdf": [
+        "./public/fonts/**",
+        "./node_modules/pdfkit/js/standard-fonts/**",
+        "./node_modules/pdfkit/js/data/**",
+      ],
     },
 
     // Cuánto vive en MEMORIA del navegador una pantalla ya visitada, antes
