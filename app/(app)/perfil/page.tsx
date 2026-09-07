@@ -191,9 +191,16 @@ export default async function ProfilePage() {
           />
         </div>
 
-        {/* Notificaciones push */}
+        {/* Notificaciones push: el camino manual; la hoja de avisos
+            (NotificationsSheet) es la que insiste con la app instalada. */}
         <div className="mb-5">
-          <PushToggle />
+          <h3 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Avisos
+          </h3>
+          <PushToggle
+            title="Avisos de la comunidad"
+            description="Comunicados, eventos, Lectura de hoy y respuestas del chat, aunque la app esté cerrada."
+          />
         </div>
 
         {/* Vida devocional — recordatorios personales */}

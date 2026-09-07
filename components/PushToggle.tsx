@@ -15,7 +15,15 @@ type State =
   | "denied"
   | "busy";
 
-export function PushToggle() {
+export function PushToggle({
+  title = "Notificaciones del chat",
+  description = "Recibí un aviso aunque la app esté cerrada.",
+}: {
+  /** Qué avisos son. En el perfil del creyente son todos los de la
+   *  comunidad; en las bandejas del panel, los del chat que atiende. */
+  title?: string;
+  description?: string;
+}) {
   const [state, setState] = useState<State>("loading");
 
   useEffect(() => {
@@ -83,15 +91,13 @@ export function PushToggle() {
   return (
     <div className="flex items-center justify-between gap-3 rounded-2xl bg-card px-4 py-3 shadow-card-soft">
       <div className="min-w-0">
-        <div className="text-[13px] font-semibold text-dark">
-          Notificaciones del chat
-        </div>
+        <div className="text-[13px] font-semibold text-dark">{title}</div>
         <div className="text-[11px] text-muted">
           {state === "denied"
             ? "Bloqueadas en el navegador. Habilitalas en los ajustes del sitio."
             : state === "enabled"
               ? "Activadas en este dispositivo."
-              : "Recibí un aviso aunque la app esté cerrada."}
+              : description}
         </div>
       </div>
       {state === "denied" ? null : state === "enabled" ? (

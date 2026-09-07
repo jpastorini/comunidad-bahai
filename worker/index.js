@@ -4,7 +4,46 @@
  * (se importa vía importScripts). Maneja Web Push:
  *   - "push": muestra la notificación del sistema.
  *   - "notificationclick": enfoca/abre la app en la URL del mensaje.
+ *   - "pushsubscriptionchange": el navegador rotó la suscripción; se
+ *     vuelve a suscribir con la misma clave y se registra en el servidor,
+ *     para que la persona no quede sin avisos sin enterarse.
  */
+
+self.addEventListener("pushsubscriptionchange", (event) => {
+  const oldSub = event.oldSubscription;
+  const key =
+    (event.newSubscription && event.newSubscription.options.applicationServerKey) ||
+    (oldSub && oldSub.options.applicationServerKey);
+  if (!key) return;
+
+  event.waitUntil(
+    (async () => {
+      const sub =
+        event.newSubscription ||
+        (await self.registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: key,
+        }));
+      // Las cookies de sesión viajan solas en same-origin; si la sesión
+      // venció, el endpoint devuelve 401 y la app lo repara al abrirse
+      // (NotificationsSheet → ensurePushSubscription).
+      await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sub.toJSON()),
+      });
+      if (oldSub && oldSub.endpoint !== sub.endpoint) {
+        await fetch("/api/push/unsubscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: oldSub.endpoint }),
+        });
+      }
+    })().catch((e) => {
+      console.error("[sw] pushsubscriptionchange:", e);
+    })
+  );
+});
 
 self.addEventListener("push", (event) => {
   let data = {};

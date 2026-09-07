@@ -2,6 +2,7 @@ import { ChatNotifier } from "@/components/ChatNotifier";
 import { DayChangeRefresh } from "@/components/DayChangeRefresh";
 import { HeaderUserProvider } from "@/components/HeaderUser";
 import { InstallSheet } from "@/components/InstallSheet";
+import { NotificationsSheet } from "@/components/NotificationsSheet";
 import { PhotoFab } from "@/components/PhotoFab";
 import { PresenceBeacon } from "@/components/PresenceBeacon";
 import { TabBar } from "@/components/TabBar";
@@ -55,6 +56,9 @@ export default async function AppLayout({
       <PhotoFab />
       {/* Hoja de instalación: solo en celular, sin la app instalada. */}
       <InstallSheet />
+      {/* Hoja de avisos: solo con la app instalada y sin push activado.
+          Con el permiso concedido, repara la suscripción en silencio. */}
+      <NotificationsSheet isBahai={session.profile.is_bahai} />
       <TabBar aelHasUnseen={aelHasUnseen} />
     </div>
   );

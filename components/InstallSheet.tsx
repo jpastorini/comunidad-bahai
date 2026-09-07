@@ -254,6 +254,11 @@ function DoneView({ onClose }: { onClose: () => void }) {
         Buscá el ícono de la app en tu pantalla de inicio. Ya podés cerrar el
         navegador: de ahora en más, abrila desde ahí.
       </p>
+      <p className="mx-auto mt-3 max-w-xs font-body text-[15px] leading-relaxed text-muted">
+        Al abrirla te va a pedir permiso para los avisos. Tocá{" "}
+        <strong className="text-dark">Permitir</strong>, así te llegan los
+        comunicados de tu comunidad.
+      </p>
       <PrimaryButton onClick={onClose}>Entendido</PrimaryButton>
     </>
   );

@@ -196,6 +196,27 @@ podés cerrar el navegador". iOS: pasos de Safari + botón "Ya la instalé"
 la esconde 3 días en `localStorage` (`cb-install-snooze-until`), sin
 límite de veces: la tarjeta `InstallAppButton` queda en `/perfil` como
 camino manual (se sacó del Inicio por redundante) ·
+**Hoja de avisos** (`components/NotificationsSheet.tsx`, mismo layout): la
+gemela de la anterior para el push. Sube sola cuando la app corre
+**instalada** (standalone) y el permiso de notificaciones está en
+"default"; con un botón grande "Activar avisos" que llama a
+`subscribeToPush()`. Existe porque el paso de avisos del asistente de
+bienvenida corre en el navegador, antes de instalar, y en iPhone el push
+solo funciona desde la app instalada: la primera apertura desde el ícono
+era justo el momento en que se podía pedir y no se pedía. Las dos hojas no
+se pisan (una actúa sin instalar, la otra instalada). Permiso "denied" →
+muestra cómo desbloquearlo en los ajustes del teléfono, por plataforma
+(el navegador no deja volver a preguntar). Permiso concedido → no se
+muestra y **repara en silencio**: `ensurePushSubscription()`
+(`lib/push-client.ts`) recrea la suscripción si el navegador la perdió y
+la vuelve a registrar en el servidor una vez por día
+(`cb-push-synced-day`); el SW además maneja `pushsubscriptionchange`
+(`worker/index.js`). "Ahora no" esconde 3 días (`cb-push-snooze-until`),
+sin límite. ⚠️ **No se puede activar por defecto**: el diálogo del sistema
+solo se abre desde un toque de la persona; lo único en nuestras manos es
+que el pedido sea inevitable y llegue en el momento correcto. Estado de
+push sin pedir nada: `getPushStatus()`. `isStandalone()` en
+`lib/standalone.ts` ·
 **Pinch-zoom en las fotos** (`components/gallery/ZoomableImage.tsx`,
 dentro del `Lightbox` de `PhotoGrid.tsx`): el zoom del navegador sigue
 bloqueado en toda la app (`userScalable: false`, rompe el layout de la
