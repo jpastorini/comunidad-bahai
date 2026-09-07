@@ -280,7 +280,73 @@ con sus pantallas adentro. Ver la sección "Navegación del panel" más abajo. �
 **Programa de la Fiesta** (migración 050): lo cargado en la Fiesta se
 proyecta como deck de diapositivas (`/programa/[id]`) y se baja como
 folleto PDF (`/programa/[id]/pdf`); las noticias pasaron a ser ítems. Ver
-la sección "Programa de la Fiesta" más abajo.
+la sección "Programa de la Fiesta" más abajo. ·
+**Encuestas** (migración 051): un comunicado puede llevar una pregunta
+para votar, como las de WhatsApp; un solo voto por persona, anonimato
+opcional garantizado por el modelo, informe para la Asamblea dentro del
+de lectura. Ver la sección "Encuestas" más abajo.
+
+## Encuestas (migración 051)
+
+La encuesta NO es una sección: es **un comunicado con una pregunta**.
+Se carga en el mismo formulario (`PollFields`, tarjeta "Pregunta para
+votar"), se ve como parte de la tarjeta en `/comunicados` (`PollBlock`)
+y hereda todo lo del comunicado: la audiencia (una encuesta en un
+comunicado "solo creyentes" es solo para creyentes, por la RLS de
+`messages`), el push al publicar ("La Asamblea pregunta: …"), el "visto"
+de la 048 y el informe de lectura. Una pregunta por comunicado, de 2 a
+10 opciones, "varias opciones" sí/no, "anónima" sí/no, cierre por fecha
+(fin del día civil de Montevideo) o a mano desde el informe.
+
+Tres reglas de producto, decididas con el usuario, y cómo se sostienen:
+
+- **Se vota una sola vez y no se cambia.** Lo único que escribe un voto
+  es la RPC `cast_vote(poll_id, option_ids[])`, security definer: no hay
+  policy de insert en `poll_votes` ni en `poll_participants`. La función
+  comprueba que la persona pueda leer la encuesta (`can_read_poll`, que
+  repite la regla de `messages_select_scope` porque la RLS no corre
+  adentro de un definer), que esté abierta, que las opciones sean de esa
+  encuesta y las que corresponden, y anota la participación; la PK de
+  `poll_participants` es el candado contra el doble voto. Votar cuenta
+  como haber visto el comunicado. En la tarjeta no se vota al toque: se
+  elige y se confirma con "Votar", porque un roce no puede ser un voto
+  irreversible.
+- **El anonimato es una garantía del modelo, no una policy.** En una
+  encuesta anónima `poll_votes.profile_id` va NULL y la fila no lleva
+  hora (para que no se cruce con `voted_at`); quién votó queda solo en
+  `poll_participants`, sin qué. No existe la fila que una persona y
+  opción, así que nadie —ni con acceso directo a la base— la reconstruye.
+  El precio: la persona no puede ver después qué eligió; la tarjeta lo
+  recuerda solo en ese dispositivo (`localStorage`, `cb-poll-<id>`) para
+  resaltarlo. En el informe de una anónima tampoco se lista quién falta
+  votar: con pocas personas, saber quién votó ya dice mucho.
+- **Los totales los ve todo el que puede leer el comunicado; los
+  nombres, solo la Asamblea.** Los totales salen por `poll_results()`
+  (definer, solo números) y se muestran a quien ya votó o a todos al
+  cierre; antes de votar se ve solo cuántos votaron, para no arrastrar.
+  "Quién votó qué" lo lee la Asamblea de `poll_votes` con la RLS de
+  admin, y solo existe en encuestas no anónimas.
+
+Con votos emitidos, la pregunta y las opciones quedan **congeladas** en
+el formulario (se muestran de solo lectura y no viajan; `savePoll()` en
+`actions.ts` solo toca `closes_at`). Sin votos se reescriben enteras
+(las opciones se borran y se insertan) y desmarcar la casilla borra la
+encuesta. El informe (`PollReportSection`, dentro de
+`/admin/comunicados/[id]/lectura`) muestra barras por opción con
+porcentaje sobre quienes votaron (en múltiple no suman 100),
+participación sobre la audiencia del comunicado, y las dos listas con
+nombre si no es anónima; se refresca solo con Realtime (`poll_votes` en
+la publicación, mismo `ReadReportRefresher`). La tabla de
+`/admin/comunicados` agrega "Encuesta: votaron N" bajo la barra de
+lectura.
+
+De paso quedó el **deep link del push**: el aviso de un comunicado nuevo
+abre `/comunicados#c-<id>` y `ScrollToHash` lleva la vista a esa tarjeta
+(la lista scrollea dentro de `.scroll-area`, el salto nativo no alcanza).
+
+⚠️ Hasta que corra la 051, guardar un comunicado con pregunta avisa "la
+encuesta no: falta aplicar la migración 051" (el comunicado se guarda) y
+las pantallas muestran los comunicados sin encuesta.
 
 ## Navegación del panel (leer antes de agregar una pantalla al admin)
 
@@ -977,13 +1043,14 @@ los PDF viajan tal cual (media factura llega por mail).
   tesorero. También falta una pantalla de contribuyentes para el tesorero
   (fusionar duplicados, desvincular); hoy solo se vincula desde el
   formulario.
-- **Lectura de comunicados: falta el deep-link del push.** La
-  notificación abre `/comunicados` y el "visto" depende de que la
-  tarjeta quede en pantalla; si el comunicado no es el primero de la
-  lista, el que llegó por el push tiene que scrollear. Un
-  `/comunicados#<id>` que haga scroll a la tarjeta lo resolvería. Y el
-  informe no sabe quién se sumó a la localidad DESPUÉS del comunicado:
-  cuenta como "no vio" a alguien que nunca fue destinatario.
+- **Lectura de comunicados: el informe no sabe quién se sumó a la
+  localidad DESPUÉS del comunicado**: cuenta como "no vio" (y como "no
+  votó") a alguien que nunca fue destinatario. El deep link del push ya
+  está (051).
+- **Encuestas: falta el recordatorio a quienes no votaron** (un push
+  solo para ellos desde el informe; en una anónima no se puede, porque
+  no se sabe quién falta) y mostrar el resultado como diapositiva en el
+  programa de la Fiesta.
 - **Uso de la app: falta el consolidado nacional.** Cada Asamblea ve su
   localidad; el admin nacional podría ver una tabla de todas (la RLS ya
   lo deja leer todo, es solo agrupar por `locality_id`). Y `usage_daily`

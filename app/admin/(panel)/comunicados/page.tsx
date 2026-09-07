@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Banner, Button, DataTable, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
 import { getReadCountsForMessages } from "@/lib/message-reads";
+import { getPollCountsForMessages } from "@/lib/polls";
 import { getLocalityPushReach } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { formatMessageDate } from "@/lib/format";
@@ -21,8 +22,12 @@ export default async function AdminComunicadosPage() {
   ]);
 
   const rows = (data ?? []) as Message[];
-  // Quién vio cada comunicado (048). `null` = la tabla no existe todavía.
-  const readCounts = await getReadCountsForMessages(rows, session.locality.id);
+  // Quién vio cada comunicado (048) y cuántos votaron su encuesta (051).
+  // `null` = la tabla no existe todavía.
+  const [readCounts, pollCounts] = await Promise.all([
+    getReadCountsForMessages(rows, session.locality.id),
+    getPollCountsForMessages(rows.map((m) => m.id)),
+  ]);
 
   return (
     <>
@@ -157,6 +162,15 @@ export default async function AdminComunicadosPage() {
                       {c.confirmed} confirmaron
                     </div>
                   )}
+                  {(() => {
+                    const p = pollCounts?.get(m.id);
+                    if (!p) return null;
+                    return (
+                      <div className="mt-0.5 text-[10px] font-semibold text-gold-dark">
+                        Encuesta{p.open ? "" : " cerrada"}: votaron {p.participants}
+                      </div>
+                    );
+                  })()}
                 </Link>
               );
             },

@@ -1,10 +1,12 @@
 import { ComunicadoCard } from "@/components/comunicados/ComunicadoCard";
+import { ScrollToHash } from "@/components/comunicados/ScrollToHash";
 import { GoldHeader } from "@/components/GoldHeader";
 import { IconSearch } from "@/components/Icons";
 import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { requireMember } from "@/lib/auth";
 import { getLocalAnnouncements } from "@/lib/data";
 import { getMyMessageReads, isNewForReader } from "@/lib/message-reads";
+import { getMyPollVotes, getPollResults, getPollsForMessages } from "@/lib/polls";
 import { markComunicadosSeenAction } from "./actions";
 
 export const revalidate = 60;
@@ -14,20 +16,26 @@ export default async function ComunicadosPage() {
     requireMember("/comunicados"),
     getLocalAnnouncements(),
   ]);
+  const ids = announcements.map((m) => m.id);
 
   // Apaga el punto de aviso de AEL — el miembro acaba de abrir Comunicados.
   // Y trae qué comunicados ya vio/confirmó esta persona (048): el badge
-  // "Nuevo" y el botón "Enterado/a" salen de ahí.
-  const [, reads] = await Promise.all([
+  // "Nuevo" y el botón "Enterado/a" salen de ahí. Las encuestas (051)
+  // vienen con la pregunta, lo que esta persona votó y los totales.
+  const [, reads, polls] = await Promise.all([
     markComunicadosSeenAction(session.user.id),
-    getMyMessageReads(
-      session.user.id,
-      announcements.map((m) => m.id)
-    ),
+    getMyMessageReads(session.user.id, ids),
+    getPollsForMessages(ids),
+  ]);
+  const pollIds = [...polls.values()].map((p) => p.id);
+  const [myVotes, results] = await Promise.all([
+    getMyPollVotes(session.user.id, pollIds),
+    getPollResults(pollIds),
   ]);
 
   return (
     <>
+      <ScrollToHash />
       <GoldHeader title="Asamblea Local" subtitle={session.locality.name} backHref="/" />
       <SegmentedNav items={AEL_SEGMENTS} />
       <div className="shrink-0 px-4 pb-1.5 pt-0.5">
@@ -50,6 +58,7 @@ export default async function ComunicadosPage() {
           <div className="flex flex-col gap-4">
             {announcements.map((m, i) => {
               const read = reads.get(m.id) ?? null;
+              const poll = polls.get(m.id) ?? null;
               return (
                 <ComunicadoCard
                   key={m.id}
@@ -57,6 +66,9 @@ export default async function ComunicadosPage() {
                   read={read}
                   isNew={isNewForReader(m, read ?? undefined)}
                   featured={i === 0}
+                  poll={poll}
+                  myVote={poll ? myVotes.get(poll.id) ?? null : null}
+                  pollResults={poll ? results.get(poll.id) ?? null : null}
                 />
               );
             })}

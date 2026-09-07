@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { getOptionalMember } from "@/lib/auth";
 import { civilDateISO } from "@/lib/citas";
+import { getPollResults, isSchemaMissing } from "@/lib/polls";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import type { PollResults } from "@/lib/types";
 
 /**
  * Marca los comunicados como vistos para este miembro, guardando el
@@ -110,4 +112,35 @@ export async function touchLastSeenAction(): Promise<void> {
     maxAge: 60 * 60 * 36,
     sameSite: "lax",
   });
+}
+
+// ─── Encuestas (migración 051) ─────────────────────────────────────
+
+/**
+ * Emite el voto por la RPC `cast_vote()`, la única puerta de escritura:
+ * una sola vez, sin cambiar, y sin nombre si la encuesta es anónima. No
+ * revalida rutas por la misma razón que las marcas de lectura; la
+ * tarjeta pasa a mostrar los totales que devuelve `poll_results()`.
+ */
+export async function castVoteAction(
+  pollId: string,
+  optionIds: string[]
+): Promise<{ ok: true; results: PollResults } | { ok: false; message: string }> {
+  const me = await getOptionalMember();
+  if (!me) return { ok: false, message: "Tenés que iniciar sesión para votar." };
+  const supabase = createSupabaseServer();
+  const { error } = await supabase.rpc("cast_vote", {
+    p_poll_id: pollId,
+    p_option_ids: optionIds,
+  });
+  if (error) {
+    console.error("[polls] cast_vote:", error.code, error.message);
+    if (isSchemaMissing(error.code)) {
+      return { ok: false, message: "Falta una actualización de la base. Avisale a la Asamblea." };
+    }
+    // Los mensajes de la función están escritos para la persona.
+    return { ok: false, message: error.message || "No se pudo registrar el voto." };
+  }
+  const results = await getPollResults([pollId]);
+  return { ok: true, results: results.get(pollId) ?? { participants: 0, votes: {} } };
 }

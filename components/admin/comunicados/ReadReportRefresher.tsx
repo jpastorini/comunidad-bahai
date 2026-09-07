@@ -6,12 +6,19 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 /**
  * Hace "en vivo" el informe de lectura de un comunicado: cada fila que
- * entra o cambia en `message_reads` para ese comunicado re-renderiza la
- * página en el servidor (router.refresh). Mismo molde que
- * ChatListRefresher; la RLS ya decide que solo la Asamblea de la
- * localidad reciba estos eventos.
+ * entra o cambia en `message_reads` para ese comunicado —y cada voto en
+ * `poll_votes` de su encuesta (051), si tiene— re-renderiza la página
+ * en el servidor (router.refresh). Mismo molde que ChatListRefresher;
+ * la RLS ya decide que solo la Asamblea de la localidad reciba estos
+ * eventos.
  */
-export function ReadReportRefresher({ messageId }: { messageId: string }) {
+export function ReadReportRefresher({
+  messageId,
+  pollId = null,
+}: {
+  messageId: string;
+  pollId?: string | null;
+}) {
   const router = useRouter();
 
   useEffect(() => {
@@ -25,26 +32,36 @@ export function ReadReportRefresher({ messageId }: { messageId: string }) {
       if (token) supabase.realtime.setAuth(token);
       if (cancelled) return;
 
-      channel = supabase
-        .channel(`message-reads-${messageId}`)
-        .on(
+      let ch = supabase.channel(`message-reads-${messageId}`).on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "message_reads",
+          filter: `message_id=eq.${messageId}`,
+        },
+        () => router.refresh()
+      );
+      if (pollId) {
+        ch = ch.on(
           "postgres_changes",
           {
             event: "*",
             schema: "public",
-            table: "message_reads",
-            filter: `message_id=eq.${messageId}`,
+            table: "poll_votes",
+            filter: `poll_id=eq.${pollId}`,
           },
           () => router.refresh()
-        )
-        .subscribe();
+        );
+      }
+      channel = ch.subscribe();
     })();
 
     return () => {
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [router, messageId]);
+  }, [router, messageId, pollId]);
 
   return null;
 }

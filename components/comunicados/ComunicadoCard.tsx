@@ -6,7 +6,8 @@ import {
   markMessageSeenAction,
 } from "@/app/(app)/comunicados/actions";
 import { formatDate, formatMessageDate } from "@/lib/format";
-import type { Message, MessageRead } from "@/lib/types";
+import type { Message, MessagePoll, MessageRead, MyPollVote, PollResults } from "@/lib/types";
+import { PollBlock } from "./PollBlock";
 
 type Props = {
   message: Message;
@@ -14,6 +15,10 @@ type Props = {
   /** "Nuevo" ya resuelto en el servidor (por persona, ver isNewForReader). */
   isNew: boolean;
   featured: boolean;
+  /** Encuesta del comunicado (051), si tiene, con lo que esta persona ya votó y los totales. */
+  poll?: MessagePoll | null;
+  myVote?: MyPollVote | null;
+  pollResults?: PollResults | null;
 };
 
 /** Cuánto tiene que quedarse la tarjeta a la vista para contar como vista. */
@@ -30,7 +35,15 @@ const DWELL_MS = 1500;
  * · "Enterado/a" explícito, solo si el comunicado lo pide. Optimista: el
  *   botón cambia al toque y vuelve atrás si el servidor falla.
  */
-export function ComunicadoCard({ message: m, read, isNew, featured }: Props) {
+export function ComunicadoCard({
+  message: m,
+  read,
+  isNew,
+  featured,
+  poll = null,
+  myVote = null,
+  pollResults = null,
+}: Props) {
   const ref = useRef<HTMLElement | null>(null);
   const seenRef = useRef<boolean>(Boolean(read));
   const [confirmedAt, setConfirmedAt] = useState<string | null>(
@@ -99,6 +112,7 @@ export function ComunicadoCard({ message: m, read, isNew, featured }: Props) {
   return (
     <article
       ref={ref}
+      id={`c-${m.id}`}
       className={
         featured
           ? "overflow-hidden rounded-2xl shadow-card-elevated ring-1 ring-gold/45"
@@ -150,6 +164,8 @@ export function ComunicadoCard({ message: m, read, isNew, featured }: Props) {
             Descargar PDF adjunto
           </a>
         )}
+
+        {poll && <PollBlock poll={poll} myVote={myVote} results={pollResults} />}
 
         {m.ask_confirmation && (
           <div className="mt-4 border-t border-black/[0.06] pt-3">

@@ -64,7 +64,7 @@ export type ReadCounts = {
   confirmed: number;
 };
 
-type AudienceProfile = {
+export type AudienceProfile = {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
@@ -72,7 +72,7 @@ type AudienceProfile = {
   last_seen_at: string | null;
 };
 
-async function getAudience(
+export async function getAudience(
   supabase: SupabaseClient,
   localityId: string
 ): Promise<AudienceProfile[]> {
@@ -89,7 +89,7 @@ async function getAudience(
   return (data ?? []) as AudienceProfile[];
 }
 
-function audienceFor(m: Message, all: AudienceProfile[]): AudienceProfile[] {
+export function audienceFor(m: Message, all: AudienceProfile[]): AudienceProfile[] {
   return m.audience === "todos" ? all : all.filter((p) => p.is_bahai);
 }
 

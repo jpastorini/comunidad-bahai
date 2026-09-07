@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
+import { PollReportSection } from "@/components/admin/comunicados/PollReportSection";
 import { ReadReportRefresher } from "@/components/admin/comunicados/ReadReportRefresher";
 import { Banner, Button, Card, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
@@ -10,6 +11,7 @@ import {
   getReadReport,
   type ReadReportPerson,
 } from "@/lib/message-reads";
+import { getPollForMessage, getPollReport } from "@/lib/polls";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { Message } from "@/lib/types";
 
@@ -36,11 +38,17 @@ export default async function ComunicadoLecturaPage({
   if (!data) notFound();
   const m = data as Message;
 
-  const report = await getReadReport(m, session.locality.id);
+  const [report, poll] = await Promise.all([
+    getReadReport(m, session.locality.id),
+    getPollForMessage(m.id),
+  ]);
+  // La encuesta (051), si el comunicado tiene una: totales, participación
+  // y, si no es anónima, quién votó qué.
+  const pollReport = poll ? await getPollReport(m, poll, session.locality.id) : null;
 
   return (
     <>
-      <ReadReportRefresher messageId={m.id} />
+      <ReadReportRefresher messageId={m.id} pollId={poll?.id ?? null} />
       <PageHeader back={{ href: "/admin/comunicados", label: "Comunicados" }}
         eyebrow={`Comunicado del ${formatMessageDate(m.date)}`}
         title={m.title}
@@ -65,6 +73,8 @@ export default async function ComunicadoLecturaPage({
         </Banner>
       ) : (
         <>
+          {pollReport && <PollReportSection report={pollReport} messageId={m.id} />}
+
           <div className="mb-6 grid gap-3 sm:grid-cols-3">
             <Stat
               label="Lo vieron"

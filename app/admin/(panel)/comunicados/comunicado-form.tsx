@@ -7,14 +7,18 @@ import {
   TextArea,
   TextInput,
 } from "@/components/admin/ui";
+import { PollFields } from "@/components/admin/comunicados/PollFields";
 import { upsertComunicadoAction } from "./actions";
-import type { Message } from "@/lib/types";
+import type { Message, MessagePoll } from "@/lib/types";
 
 type Props = {
   comunicado?: Message;
+  /** La encuesta del comunicado (051), si tiene, y cuántos ya votaron. */
+  poll?: MessagePoll | null;
+  pollParticipants?: number;
 };
 
-export function ComunicadoForm({ comunicado }: Props) {
+export function ComunicadoForm({ comunicado, poll = null, pollParticipants = 0 }: Props) {
   const today = new Date().toISOString().slice(0, 10);
 
   return (
@@ -118,6 +122,20 @@ export function ComunicadoForm({ comunicado }: Props) {
             />
           </Field>
         </div>
+      </Card>
+
+      {/* Encuesta (051): una pregunta para votar dentro del comunicado.
+          Hereda la audiencia de arriba: si el comunicado es "solo
+          creyentes", la encuesta también. */}
+      <Card className="mt-5">
+        <h2 className="mb-1 font-display text-[18px] font-semibold text-dark">
+          Pregunta para votar
+        </h2>
+        <p className="mb-4 text-[12px] text-muted">
+          Opcional. Quién la recibe lo decide “Quién lo recibe”, más arriba: una
+          encuesta en un comunicado “solo creyentes” es solo para creyentes.
+        </p>
+        <PollFields poll={poll} participants={pollParticipants} />
       </Card>
 
       <Card className="mt-5">

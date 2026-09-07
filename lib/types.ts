@@ -43,6 +43,45 @@ export type MessageRead = {
 };
 
 /**
+ * Encuesta de un comunicado (migración 051): una pregunta con 2 a 10
+ * opciones, como las de WhatsApp. Se vota una sola vez, sin cambiar.
+ * En una encuesta `anonymous` el voto se guarda sin persona.
+ */
+export type MessagePoll = {
+  id: string;
+  message_id: string;
+  question: string;
+  allow_multiple: boolean;
+  anonymous: boolean;
+  /** Cierre automático (opcional). */
+  closes_at: string | null;
+  /** Cierre a mano por la Asamblea. */
+  closed_at: string | null;
+  options: PollOption[];
+};
+
+export type PollOption = {
+  id: string;
+  poll_id: string;
+  position: number;
+  label: string;
+};
+
+/** Totales de una encuesta: solo números, nunca un nombre. */
+export type PollResults = {
+  participants: number;
+  /** option_id → votos. */
+  votes: Record<string, number>;
+};
+
+/** Lo que el creyente sabe de su propia participación. */
+export type MyPollVote = {
+  voted_at: string;
+  /** Opciones elegidas; vacío en una encuesta anónima (no se guardan). */
+  option_ids: string[];
+};
+
+/**
  * Canal del chat. La conversación es una por (creyente, tema): a la
  * Secretaría se le escribe de todo, al tesorero se le avisa del giro que
  * se hizo al Fondo. Quién atiende cada canal lo decide el tag
