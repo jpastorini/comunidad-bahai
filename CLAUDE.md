@@ -304,6 +304,24 @@ formularios siguen siendo del formulario.
 `treasury` (medios de pago y cifra a mano) quedó en
 `/admin/tesoreria/aportar` como "Cómo aportar" hasta que se jubile.
 
+**El Inicio del panel es un tablero de ATENCIÓN**, no de totales
+(`app/admin/(panel)/page.tsx`, datos en `lib/admin-attention.ts`). Cada
+tarjeta responde a una pregunta que la Asamblea se hace al abrir el
+panel: tareas pendientes (con vencidas en rojo y "vencen esta semana"),
+chats sin responder de los canales que la persona atiende
+(`getChatDuty`), la próxima Fiesta **sin importar su estado** (la que
+está en borrador es justamente la que pide atención; la fecha es la
+víspera de la oficial), la agenda de los próximos 7 días (eventos,
+Fiestas y Días Sagrados, vía `getUnifiedCalendarItems`), el último
+comunicado con su barra de lectura, quién falta cargar la disponibilidad
+(con nombres: `getAvailabilityFillStats` devuelve `missing`) y el alcance
+del push. El tono de cada tarjeta lo decide el dato (verde en orden,
+ámbar por hacer, rojo vencido). Los contadores de "cuántas actividades /
+materiales / eventos hay" se sacaron a propósito: no llevan a ninguna
+acción. Si agregás una tarjeta, que responda una pregunta y que su
+consulta falle a un valor neutro (el Inicio no puede romperse porque una
+tabla no exista todavía).
+
 ## Uso de la app (migración 049)
 
 Cada Asamblea quiere saber cómo usa su comunidad la app. El dato es
@@ -826,14 +844,6 @@ los PDF viajan tal cual (media factura llega por mail).
 
 ## Pendientes conocidos
 
-- **Inicio del panel como tablero de atención.** Hoy mezcla contadores
-  de totales (actividades, materiales) con lo accionable (tareas
-  pendientes, chats sin leer). Debería mostrar solo lo que pide atención:
-  tareas, chats, lectura del último comunicado, próxima Fiesta y su
-  estado, eventos de los próximos 7 días, quién falta cargar
-  disponibilidad, alcance del push. Fuera "Tus permisos" (ya está en el
-  pie del menú). Acordado con el usuario como segunda pasada del
-  reordenamiento del menú.
 - **Jubilar la tabla `treasury` vieja.** El anillo de `/tesoreria` ya se
   fue (lo reemplazó el tablero de progreso, 042), pero siguen leyendo el
   `current_amount` escrito a mano el "Informe mensual" de esa pantalla y

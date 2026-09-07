@@ -110,15 +110,19 @@ export async function getLocalityAvailability(
  */
 export async function getAvailabilityFillStats(
   localityId: string
-): Promise<{ filled: number; total: number }> {
-  if (!isSupabaseConfigured()) return { filled: 0, total: 0 };
+): Promise<{ filled: number; total: number; missing: string[] }> {
+  if (!isSupabaseConfigured()) return { filled: 0, total: 0, missing: [] };
   const supabase = createSupabaseServer();
   const [membersRes, slotsRes] = await Promise.all([
+    // Con nombre, para que el Inicio del panel diga a QUIÉN falta: un
+    // "5 de 9" solo no le dice a nadie a quién recordarle.
     supabase
       .from("profiles")
-      .select("id", { count: "exact", head: true })
+      .select("id, full_name")
       .eq("locality_id", localityId)
-      .eq("role", "admin"),
+      .eq("role", "admin")
+      .is("disabled_at", null)
+      .order("full_name", { ascending: true }),
     supabase
       .from("availability_slots")
       .select("user_id")
@@ -128,5 +132,12 @@ export async function getAvailabilityFillStats(
   const filled = new Set(
     ((slotsRes.data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)
   );
-  return { filled: filled.size, total: membersRes.count ?? 0 };
+  const members = (membersRes.data ?? []) as Array<{ id: string; full_name: string | null }>;
+  const missing = members
+    .filter((m) => !filled.has(m.id))
+    .map((m) => m.full_name?.trim() || "Sin nombre");
+  // `filled` cuenta solo miembros vigentes: alguien que cargó y después
+  // dejó la Asamblea no suma.
+  const filledCurrent = members.filter((m) => filled.has(m.id)).length;
+  return { filled: filledCurrent, total: members.length, missing };
 }
