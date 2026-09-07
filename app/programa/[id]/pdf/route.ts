@@ -27,6 +27,9 @@ import { loadFeastProgram } from "@/lib/feast-program-server";
  */
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// react-pdf arranca en frío cargando fuentes y su motor de layout: el
+// tope por defecto de la función (10 s en Hobby) queda justo.
+export const maxDuration = 60;
 
 /**
  * Las TTF viven en public/fonts. En local y en Vercel (gracias a
@@ -52,21 +55,36 @@ export async function GET(
   if (res.kind === "not-started") redirect(`/fiestas/${params.id}`);
 
   const origin = new URL(request.url).origin;
-  registerBookletFonts(fontSources(origin));
+  const fonts = fontSources(origin);
 
-  const element = createElement(FeastBooklet, {
-    program: res.program,
-    origin,
-  }) as unknown as ReactElement<DocumentProps>;
+  try {
+    registerBookletFonts(fonts);
 
-  const buffer = await renderToBuffer(element);
-  const filename = feastProgramFileName(res.program);
+    const element = createElement(FeastBooklet, {
+      program: res.program,
+      origin,
+    }) as unknown as ReactElement<DocumentProps>;
 
-  return new NextResponse(new Uint8Array(buffer), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${filename}"`,
-      "Cache-Control": "private, no-store",
-    },
-  });
+    const buffer = await renderToBuffer(element);
+    const filename = feastProgramFileName(res.program);
+
+    return new NextResponse(new Uint8Array(buffer), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="${filename}"`,
+        "Cache-Control": "private, no-store",
+      },
+    });
+  } catch (err) {
+    // Un 500 mudo no se puede diagnosticar desde el celular de la
+    // Asamblea: el error va al log de la función y, en texto, a la
+    // pantalla (la ruta ya exige sesión de creyente, no expone nada).
+    const e = err as Error;
+    const fontsOnDisk = Object.values(fonts).filter((s) => !s.startsWith("http")).length;
+    console.error("[programa/pdf] falló la generación:", e, { fontsOnDisk, cwd: process.cwd() });
+    return new NextResponse(
+      `No se pudo generar el folleto.\n\n${e.name}: ${e.message}\n\n(fuentes en disco: ${fontsOnDisk}/${Object.keys(fonts).length})`,
+      { status: 500, headers: { "Content-Type": "text/plain; charset=utf-8" } }
+    );
+  }
 }
