@@ -29,7 +29,7 @@ export const BAHAI_MONTHS: BahaiMonth[] = [
   { index: 16, name: "Sharaf",    meaning: "Honor" },
   { index: 17, name: "Sulṭán",    meaning: "Soberanía" },
   { index: 18, name: "Mulk",      meaning: "Dominio" },
-  { index: 19, name: "ʻAláʼ",     meaning: "Loftiness" },
+  { index: 19, name: "ʻAláʼ",     meaning: "Sublimidad" },
 ];
 
 export function getBahaiMonth(index: number): BahaiMonth | undefined {

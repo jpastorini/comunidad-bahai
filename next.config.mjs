@@ -23,6 +23,16 @@ const nextConfig = {
     // Permite subir PDFs e imágenes (invitaciones) de comunicados hasta 10MB.
     serverActions: { bodySizeLimit: "10mb" },
 
+    // El folleto PDF de la Fiesta se genera en el servidor con react-pdf,
+    // que trae su propio motor de layout y fuentes: se deja fuera del
+    // bundle (lo carga Node tal cual) y se incluyen las TTF de
+    // public/fonts en la función, porque en Vercel `public/` se sirve
+    // desde el CDN y no está en el filesystem de la función.
+    serverComponentsExternalPackages: ["@react-pdf/renderer"],
+    outputFileTracingIncludes: {
+      "/programa/[id]/pdf": ["./public/fonts/**"],
+    },
+
     // Cuánto vive en MEMORIA del navegador una pantalla ya visitada, antes
     // de que volver a ella cueste otra ida y vuelta al servidor.
     //

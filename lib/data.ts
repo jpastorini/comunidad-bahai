@@ -33,6 +33,7 @@ import type {
   ChatTopic,
   Feast,
   FeastLocation,
+  FeastNewsItem,
   FeastPrayer,
   Message,
   Profile,
@@ -293,6 +294,24 @@ export async function getFeastPrayers(feastId: string): Promise<FeastPrayer[]> {
     .eq("feast_id", feastId)
     .order("position", { ascending: true });
   return (data ?? []) as FeastPrayer[];
+}
+
+/** Noticias del programa de la Fiesta (050), ordenadas por ámbito y posición. */
+export async function getFeastNews(feastId: string): Promise<FeastNewsItem[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = createSupabaseServer();
+  const { data, error } = await supabase
+    .from("feast_news_items")
+    .select("id, feast_id, scope, position, date_label, title, body, image_url, created_at")
+    .eq("feast_id", feastId)
+    .order("position", { ascending: true });
+  // Hasta que corra la 050 la tabla no existe: la Fiesta sigue funcionando
+  // sin noticias en vez de romperse.
+  if (error) {
+    console.warn("[getFeastNews]", error.message);
+    return [];
+  }
+  return (data ?? []) as FeastNewsItem[];
 }
 
 /** Próxima Fiesta a celebrar (la in_progress, o la published más próxima). */

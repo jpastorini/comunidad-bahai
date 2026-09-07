@@ -9,16 +9,24 @@ import {
   TextInput,
 } from "@/components/admin/ui";
 import { BAHAI_MONTHS, approximateBahaiYear } from "@/lib/bahai-calendar";
-import type { Feast, FeastLocation, FeastPrayer } from "@/lib/types";
+import { NEWS_SCOPE_LABELS, NEWS_SCOPE_ORDER } from "@/lib/feast-program";
+import type {
+  Feast,
+  FeastLocation,
+  FeastNewsItem,
+  FeastNewsScope,
+  FeastPrayer,
+} from "@/lib/types";
 import { upsertFeastAction } from "./actions";
 
 type Props = {
   feast?: Feast;
   locations?: FeastLocation[];
   prayers?: FeastPrayer[];
+  news?: FeastNewsItem[];
 };
 
-export function FeastForm({ feast, locations = [], prayers = [] }: Props) {
+export function FeastForm({ feast, locations = [], prayers = [], news = [] }: Props) {
   const defaultYear = approximateBahaiYear(new Date().getFullYear());
 
   // Add 2 empty location rows so admin can add new ones inline.
@@ -127,38 +135,24 @@ export function FeastForm({ feast, locations = [], prayers = [] }: Props) {
         </div>
       </Card>
 
-      {/* ─── Informes ─── */}
+      {/* ─── Noticias ─── */}
       <Card className="mt-5">
-        <h2 className="mb-4 font-display text-[20px] font-semibold text-dark">
-          Informes
+        <h2 className="mb-1 font-display text-[20px] font-semibold text-dark">
+          Noticias
         </h2>
-        <Field label="Internacionales" name="international_reports" hint="Resumen de news.bahai.org">
-          <TextArea
-            id="international_reports"
-            name="international_reports"
-            rows={5}
-            defaultValue={feast?.international_reports ?? ""}
-          />
-        </Field>
-        <div className="mt-4">
-          <Field label="Nacionales" name="national_reports">
-            <TextArea
-              id="national_reports"
-              name="national_reports"
-              rows={4}
-              defaultValue={feast?.national_reports ?? ""}
+        <p className="mb-5 text-[12px] text-muted">
+          Una tarjeta por noticia. En el programa de la Fiesta se proyectan
+          como línea de tiempo: fecha, título y un par de líneas. La foto es
+          opcional. Las tarjetas vacías se ignoran al guardar.
+        </p>
+        <div className="flex flex-col gap-6">
+          {NEWS_SCOPE_ORDER.map((scope) => (
+            <NewsScopeBlock
+              key={scope}
+              scope={scope}
+              items={news.filter((n) => n.scope === scope)}
             />
-          </Field>
-        </div>
-        <div className="mt-4">
-          <Field label="Locales" name="local_reports">
-            <TextArea
-              id="local_reports"
-              name="local_reports"
-              rows={5}
-              defaultValue={feast?.local_reports ?? ""}
-            />
-          </Field>
+          ))}
         </div>
       </Card>
 
@@ -268,7 +262,6 @@ function LocationRow({ location }: { location: Partial<FeastLocation> & { _new?:
   return (
     <div className="rounded-xl border border-black/[0.06] bg-bg/40 p-3">
       <input type="hidden" name="location_id[]" value={location.id ?? ""} />
-      <input type="hidden" name="location_remove[]" value="0" />
       <div className="grid gap-3 md:grid-cols-[1.4fr,1fr]">
         <Field label="Nombre del lugar" name="location_name[]">
           <TextInput
@@ -326,19 +319,9 @@ function LocationRow({ location }: { location: Partial<FeastLocation> & { _new?:
         </Field>
       </div>
       {location.id && (
-        <label className="mt-2 inline-flex items-center gap-2 text-[11px] text-rose-600">
-          <input
-            type="checkbox"
-            name="location_remove[]"
-            value="1"
-            className="h-3.5 w-3.5"
-            onChange={(e) => {
-              const prev = e.currentTarget.previousElementSibling as HTMLInputElement;
-              if (prev) prev.value = e.currentTarget.checked ? "1" : "0";
-            }}
-          />
-          <span>Eliminar este lugar al guardar</span>
-        </label>
+        <RemoveCheck name="location_remove_ids[]" id={location.id}>
+          Eliminar este lugar al guardar
+        </RemoveCheck>
       )}
     </div>
   );
@@ -354,7 +337,6 @@ function PrayerRow({
   return (
     <div className="rounded-xl border border-black/[0.06] bg-bg/40 p-3">
       <input type="hidden" name="prayer_id[]" value={prayer.id ?? ""} />
-      <input type="hidden" name="prayer_remove[]" value="0" />
       <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
         #{index}
       </div>
@@ -385,19 +367,141 @@ function PrayerRow({
         </Field>
       </div>
       {prayer.id && (
-        <label className="mt-2 inline-flex items-center gap-2 text-[11px] text-rose-600">
-          <input
-            type="checkbox"
-            name="prayer_remove[]"
-            value="1"
-            className="h-3.5 w-3.5"
-            onChange={(e) => {
-              const prev = e.currentTarget.previousElementSibling as HTMLInputElement;
-              if (prev) prev.value = e.currentTarget.checked ? "1" : "0";
-            }}
+        <RemoveCheck name="prayer_remove_ids[]" id={prayer.id}>
+          Eliminar esta oración al guardar
+        </RemoveCheck>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Casilla "eliminar al guardar". Va con el id de la fila como valor, así
+ * el action recibe la lista de ids a borrar y no depende de la posición.
+ * (El patrón anterior —un hidden espejo por fila más la casilla con el
+ * mismo nombre— desalineaba los índices y borraba la fila siguiente.)
+ */
+function RemoveCheck({
+  name,
+  id,
+  children,
+}: {
+  name: string;
+  id: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="mt-2 inline-flex items-center gap-2 text-[11px] text-rose-600">
+      <input type="checkbox" name={name} value={id} className="h-3.5 w-3.5" />
+      <span>{children}</span>
+    </label>
+  );
+}
+
+const NEWS_HINTS: Record<FeastNewsScope, string> = {
+  internacional: "Fuente sugerida: news.bahai.org",
+  nacional: "Mensajes y noticias de la Asamblea Espiritual Nacional",
+  local: "Actividades, decisiones y avisos de nuestra Asamblea",
+};
+
+function NewsScopeBlock({
+  scope,
+  items,
+}: {
+  scope: FeastNewsScope;
+  items: FeastNewsItem[];
+}) {
+  const rows: (Partial<FeastNewsItem> & { _new?: boolean })[] = [
+    ...items,
+    { _new: true },
+  ];
+  return (
+    <div>
+      <div className="mb-2 flex items-baseline justify-between">
+        <h3 className="text-[13px] font-semibold text-dark">
+          {NEWS_SCOPE_LABELS[scope]}
+        </h3>
+        <span className="text-[10px] text-muted">{NEWS_HINTS[scope]}</span>
+      </div>
+      <div className="flex flex-col gap-3">
+        {rows.map((item, i) => (
+          <NewsRow key={item.id ?? `new-${scope}-${i}`} scope={scope} item={item} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function NewsRow({
+  scope,
+  item,
+}: {
+  scope: FeastNewsScope;
+  item: Partial<FeastNewsItem> & { _new?: boolean };
+}) {
+  return (
+    <div className="rounded-xl border border-black/[0.06] bg-bg/40 p-3">
+      <input type="hidden" name="news_id[]" value={item.id ?? ""} />
+      <input type="hidden" name="news_scope[]" value={scope} />
+      <div className="grid gap-3 md:grid-cols-[150px,1fr]">
+        <Field label="Fecha o etiqueta" name="news_date[]">
+          <TextInput
+            name="news_date[]"
+            defaultValue={item.date_label ?? ""}
+            placeholder="21 de agosto"
           />
-          <span>Eliminar esta oración al guardar</span>
-        </label>
+        </Field>
+        <Field label="Título" name="news_title[]">
+          <TextInput
+            name="news_title[]"
+            defaultValue={item.title ?? ""}
+            placeholder="Encuentro entre la AEN y las Asambleas Locales"
+          />
+        </Field>
+      </div>
+      <div className="mt-3">
+        <Field label="Texto" name="news_body[]" hint="Dos o tres líneas alcanzan">
+          <TextArea
+            name="news_body[]"
+            rows={3}
+            defaultValue={item.body ?? ""}
+            placeholder="Qué pasó, quiénes participaron, qué sigue."
+          />
+        </Field>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        {item.image_url && (
+          <div className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={item.image_url}
+              alt=""
+              className="h-12 w-12 rounded-lg border border-black/[0.06] object-cover"
+            />
+            {item.id && (
+              <label className="inline-flex items-center gap-1.5 text-[11px] text-muted">
+                <input
+                  type="checkbox"
+                  name="news_image_remove_ids[]"
+                  value={item.id}
+                  className="h-3.5 w-3.5"
+                />
+                <span>Quitar foto</span>
+              </label>
+            )}
+          </div>
+        )}
+        <input
+          type="file"
+          name="news_image[]"
+          accept="image/*"
+          className="block min-w-0 flex-1 cursor-pointer rounded-xl border border-dashed border-black/15 bg-bg/40 px-3 py-2 text-[12px] text-muted file:mr-3 file:rounded file:border-0 file:bg-terra file:px-3 file:py-1.5 file:text-[12px] file:font-semibold file:text-white hover:bg-bg/70"
+        />
+      </div>
+      {item.id && (
+        <RemoveCheck name="news_remove_ids[]" id={item.id}>
+          Eliminar esta noticia al guardar
+        </RemoveCheck>
       )}
     </div>
   );

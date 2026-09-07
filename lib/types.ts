@@ -294,6 +294,28 @@ export type FeastPrayer = {
   created_at: string;
 };
 
+/** Ámbito de una noticia de la Fiesta: define en qué diapositiva sale. */
+export type FeastNewsScope = "internacional" | "nacional" | "local";
+
+/**
+ * Una noticia del programa de la Fiesta (migración 050). Reemplaza a los
+ * bloques de texto `international_reports` / `national_reports` /
+ * `local_reports`, que quedaron en NULL y sin uso.
+ */
+export type FeastNewsItem = {
+  id: string;
+  feast_id: string;
+  scope: FeastNewsScope;
+  position: number;
+  /** Texto libre: "21 de agosto", "Designación". Es lo que se proyecta. */
+  date_label: string | null;
+  title: string;
+  body: string | null;
+  /** URL pública (bucket `comunicados`, carpeta fiestas/noticias/). */
+  image_url: string | null;
+  created_at: string;
+};
+
 export type FeastSuggestion = {
   id: string;
   feast_id: string;

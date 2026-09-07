@@ -7,27 +7,37 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 import { getBahaiMonth } from "@/lib/bahai-calendar";
 import {
-  TEMPLATE_INTERNATIONAL_REPORTS_PLACEHOLDER,
-  TEMPLATE_LOCAL_REPORTS_PLACEHOLDER,
-  TEMPLATE_NATIONAL_REPORTS_PLACEHOLDER,
   generateTemplateDeepening,
   generateTemplatePrayers,
 } from "@/lib/feast-template";
+import type { FeastNewsScope } from "@/lib/types";
 
-const BUCKET = "comunicados"; // reused for treasury PDF
+// Bucket público que ya tiene policies de escritura para admins (003).
+// Carpetas: fiestas/ (PDF de tesorería del mes) y fiestas/noticias/
+// (fotos de las noticias del programa, 050).
+const BUCKET = "comunicados";
 
-async function uploadPdf(file: File | null): Promise<string | null> {
+async function uploadFile(
+  file: File | null,
+  folder: string,
+  fallbackExt: string
+): Promise<string | null> {
   if (!file || file.size === 0) return null;
   const supabase = createSupabaseServer();
-  const ext = file.name.split(".").pop() || "pdf";
-  const path = `fiestas/${crypto.randomUUID()}.${ext}`;
+  const ext = (file.name.split(".").pop() || fallbackExt).toLowerCase();
+  const path = `${folder}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(path, file, { contentType: file.type, upsert: false });
-  if (error) return null;
+  if (error) {
+    console.error("[fiestas] upload falló:", error.message);
+    return null;
+  }
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
+
+const uploadPdf = (file: File | null) => uploadFile(file, "fiestas", "pdf");
 
 // ─── Crear / editar Fiesta ─────────────────────────────────────
 export async function upsertFeastAction(formData: FormData) {
@@ -49,9 +59,8 @@ export async function upsertFeastAction(formData: FormData) {
     bahai_year: parseInt((formData.get("bahai_year") as string) || "0", 10),
     deepening_theme: (formData.get("deepening_theme") as string) || null,
     deepening_content: (formData.get("deepening_content") as string) || null,
-    international_reports: (formData.get("international_reports") as string) || null,
-    national_reports: (formData.get("national_reports") as string) || null,
-    local_reports: (formData.get("local_reports") as string) || null,
+    // international/national/local_reports quedaron sin uso: las noticias
+    // son ítems en feast_news_items (050), ver persistNews().
     assembly_communique: (formData.get("assembly_communique") as string) || null,
     treasury_income: parseOptionalNumber(formData.get("treasury_income")),
     treasury_expenses: parseOptionalNumber(formData.get("treasury_expenses")),
@@ -94,10 +103,20 @@ export async function upsertFeastAction(formData: FormData) {
   // ─── Prayers (CRUD inline desde rows repetidas) ────────────────
   await persistPrayers(formData, feastId!);
 
-  setFlashToast({
-    tone: "success",
-    message: id ? "Fiesta actualizada." : "Fiesta creada.",
-  });
+  // ─── Noticias del programa (050) ───────────────────────────────
+  const newsError = await persistNews(formData, feastId!);
+
+  if (newsError) {
+    setFlashToast({
+      tone: "error",
+      message: `Fiesta guardada, pero las noticias no: ${newsError}`,
+    });
+  } else {
+    setFlashToast({
+      tone: "success",
+      message: id ? "Fiesta actualizada." : "Fiesta creada.",
+    });
+  }
 
   revalidatePath("/admin/fiestas");
   revalidatePath("/fiestas");
@@ -114,15 +133,16 @@ async function persistLocations(formData: FormData, feastId: string) {
   const dates = formData.getAll("location_date[]") as string[];
   const times = formData.getAll("location_time[]") as string[];
   const notes = formData.getAll("location_notes[]") as string[];
-  const removes = formData.getAll("location_remove[]") as string[];
+  // Ids marcados para borrar: la casilla lleva el id como valor, así no
+  // depende de la posición de la fila.
+  const removeIds = new Set(formData.getAll("location_remove_ids[]") as string[]);
   const participants = formData.getAll("location_participants[]") as string[];
 
   for (let i = 0; i < names.length; i++) {
     const existingId = ids[i] || null;
     const name = (names[i] || "").trim();
-    const remove = removes[i] === "1";
 
-    if (existingId && remove) {
+    if (existingId && removeIds.has(existingId)) {
       await supabase.from("feast_locations").delete().eq("id", existingId);
       continue;
     }
@@ -160,14 +180,13 @@ async function persistPrayers(formData: FormData, feastId: string) {
   const titles = formData.getAll("prayer_title[]") as string[];
   const references = formData.getAll("prayer_reference[]") as string[];
   const bodies = formData.getAll("prayer_body[]") as string[];
-  const removes = formData.getAll("prayer_remove[]") as string[];
+  const removeIds = new Set(formData.getAll("prayer_remove_ids[]") as string[]);
 
   for (let i = 0; i < bodies.length; i++) {
     const existingId = ids[i] || null;
     const body = (bodies[i] || "").trim();
-    const remove = removes[i] === "1";
 
-    if (existingId && remove) {
+    if (existingId && removeIds.has(existingId)) {
       await supabase.from("feast_prayers").delete().eq("id", existingId);
       continue;
     }
@@ -187,6 +206,92 @@ async function persistPrayers(formData: FormData, feastId: string) {
       await supabase.from("feast_prayers").insert(row);
     }
   }
+}
+
+const NEWS_SCOPES: readonly FeastNewsScope[] = ["internacional", "nacional", "local"];
+
+function isNewsScope(v: string): v is FeastNewsScope {
+  return (NEWS_SCOPES as readonly string[]).includes(v);
+}
+
+/**
+ * Noticias del programa (050): filas repetidas por ámbito. La posición
+ * es el orden dentro de su ámbito. La foto se sube al bucket público
+ * `comunicados` (fiestas/noticias/); "Quitar foto" la desvincula pero no
+ * borra el archivo, igual que el PDF de tesorería.
+ *
+ * Devuelve el texto de error si la base rechazó algo (típicamente: la
+ * 050 no corrió y la tabla no existe), para que el toast lo diga en vez
+ * de reportar "Fiesta actualizada" con las noticias perdidas.
+ */
+async function persistNews(formData: FormData, feastId: string): Promise<string | null> {
+  const supabase = createSupabaseServer();
+  const ids = formData.getAll("news_id[]") as string[];
+  const scopes = formData.getAll("news_scope[]") as string[];
+  const dates = formData.getAll("news_date[]") as string[];
+  const titles = formData.getAll("news_title[]") as string[];
+  const bodies = formData.getAll("news_body[]") as string[];
+  const images = formData.getAll("news_image[]");
+  const removeIds = new Set(formData.getAll("news_remove_ids[]") as string[]);
+  const imageRemoveIds = new Set(formData.getAll("news_image_remove_ids[]") as string[]);
+
+  const positions: Partial<Record<FeastNewsScope, number>> = {};
+  let firstError: string | null = null;
+  const note = (err: { message: string; code?: string } | null) => {
+    if (!err || firstError) return;
+    console.error("[persistNews]", err.code, err.message);
+    firstError =
+      err.code === "42P01"
+        ? "falta aplicar la migración 050 (feast_news_items)."
+        : err.message;
+  };
+
+  for (let i = 0; i < scopes.length; i++) {
+    const existingId = ids[i] || null;
+    const scope = scopes[i] ?? "";
+    if (!isNewsScope(scope)) continue;
+
+    if (existingId && removeIds.has(existingId)) {
+      const { error } = await supabase.from("feast_news_items").delete().eq("id", existingId);
+      note(error);
+      continue;
+    }
+
+    const title = (titles[i] || "").trim();
+    const body = (bodies[i] || "").trim();
+    if (!title && !body) continue; // fila vacía
+
+    const position = positions[scope] ?? 0;
+    positions[scope] = position + 1;
+
+    const row: Record<string, unknown> = {
+      feast_id: feastId,
+      scope,
+      position,
+      date_label: (dates[i] || "").trim() || null,
+      // Sin título, la primera línea del texto hace de título.
+      title: title || body.split("\n")[0].slice(0, 140),
+      body: body || null,
+    };
+
+    const file = images[i];
+    if (file instanceof File && file.size > 0) {
+      const url = await uploadFile(file, "fiestas/noticias", "jpg");
+      if (url) row.image_url = url;
+    } else if (existingId && imageRemoveIds.has(existingId)) {
+      row.image_url = null;
+    }
+
+    if (existingId) {
+      const { error } = await supabase.from("feast_news_items").update(row).eq("id", existingId);
+      note(error);
+    } else {
+      const { error } = await supabase.from("feast_news_items").insert(row);
+      note(error);
+    }
+  }
+
+  return firstError;
 }
 
 function parseOptionalNumber(v: FormDataEntryValue | null): number | null {
@@ -278,12 +383,8 @@ export async function loadTemplateAction(formData: FormData) {
       if (!feast.deepening_theme) updates.deepening_theme = deepening.theme;
       if (!feast.deepening_content) updates.deepening_content = deepening.content;
     }
-    if (!feast.international_reports)
-      updates.international_reports = TEMPLATE_INTERNATIONAL_REPORTS_PLACEHOLDER;
-    if (!feast.national_reports)
-      updates.national_reports = TEMPLATE_NATIONAL_REPORTS_PLACEHOLDER;
-    if (!feast.local_reports)
-      updates.local_reports = TEMPLATE_LOCAL_REPORTS_PLACEHOLDER;
+    // Las noticias ya no llevan placeholder: son ítems (050) y una
+    // tarjeta con "[Resumen de…]" se proyectaría tal cual.
     if (Object.keys(updates).length > 0) {
       await supabase.from("feasts").update(updates).eq("id", id);
     }

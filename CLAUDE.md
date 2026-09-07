@@ -276,7 +276,11 @@ la app" por persona. Ver la sección "Lectura de comunicados" más abajo. ·
 `/admin/uso` (instalada, avisos, regularidad, secciones, persona por
 persona). Ver la sección "Uso de la app" más abajo. ·
 **Menú del panel anidado** (sin migración): siete grupos que se despliegan
-con sus pantallas adentro. Ver la sección "Navegación del panel" más abajo.
+con sus pantallas adentro. Ver la sección "Navegación del panel" más abajo. ·
+**Programa de la Fiesta** (migración 050): lo cargado en la Fiesta se
+proyecta como deck de diapositivas (`/programa/[id]`) y se baja como
+folleto PDF (`/programa/[id]/pdf`); las noticias pasaron a ser ítems. Ver
+la sección "Programa de la Fiesta" más abajo.
 
 ## Navegación del panel (leer antes de agregar una pantalla al admin)
 
@@ -342,6 +346,71 @@ materiales / eventos hay" se sacaron a propósito: no llevan a ninguna
 acción. Si agregás una tarjeta, que responda una pregunta y que su
 consulta falle a un valor neutro (el Inicio no puede romperse porque una
 tabla no exista todavía).
+
+## Programa de la Fiesta (migración 050)
+
+Lo que la Asamblea carga en `/admin/fiestas/[id]` (oraciones,
+profundización, noticias, comunicado, lugares) se arma solo en dos
+salidas, sin que nadie escriba un HTML a mano cada 19 días:
+
+- **El deck** (`/programa/[id]`, `components/feast/FeastDeck.tsx`): una
+  diapositiva por pantalla, fondo noche y dorado, para proyectar en la
+  Fiesta. Portada (mes, significado, fecha de la víspera, lugares) ·
+  programa en tres porciones · divisor I · una diapositiva por oración ·
+  profundización · divisor II · una por ámbito de noticias · comunicado ·
+  Tesorería · cierre III. Misma mecánica que el deck de Tesorería
+  (flechas, swipe, pantalla completa, todas las diapositivas en el DOM).
+  Vive fuera de los grupos `(app)` y `(panel)` porque ocupa la pantalla.
+- **El folleto PDF** (`/programa/[id]/pdf`, `components/feast/FeastBooklet.tsx`):
+  A5 claro, para que el creyente lo baje y siga la lectura. Se genera en
+  el servidor con `@react-pdf/renderer` (Node puro, sin Chromium) y se
+  sirve `inline` en pestaña nueva: en la PWA de iPhone un `attachment` no
+  muestra nada, y el visor del navegador trae guardar y compartir. Sin
+  fotos, a propósito: una imagen remota que falle rompería el PDF.
+  ⚠️ Las TTF están en `public/fonts/` y viajan a la función por
+  `outputFileTracingIncludes` (`next.config.mjs`); react-pdf va en
+  `serverComponentsExternalPackages`. Los nombres de meses llevan ḥ, ẕ,
+  ṭ, ʻ, que Outfit no tiene: todo lo que pueda contener un nombre
+  bahá'í va en Cormorant.
+
+Las dos salidas leen la MISMA estructura, `buildFeastProgram()`
+(`lib/feast-program.ts`), que no consulta nada: recibe lo que
+`loadFeastProgram()` (`lib/feast-program-server.ts`) ya trajo y decide
+qué secciones tienen contenido. Tres cosas del diseño:
+
+- **Las noticias son ítems**, no texto libre: `feast_news_items`
+  (ámbito `internacional`/`nacional`/`local`, posición, etiqueta de fecha
+  libre, título, cuerpo, foto opcional en el bucket `comunicados`,
+  carpeta `fiestas/noticias/`). Una línea de tiempo se proyecta; un
+  párrafo largo no. La 050 convirtió los textos viejos de
+  `international_reports` / `national_reports` / `local_reports` en un
+  ítem cada uno y dejó esas columnas en NULL; siguen existiendo pero
+  nada las escribe ni las lee. La plantilla ya no carga placeholders de
+  noticias.
+- **Quién lo ve, y cuándo.** La RLS de `feasts` decide si la Fiesta
+  existe para la persona (borrador solo Asamblea, nada para un Amigo de
+  la Fe; `feast_news_items` hereda con un `exists`, igual que
+  `feast_prayers`). Encima, el programa de una Fiesta publicada pero NO
+  iniciada sigue siendo interno salvo para la Asamblea, que lo necesita
+  antes para ensayar: `loadFeastProgram()` devuelve `not-started` y la
+  página redirige a `/fiestas/[id]`. Al creyente los dos botones le
+  aparecen al iniciar la Fiesta.
+- **La Tesorería se enlaza, no se copia.** En la Fiesta del mes M se
+  presenta el informe del mes que termina: `pickReportForFeast()` toma
+  el informe publicado para la comunidad con `period_to` más cercano por
+  debajo de la fecha oficial de M (tolerancia 45 días) y la diapositiva
+  lleva a `/i/<token>`. No hay `feast_id` en los informes; la
+  coincidencia por fecha alcanza. Si no hay informe pero la Fiesta tiene
+  las cifras a mano (`treasury_income` etc.), se muestran esas.
+
+De paso se arregló el borrado de filas del formulario de Fiestas: la
+casilla "Eliminar al guardar" de lugares y oraciones llevaba un hidden
+espejo con el mismo nombre y desalineaba los índices, así que borraba
+la fila SIGUIENTE. Ahora la casilla lleva el id como valor
+(`*_remove_ids[]`) y el action recibe un Set.
+
+⚠️ Hasta que corra la 050, guardar una Fiesta avisa "las noticias no"
+(el resto se guarda) y las pantallas muestran la Fiesta sin noticias.
 
 ## Uso de la app (migración 049)
 

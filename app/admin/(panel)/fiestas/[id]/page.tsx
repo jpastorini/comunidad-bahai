@@ -3,7 +3,12 @@ import { notFound } from "next/navigation";
 import { Banner, Card, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { getFeast, getFeastLocations, getFeastPrayers } from "@/lib/data";
+import {
+  getFeast,
+  getFeastLocations,
+  getFeastNews,
+  getFeastPrayers,
+} from "@/lib/data";
 import { formatDateTime } from "@/lib/format";
 import type { FeastStatus, FeastSuggestion } from "@/lib/types";
 import { FeastForm } from "../feast-form";
@@ -20,10 +25,11 @@ export default async function EditFeastPage({
 }) {
   await requireAdmin();
 
-  const [feast, locations, prayers] = await Promise.all([
+  const [feast, locations, prayers, news] = await Promise.all([
     getFeast(params.id),
     getFeastLocations(params.id),
     getFeastPrayers(params.id),
+    getFeastNews(params.id),
   ]);
   if (!feast) notFound();
 
@@ -118,9 +124,36 @@ export default async function EditFeastPage({
             Abrir captura en vivo →
           </Link>
         </Card>
+
+        <Card>
+          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Programa de la Fiesta
+          </h3>
+          <p className="mt-2 text-[12px] text-muted">
+            Lo que cargás abajo se arma solo como presentación para
+            proyectar (portada, oraciones, noticias, tesorería) y como
+            folleto PDF que los creyentes descargan al iniciar la Fiesta.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link
+              href={`/programa/${feast.id}`}
+              className="tap inline-flex rounded-xl bg-terra px-4 py-2 text-[13px] font-semibold text-white shadow-card-soft"
+            >
+              ▶ Presentar
+            </Link>
+            <a
+              href={`/programa/${feast.id}/pdf`}
+              target="_blank"
+              rel="noopener"
+              className="tap inline-flex rounded-xl border border-black/10 bg-card px-4 py-2 text-[13px] font-semibold text-dark shadow-card-soft"
+            >
+              Descargar folleto PDF
+            </a>
+          </div>
+        </Card>
       </div>
 
-      <FeastForm feast={feast} locations={locations} prayers={prayers} />
+      <FeastForm feast={feast} locations={locations} prayers={prayers} news={news} />
 
       {/* Sugerencias */}
       <Card className="mt-8">

@@ -5,12 +5,15 @@ import { getOptionalMember } from "@/lib/auth";
 import {
   getFeast,
   getFeastLocations,
+  getFeastNews,
   getFeastPrayers,
 } from "@/lib/data";
 import {
   celebrationDateFor,
   getBahaiMonth,
 } from "@/lib/bahai-calendar";
+import { NEWS_SCOPE_LABELS, NEWS_SCOPE_ORDER } from "@/lib/feast-program";
+import type { FeastNewsItem } from "@/lib/types";
 import { SuggestionForm } from "./suggestion-form";
 
 export const revalidate = 60;
@@ -24,10 +27,11 @@ export default async function FeastDetailPage({
 }: {
   params: { id: string };
 }) {
-  const [feast, locations, prayers, session] = await Promise.all([
+  const [feast, locations, prayers, news, session] = await Promise.all([
     getFeast(params.id),
     getFeastLocations(params.id),
     getFeastPrayers(params.id),
+    getFeastNews(params.id),
     getOptionalMember(),
   ]);
 
@@ -118,6 +122,37 @@ export default async function FeastDetailPage({
         {/* Programa — solo visible cuando la Fiesta ya inició */}
         {isInProgress && (
           <>
+            <Section title="Programa de la Fiesta">
+              <div className="grid grid-cols-2 gap-2.5">
+                <a
+                  href={`/programa/${feast.id}`}
+                  className="tap flex flex-col items-center gap-1.5 rounded-2xl bg-terra-grad p-4 text-center text-white shadow-card-soft"
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="4" width="20" height="13" rx="2" />
+                    <path d="M8 21h8M12 17v4" />
+                    <path d="M10 8.5v4l3.5-2z" fill="currentColor" stroke="none" />
+                  </svg>
+                  <span className="text-[13px] font-semibold">Ver programa</span>
+                  <span className="text-[10.5px] text-white/75">Diapositivas</span>
+                </a>
+                <a
+                  href={`/programa/${feast.id}/pdf`}
+                  target="_blank"
+                  rel="noopener"
+                  className="tap flex flex-col items-center gap-1.5 rounded-2xl bg-card p-4 text-center text-dark shadow-card-soft"
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="text-terra">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <path d="M12 18v-6M9.5 15.5 12 18l2.5-2.5" />
+                  </svg>
+                  <span className="text-[13px] font-semibold">Descargar folleto</span>
+                  <span className="text-[10.5px] text-muted">PDF para seguir la lectura</span>
+                </a>
+              </div>
+            </Section>
+
             {prayers.length > 0 && (
               <Section title="Oraciones">
                 <ol className="flex flex-col gap-3">
@@ -163,14 +198,20 @@ export default async function FeastDetailPage({
               </Section>
             )}
 
-            {(feast.international_reports ||
-              feast.national_reports ||
-              feast.local_reports) && (
-              <Section title="Informes">
+            {news.length > 0 && (
+              <Section title="Noticias">
                 <div className="flex flex-col gap-3">
-                  <ReportBlock label="Internacionales" text={feast.international_reports} />
-                  <ReportBlock label="Nacionales" text={feast.national_reports} />
-                  <ReportBlock label="Locales" text={feast.local_reports} />
+                  {NEWS_SCOPE_ORDER.map((scope) => {
+                    const items = news.filter((n) => n.scope === scope);
+                    if (items.length === 0) return null;
+                    return (
+                      <NewsBlock
+                        key={scope}
+                        label={NEWS_SCOPE_LABELS[scope]}
+                        items={items}
+                      />
+                    );
+                  })}
                 </div>
               </Section>
             )}
@@ -310,16 +351,41 @@ function FallbackCelebration({
   );
 }
 
-function ReportBlock({ label, text }: { label: string; text: string | null }) {
-  if (!text) return null;
+function NewsBlock({ label, items }: { label: string; items: FeastNewsItem[] }) {
   return (
     <div className="rounded-2xl bg-card p-4 shadow-card-soft">
       <div className="text-[10px] font-semibold uppercase tracking-wide text-terra">
         {label}
       </div>
-      <p className="mt-1.5 whitespace-pre-line font-body text-[12.5px] leading-[1.55] text-dark">
-        {text}
-      </p>
+      <ul className="mt-2 flex flex-col divide-y divide-black/[0.05]">
+        {items.map((n) => (
+          <li key={n.id} className="flex gap-3 py-2.5 first:pt-0 last:pb-0">
+            <div className="min-w-0 flex-1">
+              {n.date_label && (
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-gold-dark">
+                  {n.date_label}
+                </div>
+              )}
+              <div className="font-display text-[15px] font-semibold leading-snug text-dark">
+                {n.title}
+              </div>
+              {n.body && (
+                <p className="mt-1 whitespace-pre-line font-body text-[12.5px] leading-[1.55] text-dark/80">
+                  {n.body}
+                </p>
+              )}
+            </div>
+            {n.image_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={n.image_url}
+                alt=""
+                className="h-16 w-16 shrink-0 rounded-lg object-cover"
+              />
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
