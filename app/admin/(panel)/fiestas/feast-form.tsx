@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Button,
   Card,
@@ -411,10 +412,10 @@ function NewsScopeBlock({
   scope: FeastNewsScope;
   items: FeastNewsItem[];
 }) {
-  const rows: (Partial<FeastNewsItem> & { _new?: boolean })[] = [
-    ...items,
-    { _new: true },
-  ];
+  // Arranca con una tarjeta vacía; "Agregar otra" suma más sin guardar.
+  // Las vacías se ignoran en el action, así que sobran sin costo.
+  const [extra, setExtra] = useState(1);
+  const blanks = Array.from({ length: extra }, (_, i) => `new-${scope}-${i}`);
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between">
@@ -424,10 +425,20 @@ function NewsScopeBlock({
         <span className="text-[10px] text-muted">{NEWS_HINTS[scope]}</span>
       </div>
       <div className="flex flex-col gap-3">
-        {rows.map((item, i) => (
-          <NewsRow key={item.id ?? `new-${scope}-${i}`} scope={scope} item={item} />
+        {items.map((item) => (
+          <NewsRow key={item.id} scope={scope} item={item} />
+        ))}
+        {blanks.map((key) => (
+          <NewsRow key={key} scope={scope} item={{ _new: true }} />
         ))}
       </div>
+      <button
+        type="button"
+        onClick={() => setExtra((n) => n + 1)}
+        className="tap mt-2 inline-flex items-center gap-1.5 rounded-lg border border-dashed border-terra/40 px-3 py-1.5 text-[12px] font-semibold text-terra hover:bg-terra/[0.05]"
+      >
+        <span aria-hidden="true">+</span> Agregar otra noticia
+      </button>
     </div>
   );
 }
