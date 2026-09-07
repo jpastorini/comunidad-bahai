@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Banner, Button, DataTable, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
+import { getReadCountsForMessages } from "@/lib/message-reads";
 import { getLocalityPushReach } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { formatMessageDate } from "@/lib/format";
@@ -20,6 +21,8 @@ export default async function AdminComunicadosPage() {
   ]);
 
   const rows = (data ?? []) as Message[];
+  // Quién vio cada comunicado (048). `null` = la tabla no existe todavía.
+  const readCounts = await getReadCountsForMessages(rows, session.locality.id);
 
   return (
     <>
@@ -126,17 +129,37 @@ export default async function AdminComunicadosPage() {
               ),
           },
           {
-            key: "new",
-            label: "Nuevo",
-            width: "70px",
-            render: (m) =>
-              m.is_new ? (
-                <span className="rounded bg-terra px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
-                  Sí
-                </span>
-              ) : (
-                <span className="text-[11px] text-muted">—</span>
-              ),
+            key: "reads",
+            label: "Lectura",
+            width: "150px",
+            render: (m) => {
+              const c = readCounts?.get(m.id);
+              if (!c) return <span className="text-[11px] text-muted">Sin datos</span>;
+              const pct = c.total === 0 ? 0 : Math.round((c.seen / c.total) * 100);
+              return (
+                <Link
+                  href={`/admin/comunicados/${m.id}/lectura`}
+                  className="block hover:underline"
+                  title="Ver quién lo leyó y a quién falta contactar"
+                >
+                  <div className="text-[13px] font-semibold text-dark">
+                    {c.seen} de {c.total}
+                    <span className="ml-1 text-[11px] font-normal text-muted">({pct} %)</span>
+                  </div>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/[0.06]">
+                    <div
+                      className="h-full rounded-full bg-green"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  {m.ask_confirmation && (
+                    <div className="mt-0.5 text-[10px] text-muted">
+                      {c.confirmed} confirmaron
+                    </div>
+                  )}
+                </Link>
+              );
+            },
           },
           {
             key: "actions",

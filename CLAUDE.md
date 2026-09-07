@@ -247,7 +247,75 @@ cargar texto completo y/o PDF en `/admin/mensajes`. ·
 abajo. ·
 **Amigos de la Fe** (migración 047): la app también para quien no es
 bahá'í, sin Tesorería ni Fiesta de los 19 Días. Ver la sección "Amigos
-de la Fe" más abajo.
+de la Fe" más abajo. ·
+**Lectura de comunicados** (migración 048): quién vio y quién confirmó
+cada comunicado, con informe en vivo para la Asamblea y "última vez en
+la app" por persona. Ver la sección "Lectura de comunicados" más abajo.
+
+## Lectura de comunicados (migración 048)
+
+La Asamblea necesita saber, por comunicado, a quién NO le llegó, para
+contactarlo por otro medio. Tabla `message_reads`, una fila por
+(comunicado, persona), con dos marcas que significan cosas distintas:
+
+- **`seen_at`, automático.** La tarjeta estuvo en pantalla. Lo dispara
+  `ComunicadoCard` (`components/comunicados/`) con un
+  IntersectionObserver: la mitad de la tarjeta —o media pantalla, si la
+  tarjeta es más alta que el viewport— a la vista durante 1,5 s
+  seguidos. Pasar scrolleando no cuenta; detenerse a leer sí. Los
+  comunicados no tienen página propia (son tarjetas con el texto
+  completo en la lista), por eso "abrió" no existe como señal.
+- **`confirmed_at`, explícito.** El botón "Enterado/a", que aparece solo
+  si el comunicado lo pide (`messages.ask_confirmation`, checkbox del
+  formulario de la Asamblea). El error caro es el falso positivo —el
+  informe dice que leyó, nadie lo llama—, así que el "visto" no se
+  disfraza de leído y lo importante lleva confirmación.
+
+Tres cosas más que sostienen el diseño:
+
+- **El badge "Nuevo" es por persona.** Ya no lo marca la Asamblea a
+  mano: `isNewForReader()` (`lib/message-reads.ts`) lo muestra a quien
+  no tiene fila de lectura, con tope de 30 días desde la fecha del
+  comunicado para que el histórico no aparezca todo como nuevo al
+  estrenar la función. La columna `is_new` sigue existiendo pero el
+  formulario de comunicados dejó de escribirla (el de Mensajes de la
+  Casa Universal, no).
+- **"Última vez en la app"** (`profiles.last_seen_at`): `PresenceBeacon`
+  en el layout de `(app)` llama a `touchLastSeenAction()` al montar y
+  al volver al frente; el servidor escribe a lo sumo una vez por día
+  civil, frenado por la cookie `cb_last_seen_day`. En la lista de "no
+  vieron" separa a quien no entra nunca (un llamado) de quien entró
+  ayer y no llegó (un recordatorio). Es columna personal, no
+  privilegiada: no hay que tocar `profiles_update_self`.
+- **La regla vive en la RLS.** Cada persona escribe solo su fila, y
+  solo sobre un comunicado que puede leer: el `exists` de la policy de
+  insert corre con la RLS de `messages` del que escribe, así que un
+  Amigo de la Fe no puede marcar un comunicado "solo creyentes". Lee la
+  propia persona y la Asamblea de su localidad (`is_admin` +
+  `current_locality_id`). Las acciones de marcar **no revalidan rutas**
+  a propósito: se disparan mientras la persona scrollea y tirar el
+  caché de la pantalla en cada marca recargaría la lista bajo su dedo.
+
+El informe: columna "Lectura" en `/admin/comunicados` (vistos de total,
+barra, confirmados si se pidieron) y detalle en
+`/admin/comunicados/[id]/lectura` con tres listas —confirmaron, vieron
+sin confirmar, no vieron todavía— que se refresca sola con Realtime
+(`ReadReportRefresher`, mismo molde que `ChatListRefresher`; la tabla
+está en la publicación `supabase_realtime`). La audiencia (el
+denominador) son los perfiles activos de la localidad, solo creyentes si
+el comunicado es `audience='creyentes'`, igual que el push. Quien se fue
+de la localidad o quedó deshabilitado no cuenta en ningún lado. Un
+comunicado anterior a la 048 muestra "Sin datos" en la tabla hasta que
+alguien lo vea.
+
+Decisión de producto: **no se le avisa al creyente** que la Asamblea ve
+quién leyó. Se conversó y se decidió que no hace falta en una comunidad
+de este tamaño.
+
+⚠️ Hasta que corra la 048, el formulario de comunicados falla al
+guardar (`ask_confirmation` no existe) y el listado de `/comunicados`
+sale sin estado de lectura (el error se loguea y se sigue). No desplegar
+sin aplicar la migración antes.
 
 ## Amigos de la Fe (migración 047)
 
@@ -702,6 +770,13 @@ los PDF viajan tal cual (media factura llega por mail).
   tesorero. También falta una pantalla de contribuyentes para el tesorero
   (fusionar duplicados, desvincular); hoy solo se vincula desde el
   formulario.
+- **Lectura de comunicados: falta el deep-link del push.** La
+  notificación abre `/comunicados` y el "visto" depende de que la
+  tarjeta quede en pantalla; si el comunicado no es el primero de la
+  lista, el que llegó por el push tiene que scrollear. Un
+  `/comunicados#<id>` que haga scroll a la tarjeta lo resolvería. Y el
+  informe no sabe quién se sumó a la localidad DESPUÉS del comunicado:
+  cuenta como "no vio" a alguien que nunca fue destinatario.
 - **Buscador del libro:** encuentra por nombre de contribuyente aunque los
   nombres estén ocultos. Decidido dejarlo así por ahora; si molesta, que
   ignore los nombres mientras estén ocultos.

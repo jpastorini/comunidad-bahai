@@ -3,6 +3,7 @@ import { DayChangeRefresh } from "@/components/DayChangeRefresh";
 import { HeaderUserProvider } from "@/components/HeaderUser";
 import { InstallSheet } from "@/components/InstallSheet";
 import { PhotoFab } from "@/components/PhotoFab";
+import { PresenceBeacon } from "@/components/PresenceBeacon";
 import { TabBar } from "@/components/TabBar";
 import { requireMember } from "@/lib/auth";
 import { civilDateISO, getAppTimeZone } from "@/lib/citas";
@@ -30,6 +31,8 @@ export default async function AppLayout({
   return (
     <div id="app-shell">
       <ChatNotifier userId={session.user.id} side="member" />
+      {/* "Última vez en la app" para el informe de lectura (048). */}
+      <PresenceBeacon />
       <DayChangeRefresh
         renderedDate={civilDateISO()}
         timeZone={getAppTimeZone()}

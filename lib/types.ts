@@ -20,9 +20,27 @@ export type Message = {
    * respeta. Migración 047.
    */
   audience?: MessageAudience;
+  /**
+   * Pide al lector que toque "Enterado/a". Solo para lo que importa
+   * (una invitación, una convocatoria): el "visto" automático cubre el
+   * resto. Migración 048.
+   */
+  ask_confirmation?: boolean;
 };
 
 export type MessageAudience = "todos" | "creyentes";
+
+/**
+ * Lectura de un comunicado por una persona (migración 048). `seen_at`
+ * es automático (la tarjeta estuvo en pantalla); `confirmed_at` es el
+ * botón "Enterado/a". Una fila por (comunicado, persona).
+ */
+export type MessageRead = {
+  message_id: string;
+  profile_id: string;
+  seen_at: string;
+  confirmed_at: string | null;
+};
 
 /**
  * Canal del chat. La conversación es una por (creyente, tema): a la

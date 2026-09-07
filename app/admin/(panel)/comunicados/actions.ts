@@ -55,9 +55,11 @@ export async function upsertComunicadoAction(formData: FormData) {
     subject,
     excerpt,
     full_text: fullText,
-    is_new: formData.get("is_new") === "on",
     source: "asamblea_local",
     audience,
+    // 048: "Nuevo" dejó de escribirse a mano (es por lector). Lo que el
+    // formulario declara es si pide confirmación de lectura.
+    ask_confirmation: formData.get("ask_confirmation") === "on",
   };
 
   if (!payload.date || !payload.title) {

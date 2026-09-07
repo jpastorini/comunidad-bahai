@@ -32,11 +32,14 @@ export function ComunicadoForm({ comunicado }: Props) {
               defaultValue={comunicado?.date ?? today}
             />
           </Field>
+          {/* El badge "Nuevo" ya no se marca a mano: es por persona, hasta
+              que cada una lo ve (048). Lo que sí decide la Asamblea es si
+              este comunicado pide confirmación explícita de lectura. */}
           <div className="flex items-end">
             <Checkbox
-              name="is_new"
-              label='Marcar como "Nuevo" (badge en la app)'
-              defaultChecked={comunicado?.is_new ?? false}
+              name="ask_confirmation"
+              label="Pedir confirmación de lectura (botón “Enterado/a” en la app)"
+              defaultChecked={comunicado?.ask_confirmation ?? false}
             />
           </div>
         </div>

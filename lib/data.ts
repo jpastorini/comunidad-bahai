@@ -75,7 +75,7 @@ export async function getLocalAnnouncements(): Promise<Message[]> {
   const { data, error } = await supabase
     .from("messages")
     .select(
-      "id, date, title, excerpt, full_text, is_new, source, subject, pdf_url, image_url"
+      "id, date, title, excerpt, full_text, is_new, source, subject, pdf_url, image_url, ask_confirmation"
     )
     .eq("source", "asamblea_local")
     .order("date", { ascending: false });
