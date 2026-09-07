@@ -41,7 +41,7 @@ export default async function ComunicadoLecturaPage({
   return (
     <>
       <ReadReportRefresher messageId={m.id} />
-      <PageHeader
+      <PageHeader back={{ href: "/admin/comunicados", label: "Comunicados" }}
         eyebrow={`Comunicado del ${formatMessageDate(m.date)}`}
         title={m.title}
         description={
@@ -51,9 +51,6 @@ export default async function ComunicadoLecturaPage({
         }
         actions={
           <div className="flex gap-2">
-            <Button variant="secondary" href="/admin/comunicados">
-              Volver
-            </Button>
             <Button variant="secondary" href={`/admin/comunicados/${m.id}`}>
               Editar comunicado
             </Button>

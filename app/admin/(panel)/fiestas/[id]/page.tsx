@@ -44,7 +44,7 @@ export default async function EditFeastPage({
 
   return (
     <>
-      <PageHeader
+      <PageHeader back={{ href: "/admin/fiestas", label: "Fiestas de 19 Días" }}
         eyebrow={`Mes ${feast.bahai_month_index} · ${feast.bahai_year} BE`}
         title={`Fiesta de ${feast.bahai_month_name}`}
         description="Edita el programa, lugares y tesorería. Cuando esté listo, publica la Fiesta y, al llegar el día, iníciala."

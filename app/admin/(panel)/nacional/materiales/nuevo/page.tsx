@@ -8,7 +8,7 @@ export default async function NewNacionalMaterialPage() {
   await requireNationalAdmin();
   return (
     <FormShell>
-      <PageHeader
+      <PageHeader back={{ href: "/admin/nacional/materiales", label: "Materiales nacionales" }}
         eyebrow="Admin Nacional"
         title="Nuevo material nacional"
         description="Visible para todas las comunidades."

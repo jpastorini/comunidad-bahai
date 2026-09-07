@@ -80,7 +80,7 @@ export default async function AdminMiembrosPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Comunidad"
+        eyebrow="Creyentes"
         title="Creyentes"
         description="Gestiona el rol de cada creyente y los permisos especiales."
       />

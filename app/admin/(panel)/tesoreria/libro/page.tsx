@@ -56,9 +56,6 @@ export default async function LibroTesoreriaPage({
         actions={
           <>
             <Button href="/admin/tesoreria/informes">Informes</Button>
-            <Button variant="secondary" href="/admin/tesoreria">
-              Volver a Tesorería
-            </Button>
           </>
         }
       />

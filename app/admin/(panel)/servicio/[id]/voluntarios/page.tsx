@@ -23,8 +23,8 @@ export default async function VolunteersPage({
 
   return (
     <>
-      <PageHeader
-        eyebrow="Servicio"
+      <PageHeader back={{ href: "/admin/servicio", label: "Servicio" }}
+        eyebrow="Vida comunitaria"
         title="Voluntarios"
         description={need.title}
       />

@@ -27,7 +27,7 @@ export default async function AdminComunicadosPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Asamblea Espiritual Local"
+        eyebrow="Comunicación"
         title="Comunicados"
         description="Comunicados de la Asamblea Local con texto, imagen de invitación y PDF adjunto."
         actions={

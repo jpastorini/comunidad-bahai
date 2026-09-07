@@ -128,7 +128,7 @@ export default async function AdminSugerenciasPage({
   return (
     <>
       <PageHeader
-        eyebrow="Asamblea Local"
+        eyebrow="Vida comunitaria"
         title="Sugerencias de la comunidad"
         description="Capturadas durante las Fiestas. La Asamblea las consulta en su reunión administrativa y marca las tratadas."
         actions={

@@ -20,7 +20,7 @@ export default async function EditActivityPage({
 
   return (
     <FormShell>
-      <PageHeader eyebrow="Comunidad" title="Editar actividad" />
+      <PageHeader back={{ href: "/admin/actividades", label: "Actividades" }} eyebrow="Vida comunitaria" title="Editar actividad" />
       <ActivityForm activity={data as Activity} />
     </FormShell>
   );

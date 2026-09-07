@@ -12,8 +12,8 @@ export default async function NuevoBoletinPage() {
 
   return (
     <>
-      <PageHeader
-        eyebrow="Boletín local"
+      <PageHeader back={{ href: "/admin/boletin", label: "Boletín" }}
+        eyebrow="Comunicación"
         title="Nueva edición"
         description="Elegí qué incluir: el contenido sale de lo que ya está cargado en la app."
       />

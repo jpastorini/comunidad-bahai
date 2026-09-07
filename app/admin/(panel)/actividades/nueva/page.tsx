@@ -4,7 +4,7 @@ import { ActivityForm } from "../activity-form";
 export default function NewActivityPage() {
   return (
     <FormShell>
-      <PageHeader eyebrow="Comunidad" title="Nueva actividad" />
+      <PageHeader back={{ href: "/admin/actividades", label: "Actividades" }} eyebrow="Vida comunitaria" title="Nueva actividad" />
       <ActivityForm />
     </FormShell>
   );

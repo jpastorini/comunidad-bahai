@@ -17,7 +17,7 @@ export default async function AdminFotosPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Asamblea Espiritual Local"
+        eyebrow="Vida comunitaria"
         title="Fotos de la comunidad"
         description={`Fotos que suben los creyentes en cada evento. Destacá hasta ${MAX_FEATURED_PER_EVENT} por evento (se muestran en el Inicio) y enviá las mejores al boletín nacional que ven todas las comunidades.`}
       />

@@ -28,7 +28,7 @@ export default async function EditEventPage({
   return (
     <div className="mx-auto max-w-3xl xl:flex xl:max-w-none xl:items-start xl:gap-6">
       <div className="min-w-0 xl:max-w-3xl xl:flex-1">
-        <PageHeader eyebrow="Calendario" title="Editar evento" />
+        <PageHeader back={{ href: "/admin/calendario", label: "Calendario" }} eyebrow="Vida comunitaria" title="Editar evento" />
         <EventForm event={event} />
       </div>
       <EventAvailabilityAside

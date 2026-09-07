@@ -2,51 +2,52 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
-  IconActividades,
-  IconMetas,
+  IconAEL,
   IconCalendario,
-  IconCheck,
-  IconChat,
-  IconGaleria,
-  IconMateriales,
+  IconChevronDown,
+  IconHome,
   IconMensajes,
-  IconServicio,
+  IconNacional,
+  IconPersonas,
   IconTesoreria,
 } from "@/components/Icons";
 import { BahaiStar } from "@/components/BahaiStar";
+import { activeLeaf, visibleNav, type NavGroup } from "@/lib/admin-nav";
 import { ROLE_LABELS, type Locality, type Profile } from "@/lib/types";
 
-type NavItem = {
-  href: string;
-  label: string;
-  Icon: typeof IconMensajes;
-  requires?: "chat" | "treasury" | "bulletin";
+/** Un ícono por grupo (no por pantalla): siete distintos, sin repetir. */
+const GROUP_ICONS: Record<string, typeof IconMensajes> = {
+  inicio: IconHome,
+  asamblea: IconAEL,
+  comunicacion: IconMensajes,
+  comunidad: IconCalendario,
+  creyentes: IconPersonas,
+  tesoreria: IconTesoreria,
+  nacional: IconNacional,
 };
 
-const NAV: NavItem[] = [
-  { href: "/admin", label: "Inicio", Icon: IconActividades },
-  { href: "/admin/comunicados", label: "Comunicados (Asamblea Local)", Icon: IconMensajes },
-  { href: "/admin/boletin", label: "Boletín local", Icon: IconMensajes, requires: "bulletin" },
-  { href: "/admin/tareas", label: "Tareas de la Asamblea", Icon: IconCheck },
-  { href: "/admin/disponibilidad", label: "Disponibilidad (reuniones)", Icon: IconCalendario },
-  { href: "/admin/fiestas", label: "Fiestas de 19 Días", Icon: IconCalendario },
-  { href: "/admin/sugerencias", label: "Sugerencias", Icon: IconChat },
-  { href: "/admin/actividades", label: "Actividades", Icon: IconActividades },
-  { href: "/admin/fotos", label: "Fotos de la comunidad", Icon: IconGaleria },
-  { href: "/admin/calendario", label: "Calendario", Icon: IconCalendario },
-  { href: "/admin/materiales", label: "Materiales", Icon: IconMateriales },
-  { href: "/admin/servicio", label: "Servicio", Icon: IconServicio },
-  { href: "/admin/chat", label: "Chat con Secretaría", Icon: IconChat, requires: "chat" },
-  { href: "/admin/tesoreria", label: "Tesorería", Icon: IconTesoreria, requires: "treasury" },
-  // Canal propio del tesorero: los avisos de aportes por giro directo.
-  { href: "/admin/tesoreria/chat", label: "Mensajes al tesorero", Icon: IconChat, requires: "treasury" },
-  // Registro de solo lectura: lo ve toda la Asamblea, no solo el tesorero.
-  { href: "/admin/informes", label: "Informes de Tesorería", Icon: IconTesoreria },
-  { href: "/admin/miembros", label: "Creyentes (local)", Icon: IconActividades },
-  // Estadística de uso de la app por localidad (049): toda la Asamblea.
-  { href: "/admin/uso", label: "Uso de la app", Icon: IconMetas },
-];
+/** Grupos que la persona dejó abiertos, por dispositivo. */
+const OPEN_KEY = "cb-admin-nav-open";
+
+function readOpen(): string[] {
+  try {
+    const raw = localStorage.getItem(OPEN_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((k) => typeof k === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeOpen(keys: string[]) {
+  try {
+    localStorage.setItem(OPEN_KEY, JSON.stringify(keys));
+  } catch {
+    /* modo privado o storage bloqueado: se pierde la memoria, nada más */
+  }
+}
 
 type Props = {
   profile: Profile;
@@ -56,28 +57,34 @@ type Props = {
 
 export function SidebarContent({ profile, locality, onNavigate }: Props) {
   const pathname = usePathname();
+  const groups = useMemo(() => visibleNav(profile), [profile]);
+  const active = useMemo(() => activeLeaf(groups, pathname), [groups, pathname]);
+  const activeGroupKey = active?.group.key ?? null;
 
-  // Un editor designado del Boletín (role='member' + can_manage_bulletin)
-  // entra al panel pero solo ve su sección; el resto exige rol admin.
-  const isAdminRole = profile.role === "admin";
-  const items = NAV.filter((item) => {
-    if (item.requires === "chat") return isAdminRole && profile.can_respond_chat;
-    if (item.requires === "treasury")
-      return isAdminRole && profile.can_manage_treasury;
-    if (item.requires === "bulletin")
-      return isAdminRole || profile.can_manage_bulletin;
-    return isAdminRole;
-  });
+  // Arranca con SOLO el grupo de la pantalla actual abierto (es lo que el
+  // servidor puede saber); los que la persona dejó abiertos se suman al
+  // montar, cuando hay localStorage.
+  const [open, setOpen] = useState<string[]>(activeGroupKey ? [activeGroupKey] : []);
+  const [hydrated, setHydrated] = useState(false);
 
-  // Prende UN solo ítem: el de coincidencia más larga. Sin esto,
-  // /admin/tesoreria/chat prendería también "Tesorería", que es prefijo.
-  const activeHref = items.reduce((best, item) => {
-    const hit =
-      item.href === "/admin"
-        ? pathname === "/admin"
-        : pathname.startsWith(item.href);
-    return hit && item.href.length > best.length ? item.href : best;
-  }, "");
+  useEffect(() => {
+    setOpen((prev) => Array.from(new Set([...prev, ...readOpen()])));
+    setHydrated(true);
+  }, []);
+
+  // Regla 1: la categoría de la pantalla actual está siempre abierta. Se
+  // puede cerrar a mano, pero al navegar a otra pantalla suya vuelve a abrir.
+  useEffect(() => {
+    if (!activeGroupKey) return;
+    setOpen((prev) => (prev.includes(activeGroupKey) ? prev : [...prev, activeGroupKey]));
+  }, [activeGroupKey, pathname]);
+
+  useEffect(() => {
+    if (hydrated) writeOpen(open);
+  }, [open, hydrated]);
+
+  const toggle = (key: string) =>
+    setOpen((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
 
   return (
     <div className="flex h-full flex-col">
@@ -88,7 +95,7 @@ export function SidebarContent({ profile, locality, onNavigate }: Props) {
         </div>
         <div className="relative">
           <div className="text-[9px] font-semibold uppercase tracking-[2.5px] text-white/55">
-            Panel administrativo
+            Panel de la Asamblea
           </div>
           <div className="mt-1 font-display text-[20px] font-bold leading-tight text-white">
             {locality?.name ?? "Comunidad Bahá'í"}
@@ -103,73 +110,20 @@ export function SidebarContent({ profile, locality, onNavigate }: Props) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        <ul className="flex flex-col gap-1">
-          {items.map((item) => {
-            const active = item.href === activeHref;
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  onClick={onNavigate}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition ${
-                    active
-                      ? "bg-terra text-white shadow-card-soft"
-                      : "text-dark hover:bg-bg"
-                  }`}
-                >
-                  <item.Icon size={18} />
-                  <span>{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
+        <ul className="flex flex-col gap-0.5">
+          {groups.map((group) => (
+            <GroupRow
+              key={group.key}
+              group={group}
+              Icon={GROUP_ICONS[group.key] ?? IconMensajes}
+              isOpen={open.includes(group.key)}
+              isActiveGroup={group.key === activeGroupKey}
+              activeHref={active?.leaf?.href ?? null}
+              onToggle={() => toggle(group.key)}
+              onNavigate={onNavigate}
+            />
+          ))}
         </ul>
-
-        {/* Sección Admin Nacional — visible solo si tiene el flag */}
-        {profile.is_national_admin && (
-          <>
-            <div className="mt-5 mb-1 px-3 text-[9px] font-semibold uppercase tracking-[1.5px] text-gold-dark">
-              Admin Nacional
-            </div>
-            <ul className="flex flex-col gap-1">
-              <NationalLink
-                href="/admin/nacional"
-                label="Panel Nacional"
-                pathname={pathname}
-                onNavigate={onNavigate}
-                Icon={IconActividades}
-              />
-              <NationalLink
-                href="/admin/mensajes"
-                label="Mensajes (Casa Universal)"
-                pathname={pathname}
-                onNavigate={onNavigate}
-                Icon={IconMensajes}
-              />
-              <NationalLink
-                href="/admin/nacional/materiales"
-                label="Materiales (nacionales)"
-                pathname={pathname}
-                onNavigate={onNavigate}
-                Icon={IconMateriales}
-              />
-              <NationalLink
-                href="/admin/nacional/localidades"
-                label="Localidades"
-                pathname={pathname}
-                onNavigate={onNavigate}
-                Icon={IconActividades}
-              />
-              <NationalLink
-                href="/admin/nacional/miembros"
-                label="Creyentes (todos)"
-                pathname={pathname}
-                onNavigate={onNavigate}
-                Icon={IconActividades}
-              />
-            </ul>
-          </>
-        )}
       </nav>
 
       {/* User card */}
@@ -226,34 +180,85 @@ export function SidebarContent({ profile, locality, onNavigate }: Props) {
   );
 }
 
-function NationalLink({
-  href,
-  label,
-  pathname,
-  onNavigate,
+function GroupRow({
+  group,
   Icon,
+  isOpen,
+  isActiveGroup,
+  activeHref,
+  onToggle,
+  onNavigate,
 }: {
-  href: string;
-  label: string;
-  pathname: string;
-  onNavigate?: () => void;
+  group: NavGroup;
   Icon: typeof IconMensajes;
+  isOpen: boolean;
+  isActiveGroup: boolean;
+  activeHref: string | null;
+  onToggle: () => void;
+  onNavigate?: () => void;
 }) {
-  const active = pathname === href || pathname.startsWith(`${href}/`);
+  const gold = group.tone === "gold";
+  const activeBg = gold ? "bg-gold-dark" : "bg-terra";
+  const activeText = gold ? "text-gold-dark" : "text-terra";
+
+  // Ítem suelto (Inicio): un link, sin despliegue.
+  if (!group.children) {
+    return (
+      <li>
+        <Link
+          href={group.href ?? "/admin"}
+          onClick={onNavigate}
+          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition ${
+            isActiveGroup ? `${activeBg} text-white shadow-card-soft` : "text-dark hover:bg-bg"
+          }`}
+        >
+          <Icon size={18} />
+          <span>{group.label}</span>
+        </Link>
+      </li>
+    );
+  }
+
+  // Regla 3: el título de la categoría no navega, solo despliega.
   return (
     <li>
-      <Link
-        href={href}
-        onClick={onNavigate}
-        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition ${
-          active
-            ? "bg-gold-dark text-white shadow-card-soft"
-            : "text-dark hover:bg-bg"
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition hover:bg-bg ${
+          isActiveGroup ? activeText : "text-dark"
         }`}
       >
         <Icon size={18} />
-        <span>{label}</span>
-      </Link>
+        <span className="flex-1">{group.label}</span>
+        <IconChevronDown
+          size={14}
+          className={`text-muted transition-transform ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+      {isOpen && (
+        <ul className="mb-1 ml-[21px] flex flex-col gap-0.5 border-l border-black/[0.08] pl-3">
+          {group.children.map((leaf) => {
+            const on = leaf.href === activeHref;
+            return (
+              <li key={leaf.href}>
+                <Link
+                  href={leaf.href}
+                  onClick={onNavigate}
+                  className={`block rounded-lg px-3 py-2 text-[12.5px] transition ${
+                    on
+                      ? `${activeBg} font-semibold text-white shadow-card-soft`
+                      : "font-medium text-dark/80 hover:bg-bg hover:text-dark"
+                  }`}
+                >
+                  {leaf.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </li>
   );
 }

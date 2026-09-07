@@ -253,7 +253,56 @@ cada comunicado, con informe en vivo para la Asamblea y "última vez en
 la app" por persona. Ver la sección "Lectura de comunicados" más abajo. ·
 **Uso de la app** (migración 049): estadística por localidad en
 `/admin/uso` (instalada, avisos, regularidad, secciones, persona por
-persona). Ver la sección "Uso de la app" más abajo.
+persona). Ver la sección "Uso de la app" más abajo. ·
+**Menú del panel anidado** (sin migración): siete grupos que se despliegan
+con sus pantallas adentro. Ver la sección "Navegación del panel" más abajo.
+
+## Navegación del panel (leer antes de agregar una pantalla al admin)
+
+El menú lateral del panel es **una sola fuente**: `lib/admin-nav.ts`.
+Pocos grupos, uno por área de trabajo de la Asamblea, que se despliegan
+con sus pantallas adentro. Los sub-ítems del menú SON la navegación
+interna de cada sección: no hay pestañas ni hubs de botones aparte, un
+solo mecanismo. Grupos: Inicio (ítem suelto) · Asamblea (Tareas,
+Reuniones, Informes de Tesorería) · Comunicación (Comunicados, Boletín,
+Chat de Secretaría) · Vida comunitaria (Calendario, Fiestas, Sugerencias,
+Actividades, Servicio, Materiales, Fotos) · Creyentes (Creyentes, Uso de
+la app) · Tesorería (Libro, Informes, Progreso, Presupuesto, Metas,
+Mensajes, Cómo aportar) · Admin Nacional.
+
+Tres reglas de comportamiento (`components/admin/Sidebar.tsx`):
+
+- **El grupo de la pantalla actual está siempre abierto.** Se puede
+  cerrar a mano, pero al navegar a otra pantalla suya vuelve a abrirse.
+  El grupo activo lo decide `activeLeaf()`: la coincidencia de prefijo
+  MÁS LARGA entre las hojas visibles, con `match` para rutas que prenden
+  otra hoja (el recibo prende "Libro") y `exact` para las que son prefijo
+  de otras (`/admin/nacional`).
+- **Los demás arrancan cerrados**, se abren tocando el título, pueden
+  quedar varios abiertos (sin acordeón) y lo abierto se recuerda por
+  dispositivo en `localStorage` (`cb-admin-nav-open`). El servidor
+  renderiza con solo el grupo activo abierto; los recordados se suman al
+  montar.
+- **El título del grupo no navega**, solo despliega. Un ícono por grupo,
+  no por pantalla (`GROUP_ICONS`).
+
+Los permisos siguen en `canSee()`: Tesorería con `can_manage_treasury`,
+Chat con `can_respond_chat`, Nacional con `is_national_admin`; un editor
+de Boletín con `role='member'` ve solo Comunicación → Boletín. Un grupo
+sin hijos visibles no se muestra.
+
+Para agregar una pantalla: una hoja en `ADMIN_NAV`, y en la página
+`<PageHeader eyebrow="<nombre del grupo>" ...>`. El **eyebrow es siempre
+el nombre del grupo del menú** (o "Tesorería · Presupuesto" para un
+detalle), para que la persona sepa dónde está parada. Las subpantallas
+(nuevo, editar, detalle) llevan `back={{ href, label }}`, que dibuja el
+link "← Sección" arriba del eyebrow y reemplaza a los botones "Volver"
+sueltos: uno solo, siempre en el mismo lugar. Las cancelaciones de los
+formularios siguen siendo del formulario.
+
+`/admin/tesoreria` redirige al Libro. El formulario viejo de la tabla
+`treasury` (medios de pago y cifra a mano) quedó en
+`/admin/tesoreria/aportar` como "Cómo aportar" hasta que se jubile.
 
 ## Uso de la app (migración 049)
 
@@ -606,7 +655,7 @@ Solo el tesorero ve el botón de volver al editor.
 - `/admin/tesoreria/informes` — el taller del tesorero (crear, editar,
   publicar, borrar). Exige el tag.
 - `/admin/informes` — **registro de solo lectura** para toda la Asamblea
-  (cualquier rol admin, en el sidebar). Lista los informes EMITIDOS con
+  (cualquier rol admin, en el grupo "Asamblea" del menú). Lista los informes EMITIDOS con
   su fecha y su estado Aprobado / No aprobado, y nada que modifique.
   Vista en `components/treasury/ReportRegistry.tsx`, separada de la
   página para que la página se ocupe de datos y permisos.
@@ -777,11 +826,19 @@ los PDF viajan tal cual (media factura llega por mail).
 
 ## Pendientes conocidos
 
+- **Inicio del panel como tablero de atención.** Hoy mezcla contadores
+  de totales (actividades, materiales) con lo accionable (tareas
+  pendientes, chats sin leer). Debería mostrar solo lo que pide atención:
+  tareas, chats, lectura del último comunicado, próxima Fiesta y su
+  estado, eventos de los próximos 7 días, quién falta cargar
+  disponibilidad, alcance del push. Fuera "Tus permisos" (ya está en el
+  pie del menú). Acordado con el usuario como segunda pasada del
+  reordenamiento del menú.
 - **Jubilar la tabla `treasury` vieja.** El anillo de `/tesoreria` ya se
   fue (lo reemplazó el tablero de progreso, 042), pero siguen leyendo el
   `current_amount` escrito a mano el "Informe mensual" de esa pantalla y
   los dos compartibles de imagen (`MonthlyReportShare`,
-  `BudgetReportShare`), más el formulario de `/admin/tesoreria`. Todo eso
+  `BudgetReportShare`), más el formulario de `/admin/tesoreria/aportar` ("Cómo aportar"). Todo eso
   se puede calcular desde el libro; falta hacerlo y borrar el formulario.
 - **Las metas viven en dos lados.** `treasury_goals` (042) es el dato,
   pero el editor del informe (041) todavía tiene sus propios campos de

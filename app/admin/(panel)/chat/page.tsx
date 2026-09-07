@@ -34,7 +34,7 @@ export default async function AdminChatListPage() {
     <>
       <ChatListRefresher channel="admin-chat-list-secretaria" />
       <PageHeader
-        eyebrow="Secretaría"
+        eyebrow="Comunicación"
         title="Conversaciones"
         description="Responde a los creyentes que han escrito a la Secretaría. Los mensajes dirigidos a Tesorería los atiende el tesorero, en su propia bandeja."
       />

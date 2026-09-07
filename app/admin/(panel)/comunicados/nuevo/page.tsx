@@ -4,8 +4,8 @@ import { ComunicadoForm } from "../comunicado-form";
 export default function NewComunicadoPage() {
   return (
     <FormShell>
-      <PageHeader
-        eyebrow="Asamblea Espiritual Local"
+      <PageHeader back={{ href: "/admin/comunicados", label: "Comunicados" }}
+        eyebrow="Comunicación"
         title="Nuevo comunicado"
         description="Comparte un comunicado oficial con la comunidad."
       />

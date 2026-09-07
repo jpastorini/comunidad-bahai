@@ -4,16 +4,31 @@ import { IconArrowRight } from "@/components/Icons";
 
 // ──────────────── Page header ────────────────
 type PageHeaderProps = {
+  /** El grupo o la sección del menú donde vive la pantalla ("Tesorería",
+   *  "Comunicación"). Siempre el mismo texto que el menú, para que la
+   *  persona sepa dónde está parada. */
   eyebrow?: string;
   title: string;
   description?: string;
   actions?: ReactNode;
+  /** Link de regreso, arriba del eyebrow, para las subpantallas (editar,
+   *  nuevo, detalle). Reemplaza a los botones "Volver" sueltos: uno solo,
+   *  siempre en el mismo lugar. */
+  back?: { href: string; label: string };
 };
 
-export function PageHeader({ eyebrow, title, description, actions }: PageHeaderProps) {
+export function PageHeader({ eyebrow, title, description, actions, back }: PageHeaderProps) {
   return (
     <div className="mb-7 flex flex-col gap-4 md:mb-10 md:flex-row md:items-end md:justify-between md:gap-6">
       <div className="min-w-0">
+        {back && (
+          <Link
+            href={back.href}
+            className="mb-2 inline-flex items-center gap-1 text-[12px] font-semibold text-muted transition hover:text-terra"
+          >
+            <span aria-hidden="true">←</span> {back.label}
+          </Link>
+        )}
         {eyebrow && (
           <div className="text-[10px] font-semibold uppercase tracking-[2px] text-gold-dark">
             {eyebrow}

@@ -31,7 +31,7 @@ export default async function AdminMaterialesPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Estudio"
+        eyebrow="Vida comunitaria"
         title="Materiales"
         description="Libros Ruhí, escritos, oraciones y la Oración del mes con imagen para compartir."
         actions={<Button href="/admin/materiales/nuevo">+ Nuevo material</Button>}

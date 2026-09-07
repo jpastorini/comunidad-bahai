@@ -6,8 +6,8 @@ export default async function ImportarActaPage() {
   await requireAdmin();
   return (
     <FormShell>
-      <PageHeader
-        eyebrow="Tareas de la Asamblea"
+      <PageHeader back={{ href: "/admin/tareas", label: "Tareas" }}
+        eyebrow="Asamblea"
         title="Importar acta"
         description="Subí el acta de la reunión en Word (.docx). Claude lee el texto y propone las tareas que surgieron de la consulta; vos las revisás y confirmás. El archivo no se guarda, solo el texto se procesa."
       />

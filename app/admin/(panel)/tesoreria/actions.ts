@@ -67,7 +67,7 @@ export async function saveTreasuryAction(formData: FormData) {
       : { tone: "success", message: "Tesorería guardada." }
   );
 
-  revalidatePath("/admin/tesoreria");
+  revalidatePath("/admin/tesoreria/aportar");
   revalidatePath("/tesoreria");
-  redirect("/admin/tesoreria");
+  redirect("/admin/tesoreria/aportar");
 }

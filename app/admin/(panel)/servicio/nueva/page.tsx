@@ -4,7 +4,7 @@ import { NeedForm } from "../need-form";
 export default function NewNeedPage() {
   return (
     <FormShell>
-      <PageHeader eyebrow="Servicio" title="Nueva necesidad" />
+      <PageHeader back={{ href: "/admin/servicio", label: "Servicio" }} eyebrow="Vida comunitaria" title="Nueva necesidad" />
       <NeedForm />
     </FormShell>
   );

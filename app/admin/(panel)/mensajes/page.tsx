@@ -22,7 +22,7 @@ export default async function AdminMensajesPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Casa Universal de Justicia"
+        eyebrow="Admin Nacional"
         title="Mensajes"
         description="Publica los mensajes oficiales de la Casa Universal de Justicia. Cada mensaje lleva título y fecha, y puede incluir el texto completo (se lee en la app) y/o el PDF."
         actions={<Button href="/admin/mensajes/nuevo">+ Nuevo mensaje</Button>}

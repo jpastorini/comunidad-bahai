@@ -8,8 +8,8 @@ export default async function NewMessagePage() {
   await requireNationalAdmin();
   return (
     <FormShell>
-      <PageHeader
-        eyebrow="Casa Universal de Justicia"
+      <PageHeader back={{ href: "/admin/mensajes", label: "Mensajes de la Casa Universal" }}
+        eyebrow="Admin Nacional"
         title="Nuevo mensaje"
         description="Sube el PDF oficial. Los creyentes lo verán en la sección Mensajes."
       />

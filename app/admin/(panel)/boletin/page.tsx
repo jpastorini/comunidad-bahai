@@ -18,7 +18,7 @@ export default async function AdminBoletinPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Comunidad"
+        eyebrow="Comunicación"
         title="Boletín local"
         description="Ediciones que compilan eventos, comunicados y fotos para compartir con la comunidad."
         actions={

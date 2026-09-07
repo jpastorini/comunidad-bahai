@@ -4,7 +4,7 @@ import { FeastForm } from "../feast-form";
 export default function NewFeastPage() {
   return (
     <>
-      <PageHeader
+      <PageHeader back={{ href: "/admin/fiestas", label: "Fiestas de 19 Días" }}
         eyebrow="Vida comunitaria"
         title="Nueva Fiesta de los Diecinueve Días"
         description="Crea la Fiesta indicando el mes bahá'í y los lugares. Después podrás cargar la plantilla de oraciones y completar el programa."

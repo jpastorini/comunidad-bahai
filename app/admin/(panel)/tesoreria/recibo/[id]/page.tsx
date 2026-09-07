@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Banner, Button, PageHeader } from "@/components/admin/ui";
+import { Banner, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { receiptAssets } from "@/lib/receipt-assets";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -29,11 +29,10 @@ export default async function ReciboPage({
 
   return (
     <>
-      <PageHeader
+      <PageHeader back={{ href: "/admin/tesoreria/libro", label: "Libro" }}
         eyebrow="Tesorería"
         title={`Recibo N.° ${entry.receipt_number ?? "—"}`}
         description="Se imprime en A5, igual que el de la planilla."
-        actions={<Button href="/admin/tesoreria/libro">Volver al libro</Button>}
       />
 
       {entry.amount < 0 && (

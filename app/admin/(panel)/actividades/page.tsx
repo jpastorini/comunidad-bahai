@@ -26,7 +26,7 @@ export default async function AdminActividadesPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Comunidad"
+        eyebrow="Vida comunitaria"
         title="Actividades"
         description="Círculos, devocionales, clases de niños y grupos de prejuniors."
         actions={<Button href="/admin/actividades/nueva">+ Nueva actividad</Button>}

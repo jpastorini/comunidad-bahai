@@ -18,7 +18,7 @@ export default async function EditNeedPage({
   if (!data) notFound();
   return (
     <FormShell>
-      <PageHeader eyebrow="Servicio" title="Editar necesidad" />
+      <PageHeader back={{ href: "/admin/servicio", label: "Servicio" }} eyebrow="Vida comunitaria" title="Editar necesidad" />
       <NeedForm need={data as ServiceNeed} />
     </FormShell>
   );

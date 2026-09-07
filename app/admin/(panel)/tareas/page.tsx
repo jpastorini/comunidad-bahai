@@ -42,7 +42,7 @@ export default async function AdminTareasPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Asamblea Espiritual Local"
+        eyebrow="Asamblea"
         title="Tareas de la Asamblea"
         description="Tablero interno de la Asamblea para listar las tareas que salen de la consulta y seguir su avance. Privado: solo lo ven los miembros de la Asamblea."
         actions={

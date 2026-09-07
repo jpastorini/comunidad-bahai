@@ -25,7 +25,7 @@ export default async function EditarInformePage({
 
   return (
     <>
-      <PageHeader
+      <PageHeader back={{ href: "/admin/tesoreria/informes", label: "Informes" }}
         eyebrow="Tesorería · Informe"
         title={report.title}
         description={`${fmtDayMonth(report.period_from)} al ${fmtDayMonth(
@@ -40,9 +40,6 @@ export default async function EditarInformePage({
             )}
             <Button variant="secondary" href={`/admin/informe/${report.id}`}>
               {report.audience === "internos" ? "Ver hoja" : "Ver deck"}
-            </Button>
-            <Button variant="secondary" href="/admin/tesoreria/informes">
-              Volver a Informes
             </Button>
           </>
         }

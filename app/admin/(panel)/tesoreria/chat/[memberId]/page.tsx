@@ -48,7 +48,7 @@ export default async function TreasuryConversationPage({
 
   return (
     <>
-      <PageHeader
+      <PageHeader back={{ href: "/admin/tesoreria/chat", label: "Mensajes" }}
         eyebrow={member?.email ?? "Tesorería"}
         title={member?.full_name ?? "Creyente"}
         description="Conversación privada con el tesorero. Tus respuestas salen firmadas con tu nombre."

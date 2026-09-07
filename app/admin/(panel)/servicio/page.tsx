@@ -50,7 +50,7 @@ export default async function AdminServicioPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Servicio"
+        eyebrow="Vida comunitaria"
         title="Necesidades de la comunidad"
         description="Publica oportunidades para que los creyentes se ofrezcan como voluntarios."
         actions={<Button href="/admin/servicio/nueva">+ Nueva necesidad</Button>}

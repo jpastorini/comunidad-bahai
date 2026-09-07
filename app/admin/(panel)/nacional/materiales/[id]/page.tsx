@@ -25,7 +25,7 @@ export default async function EditNacionalMaterialPage({
 
   return (
     <FormShell>
-      <PageHeader
+      <PageHeader back={{ href: "/admin/nacional/materiales", label: "Materiales nacionales" }}
         eyebrow="Admin Nacional"
         title="Editar material nacional"
       />

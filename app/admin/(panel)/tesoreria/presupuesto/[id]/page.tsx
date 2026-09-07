@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Button, Card, PageHeader } from "@/components/admin/ui";
+import { Card, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { BudgetReportShare } from "@/components/treasury/BudgetReportShare";
@@ -95,15 +95,10 @@ export default async function PresupuestoEditorPage({
 
   return (
     <>
-      <PageHeader
+      <PageHeader back={{ href: "/admin/tesoreria/presupuesto", label: "Presupuesto" }}
         eyebrow="Tesorería · Presupuesto"
         title={budget.period}
         description="Tomá como referencia lo gastado el año pasado y definí el presupuesto de este año por categoría. Las categorías en $0 se omiten del total."
-        actions={
-          <Button variant="secondary" href="/admin/tesoreria/presupuesto">
-            ← Presupuestos
-          </Button>
-        }
       />
 
       <BudgetEditor

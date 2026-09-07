@@ -23,8 +23,8 @@ export default async function EditarBoletinPage({
 
   return (
     <>
-      <PageHeader
-        eyebrow="Boletín local"
+      <PageHeader back={{ href: "/admin/boletin", label: "Boletín" }}
+        eyebrow="Comunicación"
         title={bulletin.status === "published" ? "Editar edición publicada" : "Editar borrador"}
         description={
           bulletin.status === "published"

@@ -16,15 +16,10 @@ export default async function NuevoInformePage() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader back={{ href: "/admin/tesoreria/informes", label: "Informes" }}
         eyebrow="Tesorería"
         title="Nuevo informe"
         description="Elegí el período. Las cifras se leen del libro y quedan congeladas en el informe."
-        actions={
-          <Button variant="secondary" href="/admin/tesoreria/informes">
-            Cancelar
-          </Button>
-        }
       />
 
       <form action={createReportAction}>

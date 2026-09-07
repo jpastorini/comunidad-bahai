@@ -54,9 +54,6 @@ export default async function MetasPage() {
         actions={
           <>
             <Button href="/admin/tesoreria/progreso">Tablero de progreso</Button>
-            <Button variant="secondary" href="/admin/tesoreria">
-              Volver a Tesorería
-            </Button>
           </>
         }
       />

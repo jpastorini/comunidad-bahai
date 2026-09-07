@@ -186,3 +186,26 @@ export const IconBell = (p: IconProps) => (
     <path d="M13.73 21a2 2 0 0 1-3.46 0" />
   </Svg>
 );
+
+export const IconPersonas = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
+    <path d="M16 4.6a3.5 3.5 0 0 1 0 6.8" />
+    <path d="M17.5 14.2A6.5 6.5 0 0 1 21.5 20" />
+  </Svg>
+);
+
+export const IconNacional = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18" />
+    <path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18" />
+  </Svg>
+);
+
+export const IconChevronDown = (p: IconProps) => (
+  <Svg {...p}>
+    <polyline points="6 9 12 15 18 9" />
+  </Svg>
+);

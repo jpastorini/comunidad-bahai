@@ -22,8 +22,8 @@ export default async function EditComunicadoPage({
 
   return (
     <FormShell>
-      <PageHeader
-        eyebrow="Asamblea Espiritual Local"
+      <PageHeader back={{ href: "/admin/comunicados", label: "Comunicados" }}
+        eyebrow="Comunicación"
         title="Editar comunicado"
         description={comunicado.title}
       />

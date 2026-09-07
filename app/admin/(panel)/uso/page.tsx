@@ -37,7 +37,7 @@ export default async function UsoPage({
   return (
     <>
       <PageHeader
-        eyebrow="Asamblea Espiritual Local"
+        eyebrow="Creyentes"
         title="Uso de la app"
         description={`Cómo usa la comunidad de ${session.locality.name} la aplicación. Los datos empiezan el día en que se estrenó la medición.`}
       />

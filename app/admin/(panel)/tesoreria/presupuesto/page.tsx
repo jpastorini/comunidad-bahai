@@ -82,11 +82,6 @@ export default async function PresupuestoListPage() {
         eyebrow="Tesorería"
         title="Plan de Presupuesto"
         description="Definí metas de gasto por categoría para cada período. Las categorías en $0 no se cuentan en las metas del año."
-        actions={
-          <Button variant="secondary" href="/admin/tesoreria">
-            ← Tesorería
-          </Button>
-        }
       />
 
       <Card className="mb-5">

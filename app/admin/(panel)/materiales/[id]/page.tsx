@@ -24,7 +24,7 @@ export default async function EditMaterialPage({
 
   return (
     <FormShell>
-      <PageHeader eyebrow="Estudio" title="Editar material" />
+      <PageHeader back={{ href: "/admin/materiales", label: "Materiales" }} eyebrow="Vida comunitaria" title="Editar material" />
       <MaterialForm material={data as StudyMaterial} />
     </FormShell>
   );

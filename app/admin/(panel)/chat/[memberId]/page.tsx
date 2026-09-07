@@ -47,7 +47,7 @@ export default async function ConversationPage({
 
   return (
     <>
-      <PageHeader
+      <PageHeader back={{ href: "/admin/chat", label: "Chat de Secretaría" }}
         eyebrow={member?.email ?? "Conversación"}
         title={member?.full_name ?? "Creyente"}
         description="Este chat solo lo ve este creyente. Tus respuestas salen firmadas con tu nombre."

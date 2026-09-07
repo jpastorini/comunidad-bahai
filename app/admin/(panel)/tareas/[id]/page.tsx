@@ -23,8 +23,8 @@ export default async function EditarTareaPage({
 
   return (
     <FormShell>
-      <PageHeader
-        eyebrow="Tareas de la Asamblea"
+      <PageHeader back={{ href: "/admin/tareas", label: "Tareas" }}
+        eyebrow="Asamblea"
         title="Editar tarea"
         description="Modificá los datos de la tarea o cambiá su estado."
       />

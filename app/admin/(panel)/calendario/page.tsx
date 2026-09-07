@@ -52,7 +52,7 @@ export default async function AdminCalendarPage({
   return (
     <>
       <PageHeader
-        eyebrow="Comunidad"
+        eyebrow="Vida comunitaria"
         title="Calendario"
         description="La vista centralizada de todo lo que tiene la Asamblea entre manos: eventos, Fiestas, Días Sagrados y reuniones. Si vas a crear un nuevo evento, revisá primero acá para evitar solapamientos."
         actions={

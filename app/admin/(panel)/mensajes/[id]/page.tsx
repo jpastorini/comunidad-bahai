@@ -26,8 +26,8 @@ export default async function EditMessagePage({
 
   return (
     <FormShell>
-      <PageHeader
-        eyebrow="Casa Universal de Justicia"
+      <PageHeader back={{ href: "/admin/mensajes", label: "Mensajes de la Casa Universal" }}
+        eyebrow="Admin Nacional"
         title="Editar mensaje"
         description={message.title}
       />

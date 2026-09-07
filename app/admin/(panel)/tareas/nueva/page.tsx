@@ -6,8 +6,8 @@ export default async function NuevaTareaPage() {
   await requireAdmin();
   return (
     <FormShell>
-      <PageHeader
-        eyebrow="Tareas de la Asamblea"
+      <PageHeader back={{ href: "/admin/tareas", label: "Tareas" }}
+        eyebrow="Asamblea"
         title="Nueva tarea"
         description="Cargá una tarea a mano. Más adelante también vas a poder importarlas desde el acta de la reunión."
       />

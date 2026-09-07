@@ -33,8 +33,8 @@ export default async function NewSuggestionsPage({
 
   return (
     <FormShell>
-      <PageHeader
-        eyebrow="Asamblea Local"
+      <PageHeader back={{ href: "/admin/sugerencias", label: "Sugerencias" }}
+        eyebrow="Vida comunitaria"
         title="Agregar sugerencias"
         description="Captura todas las sugerencias recogidas durante una Fiesta. Solo el detalle es obligatorio — el nombre del autor es opcional."
       />
