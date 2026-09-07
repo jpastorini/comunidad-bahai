@@ -5,6 +5,7 @@ import { InstallSheet } from "@/components/InstallSheet";
 import { PhotoFab } from "@/components/PhotoFab";
 import { PresenceBeacon } from "@/components/PresenceBeacon";
 import { TabBar } from "@/components/TabBar";
+import { UsageBeacon } from "@/components/UsageBeacon";
 import { requireMember } from "@/lib/auth";
 import { civilDateISO, getAppTimeZone } from "@/lib/citas";
 import { getBadges } from "@/lib/data";
@@ -33,6 +34,8 @@ export default async function AppLayout({
       <ChatNotifier userId={session.user.id} side="member" />
       {/* "Última vez en la app" para el informe de lectura (048). */}
       <PresenceBeacon />
+      {/* Uso por sección y día para el informe de la Asamblea (049). */}
+      <UsageBeacon />
       <DayChangeRefresh
         renderedDate={civilDateISO()}
         timeZone={getAppTimeZone()}

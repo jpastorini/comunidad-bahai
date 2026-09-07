@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   IconActividades,
+  IconMetas,
   IconCalendario,
   IconCheck,
   IconChat,
@@ -43,6 +44,8 @@ const NAV: NavItem[] = [
   // Registro de solo lectura: lo ve toda la Asamblea, no solo el tesorero.
   { href: "/admin/informes", label: "Informes de Tesorería", Icon: IconTesoreria },
   { href: "/admin/miembros", label: "Creyentes (local)", Icon: IconActividades },
+  // Estadística de uso de la app por localidad (049): toda la Asamblea.
+  { href: "/admin/uso", label: "Uso de la app", Icon: IconMetas },
 ];
 
 type Props = {

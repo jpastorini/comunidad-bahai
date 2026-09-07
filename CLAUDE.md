@@ -250,7 +250,52 @@ bahá'í, sin Tesorería ni Fiesta de los 19 Días. Ver la sección "Amigos
 de la Fe" más abajo. ·
 **Lectura de comunicados** (migración 048): quién vio y quién confirmó
 cada comunicado, con informe en vivo para la Asamblea y "última vez en
-la app" por persona. Ver la sección "Lectura de comunicados" más abajo.
+la app" por persona. Ver la sección "Lectura de comunicados" más abajo. ·
+**Uso de la app** (migración 049): estadística por localidad en
+`/admin/uso` (instalada, avisos, regularidad, secciones, persona por
+persona). Ver la sección "Uso de la app" más abajo.
+
+## Uso de la app (migración 049)
+
+Cada Asamblea quiere saber cómo usa su comunidad la app. El dato es
+`usage_daily`: **una fila por (persona, día, sección) con un contador**.
+No se guarda cada toque ni la hora, a propósito: el día alcanza para
+regularidad y secciones y es mucho menos invasivo que un registro de
+navegación. Decisiones tomadas con el usuario: granularidad por día, la
+lista de personas con nombre sí va (mismo criterio que el informe de
+lectura: sirve para saber a quién acompañar), y la pantalla la ve toda
+la Asamblea con rol admin.
+
+- **Quién escribe.** `UsageBeacon` (layout de `(app)`, no del panel:
+  el uso del panel no es uso de la comunidad) llama a la RPC
+  `record_usage(section, standalone)` cuando cambia la SECCIÓN, no la
+  pantalla: `sectionForPath()` (`lib/usage-sections.ts`) mapea el primer
+  segmento de la ruta a una de ~20 claves (`/mensajes/[id]` es
+  "biblioteca"). También al volver la PWA al frente. Va directo del
+  navegador a Supabase. La función es security definer y usa
+  `auth.uid()`: no hay policy de insert, nadie anota uso ajeno. El día
+  es el civil de Montevideo (mismo corte que la Lectura de hoy).
+- **"Instalada"** es `profiles.pwa_installed_at`, que `record_usage`
+  llena la primera vez que la app corre en `display-mode: standalone`.
+  Quien instaló y nunca abrió cuenta como no instalada, que para el
+  propósito es la respuesta correcta. "Con avisos" sale de
+  `push_subscriptions` con service-role (la RLS solo deja ver las
+  propias), igual que `getLocalityPushReach`.
+- **Los agregados los hace la base**: `usage_by_section`,
+  `usage_by_day`, `usage_by_person` (rango de fechas), security
+  **invoker** para que la RLS de `usage_daily` acote a la localidad de
+  quien pregunta. Bajar filas a la app no sirve: un año de una localidad
+  grande son decenas de miles y PostgREST corta en mil.
+- **Regularidad** (`regularityFor`, `lib/usage.ts`) es la proporción de
+  días activos sobre los días del rango: ≥ 80 % "casi todos los días",
+  ≥ 3/7 "varias veces por semana", ≥ 1/7 "una vez por semana", algo
+  "alguna vez", nada "no entró en el período". El rango lo elige la
+  Asamblea (`?from=&to=`, atajos de 7/30/90 días y el mes bahá'í en
+  curso, tope de un año). La lista de personas va de menos a más
+  activa.
+
+⚠️ Hasta que corra la 049, `/admin/uso` muestra el aviso de migración
+pendiente y el beacon loguea un warning por navegación (no rompe nada).
 
 ## Lectura de comunicados (migración 048)
 
@@ -777,6 +822,11 @@ los PDF viajan tal cual (media factura llega por mail).
   `/comunicados#<id>` que haga scroll a la tarjeta lo resolvería. Y el
   informe no sabe quién se sumó a la localidad DESPUÉS del comunicado:
   cuenta como "no vio" a alguien que nunca fue destinatario.
+- **Uso de la app: falta el consolidado nacional.** Cada Asamblea ve su
+  localidad; el admin nacional podría ver una tabla de todas (la RLS ya
+  lo deja leer todo, es solo agrupar por `locality_id`). Y `usage_daily`
+  crece sin poda: a este tamaño no importa, pero si algún día molesta,
+  compactar lo anterior a un año en totales mensuales.
 - **Buscador del libro:** encuentra por nombre de contribuyente aunque los
   nombres estén ocultos. Decidido dejarlo así por ahora; si molesta, que
   ignore los nombres mientras estén ocultos.
