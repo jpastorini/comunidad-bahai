@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Checkbox, Field, TextInput } from "@/components/admin/ui";
-import { POLL_MAX_OPTIONS, POLL_MIN_OPTIONS } from "@/lib/polls";
+import { POLL_MAX_OPTIONS, POLL_MIN_OPTIONS } from "@/lib/polls-shared";
 import type { MessagePoll } from "@/lib/types";
 
 type Props = {

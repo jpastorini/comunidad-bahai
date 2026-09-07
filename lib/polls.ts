@@ -15,20 +15,8 @@ import { audienceFor, getAudience, type AudienceProfile } from "./message-reads"
 import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
 import type { Message, MessagePoll, MyPollVote, PollOption, PollResults } from "./types";
 
-export const POLL_MIN_OPTIONS = 2;
-export const POLL_MAX_OPTIONS = 10;
-
-/** Abierta: no la cerró la Asamblea y no pasó la fecha de cierre. */
-export function isPollOpen(poll: Pick<MessagePoll, "closes_at" | "closed_at">, now = new Date()): boolean {
-  if (poll.closed_at) return false;
-  if (poll.closes_at && new Date(poll.closes_at).getTime() <= now.getTime()) return false;
-  return true;
-}
-
-/** Códigos con los que Postgres/PostgREST dicen "esa tabla o función no existe". */
-export function isSchemaMissing(code: string | undefined): boolean {
-  return code === "42P01" || code === "42883" || code === "PGRST202" || code === "PGRST204";
-}
+export { POLL_MAX_OPTIONS, POLL_MIN_OPTIONS, isPollOpen, isSchemaMissing, pollPercent } from "./polls-shared";
+import { isPollOpen } from "./polls-shared";
 
 type PollRow = Omit<MessagePoll, "options"> & { poll_options: PollOption[] | null };
 
@@ -118,11 +106,6 @@ export async function getPollResults(pollIds: string[]): Promise<Map<string, Pol
   }
   for (const id of pollIds) if (!map.has(id)) map.set(id, { participants: 0, votes: {} });
   return map;
-}
-
-/** Porcentaje sobre las personas que votaron (en múltiple, las barras no suman 100). */
-export function pollPercent(votes: number, participants: number): number {
-  return participants === 0 ? 0 : Math.round((votes / participants) * 100);
 }
 
 // ─── Informe para la Asamblea ─────────────────────────────────────

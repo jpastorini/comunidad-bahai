@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { castVoteAction } from "@/app/(app)/comunicados/actions";
 import { formatDate } from "@/lib/format";
-import { isPollOpen, pollPercent } from "@/lib/polls";
+import { isPollOpen, pollPercent } from "@/lib/polls-shared";
 import type { MessagePoll, MyPollVote, PollResults } from "@/lib/types";
 
 type Props = {
