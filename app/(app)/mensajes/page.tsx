@@ -19,15 +19,16 @@ export default async function MensajesPage() {
       <GoldHeader title="Biblioteca" subtitle={session.locality.name} backHref="/" />
       <SegmentedNav items={BIBLIOTECA_SEGMENTS} />
       <div className="shrink-0 px-4 pb-1.5 pt-0.5">
-        <div
-          className="flex items-center gap-2 rounded-xl px-3.5 py-2.5"
+        <Link
+          href="/buscar"
+          className="tap flex items-center gap-2 rounded-xl px-3.5 py-2.5"
           style={{ background: "#C4A23508" }}
         >
           <IconSearch size={15} className="text-muted" />
           <span className="font-body text-[13px] text-muted">
-            Buscar mensaje...
+            Buscar en los Escritos y los mensajes…
           </span>
-        </div>
+        </Link>
       </div>
       <main className="scroll-area flex-1 px-4 pb-4 pt-1">
         {messages.length === 0 ? (

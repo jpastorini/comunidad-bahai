@@ -19,7 +19,7 @@ type Tab = {
 // Rutas que iluminan cada hub. El primer href es el destino por defecto.
 // Oraciones es contenido de Biblioteca; las pantallas personales sueltas
 // (perfil, notificaciones, fotos, boletín) caen en Inicio como fallback.
-const BIBLIOTECA_ROUTES = ["/mensajes", "/materiales", "/oraciones"];
+const BIBLIOTECA_ROUTES = ["/mensajes", "/materiales", "/oraciones", "/buscar"];
 const CALENDARIO_ROUTES = ["/calendario", "/fiestas", "/dias-sagrados", "/actividades"];
 // Hub AEL: todo lo directo de la Asamblea Espiritual Local.
 const AEL_ROUTES = ["/comunicados", "/boletin-local", "/chat", "/tesoreria"];

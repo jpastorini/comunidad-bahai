@@ -57,6 +57,7 @@ export function SegmentedNav({ items }: { items: SegmentItem[] }) {
 export const BIBLIOTECA_SEGMENTS: SegmentItem[] = [
   { href: "/mensajes", label: "Mensajes", prefix: "/mensajes" },
   { href: "/materiales", label: "Materiales", prefix: "/materiales" },
+  { href: "/buscar", label: "Buscar", prefix: "/buscar" },
 ];
 
 /** Items del hub AEL — todo lo que emite/gestiona la Asamblea Espiritual Local. */

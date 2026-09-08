@@ -288,7 +288,66 @@ de lectura. Ver la sección "Encuestas" más abajo. ·
 **Datos de la Asamblea** (migración 052): la ficha legal (RUT, BPS,
 nombre registrado, fecha de registro, estatutos PDF en bucket privado)
 y quiénes integran la Asamblea en cada ejercicio, con los cuatro
-oficiales. Ver la sección "Datos de la Asamblea" más abajo.
+oficiales. Ver la sección "Datos de la Asamblea" más abajo. ·
+**Buscador de pasajes** (migración 053): la persona escribe un tema y
+la app le sugiere párrafos y citas de los Escritos, los mensajes de la
+Casa Universal y los libros Ruhi donde se habla de eso, con Haiku
+eligiendo entre lo que encuentra la base. Ver la sección "Buscador de
+pasajes" más abajo.
+
+## Buscador de pasajes (migración 053)
+
+Biblioteca → Buscar (`/buscar`, para toda la comunidad, Amigos de la Fe
+incluidos: el corpus es público). La persona escribe "la consulta" o
+"¿qué dicen los Escritos sobre la muerte?" y recibe hasta diez pasajes
+originales con su referencia, una frase de por qué cada uno viene al
+caso, y arriba una orientación de dos o tres frases. El corpus son los
+59 libros del Panel, los 7 libros Ruhi, los 51 mensajes de Riḍván y las
+991 citas de la Lectura de hoy: ~1,8 M de palabras, 17 mil pasajes.
+
+**La base busca, Haiku elige.** Decidido con el usuario frente a la
+alternativa de que el modelo lea todo el corpus en cada consulta (no
+entra en una ventana de 200 k tokens; serían ~15 llamadas y ~2,50 USD
+por búsqueda). Así queda en dos llamadas chicas a `claude-haiku-4-5`
+(`lib/corpus-search.ts`, unos 0,03 USD por búsqueda):
+
+1. `expandTerms()`: la pregunta → 6 a 14 términos con sinónimos del
+   vocabulario bahá'í ("consulta" → "deliberar", "unanimidad"…). Si
+   falla, se usan las palabras de contenido de la propia pregunta.
+2. `search_corpus(p_query, p_limit)` en Postgres: full-text search con
+   la configuración `es_unaccent` (español + unaccent, porque en el
+   celular se escribe sin acentos), `ts_rank_cd`, como mucho 8 pasajes
+   por documento para que un libro largo no llene solo la lista. Devuelve
+   60 candidatos. Security invoker: corre con la RLS de quien pregunta.
+3. `pickPassages()`: Haiku recibe los 60 numerados y devuelve NÚMEROS
+   con un motivo cada uno, más la orientación. ⚠️ El texto que se muestra
+   sale siempre de `corpus_chunks` por ese número; el modelo no
+   transcribe ningún pasaje. Es lo que garantiza que no aparezca una cita
+   inventada o retocada, que en este corpus es el error caro. La
+   orientación sí es del modelo y la pantalla lo dice.
+
+**El corpus se carga con `scripts/load-corpus.mjs`** desde los Markdown
+de `C:\Claude\ComunidadBahai-materiales` (los que generan
+`export-materiales-md.mjs` y `export-mensajes-md.mjs`) más
+`public/citas.json`, con service-role (no hay policy de insert). Borra y
+recarga por tipo. El troceado es lo que decide la calidad: pasajes de
+40 a 300 palabras; un párrafo corto que empieza con "(" es la referencia
+de la cita anterior y se pega al pasaje ANTERIOR (recopilaciones del
+Panel); los demás cortos se pegan al siguiente; los largos se parten por
+oraciones; en los Ruhi se descartan las líneas de ejercicio (preguntas
+con puntos de relleno, viñetas de consigna). Si se agregan materiales o
+mensajes, exportar a Markdown y volver a correr la carga.
+
+**Tope de 40 búsquedas por persona en 24 h** (`MAX_SEARCHES_PER_DAY`,
+`app/(app)/buscar/actions.ts`), contadas en `corpus_searches`, que
+registra quién buscó qué, con qué términos y cuántos resultados. La
+Asamblea puede leer las de su localidad (RLS) para ver qué busca la
+gente; todavía no hay pantalla para eso.
+
+⚠️ Hasta que corra la 053, buscar devuelve "falta aplicar la migración
+053" y el resto de la app no se entera. La entrada está en el
+segmento "Buscar" de Biblioteca y en la caja de búsqueda de `/mensajes`,
+que antes era decorativa.
 
 ## Datos de la Asamblea (migración 052)
 
@@ -1116,6 +1175,14 @@ los PDF viajan tal cual (media factura llega por mail).
   solo para ellos desde el informe; en una anónima no se puede, porque
   no se sabe quién falta) y mostrar el resultado como diapositiva en el
   programa de la Fiesta.
+- **Buscador de pasajes: medir y, si hace falta, sumar embeddings.** La
+  búsqueda es lexical con sinónimos; no encuentra un pasaje que trata el
+  tema sin usar ninguna de las palabras. Probar con veinte preguntas
+  reales (las de `corpus_searches` con 0 resultados son la lista) y, si
+  falla seguido, agregar pgvector con embeddings multilingües (Voyage
+  AI, recomendación de Anthropic; indexar todo cuesta menos de 1 USD) y
+  fusionar los dos rankings antes de pasarle los candidatos a Haiku.
+  También falta una pantalla en el panel con lo que busca la gente.
 - **Uso de la app: falta el consolidado nacional.** Cada Asamblea ve su
   localidad; el admin nacional podría ver una tabla de todas (la RLS ya
   lo deja leer todo, es solo agrupar por `locality_id`). Y `usage_daily`
