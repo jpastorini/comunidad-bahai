@@ -27,14 +27,13 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_OUT, writeIndex } from "./materiales-indice.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const flags = args.filter((a) => a.startsWith("--"));
 const positional = args.filter((a) => !a.startsWith("--"));
-const OUT = path.resolve(
-  positional[0] ?? path.join(here, "..", "..", "ComunidadBahai-materiales")
-);
+const OUT = path.resolve(positional[0] ?? DEFAULT_OUT);
 const FORCE = flags.includes("--force");
 const ONLY = flags.find((f) => f.startsWith("--only="))?.slice(7) ?? null;
 
@@ -195,7 +194,6 @@ function clean(raw) {
 }
 
 // ─── main ─────────────────────────────────────────────────────────────
-const index = [];
 let ok = 0;
 let skipped = 0;
 let failed = 0;
@@ -211,7 +209,6 @@ for (const r of rows) {
   try {
     if (!FORCE && existsSync(pdfPath) && existsSync(mdPath)) {
       skipped++;
-      index.push({ r, slug, mdPath });
       continue;
     }
     if (!existsSync(pdfPath)) {
@@ -252,7 +249,6 @@ for (const r of rows) {
       .replace(/\n{3,}/g, "\n\n");
     writeFileSync(mdPath, md);
     ok++;
-    index.push({ r, slug, mdPath, words });
     console.log(`  + ${r.kind}/${slug}.md (${words} palabras)`);
   } catch (e) {
     failed++;
@@ -261,29 +257,11 @@ for (const r of rows) {
 }
 
 // ─── índice ───────────────────────────────────────────────────────────
-const byKind = {};
-for (const it of index) (byKind[it.r.kind] ??= []).push(it);
-const lines = [
-  "# Materiales exportados",
-  "",
-  `Origen: bucket \`materiales\` de Supabase (tabla study_materials), ${new Date()
-    .toISOString()
-    .slice(0, 10)}. Generado por scripts/export-materiales-md.mjs del repo ComunidadBahai.`,
-  "",
-];
-for (const [kind, items] of Object.entries(byKind)) {
-  lines.push(`## ${kind} (${items.length})`, "");
-  for (const it of items) {
-    const rel = path.relative(OUT, it.mdPath).replace(/\\/g, "/");
-    const n = it.r.number != null ? `Libro ${it.r.number} · ` : "";
-    const sub = it.r.subtitle ? ` — ${it.r.subtitle}` : "";
-    lines.push(`- [${n}${it.r.title}](${rel})${sub}`);
-  }
-  lines.push("");
-}
-writeFileSync(path.join(OUT, "INDICE.md"), lines.join("\n"));
+// Común a todos los export-*-md.mjs: lo arma desde el frontmatter de lo
+// que haya en md/, así que también lista los mensajes si ya se exportaron.
+const { target, count } = writeIndex(OUT);
 
 console.log(
-  `\nListo: ${ok} exportados, ${skipped} ya estaban, ${failed} fallaron. Indice en ${path.join(OUT, "INDICE.md")}`
+  `\nListo: ${ok} exportados, ${skipped} ya estaban, ${failed} fallaron. Indice (${count} documentos) en ${target}`
 );
 if (failed) process.exit(1);
