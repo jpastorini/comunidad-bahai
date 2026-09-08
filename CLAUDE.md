@@ -43,6 +43,11 @@ Para evitarlo:
    limpio). En esta máquina Windows, si `npm` no está en PATH, usar
    `./node_modules/.bin/tsc --noEmit` con node en
    `/c/Program Files/nodejs`.
+   ⚠️ El type-check NO detecta todo lo que rompe el build de Vercel. En
+   particular, un archivo `"use server"` que exporte algo que no sea una
+   función async (una constante, un tipo con valor) compila en tsc y
+   falla en `next build`; pasó dos veces (Encuestas y Buscador). Si
+   tocás un `actions.ts`, corré `npx next build` antes de pushear.
 
 5. **Pushear a `main` dispara el deploy en Vercel** automáticamente.
    El usuario trabaja solo, así que se pushea directo a `main`

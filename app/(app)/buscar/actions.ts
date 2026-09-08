@@ -8,8 +8,11 @@ import { createSupabaseServer } from "@/lib/supabase/server";
  * Tope de búsquedas por persona en 24 horas. Cada búsqueda son dos
  * llamadas a Haiku (unos centavos): alcanza de sobra para uso real y
  * frena un bucle o un uso indebido.
+ *
+ * No se exporta: un módulo "use server" solo puede exportar funciones
+ * async (el build de Next falla, el type-check no lo ve).
  */
-export const MAX_SEARCHES_PER_DAY = 40;
+const MAX_SEARCHES_PER_DAY = 40;
 const MAX_QUERY_LENGTH = 200;
 
 export async function buscarAction(rawQuery: string): Promise<CorpusSearchResult> {
