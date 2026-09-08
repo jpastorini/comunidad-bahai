@@ -76,7 +76,10 @@ create table if not exists public.corpus_chunks (
   author text,
   -- Cómo se cita este pasaje en pantalla y al compartir.
   reference text not null,
-  position int not null,
+  -- Orden del pasaje dentro del documento. Se llama `seq` y no
+  -- `position` porque POSITION es palabra clave de SQL: sirve como
+  -- columna de una tabla pero no en el `returns table` de una función.
+  seq int not null,
   body text not null,
   word_count int not null,
   tsv tsvector generated always as (
@@ -87,8 +90,21 @@ create table if not exists public.corpus_chunks (
 
 create index if not exists corpus_chunks_tsv_idx
   on public.corpus_chunks using gin (tsv);
+-- Si un intento anterior de esta migración llegó a crear la tabla con la
+-- columna `position`, se renombra (la tabla todavía no tiene datos).
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'corpus_chunks'
+       and column_name = 'position'
+  ) then
+    alter table public.corpus_chunks rename column "position" to seq;
+  end if;
+end $$;
+
 create index if not exists corpus_chunks_doc_idx
-  on public.corpus_chunks (source_kind, doc_key, position);
+  on public.corpus_chunks (source_kind, doc_key, seq);
 
 alter table public.corpus_chunks enable row level security;
 
@@ -110,7 +126,7 @@ returns table (
   doc_title text,
   author text,
   reference text,
-  position int,
+  seq int,
   body text,
   word_count int,
   rank real
@@ -123,7 +139,7 @@ as $$
   ),
   ranked as (
     select c.id, c.source_kind, c.doc_key, c.doc_title, c.author, c.reference,
-           c.position, c.body, c.word_count,
+           c.seq, c.body, c.word_count,
            ts_rank_cd(c.tsv, q.tsq, 1) as rank,
            row_number() over (
              partition by c.doc_key
@@ -133,7 +149,7 @@ as $$
      where c.tsv @@ q.tsq
   )
   select id, source_kind, doc_key, doc_title, author, reference,
-         position, body, word_count, rank
+         seq, body, word_count, rank
     from ranked
    where rn <= 8
    order by rank desc

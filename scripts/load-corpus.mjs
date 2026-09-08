@@ -187,7 +187,7 @@ function loadMarkdownKind(dir, kind) {
         doc_title: kind === "ruhi" ? `Libro ${fm.number} · ${title}` : title,
         author: kind === "mensaje" ? "Casa Universal de Justicia" : author,
         reference,
-        position: i + 1,
+        seq: i + 1,
         body: c,
         word_count: words(c),
       });
@@ -220,7 +220,7 @@ function loadCitas() {
         doc_title: topic.name,
         author: q.author,
         reference: q.reference,
-        position: i + 1,
+        seq: i + 1,
         body: q.text.replace(/\s+/g, " ").trim(),
         word_count: words(q.text),
       });

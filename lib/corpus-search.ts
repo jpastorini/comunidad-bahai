@@ -43,7 +43,7 @@ export type CorpusChunk = {
   doc_title: string;
   author: string | null;
   reference: string;
-  position: number;
+  seq: number;
   body: string;
   word_count: number;
   rank: number;
