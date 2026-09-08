@@ -100,6 +100,7 @@ function stripHeading(body) {
 /** Líneas de ejercicio de los cuadernos Ruhi. */
 function isExercise(p) {
   if (p.includes("…")) return true; // puntos de relleno de la respuesta
+  if (/_{4,}/.test(p)) return true; // renglones de respuesta (Libro 5)
   if (/^\d{1,2}\.\s/.test(p) && /\?\s*$/.test(p)) return true; // pregunta numerada
   if (/^-\s/.test(p) && words(p) < 40) return true; // viñeta de consigna
   if (/^SECCI[ÓO]N\s+\d+/i.test(p)) return true;

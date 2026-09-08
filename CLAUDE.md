@@ -303,7 +303,9 @@ incluidos: el corpus es público). La persona escribe "la consulta" o
 originales con su referencia, una frase de por qué cada uno viene al
 caso, y arriba una orientación de dos o tres frases. El corpus son los
 59 libros del Panel, los 7 libros Ruhi, los 51 mensajes de Riḍván y las
-991 citas de la Lectura de hoy: ~1,8 M de palabras, 17 mil pasajes.
+991 citas de la Lectura de hoy: ~1,8 M de palabras, ~16 500 pasajes.
+Probado con veinte preguntas reales el 2026-09-08: todas con pasajes
+pertinentes, 7–12 s y ~0,03 USD cada una.
 
 **La base busca, Haiku elige.** Decidido con el usuario frente a la
 alternativa de que el modelo lea todo el corpus en cada consulta (no

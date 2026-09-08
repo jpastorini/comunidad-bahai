@@ -152,6 +152,25 @@ function clean(raw) {
 
   const ITEM_START = /^(\[\d+\]|\d{1,3}[.)]\s|-\s|—|–\s|[¿¡«“"(]|[A-ZÁÉÍÓÚÑ]{2,}\b)/;
   const out = [];
+  // El párrafo abierto sobrevive al cambio de página: si la última línea
+  // de una página es de ancho pleno, el párrafo sigue en la siguiente y
+  // cortarlo ahí dejaba pasajes que arrancan a mitad de oración.
+  let para = [];
+  const flush = () => {
+    if (!para.length) return;
+    let text = "";
+    for (const l of para) {
+      if (!text) text = l;
+      else if (/[A-Za-zÀ-ſ]-$/.test(text)) text = text.slice(0, -1) + l;
+      else text += " " + l;
+    }
+    out.push(text.replace(/ {2,}/g, " "));
+    para = [];
+  };
+  const openParen = (ls) => {
+    const t = ls.join(" ");
+    return (t.match(/\(/g) ?? []).length > (t.match(/\)/g) ?? []).length;
+  };
   for (const lines of pages) {
     const txt = lines.filter((l) => l && !isFolio(l) && !isRunning(l));
     if (!txt.length) continue;
@@ -160,22 +179,6 @@ function clean(raw) {
     const blanks = lines.filter((l) => !l).length;
     const blanksMeanParagraph = blanks < txt.length * 0.5;
 
-    let para = [];
-    const flush = () => {
-      if (!para.length) return;
-      let text = "";
-      for (const l of para) {
-        if (!text) text = l;
-        else if (/[A-Za-zÀ-ſ]-$/.test(text)) text = text.slice(0, -1) + l;
-        else text += " " + l;
-      }
-      out.push(text.replace(/ {2,}/g, " "));
-      para = [];
-    };
-    const openParen = (ls) => {
-      const t = ls.join(" ");
-      return (t.match(/\(/g) ?? []).length > (t.match(/\)/g) ?? []).length;
-    };
     let prevBlank = false;
     for (const l of lines) {
       if (!l) {
@@ -188,8 +191,8 @@ function clean(raw) {
       para.push(l);
       if (l.length < full * 0.85 && !openParen(para)) flush();
     }
-    flush();
   }
+  flush();
   return out.join("\n\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }
 

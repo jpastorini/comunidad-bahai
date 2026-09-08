@@ -242,16 +242,19 @@ async function pickPassages(
 }
 
 /**
- * La orientación remite a los candidatos por su número ([7]); en pantalla
- * los pasajes van en el orden elegido, así que se renumeran ([2]) y se
- * borra la marca de un candidato que no quedó.
+ * La orientación remite a los candidatos por su número ([7] o [3, 12]);
+ * en pantalla los pasajes van en el orden elegido, así que se renumeran
+ * ([2]) y se borra la marca de un candidato que no quedó.
  */
 function renumber(orientation: string, picks: Pick[]): string {
   const pos = new Map(picks.map((p, i) => [p.n, i + 1]));
   return orientation
-    .replace(/\[(\d+)\]/g, (_, d) => {
-      const k = pos.get(Number(d));
-      return k ? `[${k}]` : "";
+    .replace(/\[([\d\s,;y]+)\]/g, (_, inner: string) => {
+      const ks = (inner.match(/\d+/g) ?? [])
+        .map((d) => pos.get(Number(d)))
+        .filter((k): k is number => k !== undefined)
+        .sort((a, b) => a - b);
+      return ks.length ? `[${ks.join(", ")}]` : "";
     })
     .replace(/\s{2,}/g, " ")
     .replace(/\s+([.,;:])/g, "$1")
