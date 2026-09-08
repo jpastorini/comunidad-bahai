@@ -191,6 +191,69 @@ export type Locality = {
   created_at: string;
 };
 
+// ─── Datos de la Asamblea (052) ─────────────────────────────────────
+
+/** La ficha legal de la Asamblea, una por localidad. */
+export type AssemblyRecord = {
+  id: string;
+  locality_id: string;
+  registered_name: string | null;
+  rut: string | null;
+  bps_number: string | null;
+  registered_at: string | null; // ISO date
+  notes: string | null;
+  statutes_path: string | null;
+  statutes_file_name: string | null;
+  statutes_uploaded_at: string | null;
+  updated_by: string | null;
+  updated_at: string;
+  created_at: string;
+};
+
+/** Una Asamblea Espiritual Local tiene nueve miembros. */
+export const ASSEMBLY_SIZE = 9;
+
+/** Los cuatro oficiales de la Asamblea. */
+export type AssemblyOffice = "coordinador" | "vicecoordinador" | "secretario" | "tesorero";
+
+export const ASSEMBLY_OFFICES: AssemblyOffice[] = [
+  "coordinador",
+  "vicecoordinador",
+  "secretario",
+  "tesorero",
+];
+
+export const ASSEMBLY_OFFICE_LABELS: Record<AssemblyOffice, string> = {
+  coordinador: "Coordinador/a",
+  vicecoordinador: "Vicecoordinador/a",
+  secretario: "Secretario/a",
+  tesorero: "Tesorero/a",
+};
+
+/** Un ejercicio de la Asamblea (Riḍván a Riḍván), por año BE. */
+export type AssemblyTerm = {
+  id: string;
+  locality_id: string;
+  bahai_year: number;
+  elected_on: string | null; // ISO date
+  notes: string | null;
+  updated_by: string | null;
+  updated_at: string;
+  created_at: string;
+};
+
+/** Uno de los nueve miembros de un ejercicio. */
+export type AssemblyMember = {
+  id: string;
+  term_id: string;
+  locality_id: string;
+  position: number; // 1..9
+  profile_id: string | null;
+  display_name: string;
+  office: AssemblyOffice | null;
+  created_at: string;
+};
+
 export type LocalityChangeStatus =
   | "pending"
   | "approved"

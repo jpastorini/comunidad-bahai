@@ -284,7 +284,60 @@ la sección "Programa de la Fiesta" más abajo. ·
 **Encuestas** (migración 051): un comunicado puede llevar una pregunta
 para votar, como las de WhatsApp; un solo voto por persona, anonimato
 opcional garantizado por el modelo, informe para la Asamblea dentro del
-de lectura. Ver la sección "Encuestas" más abajo.
+de lectura. Ver la sección "Encuestas" más abajo. ·
+**Datos de la Asamblea** (migración 052): la ficha legal (RUT, BPS,
+nombre registrado, fecha de registro, estatutos PDF en bucket privado)
+y quiénes integran la Asamblea en cada ejercicio, con los cuatro
+oficiales. Ver la sección "Datos de la Asamblea" más abajo.
+
+## Datos de la Asamblea (migración 052)
+
+Asamblea → Datos de la Asamblea (`/admin/asamblea`): lo que la Asamblea
+necesita tener a mano para un trámite y quiénes la integran. Dos
+bloques en una sola pantalla, cada uno con su formulario y su action
+(`app/admin/(panel)/asamblea/actions.ts`); datos en `lib/assembly.ts`.
+
+- **La ficha legal** es `assembly_records`, una fila por localidad
+  (upsert por `locality_id`): nombre registrado, RUT en DGI, N.º de
+  empresa en BPS, fecha de registro, notas libres y el PDF de los
+  estatutos. Es una tabla NUEVA y no columnas en `localities` a
+  propósito: `localities` se lee con `using (true)` y sale de un caché
+  con cliente anónimo, así que un RUT ahí quedaría legible para
+  cualquiera. Acá la RLS es `is_admin` + `current_locality_id` (más el
+  admin nacional), en las tres tablas.
+- **Los estatutos** van al bucket PRIVADO `asamblea-docs` (paths
+  `<locality_id>/estatutos/<uuid>.pdf`, policies por primera carpeta),
+  mismo molde que los comprobantes de Tesorería (043): URL firmada de
+  una hora emitida en el servidor al renderizar la página, nunca
+  `getPublicUrl`. Subir otro reemplaza al anterior (se borra del bucket
+  después del upsert, cuando la fila ya no lo nombra).
+- **La composición es por ejercicio**, `assembly_terms` (localidad, año
+  BE) + `assembly_members` (posición 1–9, `profile_id` opcional,
+  `display_name` SIEMPRE, cargo). El ejercicio es el mismo corte que la
+  Tesorería —Riḍván a Riḍván, `currentAssemblyYear()` usa
+  `treasuryYearForDate`— porque la Asamblea se elige en Riḍván. El
+  nombre se guarda aunque la persona esté en la app, porque la
+  composición de 182 no puede cambiar porque alguien se fue o cambió su
+  nombre de Google. Los cargos son Coordinador/a, Vicecoordinador/a,
+  Secretario/a y Tesorero/a (`ASSEMBLY_OFFICES`, etiquetas en
+  `ASSEMBLY_OFFICE_LABELS`), uno por ejercicio (índice único parcial).
+  Al guardar, la lista se reescribe entera (borrar e insertar).
+- **Pre-carga** (`page.tsx`): si el ejercicio pedido no tiene miembros,
+  el editor arranca con la composición del ejercicio anterior más
+  cercano; si no hay ninguno, con quienes hoy tienen `role='admin'` en
+  la localidad. No se guarda solo: la persona revisa y guarda. Un chip
+  "+ <año siguiente>" permite cargar la Asamblea nueva antes de Riḍván.
+- **Es informativa.** Decidido con el usuario: los permisos siguen
+  saliendo de los tags de `profiles` y la firma del recibo sigue
+  deduciendo al tesorero de `can_manage_treasury`. El editor
+  (`members-editor.tsx`) solo AVISA si el Tesorero/a declarado no tiene
+  el tag de Tesorería, si el Secretario/a no atiende el chat, o si un
+  miembro no tiene rol de Asamblea en la app. Tampoco la ve la
+  comunidad: todo queda dentro del panel.
+
+⚠️ Hasta que corra la 052, la pantalla muestra el aviso de migración
+pendiente, deshabilita el botón de la ficha y cualquier guardado
+devuelve "Falta aplicar la migración 052".
 
 ## Encuestas (migración 051)
 
@@ -367,7 +420,7 @@ Pocos grupos, uno por área de trabajo de la Asamblea, que se despliegan
 con sus pantallas adentro. Los sub-ítems del menú SON la navegación
 interna de cada sección: no hay pestañas ni hubs de botones aparte, un
 solo mecanismo. Grupos: Inicio (ítem suelto) · Asamblea (Tareas,
-Reuniones, Informes de Tesorería) · Comunicación (Comunicados, Encuestas, Boletín,
+Reuniones, Informes de Tesorería, Datos de la Asamblea) · Comunicación (Comunicados, Encuestas, Boletín,
 Chat de Secretaría) · Vida comunitaria (Calendario, Fiestas, Sugerencias,
 Actividades, Servicio, Materiales, Fotos) · Creyentes (Creyentes, Uso de
 la app) · Tesorería (Libro, Informes, Progreso, Presupuesto, Metas,

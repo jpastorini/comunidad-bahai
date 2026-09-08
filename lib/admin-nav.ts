@@ -47,6 +47,9 @@ export const ADMIN_NAV: NavGroup[] = [
       // Registro de solo lectura de los informes emitidos: lo aprueba la
       // Asamblea, así que va acá y no dentro de Tesorería.
       { href: "/admin/informes", label: "Informes de Tesorería" },
+      // La ficha legal (RUT, BPS, estatutos) y quiénes la integran, por
+      // ejercicio (052). Informativa: los permisos siguen en los tags.
+      { href: "/admin/asamblea", label: "Datos de la Asamblea" },
     ],
   },
   {
