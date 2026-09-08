@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { IconSearch } from "@/components/Icons";
 import type { CorpusSearchResult, SearchHit } from "@/lib/corpus-search";
 import { SharePrayerButton } from "../oraciones/share-button";
@@ -34,7 +34,14 @@ type State =
  * (`buscarAction`): acá solo se toma la pregunta, se muestra la espera
  * y se dibujan los pasajes que volvieron.
  */
-export function SearchClient({ initialQuery }: { initialQuery: string }) {
+export function SearchClient({
+  initialQuery,
+  nav,
+}: {
+  initialQuery: string;
+  /** Los segmentos de la Biblioteca, que van DEBAJO del cuadro de búsqueda. */
+  nav?: ReactNode;
+}) {
   const [query, setQuery] = useState(initialQuery);
   const [state, setState] = useState<State>({ status: "idle" });
   const [pending, startTransition] = useTransition();
@@ -64,7 +71,7 @@ export function SearchClient({ initialQuery }: { initialQuery: string }) {
   return (
     <>
       <form
-        className="shrink-0 px-4 pb-2 pt-0.5"
+        className="shrink-0 px-4 pb-1 pt-3"
         onSubmit={(e) => {
           e.preventDefault();
           run(query);
@@ -93,6 +100,8 @@ export function SearchClient({ initialQuery }: { initialQuery: string }) {
           </button>
         </div>
       </form>
+
+      {nav}
 
       <main className="scroll-area flex-1 px-4 pb-8 pt-1">
         {state.status === "idle" && (

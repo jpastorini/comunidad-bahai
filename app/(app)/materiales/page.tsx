@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BibliotecaSearchBox } from "@/components/BibliotecaSearchBox";
 import { GoldHeader } from "@/components/GoldHeader";
 import { IconMateriales } from "@/components/Icons";
 import { OracionDelMesCard } from "@/components/materials/OracionDelMesCard";
@@ -81,6 +82,7 @@ export default async function MaterialesPage() {
   return (
     <>
       <GoldHeader title="Biblioteca" subtitle={session.locality.name} backHref="/" />
+      <BibliotecaSearchBox />
       <SegmentedNav items={BIBLIOTECA_SEGMENTS} />
       <main className="scroll-area flex-1 px-4 pb-4 pt-1">
         {latestOracion && <OracionDelMesCard oracion={latestOracion} />}

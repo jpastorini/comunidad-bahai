@@ -347,9 +347,13 @@ Asamblea puede leer las de su localidad (RLS) para ver qué busca la
 gente; todavía no hay pantalla para eso.
 
 ⚠️ Hasta que corra la 053, buscar devuelve "falta aplicar la migración
-053" y el resto de la app no se entera. La entrada está en el
-segmento "Buscar" de Biblioteca y en la caja de búsqueda de `/mensajes`,
-que antes era decorativa.
+053" y el resto de la app no se entera. La entrada es el cuadro de
+búsqueda de la Biblioteca (`components/BibliotecaSearchBox.tsx`), ARRIBA
+de los segmentos Mensajes / Materiales en las tres pantallas del hub
+(`/mensajes`, `/materiales` y `/buscar`): un form GET a `/buscar?q=`,
+que arranca la búsqueda sola. Se probó un tercer segmento "Buscar" y el
+usuario no lo encontró; el cuadro visible en el mismo lugar siempre fue
+lo pedido.
 
 ## Datos de la Asamblea (migración 052)
 

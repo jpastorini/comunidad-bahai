@@ -14,8 +14,12 @@ export default async function BuscarPage({
   return (
     <>
       <GoldHeader title="Biblioteca" subtitle={session.locality.name} backHref="/" />
-      <SegmentedNav items={BIBLIOTECA_SEGMENTS} />
-      <SearchClient initialQuery={initialQuery} />
+      {/* El cuadro va arriba de los segmentos, en el mismo lugar que en
+          Mensajes y Materiales: la Biblioteca se busca desde ahí. */}
+      <SearchClient
+        initialQuery={initialQuery}
+        nav={<SegmentedNav items={BIBLIOTECA_SEGMENTS} />}
+      />
     </>
   );
 }
