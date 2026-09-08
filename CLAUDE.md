@@ -288,15 +288,27 @@ de lectura. Ver la sección "Encuestas" más abajo.
 
 ## Encuestas (migración 051)
 
-La encuesta NO es una sección: es **un comunicado con una pregunta**.
-Se carga en el mismo formulario (`PollFields`, tarjeta "Pregunta para
-votar"), se ve como parte de la tarjeta en `/comunicados` (`PollBlock`)
-y hereda todo lo del comunicado: la audiencia (una encuesta en un
-comunicado "solo creyentes" es solo para creyentes, por la RLS de
-`messages`), el push al publicar ("La Asamblea pregunta: …"), el "visto"
-de la 048 y el informe de lectura. Una pregunta por comunicado, de 2 a
-10 opciones, "varias opciones" sí/no, "anónima" sí/no, cierre por fecha
-(fin del día civil de Montevideo) o a mano desde el informe.
+Por debajo, la encuesta es **un comunicado con una pregunta**: la misma
+fila de `messages` más `message_polls`. Se ve como parte de la tarjeta
+en `/comunicados` (`PollBlock`) y hereda todo lo del comunicado: la
+audiencia (una encuesta en un comunicado "solo creyentes" es solo para
+creyentes, por la RLS de `messages`), el push al publicar ("La Asamblea
+pregunta: …"), el "visto" de la 048 y el informe de lectura. Una pregunta
+por comunicado, de 2 a 10 opciones, "varias opciones" sí/no, "anónima"
+sí/no, cierre por fecha (fin del día civil de Montevideo) o a mano.
+
+Para quien la arma, en cambio, es otra cosa, y por eso tiene **su propia
+pantalla** en Comunicación → Encuestas (`/admin/encuestas`): lista de
+preguntas con estado y participación, alta pensada desde la pregunta
+(`EncuestaForm`: el título del comunicado ES la pregunta, la fecha es
+hoy, un texto de acompañamiento opcional y quién vota), resultados en
+`/admin/encuestas/[id]` y edición en `/editar`. La tarjeta de
+Comunicados conserva "Pregunta para votar" (`PollFields`) para quien
+quiere agregar una pregunta a un comunicado largo. Los dos formularios
+comparten `PollFields` y `savePoll()` (`lib/polls-admin.ts`, fuera de
+los actions porque un módulo "use server" solo exporta actions). Cuando
+el título es igual a la pregunta, `PollBlock` no la repite
+(`hideQuestion`).
 
 Tres reglas de producto, decididas con el usuario, y cómo se sostienen:
 
@@ -355,7 +367,7 @@ Pocos grupos, uno por área de trabajo de la Asamblea, que se despliegan
 con sus pantallas adentro. Los sub-ítems del menú SON la navegación
 interna de cada sección: no hay pestañas ni hubs de botones aparte, un
 solo mecanismo. Grupos: Inicio (ítem suelto) · Asamblea (Tareas,
-Reuniones, Informes de Tesorería) · Comunicación (Comunicados, Boletín,
+Reuniones, Informes de Tesorería) · Comunicación (Comunicados, Encuestas, Boletín,
 Chat de Secretaría) · Vida comunitaria (Calendario, Fiestas, Sugerencias,
 Actividades, Servicio, Materiales, Fotos) · Creyentes (Creyentes, Uso de
 la app) · Tesorería (Libro, Informes, Progreso, Presupuesto, Metas,

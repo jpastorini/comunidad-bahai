@@ -54,6 +54,9 @@ export const ADMIN_NAV: NavGroup[] = [
     label: "Comunicación",
     children: [
       { href: "/admin/comunicados", label: "Comunicados" },
+      // Una encuesta ES un comunicado con pregunta (051), pero para quien
+      // la arma es otra cosa: tiene su pantalla, pensada desde la pregunta.
+      { href: "/admin/encuestas", label: "Encuestas" },
       { href: "/admin/boletin", label: "Boletín", requires: "bulletin" },
       { href: "/admin/chat", label: "Chat de Secretaría", requires: "chat" },
     ],

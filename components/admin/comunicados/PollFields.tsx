@@ -9,6 +9,11 @@ type Props = {
   poll: MessagePoll | null;
   /** Cuántas personas ya votaron. Con votos, la pregunta y las opciones quedan congeladas. */
   participants: number;
+  /**
+   * En la pantalla de Encuestas la pregunta no es opcional: es la razón
+   * de ser del formulario. Sin la casilla, siempre desplegado.
+   */
+  alwaysOn?: boolean;
 };
 
 /**
@@ -26,9 +31,9 @@ type Props = {
  * viaja con el formulario); el action los omite del payload a propósito,
  * no depende de que lleguen.
  */
-export function PollFields({ poll, participants }: Props) {
+export function PollFields({ poll, participants, alwaysOn = false }: Props) {
   const locked = participants > 0;
-  const [enabled, setEnabled] = useState(Boolean(poll));
+  const [enabled, setEnabled] = useState(alwaysOn || Boolean(poll));
   const [options, setOptions] = useState<string[]>(
     poll ? poll.options.map((o) => o.label) : ["", ""]
   );
@@ -56,9 +61,11 @@ export function PollFields({ poll, participants }: Props) {
           <p className="mb-3 text-[12px] text-muted">
             {participants === 1 ? "Ya votó una persona" : `Ya votaron ${participants} personas`}:
             la pregunta y las opciones no se pueden cambiar. Podés ajustar la fecha de
-            cierre, o cerrar la votación desde el informe.
+            cierre, o cerrar la votación desde los resultados.
           </p>
         </>
+      ) : alwaysOn ? (
+        <input type="hidden" name="poll_enabled" value="on" />
       ) : (
         <Checkbox
           name="poll_enabled"

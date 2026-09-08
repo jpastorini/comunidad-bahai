@@ -10,6 +10,8 @@ type Props = {
   poll: MessagePoll;
   myVote: MyPollVote | null;
   results: PollResults | null;
+  /** Si el título de la tarjeta YA es la pregunta (encuestas creadas desde su pantalla), no repetirla. */
+  hideQuestion?: boolean;
 };
 
 /**
@@ -25,7 +27,12 @@ type Props = {
  *   así que la elección se recuerda solo en este dispositivo
  *   (`localStorage`) para resaltarla; si falta, se ve igual el total.
  */
-export function PollBlock({ poll, myVote: initialVote, results: initialResults }: Props) {
+export function PollBlock({
+  poll,
+  myVote: initialVote,
+  results: initialResults,
+  hideQuestion = false,
+}: Props) {
   const open = isPollOpen(poll);
   const [selected, setSelected] = useState<string[]>([]);
   const [myVote, setMyVote] = useState<MyPollVote | null>(initialVote);
@@ -93,9 +100,11 @@ export function PollBlock({ poll, myVote: initialVote, results: initialResults }
           <div className="text-[10px] font-semibold uppercase tracking-[1.2px] text-gold-dark">
             {poll.anonymous ? "Encuesta anónima" : "Encuesta"}
           </div>
-          <h3 className="mt-0.5 font-display text-[16px] font-semibold leading-[1.3] text-dark">
-            {poll.question}
-          </h3>
+          {!hideQuestion && (
+            <h3 className="mt-0.5 font-display text-[16px] font-semibold leading-[1.3] text-dark">
+              {poll.question}
+            </h3>
+          )}
         </div>
       </div>
 

@@ -165,7 +165,14 @@ export function ComunicadoCard({
           </a>
         )}
 
-        {poll && <PollBlock poll={poll} myVote={myVote} results={pollResults} />}
+        {poll && (
+          <PollBlock
+            poll={poll}
+            myVote={myVote}
+            results={pollResults}
+            hideQuestion={poll.question.trim() === m.title.trim()}
+          />
+        )}
 
         {m.ask_confirmation && (
           <div className="mt-4 border-t border-black/[0.06] pt-3">
