@@ -31,6 +31,12 @@ export type LedgerOptions = {
 type Props = {
   budgetId: string;
   period: string;
+  /**
+   * Año BE del ejercicio. Es lo que ata el presupuesto al tablero de
+   * progreso y al informe; si venía vacío de la base, la página lo
+   * propone desde el período y al guardar queda escrito.
+   */
+  bahaiYear: number | null;
   status: "draft" | "active" | "closed";
   notes: string | null;
   items: EditorItem[];
@@ -42,6 +48,7 @@ type Props = {
 export function BudgetEditor({
   budgetId,
   period,
+  bahaiYear: initialYear,
   status: initialStatus,
   notes: initialNotes,
   items: initialItems,
@@ -52,6 +59,7 @@ export function BudgetEditor({
   const [items, setItems] = useState<EditorItem[]>(initialItems);
   const [status, setStatus] = useState(initialStatus);
   const [notes, setNotes] = useState(initialNotes ?? "");
+  const [year, setYear] = useState(initialYear ? String(initialYear) : "");
 
   const update = useCallback(
     (id: string, field: "planned" | "spent", value: number) => {
@@ -81,7 +89,7 @@ export function BudgetEditor({
 
         {/* Período + estado */}
         <Card className="mb-4">
-          <div className="grid gap-4 md:grid-cols-[1fr,180px]">
+          <div className="grid gap-4 md:grid-cols-[1fr,130px,180px]">
             <div>
               <span className="mb-1 block text-[12px] font-semibold text-dark">
                 Período
@@ -90,6 +98,21 @@ export function BudgetEditor({
                 {period}
               </div>
             </div>
+            <Field
+              label="Año bahá'í"
+              name="bahai_year"
+              hint={initialYear ? undefined : "falta"}
+            >
+              <TextInput
+                id="bahai_year"
+                name="bahai_year"
+                type="number"
+                min="1"
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                placeholder="183"
+              />
+            </Field>
             <Field label="Estado" name="status">
               <Select
                 id="status"

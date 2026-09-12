@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { findBudgetForYear } from "./budget-lookup";
 import { addMoney } from "./treasury-format";
 import {
   BUDGET_CURRENCY,
@@ -97,18 +98,15 @@ export async function getTreasuryProgress(
   // pasado no debe seguir "avanzando" con el calendario.
   const asOf = opts.asOf > end ? end : opts.asOf;
 
-  const [rpc, budgets, goals, funds] = await Promise.all([
+  const [rpc, budgetRow, goals, funds] = await Promise.all([
     supabase.rpc("treasury_progress", {
       loc: opts.localityId,
       year_from: from,
       as_of: asOf,
     }),
-    supabase
-      .from("treasury_budgets")
-      .select("id, period, bahai_year, status")
-      .eq("locality_id", opts.localityId)
-      .eq("bahai_year", year)
-      .limit(1),
+    // La coincidencia presupuesto ↔ ejercicio vive en un solo lugar
+    // (lib/budget-lookup.ts): tolera un bahai_year vacío.
+    findBudgetForYear(supabase, opts.localityId, year),
     supabase
       .from("treasury_goals")
       .select(
@@ -162,10 +160,6 @@ export async function getTreasuryProgress(
     .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 
   // ─── Presupuesto ───────────────────────────────────────────────
-  const budgetRow = ((budgets.data ?? [])[0] ?? null) as
-    | { id: string; period: string }
-    | null;
-
   let items: BudgetItemRow[] = [];
   if (budgetRow) {
     const { data } = await supabase

@@ -10,6 +10,7 @@ import {
 } from "@/components/admin/ui";
 import { IconArrowRight } from "@/components/Icons";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
+import { treasuryYearForDate } from "@/lib/treasury-year";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { fmtUYU } from "@/lib/budget";
 import { createBudgetAction } from "./actions";
@@ -74,7 +75,11 @@ export default async function PresupuestoListPage() {
     }
   }
 
-  const currentBahaiYear = 183; // 2026–2027
+  // Ejercicio contable en curso (Riḍván a Riḍván), propuesto como valor
+  // del campo y no como placeholder: un año vacío dejaba el presupuesto
+  // sin atar al progreso ni al informe.
+  const currentBahaiYear =
+    treasuryYearForDate(new Date().toISOString().slice(0, 10)) ?? 183;
 
   return (
     <>
@@ -108,7 +113,7 @@ export default async function PresupuestoListPage() {
                 name="bahai_year"
                 type="number"
                 min="1"
-                placeholder={String(currentBahaiYear)}
+                defaultValue={currentBahaiYear}
               />
             </Field>
           </div>

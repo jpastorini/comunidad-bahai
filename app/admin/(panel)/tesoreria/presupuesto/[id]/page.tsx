@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { bahaiYearFromPeriod } from "@/lib/budget-lookup";
 import { BudgetReportShare } from "@/components/treasury/BudgetReportShare";
 import { addBudgetCategoryAction, saveBudgetItemsAction } from "../actions";
 import { BudgetEditor, type EditorItem } from "../budget-editor";
@@ -104,6 +105,7 @@ export default async function PresupuestoEditorPage({
       <BudgetEditor
         budgetId={budget.id}
         period={budget.period}
+        bahaiYear={budget.bahai_year ?? bahaiYearFromPeriod(budget.period)}
         status={budget.status}
         notes={budget.notes}
         items={items}

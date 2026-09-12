@@ -1122,6 +1122,17 @@ cambia según la línea: "Enseñanza" es una categoría entera, "Aporte al
 Fondo Nacional" es una subcategoría dentro de "Gastos Operativos". Una
 línea sin vincular se informa como tal, nunca como cero.
 
+⚠️ **Qué presupuesto es "el del ejercicio" lo decide un solo lugar:**
+`findBudgetForYear()` en `lib/budget-lookup.ts`, usado por el progreso y
+por el informe. Existe porque `treasury_budgets.bahai_year` era opcional
+en el alta y quedó NULL: el presupuesto "183 EB" existía con $ 141.900 y
+el tablero decía "Sin presupuesto cargado" (2026-09-12). El helper acepta
+el año en la columna, o escrito en el período ("183 E.B."), o el activo
+sin año para el ejercicio en curso. El alta ahora propone el año como
+valor y lo deduce del período si queda vacío; el editor lo deja
+corregir. Cualquier pantalla nueva que necesite el presupuesto del año
+tiene que pasar por ahí, no por `.eq("bahai_year", …)`.
+
 ### Comprobantes de gastos (migración 043)
 
 Las facturas del gasto, colgadas del movimiento (`treasury_attachments`).

@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseAdmin } from "./supabase/admin";
+import { findBudgetForYear } from "./budget-lookup";
 import { addMoney } from "./treasury-format";
 import {
   EMPTY_EDITORIAL,
@@ -699,20 +700,7 @@ async function budgetComparison(
   yearStart: string,
   to: string
 ): Promise<{ period: string; lines: ReportBudgetLine[] } | null> {
-  let query = supabase
-    .from("treasury_budgets")
-    .select("id, period, bahai_year, status")
-    .eq("locality_id", localityId);
-  query = bahaiYear
-    ? query.eq("bahai_year", bahaiYear)
-    : query.eq("status", "active");
-
-  const { data: budgets } = await query
-    .order("status", { ascending: true })
-    .limit(1);
-  const budget = (budgets ?? [])[0] as
-    | { id: string; period: string }
-    | undefined;
+  const budget = await findBudgetForYear(supabase, localityId, bahaiYear);
   if (!budget) return null;
 
   const { data: itemsRaw } = await supabase

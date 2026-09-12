@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { bahaiYearFromPeriod } from "@/lib/budget-lookup";
 import { setFlashToast } from "@/lib/toast";
 
 /**
@@ -36,7 +37,12 @@ export async function createBudgetAction(formData: FormData) {
     redirect("/admin/tesoreria/presupuesto");
   }
 
-  const bahaiYear = parseInt((formData.get("bahai_year") as string) || "0", 10);
+  // El año es lo que ata el presupuesto al ejercicio (progreso e
+  // informe lo buscan por acá). Si el campo quedó vacío se toma del
+  // período escrito ("183 E.B." → 183) antes que dejarlo en NULL.
+  const bahaiYear =
+    parseInt((formData.get("bahai_year") as string) || "0", 10) ||
+    bahaiYearFromPeriod(period);
   const notes = (formData.get("notes") as string)?.trim() || null;
 
   const supabase = createSupabaseServer();
@@ -99,6 +105,8 @@ export async function saveBudgetItemsAction(formData: FormData) {
   const budgetId = formData.get("budget_id") as string;
   const status = formData.get("status") as string;
   const notes = (formData.get("notes") as string)?.trim() || null;
+  // Vacío = no tocar la columna (nunca pisar un año cargado con NULL).
+  const bahaiYear = parseInt((formData.get("bahai_year") as string) || "0", 10);
 
   const ids = formData.getAll("item_id[]") as string[];
   const plannedAmounts = formData.getAll("planned_amount[]") as string[];
@@ -114,6 +122,7 @@ export async function saveBudgetItemsAction(formData: FormData) {
     .update({
       status: ["draft", "active", "closed"].includes(status) ? status : "draft",
       notes,
+      ...(bahaiYear > 0 ? { bahai_year: bahaiYear } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("id", budgetId);
