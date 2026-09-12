@@ -13,9 +13,10 @@ import { requireAdmin } from "@/lib/auth";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { ASSEMBLY_SIZE, ASSEMBLY_OFFICE_LABELS } from "@/lib/types";
-import { removeStatutesAction, saveAssemblyRecordAction } from "./actions";
+import { removeStatutesAction } from "./actions";
 import { ConfirmSubmit } from "../miembros/confirm-submit";
 import { MembersEditor, type EditorRow, type PickableProfile } from "./members-editor";
+import { RecordForm } from "./record-form";
 
 type ProfileRow = {
   id: string;
@@ -124,65 +125,15 @@ export default async function AdminAsambleaPage({
             <p className="mb-4 mt-1 text-[12px] text-muted">
               Lo que piden en un trámite: BPS, DGI, un banco, una nota a otra institución.
             </p>
-            <form action={saveAssemblyRecordAction} className="flex flex-col gap-4">
-              <Field label="Nombre registrado" name="registered_name" hint="Tal como figura en el registro.">
-                <TextInput
-                  id="registered_name"
-                  name="registered_name"
-                  defaultValue={record?.registered_name ?? ""}
-                  placeholder="Asamblea Espiritual Local de los Bahá'ís de …"
-                />
-              </Field>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="RUT (DGI)" name="rut">
-                  <TextInput id="rut" name="rut" defaultValue={record?.rut ?? ""} inputMode="numeric" />
-                </Field>
-                <Field label="N.º de empresa (BPS)" name="bps_number">
-                  <TextInput
-                    id="bps_number"
-                    name="bps_number"
-                    defaultValue={record?.bps_number ?? ""}
-                    inputMode="numeric"
-                  />
-                </Field>
-              </div>
-              <Field label="Fecha de registro" name="registered_at">
-                <TextInput
-                  id="registered_at"
-                  name="registered_at"
-                  type="date"
-                  defaultValue={record?.registered_at ?? ""}
-                />
-              </Field>
-              <Field
-                label="Estatutos (PDF)"
-                name="statutes"
-                hint={record?.statutes_path ? "Subir otro reemplaza al actual." : "Hasta 15 MB."}
-              >
-                <input
-                  id="statutes"
-                  name="statutes"
-                  type="file"
-                  accept="application/pdf"
-                  className="block w-full text-[13px] text-dark file:mr-3 file:rounded-lg file:border-0 file:bg-terra/10 file:px-3 file:py-2 file:text-[12px] file:font-semibold file:text-terra"
-                />
-              </Field>
-              <Field
-                label="Notas"
-                name="notes"
-                hint="Personería jurídica, domicilio fiscal, contador, lo que haga falta."
-              >
-                <TextArea id="notes" name="notes" rows={4} defaultValue={record?.notes ?? ""} />
-              </Field>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-[11px] text-muted">
-                  {record ? `Actualizado ${formatDateTime(record.updated_at)}` : "Todavía sin datos."}
-                </span>
-                <Button type="submit" disabled={!data.ready}>
-                  Guardar ficha
-                </Button>
-              </div>
-            </form>
+            {/* El PDF se sube desde el navegador: ver record-form.tsx. */}
+            <RecordForm
+              record={record}
+              ready={data.ready}
+              localityId={localityId}
+              updatedLabel={
+                record ? `Actualizado ${formatDateTime(record.updated_at)}` : "Todavía sin datos."
+              }
+            />
           </Card>
 
           {record?.statutes_path && (

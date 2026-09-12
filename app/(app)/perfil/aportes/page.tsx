@@ -38,7 +38,8 @@ export default async function MisAportesPage({
   const year = years.includes(requested) ? requested : (currentYear ?? years[0] ?? null);
 
   const rows = all.filter((c) => c.treasuryYear === year);
-  const totals = totalsByCurrency(rows);
+  // Un aporte anulado se muestra (su recibo existió) pero no suma.
+  const totals = totalsByCurrency(rows.filter((c) => !c.voided_at));
   const from = year ? treasuryYearStart(year) : null;
   const to = year ? treasuryYearEnd(year) : null;
 
@@ -108,8 +109,17 @@ export default async function MisAportesPage({
                     <div className="text-[11px] text-muted">
                       {formatDate(c.entry_date)}
                       {c.receipt_number ? ` · Recibo N.° ${c.receipt_number}` : ""}
+                      {c.voided_at && (
+                        <span className="ml-1.5 rounded bg-rose-50 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-rose-700">
+                          Anulado
+                        </span>
+                      )}
                     </div>
-                    <div className="mt-0.5 font-display text-[17px] font-semibold text-dark tabular-nums">
+                    <div
+                      className={`mt-0.5 font-display text-[17px] font-semibold tabular-nums ${
+                        c.voided_at ? "text-muted line-through" : "text-dark"
+                      }`}
+                    >
                       {formatMoney(c.amount)}{" "}
                       <span className="text-[12px] font-normal text-muted">{c.currency}</span>
                     </div>

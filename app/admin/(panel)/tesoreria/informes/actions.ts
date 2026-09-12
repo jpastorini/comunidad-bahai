@@ -9,6 +9,7 @@ import {
   DESTINATION_TONES,
   NOTE_SECTIONS,
   fmtDayMonth,
+  parseAudience,
   sanitizeReportEditorial,
   type DestinationTone,
   type NoteKey,
@@ -42,7 +43,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** El destinatario define el formato y quién puede leer el informe. */
 function readAudience(formData: FormData): ReportAudience {
-  return formData.get("audience") === "internos" ? "internos" : "comunidad";
+  return parseAudience(formData.get("audience"));
 }
 
 function readDate(formData: FormData, key: string): string | null {
@@ -94,6 +95,17 @@ function readEditorial(formData: FormData): ReportEditorial {
     approval: {
       meetingDate: str("approval_meeting_date"),
       actaNumber: str("approval_acta_number"),
+    },
+    balance: {
+      rateUsd: str("balance_rate_usd"),
+      rateDate: str("balance_rate_date"),
+      rateSource: str("balance_rate_source"),
+      memo: str("balance_memo"),
+      signers: {
+        coordinator: str("signer_coordinator"),
+        secretary: str("signer_secretary"),
+        treasurer: str("signer_treasurer"),
+      },
     },
     showContributionsChart: formData.get("show_contributions") === "on",
     showLocalFundChart: formData.get("show_local_fund") === "on",

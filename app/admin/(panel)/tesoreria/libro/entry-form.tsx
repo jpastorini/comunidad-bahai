@@ -389,7 +389,9 @@ export function EntryForm({
               type="number"
               name="receipt_number"
               defaultValue={entry?.receipt_number ?? nextReceipt}
+              placeholder="se asigna solo"
               className={inputClass}
+              title="Todo aporte lleva recibo. Si lo dejás vacío se asigna el siguiente de la serie."
             />
           </Field>
 

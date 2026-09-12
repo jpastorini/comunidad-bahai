@@ -2,6 +2,7 @@ import { Banner, Button, Card, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getAttachmentCounts } from "@/lib/treasury-attachments";
+import { closedMonthKeys, getClosings } from "@/lib/treasury-closings";
 import { formatMoney } from "@/lib/treasury-format";
 import {
   balancesBy,
@@ -30,12 +31,14 @@ export default async function LibroTesoreriaPage({
     ? requested
     : (years[0] ?? new Date().getUTCFullYear() - 1843);
 
-  const [catalog, entries, receiptResult, attachmentCounts] = await Promise.all([
+  const [catalog, entries, receiptResult, attachmentCounts, closings] = await Promise.all([
     getLedgerCatalog(supabase, session.locality.id),
     getLedgerEntries(supabase, year),
     supabase.rpc("next_receipt_number", { loc: session.locality.id }),
     getAttachmentCounts(supabase),
+    getClosings(supabase),
   ]);
+  const closedMonths = closedMonthKeys(closings);
 
   const accountNames = new Map(catalog.accounts.map((a) => [a.id, a.name]));
   const fundNames = new Map(catalog.funds.map((f) => [f.id, f.name]));
@@ -55,6 +58,9 @@ export default async function LibroTesoreriaPage({
         description="Cada línea es un movimiento. El saldo se calcula solo."
         actions={
           <>
+            <Button variant="secondary" href="/admin/tesoreria/libro/cierres">
+              Cierres
+            </Button>
             <Button href="/admin/tesoreria/informes">Informes</Button>
           </>
         }
@@ -187,6 +193,7 @@ export default async function LibroTesoreriaPage({
             today={todayISO()}
             nextReceipt={nextReceipt}
             attachmentCounts={attachmentCounts}
+            closedMonths={closedMonths}
           />
         </>
       )}

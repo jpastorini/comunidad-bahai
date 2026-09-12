@@ -198,6 +198,8 @@ export type AssemblyRecord = {
   id: string;
   locality_id: string;
   registered_name: string | null;
+  /** Domicilio fiscal (054). Va impreso en el recibo y en el balance. */
+  fiscal_address?: string | null;
   rut: string | null;
   bps_number: string | null;
   registered_at: string | null; // ISO date
@@ -212,6 +214,12 @@ export type AssemblyRecord = {
 
 /** Una Asamblea Espiritual Local tiene nueve miembros. */
 export const ASSEMBLY_SIZE = 9;
+
+/** El bucket PRIVADO de los estatutos y el tope del PDF. Viven acá y no
+ *  en lib/assembly.ts para que el formulario de la ficha (cliente, que
+ *  sube el PDF desde el navegador) no arrastre la capa de datos. */
+export const ASSEMBLY_DOCS_BUCKET = "asamblea-docs";
+export const MAX_STATUTES_BYTES = 15 * 1024 * 1024;
 
 /** Los cuatro oficiales de la Asamblea. */
 export type AssemblyOffice = "coordinador" | "vicecoordinador" | "secretario" | "tesorero";

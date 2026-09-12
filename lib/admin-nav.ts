@@ -92,6 +92,8 @@ export const ADMIN_NAV: NavGroup[] = [
     children: [
       // El recibo se abre desde el libro: prende "Libro".
       { href: "/admin/tesoreria/libro", label: "Libro", match: ["/admin/tesoreria/recibo"] },
+      // El cierre mensual y el Libro de Caja imprimible (054).
+      { href: "/admin/tesoreria/libro/cierres", label: "Cierres" },
       { href: "/admin/tesoreria/informes", label: "Informes" },
       { href: "/admin/tesoreria/progreso", label: "Progreso" },
       { href: "/admin/tesoreria/presupuesto", label: "Presupuesto" },

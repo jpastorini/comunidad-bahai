@@ -26,6 +26,8 @@ export type MyContribution = {
   subcategory_name: string | null;
   locality_id: string | null;
   locality_name: string | null;
+  /** Anulado por la Tesorería (054): se muestra tachado y no suma. */
+  voided_at?: string | null;
   /** Ejercicio contable (Riḍván a Riḍván) al que pertenece. */
   treasuryYear: number | null;
 };
@@ -63,6 +65,12 @@ export type MyReceipt = {
   subcategory_name: string | null;
   locality_name: string | null;
   treasurer_name: string | null;
+  /** Datos fiscales de la Asamblea (054), los mismos que imprime el
+   *  tesorero. Nulos hasta que la ficha legal esté cargada. */
+  registered_name?: string | null;
+  rut?: string | null;
+  fiscal_address?: string | null;
+  voided_at?: string | null;
 };
 
 export async function getMyReceipt(

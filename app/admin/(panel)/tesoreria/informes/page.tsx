@@ -24,6 +24,7 @@ export default async function InformesTesoreriaPage() {
   const supabase = createSupabaseServer();
 
   const reports = await getAdminReports(supabase, session.locality.id);
+  const balances = reports.filter((r) => r.audience === "balance");
   const internos = reports.filter((r) => r.audience === "internos");
   const comunidad = reports.filter((r) => r.audience === "comunidad");
 
@@ -53,6 +54,11 @@ export default async function InformesTesoreriaPage() {
         </Card>
       )}
 
+      <Group
+        audience="balance"
+        title="Memoria y Balance anual"
+        reports={balances}
+      />
       <Group
         audience="internos"
         title="Para la Asamblea"
@@ -109,7 +115,9 @@ function ReportCard({ report: r }: { report: TreasuryReport }) {
   const main = primaryCurrency([...s.income, ...s.expenses]);
   const income = s.income.find((m) => m.currency === main);
   const expense = s.expenses.find((m) => m.currency === main);
-  const interno = r.audience === "internos";
+  // Las dos hojas (acta y balance) se comportan igual: link interno,
+  // "emitido", aprobación en reunión. Solo el deck es público.
+  const interno = r.audience !== "comunidad";
 
   return (
     <Card>
@@ -119,7 +127,11 @@ function ReportCard({ report: r }: { report: TreasuryReport }) {
             <div className="font-display text-[16px] font-semibold text-dark">
               {r.title}
             </div>
-            {interno ? (
+            {r.audience === "balance" ? (
+              <span className="rounded bg-green/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-green">
+                Balance
+              </span>
+            ) : interno ? (
               <span className="rounded bg-amber/12 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber">
                 Internos
               </span>

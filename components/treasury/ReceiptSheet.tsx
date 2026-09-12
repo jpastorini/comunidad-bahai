@@ -3,6 +3,14 @@
 import { forwardRef } from "react";
 import { formatMoney } from "@/lib/treasury-format";
 
+/** Los datos fiscales de la Asamblea que la DGI pide en un recibo
+ *  (Res. 688/992 num. 22): nombre registrado, RUT y domicilio fiscal. */
+export type ReceiptLegalProps = {
+  registeredName: string | null;
+  rut: string | null;
+  address: string | null;
+};
+
 export type ReceiptSheetProps = {
   receiptNumber: number | null;
   /** "22/08/2026". */
@@ -17,6 +25,12 @@ export type ReceiptSheetProps = {
   treasurerName: string;
   hasLogo: boolean;
   hasSignature: boolean;
+  /** Si falta, el recibo sale sin RUT ni domicilio: es lo que había hasta
+   *  la 054 y lo que se ve mientras la ficha legal no esté cargada. */
+  legal?: ReceiptLegalProps | null;
+  /** Recibo anulado: se imprime igual, cruzado con "ANULADO". El número
+   *  sigue en la serie y el papel tiene que decirlo. */
+  voided?: boolean;
 };
 
 /**
@@ -31,6 +45,12 @@ export type ReceiptSheetProps = {
  * Reemplaza al generador que vivía en Apps Script sobre la planilla.
  * El logo y la firma son opcionales: si los archivos no están, el recibo
  * se emite igual, como hacía el script original.
+ *
+ * Desde la 054 lleva los datos fiscales que pide la DGI para un recibo
+ * de donación (nombre registrado, RUT, domicilio) y la leyenda "Recibo",
+ * y dice al pie que lo emitió el sistema de Tesorería. Lo que reemplaza a
+ * los "datos de imprenta" en un recibo emitido por sistema es una
+ * pregunta abierta al contador (ver CLAUDE.md).
  *
  * ⚠️ El nodo capturado como imagen no puede tener márgenes `auto` (ver
  * lib/share-image.ts): el centrado va siempre en el envoltorio.
@@ -48,9 +68,18 @@ export const ReceiptSheet = forwardRef<HTMLDivElement, ReceiptSheetProps>(
       treasurerName,
       hasLogo,
       hasSignature,
+      legal,
+      voided = false,
     },
     ref
   ) {
+    const legalLine = [
+      legal?.rut ? `RUT ${legal.rut}` : null,
+      legal?.address ?? null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+
     return (
       <>
         {/* Al imprimir queda solo la hoja: el resto de la pantalla se esconde. */}
@@ -72,7 +101,7 @@ export const ReceiptSheet = forwardRef<HTMLDivElement, ReceiptSheetProps>(
           <div
             id="recibo"
             ref={ref}
-            className="flex flex-col overflow-hidden bg-[#fffdf7] shadow-card-elevated"
+            className="relative flex flex-col overflow-hidden bg-[#fffdf7] shadow-card-elevated"
             style={{ width: "148mm", height: "210mm" }}
           >
             <header
@@ -92,20 +121,34 @@ export const ReceiptSheet = forwardRef<HTMLDivElement, ReceiptSheetProps>(
                   />
                 </div>
               )}
-              <h1 className="mb-1 text-[11px] uppercase tracking-[0.08em] text-[#fff8ee]">
-                Asamblea Espiritual Local de los Bahá'ís de
-              </h1>
-              <h2 className="font-display text-[24px] font-semibold leading-tight text-[#ffecd0]">
-                {localityName}
-              </h2>
-              <p className="text-[12px] italic text-[#fff0d2]/80">
+              {legal?.registeredName ? (
+                <h1 className="mb-1 font-display text-[19px] font-semibold leading-tight text-[#ffecd0]">
+                  {legal.registeredName}
+                </h1>
+              ) : (
+                <>
+                  <h1 className="mb-1 text-[11px] uppercase tracking-[0.08em] text-[#fff8ee]">
+                    Asamblea Espiritual Local de los Bahá'ís de
+                  </h1>
+                  <h2 className="font-display text-[24px] font-semibold leading-tight text-[#ffecd0]">
+                    {localityName}
+                  </h2>
+                </>
+              )}
+              {legalLine && (
+                <p className="mt-1 text-[10.5px] tracking-[0.02em] text-[#fff0d2]/90">
+                  {legalLine}
+                </p>
+              )}
+              <p className="mt-0.5 text-[12px] italic text-[#fff0d2]/80">
                 Tesorería — Comprobante de Contribución
               </p>
             </header>
 
             <div className="flex shrink-0 items-center justify-between border-b border-[#e0c9a6] bg-[#f5ede0] px-7 py-2 text-[11.5px] text-[#8b5e2a]">
               <span>
-                Recibo N.° <strong>{receiptNumber ?? "—"}</strong>
+                <strong className="mr-1 uppercase tracking-[0.06em]">Recibo</strong>
+                N.° <strong>{receiptNumber ?? "—"}</strong>
               </span>
               <span>
                 Fecha: <strong>{dateLabel}</strong>
@@ -166,10 +209,24 @@ export const ReceiptSheet = forwardRef<HTMLDivElement, ReceiptSheetProps>(
                 Las contribuciones a los fondos bahá'ís son voluntarias y
                 estrictamente confidenciales.
                 <br />
-                Este recibo es un comprobante oficial emitido por la Tesorería
-                de la Asamblea.
+                Comprobante emitido por el sistema de Tesorería de la Asamblea.
+                Numeración correlativa única.
               </p>
             </footer>
+
+            {voided && (
+              <div
+                aria-label="Recibo anulado"
+                className="pointer-events-none absolute inset-0 flex items-center justify-center"
+              >
+                <span
+                  className="rotate-[-28deg] rounded-lg border-[6px] border-[#9b1c1c]/70 px-8 py-3 font-display text-[64px] font-bold uppercase tracking-[0.18em] text-[#9b1c1c]/70"
+                  style={{ letterSpacing: "0.18em" }}
+                >
+                  Anulado
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </>

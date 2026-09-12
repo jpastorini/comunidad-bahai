@@ -20,11 +20,12 @@
  *   'internos'  — hoja condensada sin gráficos, para adjuntar al acta de
  *                 la Asamblea. Nunca sale por el link público.
  */
-export type ReportAudience = "comunidad" | "internos";
+export type ReportAudience = "comunidad" | "internos" | "balance";
 
 export const AUDIENCE_LABEL: Record<ReportAudience, string> = {
   comunidad: "Comunidad",
   internos: "Internos",
+  balance: "Memoria y Balance anual",
 };
 
 export const AUDIENCE_HINT: Record<ReportAudience, string> = {
@@ -32,7 +33,18 @@ export const AUDIENCE_HINT: Record<ReportAudience, string> = {
     "Deck de diapositivas para presentar en la Fiesta, con link público compartible.",
   internos:
     "Hoja condensada sin gráficos, para adjuntar al acta y aprobar en reunión de Asamblea. No se comparte con la comunidad.",
+  balance:
+    "La hoja del ejercicio estatutario (18 de abril al 17 de abril): saldos con equivalente en pesos, recursos y gastos por rubro, firmas de Coordinador, Secretario y Tesorero. Publicada, la lee toda la comunidad desde la app, como piden los estatutos; nunca sale por el link público.",
 };
+
+/** Los formatos que se imprimen como hoja A4 (los que no son el deck). */
+export function isSheetAudience(a: ReportAudience): boolean {
+  return a !== "comunidad";
+}
+
+export function parseAudience(v: unknown): ReportAudience {
+  return v === "internos" ? "internos" : v === "balance" ? "balance" : "comunidad";
+}
 
 export type ReportMoney = { currency: string; amount: number };
 
@@ -219,6 +231,27 @@ export type ReportGoal = {
  */
 export type ReportApproval = { meetingDate: string; actaNumber: string };
 
+/**
+ * Lo que la Memoria y Balance anual necesita y el libro no sabe:
+ *
+ *  · La cotización de cierre para expresar los dólares en pesos, con su
+ *    fecha y su fuente (BCU interbancario). El libro no guarda tipo de
+ *    cambio por movimiento todavía, así que la declara el tesorero y la
+ *    hoja la imprime como criterio de conversión.
+ *  · La memoria: qué hizo la Asamblea en el ejercicio, en prosa.
+ *  · Quiénes firman: Coordinador, Secretario y Tesorero. Se proponen desde
+ *    la composición de la Asamblea del ejercicio (052) y se pueden
+ *    corregir, porque la composición puede haber cambiado a mitad de año.
+ */
+export type ReportBalanceInfo = {
+  /** "43,25" — pesos por dólar al cierre. Texto, como lo tipea el tesorero. */
+  rateUsd: string;
+  rateDate: string;
+  rateSource: string;
+  memo: string;
+  signers: { coordinator: string; secretary: string; treasurer: string };
+};
+
 export type ReportEditorial = {
   notes: Partial<Record<NoteKey, string>>;
   destination: ReportDestinationItem[];
@@ -228,8 +261,10 @@ export type ReportEditorial = {
   /** Solo informe interno: qué quedó en gestión, qué falta documentar,
    *  qué necesita decisión de la Asamblea. */
   observations: string;
-  /** Solo informe interno. */
+  /** Solo informe interno y balance. */
   approval: ReportApproval | null;
+  /** Solo Memoria y Balance anual. */
+  balance: ReportBalanceInfo | null;
   /** Los gráficos y el presupuesto se pueden apagar: en el primer mes
    *  del año no dicen nada todavía. */
   showContributionsChart: boolean;
@@ -245,10 +280,20 @@ export const EMPTY_EDITORIAL: ReportEditorial = {
   signature: null,
   observations: "",
   approval: null,
+  balance: null,
   showContributionsChart: true,
   showLocalFundChart: true,
   showBudget: true,
 };
+
+/** "43,25" o "43.25" → 43.25; null si no es un número positivo. */
+export function parseRate(raw: string): number | null {
+  const s = (raw || "").trim();
+  if (!s) return null;
+  const normalized = s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s;
+  const n = parseFloat(normalized);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
 
 // ─── Saneado ─────────────────────────────────────────────────────
 // El editorial viaja por un hidden input del form y el snapshot vuelve
@@ -315,6 +360,28 @@ export function sanitizeReportEditorial(raw: unknown): ReportEditorial {
     actaNumber: str(apprRaw.actaNumber),
   };
 
+  const balRaw = obj(o.balance);
+  const signersRaw = obj(balRaw.signers);
+  const balance: ReportBalanceInfo = {
+    rateUsd: str(balRaw.rateUsd),
+    rateDate: str(balRaw.rateDate),
+    rateSource: str(balRaw.rateSource),
+    memo: str(balRaw.memo),
+    signers: {
+      coordinator: str(signersRaw.coordinator),
+      secretary: str(signersRaw.secretary),
+      treasurer: str(signersRaw.treasurer),
+    },
+  };
+  const hasBalance =
+    balance.rateUsd ||
+    balance.rateDate ||
+    balance.rateSource ||
+    balance.memo ||
+    balance.signers.coordinator ||
+    balance.signers.secretary ||
+    balance.signers.treasurer;
+
   return {
     notes,
     destination,
@@ -326,6 +393,7 @@ export function sanitizeReportEditorial(raw: unknown): ReportEditorial {
     // Sin fecha de reunión no hay aprobación que informar: la hoja
     // imprime las líneas en blanco.
     approval: approval.meetingDate || approval.actaNumber ? approval : null,
+    balance: hasBalance ? balance : null,
     showContributionsChart: bool(o.showContributionsChart, true),
     showLocalFundChart: bool(o.showLocalFundChart, true),
     showBudget: bool(o.showBudget, true),

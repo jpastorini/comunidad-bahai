@@ -4,7 +4,11 @@ import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { receiptAssets } from "@/lib/receipt-assets";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { formatReceiptDate, receiptLocalityName } from "@/lib/treasury-format";
-import { getEntryForReceipt, receiptDisplayName } from "@/lib/treasury-ledger";
+import {
+  getEntryForReceipt,
+  getReceiptLegal,
+  receiptDisplayName,
+} from "@/lib/treasury-ledger";
 import { ReceiptView } from "./receipt-view";
 
 export const dynamic = "force-dynamic";
@@ -18,10 +22,14 @@ export default async function ReciboPage({
   ensureTreasuryTag(session.profile);
   const supabase = createSupabaseServer();
 
-  const entry = await getEntryForReceipt(supabase, params.id);
+  const [entry, legal] = await Promise.all([
+    getEntryForReceipt(supabase, params.id),
+    getReceiptLegal(supabase, session.locality.id),
+  ]);
   if (!entry) notFound();
 
   const { hasLogo, hasSignature } = receiptAssets();
+  const voided = Boolean(entry.voided_at);
 
   const destination = [entry.subcategory_name, entry.fund_name]
     .filter(Boolean)
@@ -35,11 +43,31 @@ export default async function ReciboPage({
         description="Se imprime en A5, igual que el de la planilla."
       />
 
+      {voided && (
+        <div className="mb-4">
+          <Banner tone="warning">
+            <strong>Recibo anulado.</strong> El número queda ocupado en la serie
+            y el aporte no suma en ningún saldo.
+            {entry.void_reason ? ` Motivo: ${entry.void_reason}` : ""}
+          </Banner>
+        </div>
+      )}
+
       {entry.amount < 0 && (
         <div className="mb-4">
           <Banner tone="info">
             Este movimiento es un gasto. Los recibos se emiten para
             contribuciones recibidas.
+          </Banner>
+        </div>
+      )}
+
+      {!legal.rut && (
+        <div className="mb-4">
+          <Banner tone="info">
+            El recibo sale sin RUT ni domicilio fiscal. Cargalos en{" "}
+            <strong>Asamblea → Datos de la Asamblea</strong> y van a aparecer en
+            todos los recibos.
           </Banner>
         </div>
       )}
@@ -75,6 +103,8 @@ export default async function ReciboPage({
         issued={entry.receipt_issued}
         hasLogo={hasLogo}
         hasSignature={hasSignature}
+        legal={legal}
+        voided={voided}
       />
     </>
   );

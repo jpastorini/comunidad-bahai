@@ -13,6 +13,7 @@ import type { PeriodPreset } from "@/lib/treasury-reports";
 const DEFAULT_TITLE: Record<ReportAudience, string> = {
   comunidad: "Fiesta de los Diecinueve Días",
   internos: "Informe de Tesorería a la Asamblea",
+  balance: "Memoria y Balance anual",
 };
 
 /**
@@ -57,6 +58,12 @@ export function PeriodPicker({
     const suggestions = Object.values(DEFAULT_TITLE);
     if (title === "" || suggestions.includes(title)) {
       setTitle(DEFAULT_TITLE[next]);
+    }
+    // El balance es del ejercicio estatutario: al elegirlo se propone ese
+    // período, si está entre los atajos.
+    if (next === "balance") {
+      const statutory = presets.find((p) => p.key.startsWith("statutory-"));
+      if (statutory) applyPreset(statutory.key);
     }
   }
 

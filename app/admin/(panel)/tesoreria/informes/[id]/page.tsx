@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Button, PageHeader } from "@/components/admin/ui";
 import { ShareReportButton } from "@/components/treasury/ShareReportButton";
+import { currentAssemblyYear, getAssemblyData, officerOf } from "@/lib/assembly";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/treasury-ledger";
@@ -23,6 +24,24 @@ export default async function EditarInformePage({
   const report = await getReport(supabase, params.id);
   if (!report || report.locality_id !== session.locality.id) notFound();
 
+  // Las firmas del balance se proponen desde la composición de la
+  // Asamblea del ejercicio (052). Si no está cargada, quedan vacías.
+  let signerDefaults: { coordinator: string; secretary: string; treasurer: string } | undefined;
+  if (report.audience === "balance") {
+    const assembly = await getAssemblyData(
+      supabase,
+      session.locality.id,
+      report.bahai_year ?? currentAssemblyYear()
+    );
+    const term = assembly.term ?? assembly.previousTerm;
+    signerDefaults = {
+      coordinator: officerOf(term, "coordinador")?.display_name ?? "",
+      secretary: officerOf(term, "secretario")?.display_name ?? "",
+      treasurer:
+        officerOf(term, "tesorero")?.display_name ?? session.profile.full_name ?? "",
+    };
+  }
+
   return (
     <>
       <PageHeader back={{ href: "/admin/tesoreria/informes", label: "Informes" }}
@@ -39,7 +58,7 @@ export default async function EditarInformePage({
               <ShareReportButton token={report.share_token} title={report.title} />
             )}
             <Button variant="secondary" href={`/admin/informe/${report.id}`}>
-              {report.audience === "internos" ? "Ver hoja" : "Ver deck"}
+              {report.audience === "comunidad" ? "Ver deck" : "Ver hoja"}
             </Button>
           </>
         }
@@ -57,6 +76,7 @@ export default async function EditarInformePage({
         editorial={report.editorial}
         today={todayISO()}
         saveAction={saveReportAction}
+        signerDefaults={signerDefaults}
       />
     </>
   );

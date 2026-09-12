@@ -45,6 +45,9 @@ type Props = {
   editorial: ReportEditorial;
   today: string;
   saveAction: (formData: FormData) => void;
+  /** Los oficiales del ejercicio (052), para proponer las firmas del
+   *  balance. Vacíos si la composición no está cargada. */
+  signerDefaults?: { coordinator: string; secretary: string; treasurer: string };
 };
 
 /** Las secciones que existen en la hoja del acta; el resto de las notas
@@ -78,15 +81,19 @@ export function ReportEditor({
   editorial,
   today,
   saveAction,
+  signerDefaults,
 }: Props) {
   const [rows, setRows] = useState<DestRow[]>(
     editorial.destination.map((d, i) => ({ uid: `d${i}`, ...d }))
   );
   const [audience, setAudience] = useState<ReportAudience>(initialAudience);
-  // El deck de la comunidad y la hoja del acta no comparten secciones:
-  // los gráficos, la meta destacada, el destino de los fondos y la cita
-  // son del deck; las observaciones y la aprobación, de la hoja.
-  const esInterno = audience === "internos";
+  // El deck de la comunidad y las hojas (acta, balance) no comparten
+  // secciones: los gráficos, la meta destacada, el destino de los fondos
+  // y la cita son del deck; las observaciones y la aprobación, de las
+  // hojas; la cotización, la memoria y las firmas, solo del balance.
+  const esInterno = audience !== "comunidad";
+  const esBalance = audience === "balance";
+  const bal = editorial.balance;
 
   function addRow() {
     setRows((prev) => [
@@ -420,6 +427,95 @@ export function ReportEditor({
           <p className="mt-3 text-[11.5px] text-muted">
             Si los dejás vacíos, la hoja imprime líneas de puntos para
             completar a mano en la reunión.
+          </p>
+        </Card>
+      )}
+
+      {/* ─── Memoria y Balance anual ───────────────────────────── */}
+      {esBalance && (
+        <Card className="mb-4">
+          <h2 className="mb-1 font-display text-[20px] font-semibold text-dark">
+            Memoria, cotización y firmas
+          </h2>
+          <p className="mb-4 text-[12px] text-muted">
+            Lo que el libro no sabe: qué hizo la Asamblea en el ejercicio, a
+            qué tipo de cambio se expresan los dólares en pesos, y quiénes
+            firman.
+          </p>
+          <Field
+            label="Memoria del ejercicio"
+            name="balance_memo"
+            hint="en prosa: actividades, decisiones, lo que la comunidad debe saber"
+          >
+            <TextArea
+              id="balance_memo"
+              name="balance_memo"
+              rows={6}
+              defaultValue={bal?.memo ?? ""}
+              placeholder="Durante el ejercicio la Asamblea sostuvo las Fiestas de 19 Días, las clases de niños y…"
+            />
+          </Field>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <Field
+              label="Cotización del dólar al cierre"
+              name="balance_rate_usd"
+              hint="pesos por dólar, p. ej. 43,25"
+            >
+              <TextInput
+                id="balance_rate_usd"
+                name="balance_rate_usd"
+                inputMode="decimal"
+                defaultValue={bal?.rateUsd ?? ""}
+                placeholder="43,25"
+              />
+            </Field>
+            <Field label="Fecha de la cotización" name="balance_rate_date">
+              <TextInput
+                id="balance_rate_date"
+                name="balance_rate_date"
+                type="date"
+                defaultValue={bal?.rateDate ?? periodTo}
+              />
+            </Field>
+            <Field label="Fuente" name="balance_rate_source">
+              <TextInput
+                id="balance_rate_source"
+                name="balance_rate_source"
+                defaultValue={bal?.rateSource ?? "BCU · interbancario comprador"}
+              />
+            </Field>
+          </div>
+          <p className="mt-2 text-[11.5px] text-muted">
+            Sin cotización, la hoja muestra los saldos en cada moneda y no los
+            totaliza en pesos. Con cotización, imprime el criterio de
+            conversión como nota.
+          </p>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <Field label="Coordinador/a" name="signer_coordinator">
+              <TextInput
+                id="signer_coordinator"
+                name="signer_coordinator"
+                defaultValue={bal?.signers.coordinator || signerDefaults?.coordinator || ""}
+              />
+            </Field>
+            <Field label="Secretario/a" name="signer_secretary">
+              <TextInput
+                id="signer_secretary"
+                name="signer_secretary"
+                defaultValue={bal?.signers.secretary || signerDefaults?.secretary || ""}
+              />
+            </Field>
+            <Field label="Tesorero/a" name="signer_treasurer">
+              <TextInput
+                id="signer_treasurer"
+                name="signer_treasurer"
+                defaultValue={bal?.signers.treasurer || signerDefaults?.treasurer || ""}
+              />
+            </Field>
+          </div>
+          <p className="mt-2 text-[11.5px] text-muted">
+            Se proponen desde <strong>Asamblea → Datos de la Asamblea</strong>;
+            corregilos si la composición cambió durante el ejercicio.
           </p>
         </Card>
       )}

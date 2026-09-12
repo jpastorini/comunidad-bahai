@@ -16,11 +16,13 @@ import type {
  * la RLS lo garantiza, acá solo se consulta.
  */
 
-export const ASSEMBLY_DOCS_BUCKET = "asamblea-docs";
-export const MAX_STATUTES_BYTES = 15 * 1024 * 1024;
+import { ASSEMBLY_DOCS_BUCKET } from "./types";
+
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 
-export { ASSEMBLY_SIZE } from "./types";
+// Las constantes del bucket viven en lib/types.ts, que es seguro para el
+// cliente: el formulario de la ficha sube el PDF desde el navegador.
+export { ASSEMBLY_DOCS_BUCKET, ASSEMBLY_SIZE, MAX_STATUTES_BYTES } from "./types";
 
 /**
  * El ejercicio en curso de la Asamblea: el mismo corte que la Tesorería

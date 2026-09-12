@@ -216,7 +216,9 @@ export function ReportSheet({
  * sombras ni bordes redondeados, y sobre todo sin partir una tabla al
  * medio entre dos hojas, que es lo que arruina un anexo de acta.
  */
-const SHEET_CSS = `
+// Las piezas de la hoja se exportan para que la Memoria y Balance anual
+// (BalanceSheet.tsx) se arme con las mismas tablas y no con una copia.
+export const SHEET_CSS = `
 @media print {
   @page { size: A4 portrait; margin: 14mm 14mm 16mm; }
   html, body { background: #fff !important; }
@@ -249,11 +251,11 @@ function fmtSigned(amount: number, currency?: string): string {
  * todo el documento, así que scrollea sola. Al imprimir el envoltorio se
  * desarma: en la hoja no hay scroll.
  */
-function Wide({ children }: { children: React.ReactNode }) {
+export function Wide({ children }: { children: React.ReactNode }) {
   return <div className="cb-wide -mx-1 overflow-x-auto px-1">{children}</div>;
 }
 
-function Meta({ label, value }: { label: string; value: string }) {
+export function Meta({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-[9.5px] font-bold uppercase tracking-wide text-muted">
@@ -264,7 +266,7 @@ function Meta({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Section({
+export function Section({
   title,
   children,
 }: {
@@ -281,7 +283,7 @@ function Section({
   );
 }
 
-function Note({ text }: { text?: string }) {
+export function Note({ text }: { text?: string }) {
   if (!text) return null;
   return (
     <p className="mt-2 border-l-2 border-gold/50 pl-3 text-[12px] leading-relaxed text-muted">
@@ -290,7 +292,7 @@ function Note({ text }: { text?: string }) {
   );
 }
 
-function Empty({ text }: { text: string }) {
+export function Empty({ text }: { text: string }) {
   return (
     <p className="rounded border border-dashed border-black/15 px-3 py-3 text-center text-[12px] text-muted">
       {text}
@@ -399,7 +401,7 @@ function row(
 }
 
 /** Rubros agrupados por categoría, con subtotal por categoría. */
-function RubroTable({
+export function RubroTable({
   rubros,
   countLabel,
   negative = false,
@@ -494,7 +496,7 @@ function RubroTable({
   );
 }
 
-function BalanceTable({
+export function BalanceTable({
   title,
   rows,
 }: {
@@ -558,7 +560,7 @@ function totalByCurrency(rows: ReportBalanceRow[]): ReportMoney[] {
  * la misma plata agrupada por cuenta tienen que dar igual, moneda por
  * moneda. Si no da, se dice en rojo en vez de disimularlo.
  */
-function Reconciliation({
+export function Reconciliation({
   byFund,
   byAccount,
 }: {
@@ -612,7 +614,7 @@ function Reconciliation({
 }
 
 /** Las transferencias con sus dos patas, agrupadas por operación. */
-function InternalTable({ lines }: { lines: ReportInternalLine[] }) {
+export function InternalTable({ lines }: { lines: ReportInternalLine[] }) {
   const groups = new Map<string, ReportInternalLine[]>();
   for (const l of lines) {
     const list = groups.get(l.group) ?? [];
@@ -826,7 +828,7 @@ function Approval({
 }
 
 /** Dato cargado, o una línea de puntos para completar a mano. */
-function FillLine({ label, value }: { label: string; value?: string }) {
+export function FillLine({ label, value }: { label: string; value?: string }) {
   return (
     <div className="flex items-baseline gap-2">
       <span className="shrink-0 text-muted">{label}</span>

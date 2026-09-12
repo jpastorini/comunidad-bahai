@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BalanceSheet } from "@/components/treasury/BalanceSheet";
 import { ReportDeck } from "@/components/treasury/ReportDeck";
 import { ReportSheet } from "@/components/treasury/ReportSheet";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { getReceiptLegal } from "@/lib/treasury-ledger";
 import { getReport } from "@/lib/treasury-reports";
 
 /**
@@ -46,6 +48,32 @@ export default async function VerInformePage({
   // Solo el tesorero puede volver al editor; para el resto de la
   // Asamblea el informe es de lectura.
   const canEdit = session.profile.can_manage_treasury;
+
+  if (report.audience === "balance") {
+    // Los datos fiscales del encabezado (nombre registrado, RUT,
+    // domicilio). La ficha legal la lee cualquier admin de la localidad.
+    const legal = await getReceiptLegal(supabase, session.locality.id);
+    return (
+      <div className="min-h-dvh bg-bg px-4 py-6 sm:px-8">
+        {canEdit && (
+          <div className="mx-auto mb-3 max-w-[820px] cb-noprint">
+            <Link
+              href={`/admin/tesoreria/informes/${report.id}`}
+              className="text-[12.5px] font-semibold text-terra hover:underline"
+            >
+              ← Volver al editor
+            </Link>
+          </div>
+        )}
+        <BalanceSheet
+          report={shared}
+          localityName={session.locality.name}
+          legal={legal}
+          emittedBy={report.editorial.signature?.name ?? null}
+        />
+      </div>
+    );
+  }
 
   if (report.audience === "internos") {
     return (

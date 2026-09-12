@@ -9,6 +9,10 @@ import { addMoney } from "./treasury-format";
  * número sino una matriz cuenta × moneda, porque una misma caja puede
  * tener pesos y dólares. Ver supabase/migrations/040_treasury_ledger.sql.
  *
+ * Desde la 054 un movimiento puede estar ANULADO (`voided_at`): sigue en
+ * el libro, con su número de recibo ocupando el lugar en la serie, pero
+ * no suma en ningún saldo ni total. Todo lo que agrega acá lo deja afuera.
+ *
  * Todo lo de acá exige el tag `can_manage_treasury`: la RLS filtra las
  * filas, así que un admin sin el tag recibe listas vacías.
  */
@@ -67,6 +71,12 @@ export type TreasuryEntry = {
   receipt_issued: boolean;
   transfer_group_id: string | null;
   is_opening_balance: boolean;
+  /** Anulado (054): no suma; su recibo queda ocupado en la serie. */
+  voided_at: string | null;
+  void_reason: string | null;
+  /** Es un contra-asiento que revierte al movimiento indicado. */
+  adjusts_entry_id: string | null;
+  adjustment_reason: string | null;
 };
 
 /** Un creyente de la localidad, para vincularlo como contribuyente. */
@@ -163,18 +173,48 @@ export async function getLedgerYears(
   return [...years].sort((a, b) => b - a);
 }
 
+const ENTRY_FIELDS =
+  "id, entry_date, bahai_year, account_id, subcategory_id, category_id, fund_id, currency, amount, description, receipt_number, contributions_count, contributor_id, receipt_name, receipt_issued, transfer_group_id, is_opening_balance, voided_at, void_reason, adjusts_entry_id, adjustment_reason";
+
+/** Todos los movimientos del año, anulados incluidos: el libro los
+ *  muestra tachados, porque su número de recibo sigue en la serie. */
 export async function getLedgerEntries(
   supabase: SupabaseClient,
   year: number
 ): Promise<TreasuryEntry[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("treasury_entries")
-    .select(
-      "id, entry_date, bahai_year, account_id, subcategory_id, category_id, fund_id, currency, amount, description, receipt_number, contributions_count, contributor_id, receipt_name, receipt_issued, transfer_group_id, is_opening_balance"
-    )
+    .select(ENTRY_FIELDS)
     .eq("bahai_year", year)
     .order("entry_date", { ascending: false })
     .order("receipt_number", { ascending: false, nullsFirst: false });
+
+  if (error) {
+    // Antes de la 054 las columnas nuevas no existen (42703): se vuelve a
+    // pedir sin ellas para que el libro siga andando hasta aplicarla.
+    if (error.code === "42703") {
+      const { data: legacy } = await supabase
+        .from("treasury_entries")
+        .select(
+          "id, entry_date, bahai_year, account_id, subcategory_id, category_id, fund_id, currency, amount, description, receipt_number, contributions_count, contributor_id, receipt_name, receipt_issued, transfer_group_id, is_opening_balance"
+        )
+        .eq("bahai_year", year)
+        .order("entry_date", { ascending: false })
+        .order("receipt_number", { ascending: false, nullsFirst: false });
+      return ((legacy ?? []) as Array<Omit<TreasuryEntry, "voided_at" | "void_reason" | "adjusts_entry_id" | "adjustment_reason">>).map(
+        (e) => ({
+          ...e,
+          amount: Number(e.amount),
+          voided_at: null,
+          void_reason: null,
+          adjusts_entry_id: null,
+          adjustment_reason: null,
+        })
+      );
+    }
+    console.error("[getLedgerEntries]", error);
+    return [];
+  }
 
   return ((data ?? []) as TreasuryEntry[]).map((e) => ({
     ...e,
@@ -189,7 +229,8 @@ export type BalanceRow = {
   amount: number;
 };
 
-/** Agrupa saldos por una dimensión (cuenta o fondo) y moneda. */
+/** Agrupa saldos por una dimensión (cuenta o fondo) y moneda. Los
+ *  movimientos anulados no suman. */
 export function balancesBy(
   entries: TreasuryEntry[],
   dimension: "account_id" | "fund_id",
@@ -198,6 +239,7 @@ export function balancesBy(
 ): BalanceRow[] {
   const totals = new Map<string, BalanceRow>();
   for (const e of entries) {
+    if (e.voided_at) continue;
     const id = e[dimension];
     const label = (id && names.get(id)) || fallbackLabel;
     const key = `${label}|${e.currency}`;
@@ -226,6 +268,8 @@ export function balancesBy(
  *    pero el movimiento del año quedaba irreconocible. Van a `internal`,
  *    que suma cero por construcción y solo se muestra como referencia.
  *
+ * Los anulados no cuentan en ninguna columna.
+ *
  * Mismo criterio que el informe (lib/treasury-reports.ts): los dos leen
  * el mismo libro y tienen que decir lo mismo.
  */
@@ -243,6 +287,7 @@ export function periodTotals(entries: TreasuryEntry[]) {
   >();
   const groupsSeen = new Set<string>();
   for (const e of entries) {
+    if (e.voided_at) continue;
     const row = byCurrency.get(e.currency) ?? {
       currency: e.currency,
       income: 0,
@@ -285,6 +330,9 @@ export type ReceiptData = {
   contributions_count: number;
   receipt_issued: boolean;
   receipt_issued_at: string | null;
+  /** Anulado: la hoja imprime "ANULADO" cruzado. */
+  voided_at: string | null;
+  void_reason: string | null;
   account_name: string | null;
   subcategory_name: string | null;
   fund_name: string | null;
@@ -309,6 +357,7 @@ export async function getEntryForReceipt(
     .select(
       `id, entry_date, currency, amount, receipt_number, description,
        contributions_count, receipt_issued, receipt_issued_at, receipt_name,
+       voided_at, void_reason,
        account:treasury_accounts(name),
        subcategory:treasury_subcategories(name),
        fund:treasury_funds(name),
@@ -330,6 +379,8 @@ export async function getEntryForReceipt(
     receipt_issued: boolean;
     receipt_issued_at: string | null;
     receipt_name: string | null;
+    voided_at: string | null;
+    void_reason: string | null;
     account: EmbeddedName;
     subcategory: EmbeddedName;
     fund: EmbeddedName;
@@ -346,6 +397,8 @@ export async function getEntryForReceipt(
     contributions_count: row.contributions_count,
     receipt_issued: row.receipt_issued,
     receipt_issued_at: row.receipt_issued_at,
+    voided_at: row.voided_at ?? null,
+    void_reason: row.void_reason ?? null,
     account_name: row.account?.name ?? null,
     subcategory_name: row.subcategory?.name ?? null,
     fund_name: row.fund?.name ?? null,
@@ -360,4 +413,32 @@ export function receiptDisplayName(
   entry: Pick<ReceiptData, "receipt_name" | "contributor_name">
 ): string {
   return entry.receipt_name?.trim() || entry.contributor_name || "(sin nombre)";
+}
+
+/** Los datos fiscales que van impresos en el recibo (Res. DGI 688/992). */
+export type ReceiptLegal = {
+  registeredName: string | null;
+  rut: string | null;
+  address: string | null;
+};
+
+export async function getReceiptLegal(
+  supabase: SupabaseClient,
+  localityId: string
+): Promise<ReceiptLegal> {
+  const { data } = await supabase
+    .from("assembly_records")
+    .select("registered_name, rut, fiscal_address")
+    .eq("locality_id", localityId)
+    .maybeSingle();
+  const r = data as {
+    registered_name: string | null;
+    rut: string | null;
+    fiscal_address?: string | null;
+  } | null;
+  return {
+    registeredName: r?.registered_name ?? null,
+    rut: r?.rut ?? null,
+    address: r?.fiscal_address ?? null,
+  };
 }

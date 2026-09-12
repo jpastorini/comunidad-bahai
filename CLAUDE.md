@@ -409,6 +409,21 @@ bloques en una sola pantalla, cada uno con su formulario y su action
 pendiente, deshabilita el botón de la ficha y cualquier guardado
 devuelve "Falta aplicar la migración 052".
 
+La ficha suma **domicilio fiscal** (054): va impreso en cada recibo y en
+el encabezado de la Memoria y Balance anual, junto al nombre registrado y
+el RUT.
+
+⚠️ **El PDF de los estatutos se sube desde el navegador, no dentro del
+formulario** (`record-form.tsx`, cliente). En Vercel una petición a una
+función no puede pasar de **4,5 MB**, y los estatutos de Montevideo pesan
+4,6 MB: con el archivo dentro del form la petición se rechazaba antes de
+llegar al server action y la ficha ENTERA —RUT, BPS, todo— se perdía sin
+toast ni error visible (detectado el 2026-09-12). El navegador sube al
+bucket con la RLS de 052 y al action llega solo `statutes_path`, que se
+vuelve a verificar contra `<locality_id>/estatutos/`. Regla general para
+cualquier upload nuevo: si el archivo puede pasar de 4 MB, va directo a
+Storage desde el cliente, nunca por el server action.
+
 ## Encuestas (migración 051)
 
 Por debajo, la encuesta es **un comunicado con una pregunta**: la misma
@@ -896,6 +911,17 @@ exactamente el primer día de Riḍván. Helpers en `lib/treasury-year.ts`
 (`treasuryYearStart/End/ForDate`, `treasuryMonths`); **no usar
 `bahaiYearForDate` ni `nawRuz` para nada contable.**
 
+⚠️ **Los estatutos dicen otra cosa, y todavía no está en el código.** El
+Agregado 2 del artículo XI del estatuto de la AEL de Montevideo (aprobado
+por el MEC el 18/2/1998) fija "el cierre del ejercicio económico y del
+balance anual tres días antes de la Convención Anual (**17 de abril** de
+cada año)". Es una fecha gregoriana fija: el ejercicio legal corre del 18
+de abril al 17 de abril siguiente, y los movimientos del 18 al 20 de abril
+hoy caen en el ejercicio equivocado. Riḍván sigue siendo el corte que la
+gente reconoce y el que divide el presupuesto en 19 meses; el 17 de abril
+es el que rige balance anual, Libro de Caja y memoria. Ver "Adecuación a
+la ley uruguaya" más abajo antes de tocar `treasury-year.ts`.
+
 Ojo con `treasuryMonths()`: el ejercicio arranca en mitad de Jalál, así
 que devuelve **20 tramos** con el primero y el último parciales (los dos
 Jalál). El ejercicio igual tiene 19 meses, que es lo que divide el
@@ -1138,8 +1164,229 @@ deshacerlo: perder el movimiento es peor que perder la foto. Las
 imágenes se comprimen en el navegador con `compressImage` de la galería;
 los PDF viajan tal cual (media factura llega por mail).
 
+### Cierre mensual, anulación, recibo fiscal, Libro de Caja y Balance (migración 054)
+
+La primera tanda de la adecuación legal (los puntos 1, 2, 3, 11 y 12 de
+la lista de abajo, en su numeración original), decidida con el usuario el
+2026-09-12 con cuatro reglas: cierre por **mes civil**, reapertura **solo
+del último mes cerrado y con motivo**, balance sobre el **ejercicio
+estatutario 18/4 → 17/4**, y un movimiento con recibo emitido **solo se
+anula**. Y una quinta, que manda sobre las otras: **el alta de ingresos y
+gastos no cambia.** El formulario es el mismo; todo lo nuevo son acciones
+sobre la fila y una pantalla aparte.
+
+⚠️ **No desplegar sin aplicar la 054.** `computeReportSnapshot` filtra
+`voided_at is null`, así que sin la columna TODO informe se guarda vacío;
+el libro sí cae con gracia (`getLedgerEntries` reintenta sin las columnas
+nuevas) y los cierres devuelven "falta la migración".
+
+**El guardián está en la base, no en la app.** El trigger
+`treasury_entries_guard` (BEFORE INSERT/UPDATE/DELETE) aplica tres reglas
+que ningún camino de escritura puede saltear, y sus mensajes empiezan con
+un código que `friendlyDbError()` en `libro/actions.ts` traduce:
+`MES_CERRADO` (nada entra, cambia ni sale de un mes cerrado; la única
+excepción es marcar el recibo como emitido, porque imprimirlo después no
+cambia el libro), `ANULADO` (un anulado queda congelado) y
+`RECIBO_EMITIDO` (con recibo emitido no se borra ni se edita: se anula).
+Un segundo trigger impide borrar comprobantes de un mes cerrado; agregar
+uno que faltaba sí se puede. Los server actions chequean lo mismo ANTES
+—`monthIsClosed()` vía la RPC `treasury_month_is_closed`— por dos
+razones: el aviso llega en palabras y a tiempo, y `deleteEntryAction`
+purga los archivos del bucket antes del DELETE, así que tiene que saber
+que el DELETE va a pasar.
+
+**El cierre es una fila en `treasury_closings`** (localidad, mes civil,
+quién, cuándo, `snapshot` con los saldos por cuenta y moneda,
+`entries_count`). Los cierres son **consecutivos**: `nextMonthToClose()`
+en `lib/treasury-closings.ts` devuelve el único mes que se puede cerrar
+—el siguiente al último cerrado, o el del primer movimiento del libro— y
+solo si ya terminó. Reabrir marca la fila `reopened` con motivo (no la
+borra: es historia) y solo vale para el último cerrado; el mes se puede
+volver a cerrar y queda una fila nueva. El índice único parcial
+`treasury_closings_open_uniq` es lo que garantiza un solo cierre vigente
+por mes. El snapshot es **evidencia, no fuente**: el Libro de Caja se
+recalcula desde los movimientos (que el trigger congela) y
+`snapshotMismatches()` compara; si algo no coincide, la hoja lo dice en
+rojo antes de imprimir. Nada se cierra solo: el tesorero cierra mes a mes
+en `/admin/tesoreria/libro/cierres` desde abril de 2026.
+
+**Corregir un mes cerrado es un contra-asiento**, `revertEntryAction`:
+un movimiento con fecha de HOY, misma cuenta, moneda, rubro y fondo, monto
+invertido, `adjusts_entry_id` apuntando al original y
+`adjustment_reason` obligatorio. Los dos quedan a la vista —el original
+tal cual se cerró y la corrección en el mes abierto—, que es exactamente
+lo que el MEC quiere ver en lugar de una tachadura. Una transferencia se
+revierte con sus dos patas atadas por un grupo nuevo. Un movimiento con
+contra-asiento no admite un segundo. Después el tesorero carga el correcto
+como siempre.
+
+**Anular** (`voidEntryAction`) es para un movimiento con recibo en un mes
+abierto: `voided_at`, `voided_by`, `void_reason`. No suma en NADA
+—`balancesBy`, `periodTotals`, `computeReportSnapshot`, `treasury_progress()`
+(reescrita en la 054), el Libro de Caja y `my_contributions()` lo dejan
+afuera o lo marcan— y su número sigue ocupando el lugar en la serie, que
+es lo que la DGI pide de una numeración correlativa. La hoja del recibo
+imprime "ANULADO" cruzado y "Mis aportes" lo muestra tachado. Todo aporte
+lleva número: si el campo queda vacío, `saveEntryAction` pide
+`next_receipt_number()` y reintenta una vez si choca con el índice único
+(dos tesoreros cargando a la vez).
+
+**El recibo lleva los datos fiscales** (Res. DGI 688/992 num. 22):
+`ReceiptSheet` recibe `legal` con nombre registrado, RUT y domicilio, que
+salen de `assembly_records` (`fiscal_address` es nuevo; se carga en
+Asamblea → Datos de la Asamblea) por `getReceiptLegal()` para el tesorero
+y por `my_receipt()` para la copia del creyente. Sin ficha legal, el recibo
+sale como antes y la pantalla del tesorero avisa. El pie dice que lo emitió
+el sistema de Tesorería; qué reemplaza a los "datos de imprenta" del
+numeral 18 en un recibo por sistema sigue siendo pregunta para el contador.
+
+**El Libro Mayor de Caja** (`/admin/libro-caja/[month]`, fuera del grupo
+`(panel)` como el informe, con `components/treasury/CashBookSheet.tsx`) es
+el formato del instructivo del MEC: por **mes civil**, una hoja resumen
+con todas las cuentas y una hoja por **cuenta y moneda** con Día /
+Concepto / Ingresos / Egresos / Saldo, saldo anterior y saldo al cierre.
+El cálculo es puro en `lib/treasury-cashbook.ts` (`buildCashbook`), sin
+React ni queries, compartido por la hoja, la pantalla de cierres y el
+snapshot del cierre. Sobre un mes cerrado imprime en limpio y con quién
+cerró; sobre uno abierto imprime con marca de agua BORRADOR. **Sin nombres
+de contribuyentes**: el concepto de un aporte es su recibo y su rubro,
+porque es un documento que puede pedir una inspección.
+
+**La Memoria y Balance anual es el tercer `audience` del informe,
+`'balance'`** (`components/treasury/BalanceSheet.tsx`), armado con las
+MISMAS piezas exportadas de `ReportSheet.tsx` y el mismo snapshot. Cubre
+el ejercicio estatutario: `periodPresets()` ofrece "Ejercicio estatutario
+18 abr → 17 abr" (en curso y anterior, `statutoryYears()`) sin tocar
+`treasury-year.ts`, y `period-picker` lo selecciona solo al elegir el
+destinatario. Lo que el libro no sabe va en `editorial.balance`: la
+**memoria** en prosa, la **cotización de cierre** del dólar con fecha y
+fuente —no hay tipo de cambio por movimiento todavía, así que la declara
+el tesorero y la hoja la imprime como criterio de conversión; sin ella no
+totaliza en pesos, porque "nunca sumar monedas distintas" solo se rompe
+con un tipo de cambio dicho y firmado— y las tres **firmas** (Coordinador,
+Secretario, Tesorero, art. VII del estatuto), propuestas desde la
+composición de la Asamblea del ejercicio (052). La RLS (054) deja que
+**cualquier creyente de la localidad lea un balance publicado**, que es lo
+que ordena el Agregado 3 del art. XI; el link público `/i/<token>` sigue
+siendo solo del deck (`getPublicReport` filtra `comunidad`). En el
+registro de la Asamblea (`/admin/informes`) el balance se lista junto a
+las hojas internas porque también se aprueba en reunión.
+
+### Adecuación a la ley uruguaya (relevamiento 2026-09-12)
+
+Qué le pide la normativa al libro y a los informes, contrastado con lo que
+el sistema hace hoy. Documento completo, con fuentes y las preguntas para
+el contador, publicado en
+https://claude.ai/code/artifact/643d59f1-8e98-48ba-8e47-29568e7781e3.
+La primera tanda (cierre mensual e inmutabilidad, anulación de recibos,
+datos fiscales en el recibo, Libro de Caja imprimible, Memoria y Balance
+anual) está implementada en la 054; ver la sección anterior. El resto no
+se implementa hasta que el contador valide los puntos abiertos. No es un
+dictamen: lo preparó ingeniería leyendo la norma.
+
+**Qué manda y qué no.** Manda el **MEC** (instructivo de libros sociales:
+Libro Mayor de Caja con cinco columnas Día / Concepto / Ingresos /
+Egresos / Saldo, cierres **mensuales** por mes civil, sin correcciones ni
+tachaduras, cada asiento con comprobante; puede llevarse por computadora
+pegando hojas foliadas en un libro de tapas duras; memoria y balance
+anual aprobados y transcriptos al libro de actas), la **DGI** (Res.
+688/992 num. 22 y Consulta 6234/019: por donaciones basta un recibo con
+nombre registrado, domicilio fiscal, RUT, numeración correlativa, la
+leyenda "Recibo" y datos de imprenta; se admite emisión por sistema; no
+hace falta CFE para donaciones), el **Código Tributario** (arts. 38 y 68:
+conservar libro y comprobantes 5 años, 10 en ciertos casos) y la **Ley
+18.331** (inscribir la base de contribuyentes en la URCDP). **No aplican
+por umbral** la Ley 19.574 de lavado de activos ni la declaración de
+beneficiario final ante el BCU (Ley 19.484): ambas rigen desde 4.000.000
+UI de ingresos anuales o 2.500.000 UI de activos.
+
+**Lo que fijan los estatutos** (copia autenticada en OneDrive, `AEL
+Montevideo/Estatutos de AEL digitalizados.pdf`; 14 páginas escaneadas sin
+capa de texto): cierre del ejercicio el **17 de abril** (art. XI Agregado
+2); el libro "consta de tres columnas: Contribuciones, Gastos y Saldo",
+llevado diariamente; copias de la **memoria y el balance anual a
+disposición de todos los bahá'ís desde el 17 de abril** en el Centro
+(Agregado 3, obligación estatutaria, no cortesía); un informe financiero
+de "todos los ingresos y desembolsos" en la Reunión Anual del 21 de abril
+(Sección 4); **no hay Comisión Fiscal**, aprueban los nueve miembros en
+reunión con quórum de cinco (art. VIII); oficiales Coordinador,
+Vice-Coordinador, Secretario y Tesorero (art. VII). Nombre registrado y
+sello: "Asamblea Espiritual Local de los Bahá'ís de Montevideo";
+personería del 4/2/1952; reforma inscripta el 11/3/1998, Registro 5760,
+Folio 36, Libro 13. Solo la Asamblea Nacional enmienda el estatuto y lo
+hace para todas las AEL (art. XIV): las otras localidades casi seguro
+tienen el mismo texto, confirmar con la AEN antes de generalizar la fecha.
+
+**Cambios al libro, por etapa.** Etapa 1: (1) ejercicio estatutario 18/4 →
+17/4 configurable por localidad, con saldos de apertura generados al 18/4;
+(2) cierre mensual con saldos congelados y trigger que bloquee UPDATE y
+DELETE sobre asientos y adjuntos de un mes cerrado, correcciones por
+contra-asiento con referencia y motivo — hoy `saveEntryAction` y
+`deleteEntryAction` no tienen límite y el borrado purga el comprobante;
+(3) recibos que se **anulan** con motivo y conservan el número, nunca se
+borran, y `receipt_number` obligatorio en todo aporte; (4) datos fiscales
+en `ReceiptSheet`: nombre registrado, RUT, domicilio fiscal (columna nueva
+en `assembly_records`), leyenda "Recibo". Etapa 2: (5) comprobante
+estructurado en `treasury_attachments` (tipo de documento, serie y número,
+RUT emisor, fecha) y motivo declarado cuando un gasto no tiene respaldo;
+(6) medio de pago por asiento (efectivo / transferencia / depósito / POS /
+cheque, con referencia bancaria); (7) `exchange_rate` en los asientos USD o
+cotización de cierre por período, y la implícita de las transferencias
+entre monedas calculada y guardada — en pantalla se sigue sin sumar
+monedas, el balance legal sí totaliza en pesos con la cotización
+declarada; (8) `is_restricted` en `treasury_funds`; (9) calendario civil
+junto al bahá'í. Etapa 3: (10) nada de un período cerrado se borra
+físicamente y exportación anual libro + comprobantes a ZIP; (11) bitácora
+de cambios en mes abierto y registro de quién reveló los nombres.
+
+**Cambios a los informes.** Etapa 1: (12) Libro Mayor de Caja imprimible
+con el formato MEC, por cuenta y moneda, saldo al cierre de cada mes
+civil, foliado continuo, solo sobre meses cerrados; (13) **Memoria y
+Balance anual** como tercer formato con snapshot congelado: estado de
+situación por cuenta y moneda con equivalente en pesos y cotización,
+recursos y gastos por rubro con resultado, fondos restringidos vs. libres,
+notas, bloque de aprobación con acta y firmas de Coordinador, Secretario y
+Tesorero; (14) el balance aprobado visible en `/tesoreria` para la
+comunidad desde el 17/4 (el pendiente "el informe no avisa" pasa a ser
+cumplimiento estatutario). Etapa 2: (15) aprobación registrada por un
+miembro de la Asamblea (`approved_at`, `approved_by`, acta) que bloquea el
+informe y dispara el cierre; (16) encabezado legal en hoja, balance y
+recibo, y datos registrales precargados en `assembly_records` (registro,
+folio, libro, personería, reforma, domicilio fiscal); (17) sección de
+comprobantes y conciliación bancaria en la hoja interna. Etapa 3: (18)
+ingresos y activos del ejercicio en UI contra los umbrales de 4.000.000 y
+2.500.000; (19) aviso de finalidad en la ficha del contribuyente e
+inscripción en la URCDP (trámite, no código).
+
+**Preguntas abiertas para el contador** (cada respuesta cambia un punto):
+cierre ante DGI, ¿17/4 o año civil, y hay declaración jurada anual?; qué
+reemplaza los datos de imprenta en un recibo emitido por sistema; si la
+colecta anónima de la Fiesta puede ir en un recibo único; cotización por
+operación o de cierre para los dólares; 5 o 10 años de retención; si
+todas las localidades cierran el 17/4; si hay alguna base ya inscripta en
+la URCDP; y si aparecen ventas (libros, cenas) que exijan factura o CFE,
+que hoy el libro de aportes no contempla.
+
 ## Pendientes conocidos
 
+- **Aplicar la 054 antes de desplegar** (ver el ⚠️ de su sección) y, ya
+  aplicada, cargar el domicilio fiscal en Datos de la Asamblea y cerrar los
+  meses de abril a agosto de 2026 en `/admin/tesoreria/libro/cierres`,
+  imprimiendo el Libro de Caja de cada uno.
+- **El corte legal es el 17 de abril y el código usa Riḍván.** El balance
+  anual ya corta el 18/4 → 17/4 por preset, pero `treasury-year.ts`, los
+  saldos de apertura y "Mis aportes" siguen en Riḍván. Ver "Adecuación a
+  la ley uruguaya": condiciona el cierre de período del 184.
+- **El balance publicado no tiene pantalla en la app de la comunidad.** La
+  RLS ya lo deja leer (054) y los estatutos lo exigen desde el 17 de
+  abril; falta listarlo en `/tesoreria` (punto 14 de la lista legal).
+- **La aprobación sigue siendo texto del editor** (fecha de reunión y
+  acta), también en el balance. Aprobar desde la app con `approved_at` /
+  `approved_by` y bloquear el informe aprobado es el punto 13.
+- **Preguntas al contador que condicionan lo hecho:** qué reemplaza los
+  datos de imprenta en un recibo emitido por sistema (hoy el pie dice
+  "emitido por el sistema de Tesorería"), y si la cotización del balance
+  va por cierre o por operación (hoy es la de cierre, declarada).
 - **Jubilar la tabla `treasury` vieja.** El anillo de `/tesoreria` ya se
   fue (lo reemplazó el tablero de progreso, 042), pero siguen leyendo el
   `current_amount` escrito a mano el "Informe mensual" de esa pantalla y

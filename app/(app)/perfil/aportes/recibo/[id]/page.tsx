@@ -54,6 +54,12 @@ export default async function MiReciboPage({
           treasurerName={receipt.treasurer_name ?? ""}
           hasLogo={hasLogo}
           hasSignature={hasSignature}
+          legal={{
+            registeredName: receipt.registered_name ?? null,
+            rut: receipt.rut ?? null,
+            address: receipt.fiscal_address ?? null,
+          }}
+          voided={Boolean(receipt.voided_at)}
         />
       </main>
     </>

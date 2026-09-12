@@ -2,12 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { randomUUID } from "node:crypto";
-import {
-  ASSEMBLY_DOCS_BUCKET,
-  ASSEMBLY_SIZE,
-  MAX_STATUTES_BYTES,
-} from "@/lib/assembly";
+import { ASSEMBLY_DOCS_BUCKET, ASSEMBLY_SIZE } from "@/lib/assembly";
 import { requireAdmin } from "@/lib/auth";
 import { isSchemaMissing } from "@/lib/polls-shared";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -60,6 +55,7 @@ export async function saveAssemblyRecordAction(formData: FormData) {
     locality_id: localityId,
     registered_name: str(formData, "registered_name").slice(0, 200) || null,
     rut: str(formData, "rut").slice(0, 40) || null,
+    fiscal_address: str(formData, "fiscal_address").slice(0, 200) || null,
     bps_number: str(formData, "bps_number").slice(0, 40) || null,
     registered_at: registeredAt || null,
     notes: str(formData, "notes").slice(0, 4000) || null,
@@ -67,17 +63,19 @@ export async function saveAssemblyRecordAction(formData: FormData) {
     updated_at: new Date().toISOString(),
   };
 
-  // El PDF, si vino. Se sube antes del upsert para que la fila ya apunte
-  // al archivo nuevo; el anterior se borra al final, cuando la fila ya
-  // no lo nombra.
-  const file = formData.get("statutes") as File | null;
+  // El PDF ya está en el bucket: lo subió el navegador (record-form.tsx),
+  // porque dentro del formulario chocaba con el techo de 4,5 MB de Vercel
+  // y la ficha entera se perdía. Acá llega solo la ruta, y se verifica
+  // que sea de esta localidad y de la carpeta de estatutos: la RLS del
+  // bucket ya lo impuso al subir, pero la fila no puede apuntar a otra
+  // cosa por un error del cliente.
+  const statutesPath = str(formData, "statutes_path");
   let previousPath: string | null = null;
-  if (file && file.size > 0) {
-    if (file.type !== "application/pdf") fail("Los estatutos tienen que ser un PDF.");
-    if (file.size > MAX_STATUTES_BYTES) {
-      fail(`El PDF supera los ${Math.round(MAX_STATUTES_BYTES / (1024 * 1024))} MB.`);
+  if (statutesPath) {
+    const expectedPrefix = `${localityId}/estatutos/`;
+    if (!statutesPath.startsWith(expectedPrefix) || !statutesPath.endsWith(".pdf")) {
+      fail("La ruta del PDF no es válida.");
     }
-
     const { data: current } = await supabase
       .from("assembly_records")
       .select("statutes_path")
@@ -85,17 +83,13 @@ export async function saveAssemblyRecordAction(formData: FormData) {
       .maybeSingle();
     previousPath = (current as { statutes_path: string | null } | null)?.statutes_path ?? null;
 
-    const path = `${localityId}/estatutos/${randomUUID()}.pdf`;
-    const { error: uploadError } = await supabase.storage
-      .from(ASSEMBLY_DOCS_BUCKET)
-      .upload(path, file, { contentType: "application/pdf", upsert: false });
-    if (uploadError) {
-      console.error("[saveAssemblyRecordAction] storage:", uploadError);
-      fail(`No se pudo subir el PDF: ${uploadError.message}`);
-    }
-    payload.statutes_path = path;
-    payload.statutes_file_name = file.name.slice(0, 200) || "estatutos.pdf";
+    payload.statutes_path = statutesPath;
+    payload.statutes_file_name = str(formData, "statutes_file_name").slice(0, 200) || "estatutos.pdf";
     payload.statutes_uploaded_at = new Date().toISOString();
+  } else if ((formData.get("statutes") as File | null)?.size) {
+    // Sin JavaScript el archivo llegaría acá adentro, y en Vercel no llega:
+    // se dice en vez de fallar en silencio.
+    fail("El PDF no se pudo subir. Recargá la página e intentá de nuevo.");
   }
 
   const { error } = await supabase

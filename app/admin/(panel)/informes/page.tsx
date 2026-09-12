@@ -50,7 +50,9 @@ export default async function RegistroInformesPage() {
       />
 
       <ReportRegistry
-        internos={published.filter((r) => r.audience === "internos")}
+        // El balance anual también se aprueba en reunión: va con las hojas
+        // de la Asamblea, no con el deck de la Fiesta.
+        internos={published.filter((r) => r.audience !== "comunidad")}
         comunidad={published.filter((r) => r.audience === "comunidad")}
         esTesorero={esTesorero}
         borradores={all.filter((r) => r.status === "draft").length}

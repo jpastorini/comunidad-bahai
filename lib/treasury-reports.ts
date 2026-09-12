@@ -6,6 +6,7 @@ import {
   EMPTY_EDITORIAL,
   EMPTY_SNAPSHOT,
   monthLabel,
+  parseAudience,
   sanitizeReportEditorial,
   sanitizeReportSnapshot,
   type ReportAudience,
@@ -78,7 +79,7 @@ function parseRow(row: Record<string, unknown>): TreasuryReport {
     locality_id: row.locality_id as string,
     title: row.title as string,
     subtitle: (row.subtitle as string | null) ?? null,
-    audience: row.audience === "internos" ? "internos" : "comunidad",
+    audience: parseAudience(row.audience),
     period_from: row.period_from as string,
     period_to: row.period_to as string,
     bahai_year: (row.bahai_year as number | null) ?? null,
@@ -213,7 +214,33 @@ export function periodPresets(bahaiYear: number, today: string): PeriodPreset[] 
     });
   }
 
+  // El ejercicio ESTATUTARIO, para la Memoria y Balance anual: los
+  // estatutos de la AEL fijan el cierre el 17 de abril (art. XI,
+  // Agregado 2), así que corre del 18 de abril al 17 de abril siguiente.
+  // Fechas gregorianas fijas, a diferencia del corte de Riḍván que usa el
+  // resto de la Tesorería. Se ofrecen el ejercicio en curso y el anterior,
+  // que es el que se cierra y aprueba en abril.
+  for (const y of statutoryYears(today)) {
+    presets.push({
+      key: `statutory-${y.from.slice(0, 4)}`,
+      label: `Ejercicio estatutario ${y.from.slice(0, 4)}–${y.to.slice(0, 4)} — 18 abr al 17 abr${
+        y.to > today ? " (en curso)" : ""
+      }`,
+      from: y.from,
+      to: y.to > today ? today : y.to,
+      subtitle: `Ejercicio estatutario · 18 de abril de ${y.from.slice(0, 4)} al 17 de abril de ${y.to.slice(0, 4)}`,
+    });
+  }
+
   return presets.reverse();
+}
+
+/** El ejercicio estatutario en curso y el anterior, como rangos ISO. */
+export function statutoryYears(today: string): Array<{ from: string; to: string }> {
+  const year = parseInt(today.slice(0, 4), 10);
+  const startYear = today >= `${year}-04-18` ? year : year - 1;
+  const range = (y: number) => ({ from: `${y}-04-18`, to: `${y + 1}-04-17` });
+  return [range(startYear - 1), range(startYear)];
 }
 
 /** Nombre y significado de cada mes bahá'í, para el subtítulo. Copiados
@@ -387,6 +414,9 @@ export async function computeReportSnapshot(
           "entry_date, account_id, category_id, subcategory_id, fund_id, currency, amount, description, receipt_number, contributions_count, transfer_group_id, is_opening_balance"
         )
         .lte("entry_date", to)
+        // Los anulados (054) no suman en ningún informe. ⚠️ Exige la 054
+        // aplicada: sin la columna la consulta falla y el informe sale vacío.
+        .is("voided_at", null)
         .order("entry_date", { ascending: true }),
       supabase.from("treasury_accounts").select("id, name"),
       supabase.from("treasury_funds").select("id, name"),

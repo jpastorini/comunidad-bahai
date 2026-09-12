@@ -1,11 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LedgerCatalog, TreasuryEntry } from "@/lib/treasury-ledger";
+import { monthKeyOf, monthLabel } from "@/lib/treasury-cashbook";
 import { formatMoney } from "@/lib/treasury-format";
-import { deleteEntryAction, saveTransferAction } from "./actions";
+import {
+  deleteEntryAction,
+  revertEntryAction,
+  saveTransferAction,
+  voidEntryAction,
+} from "./actions";
 import { EntryForm } from "./entry-form";
 
 type Props = {
@@ -17,6 +23,9 @@ type Props = {
   nextReceipt: number;
   /** Comprobantes por movimiento, para el clip de la lista. */
   attachmentCounts: Record<string, number>;
+  /** Meses civiles cerrados ("YYYY-MM"): sus movimientos no se editan ni
+   *  se borran, se revierten con un contra-asiento (054). */
+  closedMonths: string[];
 };
 
 /**
@@ -38,8 +47,12 @@ export function LedgerClient({
   today,
   nextReceipt,
   attachmentCounts,
+  closedMonths,
 }: Props) {
   const router = useRouter();
+  const closed = useMemo(() => new Set(closedMonths), [closedMonths]);
+  /** El mes del movimiento ya se cerró: solo se puede revertir. */
+  const isLocked = (e: TreasuryEntry) => closed.has(monthKeyOf(e.entry_date));
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState<TreasuryEntry | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
@@ -227,9 +240,14 @@ export function LedgerClient({
               <tr
                 key={e.id}
                 onClick={() => setEditing(e)}
-                className="cursor-pointer border-b border-black/[0.04] last:border-0 hover:bg-bg/60"
+                className={`cursor-pointer border-b border-black/[0.04] last:border-0 hover:bg-bg/60 ${
+                  e.voided_at ? "text-muted line-through decoration-rose-400/70" : ""
+                }`}
               >
-                <Td className="whitespace-nowrap">{formatDate(e.entry_date)}</Td>
+                <Td className="whitespace-nowrap">
+                  {isLocked(e) && <LockIcon />}
+                  {formatDate(e.entry_date)}
+                </Td>
                 <Td>{names.accounts.get(e.account_id) ?? "—"}</Td>
                 <Td>
                   {names.subcategories.get(e.subcategory_id) ?? "—"}
@@ -242,6 +260,7 @@ export function LedgerClient({
                 <Td className="text-muted">
                   {e.description ?? "—"}
                   <Clip count={attachmentCounts[e.id] ?? 0} />
+                  <StateChips entry={e} />
                 </Td>
                 <Td>{contributorLabel(e) ?? <Masked />}</Td>
                 <Td className="text-right tabular-nums text-muted">
@@ -283,15 +302,25 @@ export function LedgerClient({
             key={e.id}
             type="button"
             onClick={() => setEditing(e)}
-            className="tap block w-full rounded-2xl bg-card p-3 text-left shadow-card-soft"
+            className={`tap block w-full rounded-2xl bg-card p-3 text-left shadow-card-soft ${
+              e.voided_at ? "opacity-70" : ""
+            }`}
           >
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[12.5px] font-semibold text-dark">
+              <span
+                className={`text-[12.5px] font-semibold ${
+                  e.voided_at ? "text-muted line-through" : "text-dark"
+                }`}
+              >
                 {names.subcategories.get(e.subcategory_id) ?? "—"}
               </span>
               <span
                 className={`shrink-0 tabular-nums text-[13px] font-semibold ${
-                  e.amount > 0 ? "text-emerald-700" : "text-rose-700"
+                  e.voided_at
+                    ? "text-muted line-through"
+                    : e.amount > 0
+                      ? "text-emerald-700"
+                      : "text-rose-700"
                 }`}
               >
                 {e.amount > 0 ? "+" : "−"}
@@ -299,9 +328,11 @@ export function LedgerClient({
               </span>
             </div>
             <div className="mt-0.5 text-[11px] text-muted">
+              {isLocked(e) && <LockIcon />}
               {formatDate(e.entry_date)} · {names.accounts.get(e.account_id)}
               {e.fund_id ? ` · ${names.funds.get(e.fund_id)}` : ""}
               <Clip count={attachmentCounts[e.id] ?? 0} />
+              <StateChips entry={e} />
             </div>
             {(e.description || e.contributor_id) && (
               <div className="mt-1 text-[11.5px] text-dark/80">
@@ -315,8 +346,86 @@ export function LedgerClient({
         {filtered.length === 0 && <Empty />}
       </div>
 
+      {/* Consulta de un movimiento que ya no se edita: anulado, de un mes
+          cerrado, o con recibo emitido. Lo que se puede hacer con él son
+          acciones sobre la fila (revertir, anular), nunca cambiarlo. */}
+      {editing && (editing.voided_at || isLocked(editing) || editing.receipt_issued) && (
+        <Modal
+          title={
+            editing.voided_at
+              ? "Movimiento anulado"
+              : isLocked(editing)
+                ? `Movimiento de ${monthLabel(monthKeyOf(editing.entry_date))} (cerrado)`
+                : "Movimiento con recibo emitido"
+          }
+          onClose={() => setEditing(null)}
+        >
+          <EntryDetails
+            entry={editing}
+            names={names}
+            showNames={showNames}
+            attachmentCount={attachmentCounts[editing.id] ?? 0}
+          />
+          {editing.amount > 0 && editing.receipt_number && (
+            <div className="mt-3 border-t border-black/[0.06] pt-3">
+              <Link
+                href={"/admin/tesoreria/recibo/" + editing.id}
+                className="tap inline-flex items-center rounded-xl border border-terra/25 bg-terra/[0.06] px-3.5 py-2 text-[12px] font-semibold text-terra"
+              >
+                Ver recibo N.° {editing.receipt_number}
+              </Link>
+            </div>
+          )}
+          {!editing.voided_at && isLocked(editing) && (
+            <ReasonRow
+              key={`revert-${editing.id}`}
+              label="Revertir con un contra-asiento"
+              hint={`${monthLabel(monthKeyOf(editing.entry_date))} está cerrado. Se carga hoy un movimiento igual con el signo cambiado, que apunta a este. Después cargá el correcto, si hace falta.`}
+              placeholder="Motivo: por qué se corrige"
+              confirmLabel="Crear contra-asiento"
+              tone="terra"
+              run={(reason) => {
+                const fd = new FormData();
+                fd.set("id", editing.id);
+                fd.set("reason", reason);
+                fd.set("bahai_year", String(year));
+                return revertEntryAction(fd);
+              }}
+              onDone={() => {
+                setEditing(null);
+                refresh();
+              }}
+            />
+          )}
+          {!editing.voided_at &&
+            !isLocked(editing) &&
+            editing.receipt_issued &&
+            !editing.transfer_group_id &&
+            !editing.is_opening_balance && (
+              <ReasonRow
+                key={`void-${editing.id}`}
+                label="Anular este recibo"
+                hint={`El recibo N.° ${editing.receipt_number ?? "—"} ya fue emitido, así que no se edita ni se borra: se anula. El número queda ocupado y el aporte deja de sumar. Si el aporte fue real, cargalo de nuevo.`}
+                placeholder="Motivo de la anulación"
+                confirmLabel="Sí, anular"
+                tone="rose"
+                run={(reason) => {
+                  const fd = new FormData();
+                  fd.set("id", editing.id);
+                  fd.set("reason", reason);
+                  return voidEntryAction(fd);
+                }}
+                onDone={() => {
+                  setEditing(null);
+                  refresh();
+                }}
+              />
+            )}
+        </Modal>
+      )}
+
       {/* Edición */}
-      {editing && (
+      {editing && !editing.voided_at && !isLocked(editing) && !editing.receipt_issued && (
         <Modal title="Editar movimiento" onClose={() => setEditing(null)}>
           <EntryForm
             catalog={catalog}
@@ -526,6 +635,221 @@ function DeleteRow({
         >
           Eliminar movimiento
         </button>
+      )}
+    </div>
+  );
+}
+
+/** Candado: el mes de este movimiento ya se cerró. */
+function LockIcon() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-label="Mes cerrado"
+      className="mr-1 inline-block align-[-1px] text-muted"
+    >
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
+
+/** Los estados que cambian qué se puede hacer con la fila (054). */
+function StateChips({ entry: e }: { entry: TreasuryEntry }) {
+  const chips: Array<{ text: string; cls: string; title?: string }> = [];
+  if (e.voided_at) {
+    chips.push({
+      text: "Anulado",
+      cls: "bg-rose-50 text-rose-700",
+      title: e.void_reason ?? undefined,
+    });
+  }
+  if (e.adjusts_entry_id) {
+    chips.push({
+      text: "Contra-asiento",
+      cls: "bg-amber-50 text-amber-800",
+      title: e.adjustment_reason ?? undefined,
+    });
+  }
+  if (chips.length === 0) return null;
+  return (
+    <>
+      {chips.map((c) => (
+        <span
+          key={c.text}
+          title={c.title}
+          className={`ml-1.5 inline-block rounded px-1.5 py-0.5 align-middle text-[9.5px] font-bold uppercase tracking-wide no-underline ${c.cls}`}
+          style={{ textDecoration: "none" }}
+        >
+          {c.text}
+        </span>
+      ))}
+    </>
+  );
+}
+
+/** El movimiento en lectura, para los que ya no se editan. */
+function EntryDetails({
+  entry: e,
+  names,
+  showNames,
+  attachmentCount,
+}: {
+  entry: TreasuryEntry;
+  names: {
+    accounts: Map<string, string>;
+    funds: Map<string, string>;
+    subcategories: Map<string, string>;
+    contributors: Map<string, string>;
+  };
+  showNames: boolean;
+  attachmentCount: number;
+}) {
+  const rows: Array<[string, React.ReactNode]> = [
+    ["Fecha", formatDate(e.entry_date)],
+    ["Cuenta", names.accounts.get(e.account_id) ?? "—"],
+    [
+      "Rubro",
+      `${names.subcategories.get(e.subcategory_id) ?? "—"}${
+        e.fund_id ? ` · ${names.funds.get(e.fund_id) ?? ""}` : ""
+      }`,
+    ],
+    [
+      e.amount > 0 ? "Ingreso" : "Gasto",
+      `${formatMoney(Math.abs(e.amount))} ${e.currency}`,
+    ],
+  ];
+  if (e.contributor_id) {
+    rows.push([
+      "Contribuyente",
+      showNames ? (
+        `${names.contributors.get(e.contributor_id) ?? "—"}${
+          e.receipt_name ? ` (${e.receipt_name})` : ""
+        }`
+      ) : (
+        <Masked />
+      ),
+    ]);
+  }
+  if (e.description) rows.push(["Descripción", e.description]);
+  if (attachmentCount > 0) {
+    rows.push(["Comprobantes", `${attachmentCount}`]);
+  }
+  if (e.voided_at) {
+    rows.push(["Anulado", e.void_reason || "sin motivo registrado"]);
+  }
+  if (e.adjusts_entry_id) {
+    rows.push(["Contra-asiento", e.adjustment_reason || "revierte un movimiento cerrado"]);
+  }
+  return (
+    <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-[12.5px]">
+      {rows.map(([k, v]) => (
+        <Fragment key={k}>
+          <dt className="text-muted">{k}</dt>
+          <dd className={`text-dark ${e.voided_at && k !== "Anulado" ? "line-through" : ""}`}>
+            {v}
+          </dd>
+        </Fragment>
+      ))}
+    </dl>
+  );
+}
+
+/**
+ * Una acción sobre la fila que exige motivo (anular, revertir): se abre
+ * con un botón, pide el texto, confirma y corre el server action. El
+ * motivo queda en la base, que es lo que separa una corrección auditable
+ * de una tachadura.
+ */
+function ReasonRow({
+  label,
+  hint,
+  placeholder,
+  confirmLabel,
+  tone,
+  run,
+  onDone,
+}: {
+  label: string;
+  hint: string;
+  placeholder: string;
+  confirmLabel: string;
+  tone: "rose" | "terra";
+  run: (reason: string) => Promise<{ ok: boolean; error: string | null }>;
+  onDone: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit() {
+    if (reason.trim().length < 3) {
+      setError("Escribí el motivo.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const res = await run(reason.trim());
+    setBusy(false);
+    if (res.ok) onDone();
+    else setError(res.error);
+  }
+
+  const button =
+    tone === "rose"
+      ? "bg-rose-600 text-white"
+      : "bg-terra text-white";
+  const link = tone === "rose" ? "text-rose-600" : "text-terra";
+
+  return (
+    <div className="mt-4 border-t border-black/[0.06] pt-3">
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={`text-[12px] font-semibold hover:underline ${link}`}
+        >
+          {label}
+        </button>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-[12px] leading-snug text-muted">{hint}</p>
+          <input
+            type="text"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder={placeholder}
+            maxLength={500}
+            autoFocus
+            className={controlClass + " w-full"}
+          />
+          {error && <p className="text-[11.5px] text-rose-600">{error}</p>}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={submit}
+              disabled={busy}
+              className={`tap rounded-xl px-3 py-1.5 text-[12px] font-semibold disabled:opacity-60 ${button}`}
+            >
+              {busy ? "Guardando…" : confirmLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="text-[12px] font-medium text-muted underline"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
