@@ -1,6 +1,7 @@
 import { BahaiStar } from "@/components/BahaiStar";
 import { categoryMeta } from "@/lib/budget";
 import {
+  CADENCE_KIND_LABEL,
   CADENCE_LABEL,
   PACE_COPY,
   fmtPercent,
@@ -487,7 +488,7 @@ function GoalsBlock({ data, compact }: { data: ProgressData; compact: boolean })
     >
       <div className="flex flex-col gap-4">
         {withNumber.map((g) => (
-          <GoalRow key={g.id} goal={g} />
+          <GoalRow key={g.id} goal={g} elapsed={data.elapsed} />
         ))}
       </div>
 
@@ -515,9 +516,25 @@ function GoalsBlock({ data, compact }: { data: ProgressData; compact: boolean })
   );
 }
 
-function GoalRow({ goal }: { goal: ProgressGoal }) {
+function GoalRow({
+  goal,
+  elapsed,
+}: {
+  goal: ProgressGoal;
+  elapsed: ProgressData["elapsed"];
+}) {
   const fraction = goalProgress(goal);
   const lograda = goal.status === "lograda";
+  // En una meta mensual el objetivo ya viene acumulado a la fecha, así
+  // que el 100 % de la barra ES lo que corresponde hoy. En una del
+  // ejercicio (o única) el objetivo es entero, y lo que corresponde hoy
+  // se dibuja como marca de pauta, igual que en el presupuesto.
+  const monthly = goal.cadence === "mensual";
+  const yearly = goal.cadence === "anual";
+  // Una meta única no tiene plazo: sin marca de pauta.
+  const reference = yearly ? elapsed.fraction : undefined;
+  const fmtMonths = (n: number) =>
+    n.toLocaleString("es-UY", { maximumFractionDigits: 1 });
   const tone = lograda
     ? "green"
     : fraction === null
@@ -557,18 +574,34 @@ function GoalRow({ goal }: { goal: ProgressGoal }) {
       </div>
 
       {fraction !== null ? (
-        <PaceBar value={fraction} tone={tone} height="h-2.5" />
+        <PaceBar value={fraction} reference={reference} tone={tone} height="h-2.5" />
       ) : (
         <div className="h-2.5 w-full rounded-full border border-dashed border-black/15" />
       )}
 
       <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px] text-muted">
         <span>
+          <span className="font-semibold text-dark/80">
+            {CADENCE_KIND_LABEL[goal.cadence]}:
+          </span>{" "}
           {fmtRound(goal.target ?? 0, goal.currency)} {CADENCE_LABEL[goal.cadence]}
         </span>
+        {fraction !== null && monthly && (
+          <span>
+            · van {fmtMonths(elapsed.monthsElapsed)} de {elapsed.monthCount}{" "}
+            meses: corresponden {fmtRound(goal.targetToDate ?? 0, goal.currency)}
+          </span>
+        )}
         {fraction !== null && (
           <span className={`font-bold ${TONE_TEXT[tone]}`}>
-            · {fmtPercent(fraction)} de lo que corresponde a hoy
+            · {fmtPercent(fraction)}{" "}
+            {monthly ? "de lo que corresponde a hoy" : "de la meta"}
+          </span>
+        )}
+        {fraction !== null && yearly && (
+          <span>
+            · a esta altura del ejercicio ({fmtPercent(elapsed.fraction)}) la
+            pauta es {fmtRound((goal.target ?? 0) * elapsed.fraction, goal.currency)}
           </span>
         )}
         {!goal.measurable && (

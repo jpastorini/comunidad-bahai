@@ -82,7 +82,15 @@ export type ProgressData = {
   from: string;
   to: string;
   asOf: string;
-  elapsed: { fraction: number; daysElapsed: number; daysTotal: number };
+  elapsed: {
+    fraction: number;
+    daysElapsed: number;
+    daysTotal: number;
+    /** Meses bahá'ís transcurridos (con fracción) y total del ejercicio:
+     *  es lo que multiplica una meta mensual para dar su acumulado. */
+    monthsElapsed: number;
+    monthCount: number;
+  };
   budget: {
     period: string;
     totalPlanned: number;
@@ -161,10 +169,32 @@ export function fmtPercent(fraction: number): string {
   return `${Math.round(fraction * 100)} %`;
 }
 
+/**
+ * Cómo se lee el monto de una meta. La confusión que motivó estas tres
+ * tablas (2026-09-12): en el tablero y en el editor no se distinguía si
+ * "$ 3.500" era por mes o para todo el año. El monto de una meta
+ * `mensual` es POR MES bahá'í y el tablero lo compara contra el
+ * acumulado de los meses transcurridos; el de una `anual` es para TODO
+ * el ejercicio; el de una `unica` es un total sin plazo (comprar algo).
+ */
 export const CADENCE_LABEL: Record<GoalCadence, string> = {
   mensual: "por mes bahá'í",
-  anual: "en el ejercicio",
-  unica: "meta única",
+  anual: "para todo el ejercicio",
+  unica: "en total (meta única)",
+};
+
+/** Opciones del desplegable del editor: una frase que se entienda sola. */
+export const CADENCE_OPTION_LABEL: Record<GoalCadence, string> = {
+  mensual: "Por mes bahá'í (se va acumulando)",
+  anual: "Para todo el ejercicio",
+  unica: "Total, sin plazo (meta única)",
+};
+
+/** Título corto para la tarjeta del tablero. */
+export const CADENCE_KIND_LABEL: Record<GoalCadence, string> = {
+  mensual: "Meta mensual",
+  anual: "Meta del ejercicio",
+  unica: "Meta única",
 };
 
 export const DIRECTION_LABEL: Record<GoalDirection, string> = {

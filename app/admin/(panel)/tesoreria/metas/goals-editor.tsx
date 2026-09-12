@@ -12,6 +12,8 @@ import {
 } from "@/components/admin/ui";
 import {
   CADENCE_LABEL,
+  CADENCE_OPTION_LABEL,
+  fmtRound,
   type GoalCadence,
   type GoalDirection,
   type GoalStatus,
@@ -115,7 +117,10 @@ export function GoalsEditor({
         <Banner tone="info">
           Una meta con <strong>monto</strong> y <strong>rubro del libro</strong>{" "}
           muestra barra de progreso calculada. Una meta sin monto se informa
-          como gestión en curso, con su etiqueta de estado.
+          como gestión en curso, con su etiqueta de estado. El campo{" "}
+          <strong>«El monto es»</strong> dice cómo leer la cifra: por mes
+          bahá'í (se acumula mes a mes), para todo el ejercicio, o un total
+          sin plazo.
         </Banner>
       </div>
 
@@ -194,7 +199,7 @@ export function GoalsEditor({
                   <option value="USD">Dólares (USD)</option>
                 </Select>
               </Field>
-              <Field label="Cada" name={`cadence_${row.uid}`}>
+              <Field label="El monto es" name={`cadence_${row.uid}`}>
                 <Select
                   name="goal_cadence"
                   value={row.cadence}
@@ -203,10 +208,10 @@ export function GoalsEditor({
                   }
                 >
                   {(
-                    Object.keys(CADENCE_LABEL) as GoalCadence[]
+                    Object.keys(CADENCE_OPTION_LABEL) as GoalCadence[]
                   ).map((c) => (
                     <option key={c} value={c}>
-                      {CADENCE_LABEL[c]}
+                      {CADENCE_OPTION_LABEL[c]}
                     </option>
                   ))}
                 </Select>
@@ -226,6 +231,33 @@ export function GoalsEditor({
                 </Select>
               </Field>
             </div>
+
+            {Number(row.target) > 0 && (
+              <p className="mt-2 text-[11.5px] text-muted">
+                {row.cadence === "mensual" ? (
+                  <>
+                    <strong>{fmtRound(Number(row.target), row.currency)}</strong>{" "}
+                    {CADENCE_LABEL.mensual}: en los 19 meses del ejercicio son{" "}
+                    <strong>{fmtRound(Number(row.target) * 19, row.currency)}</strong>.
+                    El tablero compara contra lo acumulado hasta hoy, no contra
+                    un mes suelto.
+                  </>
+                ) : row.cadence === "anual" ? (
+                  <>
+                    <strong>{fmtRound(Number(row.target), row.currency)}</strong>{" "}
+                    {CADENCE_LABEL.anual}, de Riḍván a Riḍván. Por mes bahá'í
+                    equivale a{" "}
+                    <strong>{fmtRound(Number(row.target) / 19, row.currency)}</strong>.
+                  </>
+                ) : (
+                  <>
+                    <strong>{fmtRound(Number(row.target), row.currency)}</strong>{" "}
+                    {CADENCE_LABEL.unica}: un total a alcanzar, sin plazo. Si
+                    es de este ejercicio, indicalo abajo en «Ejercicio».
+                  </>
+                )}
+              </p>
+            )}
 
             <div className="mt-4 grid gap-4 md:grid-cols-[1fr,180px,160px]">
               <Field

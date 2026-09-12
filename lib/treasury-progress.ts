@@ -310,7 +310,7 @@ export async function getTreasuryProgress(
     from,
     to: end,
     asOf,
-    elapsed,
+    elapsed: { ...elapsed, monthsElapsed, monthCount },
     budget,
     received,
     receivedCount,
