@@ -1378,12 +1378,128 @@ todas las localidades cierran el 17/4; si hay alguna base ya inscripta en
 la URCDP; y si aparecen ventas (libros, cenas) que exijan factura o CFE,
 que hoy el libro de aportes no contempla.
 
+## Usuario Nacional y Comunidad Nacional (055–058, en curso)
+
+El tesorero nacional pidió poder usar la app sin estar atado a una
+Asamblea Local. Charlado con el usuario el 2026-09-16, el pedido se
+separó en dos cosas que el modelo ya resuelve por caminos distintos, y
+confundirlas es el error caro:
+
+- **Lo que la AEN hace PARA TODO EL PAÍS** (comunicados nacionales,
+  materiales, mensajes de la Casa Universal) va con `locality_id IS
+  NULL`, que desde la 021 significa "lo ven todas las localidades". Un
+  comunicado nacional **no** es del tenant nacional: es de nadie y de
+  todos.
+- **Lo que la AEN hace PARA SÍ MISMA** (su tesorería, su chat, su ficha
+  legal, sus creyentes) vive en **su propio tenant**: una fila más en
+  `localities`, con `kind='nacional'`.
+
+Con esa regla casi todo sale gratis, porque se hereda en vez de
+construirse: el chat por canal ya es `(localidad, topic)`; el módulo de
+Tesorería entero es por localidad (libro, recibos, informes, cierres y
+balance de la 054); `assembly_records` (052) es por localidad; el alta
+por invitación (037) y la aprobación de cambio (029) también. Y
+`my_contributions()` (046) **no filtra por localidad** y ya devuelve
+`locality_name`, así que un aporte al Fondo Nacional le aparece solo al
+creyente en `/perfil/aportes`.
+
+### La pertenencia es un conjunto; `profiles` es el sombrero puesto
+
+La decisión estructural (055). `profile_localities` guarda **una fila por
+comunidad** a la que la persona pertenece, con su rol y sus tres `can_*`
+**de esa comunidad** adentro —el tesorero nacional tiene el tag de
+Tesorería en lo nacional y no en su AEL—. `profiles.locality_id`, `role`
+y los tags pasan a ser la **copia de la fila activa**.
+
+Se hizo así, y no con `locality_id in (select …)` en cada policy, porque
+hay **152 policies** que comparan contra `current_locality_id()`, más
+`is_admin()` / `has_chat_tag()` / `has_treasury_tag()`
+(`supabase/schema.sql`, todas leen `profiles`), más el `x-profile` que el
+middleware inyecta en cada request y el `role` con que protege `/admin`.
+Todo eso describe UN sombrero y sigue funcionando sin tocarse: cambiar de
+comunidad es un UPDATE de cinco columnas.
+
+Tres piezas lo sostienen, todas en la 055:
+
+- **El trigger `profile_localities_sync` es lo que impide la deriva.** Al
+  INSERT le pone el sombrero a quien no tenía (primer ingreso o
+  invitación); al UPDATE refleja el cambio si la fila tocada ES la del
+  sombrero puesto; al DELETE lo pasa a otra membresía o lo deja en
+  "todavía no eligió". Por eso la app escribe **la membresía**, nunca
+  `profiles.role` — `updateMemberAction` hace upsert en
+  `profile_localities` y deja en `profiles` solo el nombre y la condición.
+- **`switch_locality()` y `join_locality()` son security definer** porque
+  `profiles_update_self` (039) congela `locality_id`, `role` y los tags
+  para el propio usuario, y tiene que seguir congelándolos. La primera
+  solo abre hacia una comunidad donde ya hay membresía; la segunda solo
+  cuando no hay ninguna (primer ingreso).
+- **`move_membership()` existe porque la RLS no alcanza.**
+  `profile_localities` solo deja tocar filas de la propia localidad, así
+  que la Asamblea destino de una mudanza (029) nunca podría borrar la
+  membresía de la comunidad de origen. La función saca SOLO esa: si la
+  persona además pertenece a la Nacional, ahí se queda.
+
+⚠️ **El caché del router es la trampa que no se ve.** Las pantallas ya
+visitadas viven en memoria del navegador (`staleTimes`): sin el
+`revalidatePath("/", "layout")` de `switchLocalityAction`, cambiás de
+comunidad y seguís viendo los comunicados de la anterior.
+
+⚠️ **`is_national_admin` NO es la Asamblea Nacional.** Ese flag aparece en
+las policies de `treasury_entries`, `treasury_contributors` y los
+informes: quien lo tiene lee el libro y los nombres de contribuyentes
+**de todas las localidades**. Dárselo a la Secretaría o la Tesorería
+nacional para que puedan publicar sería regalarles los aportes nominados
+de cada comunidad del país. Queda como superadmin del sistema; la AEN va
+con helper propio (`is_national_assembly()`, 056), que solo autoriza a
+**escribir** contenido con `locality_id IS NULL`.
+
+### Lo que falta (056, 057, 058)
+
+**056 · El tenant nacional.** `localities.kind` (`'ael' | 'nacional'`), la
+fila de la Comunidad Nacional, el helper `is_national_assembly()`, el
+tercer token de invitación y la salida "No pertenezco a una comunidad
+local" en `/seleccionar-localidad`. Decidido con el usuario: la Comunidad
+Nacional **no** celebra Fiesta de 19 Días (se apaga por `kind`) y **sí**
+tiene Boletín, Disponibilidad, Sugerencias y Servicio. Faltan las
+etiquetas: `BalanceSheet`, `CashBookSheet` y el recibo escriben
+"Asamblea Espiritual **Local** de los Bahá'ís de X" cuando no hay nombre
+registrado.
+
+**057 · Comunicados nacionales.** `messages.source` suma
+`'asamblea_nacional'` con `locality_id IS NULL`. Heredan audiencia (047)
+y confirmación "Enterado/a" (048); **no** llevan encuesta. Se pueden
+**ocultar**, y ocultar **exige `seen_at`** (`message_reads.hidden_at`):
+así el informe de la AEN no cuenta como "no vio" a quien lo descartó, y
+queda un "ver ocultos" para recuperarlo. La tarjeta va en **noche y
+dorado** —fondo `#2A2833`, chapita y eyebrow `#C4A235`, título blanco,
+cuerpo al 72 %—, el mismo registro que el deck de la Fiesta: es la única
+tarjeta oscura de una lista blanca y se ve sin leer una palabra. Se
+descartó el rojo (es el color de lo urgente) y el verde (`#6A8B5F` ya
+significa "en orden" en toda la app, incluida la línea "Enterado/a" de
+esa misma tarjeta). ⚠️ `ComunicadoCard` necesita un prop `tone` con
+variantes para el botón de PDF, la chapita "Nuevo", el "Enterado/a" y el
+bloque de encuesta, que hoy asumen fondo blanco. Falta también el push
+nacional (`getLocalityMemberIds` es por localidad) y el informe de
+lectura con denominador nacional; los dos **deduplicados por persona**,
+que con dos membresías se cuenta dos veces.
+
+**058 · Tesorería nacional.** Lo único que no sale gratis: una función
+security definer para que el tesorero nacional busque creyentes de
+**cualquier** localidad al vincular un aporte (el picker de
+contribuyentes solo ofrece los de la propia), y "Mis aportes" agrupado
+por comunidad.
+
 ## Pendientes conocidos
 
-- **Aplicar la 054 antes de desplegar** (ver el ⚠️ de su sección) y, ya
-  aplicada, cargar el domicilio fiscal en Datos de la Asamblea y cerrar los
-  meses de abril a agosto de 2026 en `/admin/tesoreria/libro/cierres`,
-  imprimiendo el Libro de Caja de cada uno.
+- **Aplicar la 055 antes de desplegar.** Sin ella, el primer ingreso
+  (`join_locality`), la ficha de `/admin/miembros` (upsert en
+  `profile_localities`), la invitación y la aprobación de cambio de
+  localidad fallan: las cuatro escriben la membresía. El selector de
+  comunidad en `/perfil` cae con gracia (lista vacía, no se muestra).
+- **Cargar el domicilio fiscal en Datos de la Asamblea y cerrar los meses
+  de abril a agosto de 2026** en `/admin/tesoreria/libro/cierres`,
+  imprimiendo el Libro de Caja de cada uno. La 054 ya está aplicada y
+  desplegada (commit `27b7e88`, 2026-09-12).
 - **El corte legal es el 17 de abril y el código usa Riḍván.** El balance
   anual ya corta el 18/4 → 17/4 por preset, pero `treasury-year.ts`, los
   saldos de apertura y "Mis aportes" siguen en Riḍván. Ver "Adecuación a

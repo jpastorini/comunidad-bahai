@@ -59,7 +59,38 @@ export async function updateMemberAction(formData: FormData) {
       redirect("/admin/miembros");
     }
   }
-  const { error } = await supabase.from("profiles").update(payload).eq("id", id);
+  // ⚠️ Desde la 055 el rol y los tags son POR COMUNIDAD y viven en
+  // `profile_localities`; `profiles` guarda solo el sombrero puesto. La
+  // Asamblea edita la membresía de SU localidad y el trigger de
+  // sincronización la copia a `profiles` cuando esa es la comunidad que
+  // la persona tiene puesta. Escribir `profiles` directo, como antes,
+  // le cambiaría los permisos de la comunidad equivocada a quien anda
+  // con dos sombreros.
+  const { error: membershipError } = await supabase
+    .from("profile_localities")
+    .upsert(
+      {
+        profile_id: id,
+        locality_id: session.locality.id,
+        can_respond_chat: payload.can_respond_chat,
+        can_manage_treasury: payload.can_manage_treasury,
+        can_manage_bulletin: payload.can_manage_bulletin,
+        // El rol viaja solo cuando NO es tu propia ficha (ver arriba).
+        ...(payload.role ? { role: payload.role } : {}),
+      },
+      { onConflict: "profile_id,locality_id" }
+    );
+
+  // Lo que es de la persona y no de la comunidad sigue en `profiles`.
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({
+      full_name: payload.full_name,
+      ...(payload.is_bahai === undefined ? {} : { is_bahai: payload.is_bahai }),
+    })
+    .eq("id", id);
+
+  const error = membershipError ?? profileError;
 
   setFlashToast(
     error
@@ -195,7 +226,7 @@ export async function decideLocalityChangeAction(formData: FormData) {
   // Traer la solicitud y validar que sea hacia ESTA localidad.
   const { data: req } = await supabase
     .from("locality_change_requests")
-    .select("id, user_id, to_locality_id, status")
+    .select("id, user_id, from_locality_id, to_locality_id, status")
     .eq("id", requestId)
     .maybeSingle();
 
@@ -233,10 +264,16 @@ export async function decideLocalityChangeAction(formData: FormData) {
 
   // Si se aprobó, mover al usuario a la localidad destino.
   if (decision === "approve") {
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({ locality_id: req.to_locality_id })
-      .eq("id", req.user_id);
+    // move_membership() (055) suma la comunidad destino y saca la de
+    // origen. No se puede hacer con dos consultas desde acá: la RLS de
+    // `profile_localities` solo deja tocar filas de la propia
+    // localidad, así que la Asamblea destino nunca podría borrar la
+    // membresía de la comunidad de la que se va.
+    const { error: profileError } = await supabase.rpc("move_membership", {
+      p_profile: req.user_id,
+      p_from_locality: req.from_locality_id,
+      p_to_locality: req.to_locality_id,
+    });
     if (profileError) {
       setFlashToast({
         tone: "error",

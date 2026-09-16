@@ -46,10 +46,13 @@ export async function selectLocalityAction(formData: FormData) {
 
   // ─── Caso 2: PRIMER ingreso (sin localidad) → directo ───
   if (!currentLocalityId) {
-    const { error } = await supabase
-      .from("profiles")
-      .update({ locality_id })
-      .eq("id", user.id);
+    // Desde la 055 la pertenencia vive en `profile_localities` y
+    // `profiles` es solo el sombrero puesto. join_locality() crea la
+    // membresía y el trigger le pone el sombrero; la función solo abre
+    // cuando la persona todavía no pertenece a ninguna comunidad.
+    const { error } = await supabase.rpc("join_locality", {
+      p_locality_id: locality_id,
+    });
 
     if (error) {
       setFlashToast({ tone: "error", message: `Error: ${error.message}` });

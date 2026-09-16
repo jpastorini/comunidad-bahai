@@ -17,6 +17,8 @@ import { UI_ZOOM_COOKIE, parseUiZoom } from "@/lib/ui-zoom";
 import { cookies } from "next/headers";
 import { PushToggle } from "@/components/PushToggle";
 import { DevotionalToggle } from "@/components/DevotionalToggle";
+import { getMyMemberships } from "@/lib/memberships";
+import { switchLocalityAction } from "./actions";
 import { AvatarEditor } from "./avatar-editor";
 import { MyPhotosSection } from "./my-photos";
 import { NameForm } from "./name-form";
@@ -26,6 +28,13 @@ export const revalidate = 60;
 export default async function ProfilePage() {
   const session = await requireMember("/perfil");
   const supabase = createSupabaseServer();
+
+  // Comunidades a las que pertenece (055). Con una sola —el caso de
+  // todo el mundo hoy— la tarjeta de abajo no cambia en nada.
+  const memberships = await getMyMemberships(
+    session.user.id,
+    session.locality.id
+  );
 
   // Avatar de Google (de la metadata de auth.users), por si el usuario
   // quiere volver a la foto de Google después de subir una manual.
@@ -267,6 +276,47 @@ export default async function ProfilePage() {
           {session.locality.city && (
             <div className="mt-0.5 font-body text-[11px] text-muted">
               {session.locality.city} · {session.locality.country}
+            </div>
+          )}
+
+          {memberships.length > 1 && (
+            <div className="mt-3 border-t border-black/[0.06] pt-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                Cambiar de comunidad
+              </div>
+              <p className="mt-1 font-body text-[11.5px] leading-[1.5] text-muted">
+                Pertenecés a más de una. Lo que ves en la app —comunicados,
+                calendario, Tesorería— es el de la comunidad que tengas puesta.
+              </p>
+              <div className="mt-2 flex flex-col gap-2">
+                {memberships
+                  .filter((m) => !m.isActive)
+                  .map((m) => (
+                    <form key={m.localityId} action={switchLocalityAction}>
+                      <input
+                        type="hidden"
+                        name="locality_id"
+                        value={m.localityId}
+                      />
+                      <button
+                        type="submit"
+                        className="tap flex w-full items-center justify-between rounded-xl border border-terra/20 bg-terra/[0.05] px-3.5 py-2.5 text-left"
+                      >
+                        <span>
+                          <span className="block text-[12.5px] font-semibold text-terra">
+                            {m.name}
+                          </span>
+                          {m.role === "admin" && (
+                            <span className="mt-0.5 block font-body text-[11px] text-muted">
+                              {ROLE_LABELS.admin}
+                            </span>
+                          )}
+                        </span>
+                        <IconChevronRight size={14} className="text-terra/60" />
+                      </button>
+                    </form>
+                  ))}
+              </div>
             </div>
           )}
 

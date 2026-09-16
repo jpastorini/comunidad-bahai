@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireMember } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { setFlashToast } from "@/lib/toast";
 
 const AVATARS_BUCKET = "avatars";
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB pre-compresión
@@ -190,4 +192,44 @@ export async function removeAvatarAction(): Promise<Result> {
   revalidatePath("/perfil");
   revalidatePath("/");
   return { ok: true, error: null };
+}
+
+
+/**
+ * Cambiar de comunidad activa (migración 055).
+ *
+ * Solo entre las comunidades a las que la persona YA pertenece:
+ * switch_locality() lo verifica contra `profile_localities` y falla con
+ * SIN_MEMBRESIA si no. Va por RPC y no por UPDATE porque
+ * `profiles_update_self` (039) congela `locality_id`, `role` y los tags
+ * para el propio usuario, y tiene que seguir congelándolos: sin eso, un
+ * PATCH por PostgREST a la propia fila sería una escalada de privilegios.
+ *
+ * ⚠️ El revalidatePath de la raíz no es opcional. Las pantallas ya
+ * visitadas viven en el caché del router del navegador (staleTimes en
+ * next.config.mjs): sin tirarlo abajo, cambiás de comunidad y seguís
+ * viendo los comunicados y el calendario de la anterior.
+ */
+export async function switchLocalityAction(formData: FormData) {
+  await requireMember();
+  const supabase = createSupabaseServer();
+  const localityId = (formData.get("locality_id") as string) || "";
+  if (!localityId) redirect("/perfil");
+
+  const { error } = await supabase.rpc("switch_locality", {
+    p_locality_id: localityId,
+  });
+
+  if (error) {
+    setFlashToast({
+      tone: "error",
+      message: `No se pudo cambiar de comunidad: ${error.message}`,
+    });
+    revalidatePath("/perfil");
+    redirect("/perfil");
+  }
+
+  setFlashToast({ tone: "success", message: "Listo, cambiaste de comunidad." });
+  revalidatePath("/", "layout");
+  redirect("/");
 }

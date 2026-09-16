@@ -106,14 +106,24 @@ export async function applyInviteToken(
   if (profile.locality_id === invite.localityId) return "already-member";
   if (profile.locality_id) return "other-locality";
 
-  const { error } = await admin
+  // La condición va PRIMERO: el trigger de `profile_localities` (055)
+  // la consulta para no dejar entrar a un Amigo/a de la Fe con cargos.
+  // El `.is("locality_id", null)` sigue siendo el guard de carrera, y
+  // ahora hay que mirar cuántas filas tocó: si otra pestaña lo incorporó
+  // entre medio, el update no falla, simplemente no afecta ninguna.
+  const { data: claimed, error: conditionError } = await admin
     .from("profiles")
-    .update({
-      locality_id: invite.localityId,
-      is_bahai: invite.audience === "creyentes",
-    })
+    .update({ is_bahai: invite.audience === "creyentes" })
     .eq("id", userId)
-    .is("locality_id", null); // carrera: que nadie lo haya incorporado entre medio
+    .is("locality_id", null)
+    .select("id");
+  if (conditionError) return "invalid";
+  if (!claimed || claimed.length === 0) return "other-locality";
+
+  // El sombrero (`profiles.locality_id`) lo pone el trigger de la 055.
+  const { error } = await admin
+    .from("profile_localities")
+    .insert({ profile_id: userId, locality_id: invite.localityId });
   return error ? "invalid" : "applied";
 }
 
