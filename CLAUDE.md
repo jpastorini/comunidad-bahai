@@ -1453,6 +1453,47 @@ de cada comunidad del país. Queda como superadmin del sistema; la AEN va
 con helper propio (`is_national_assembly()`, 056), que solo autoriza a
 **escribir** contenido con `locality_id IS NULL`.
 
+### ⚠️ El sombrero dice qué VE; la membresía dice quién PERTENECE
+
+Detectado el 2026-09-16, al preguntar el usuario cómo se asigna el rol
+de miembro de la Asamblea Nacional. Las dos preguntas parecen la misma y
+no lo son:
+
+- **Qué ve una persona ahora** → el sombrero (`current_locality_id()`).
+  Las 152 policies están bien así y no se tocan.
+- **Quién pertenece a una comunidad, y con qué rol** → la membresía. Y
+  hoy **ocho consultas preguntan por el sombrero**, o sea por
+  `profiles.locality_id` (y varias por `profiles.role`, que también es
+  del sombrero).
+
+Mientras cada persona tenga una sola membresía las dos dan lo mismo, así
+que no duele. El día que alguien tenga dos —el usuario, que es de la AEN
+y de su AEL— desaparece de los padrones de la comunidad cuyo sombrero no
+tiene puesto. El peor es el push: falla **en silencio**, nadie se entera
+de que el comunicado no le llegó a alguien.
+
+Los ocho, que migran a `profile_localities` en la MISMA tanda que el
+tenant nacional (no después: el primer caso de dos sombreros aparece el
+día uno):
+
+1. `/admin/miembros` — la lista de creyentes (`page.tsx`).
+2. `getLocalityMemberIds()` (`lib/push.ts`) — el push de comunicados,
+   Boletín y recordatorios.
+3. `getLocalityPushReach()` (`lib/push.ts`) — el alcance del push.
+4. `getAudience()` (`lib/message-reads.ts`) — el denominador del informe
+   de lectura y de las encuestas.
+5. `lib/availability-data.ts` (dos consultas) — quiénes son los miembros
+   de la AEL; filtra `role='admin'`, que pasa a ser el de la membresía.
+6. `lib/usage.ts` — el total de personas de `/admin/uso`.
+7. `catalog.members` (`lib/treasury-ledger.ts`) — el picker de
+   contribuyentes del libro.
+8. `/admin/asamblea` (`page.tsx` y `actions.ts`) — la precarga de la
+   composición desde quienes tienen rol de Asamblea.
+
+La regla para cualquier consulta nueva: si la pregunta es "¿quién es de
+esta comunidad?", va contra `profile_localities`; si es "¿qué puede ver
+quien está preguntando?", va contra `current_locality_id()`.
+
 ### Lo que falta (056, 057, 058)
 
 **056 · El tenant nacional.** `localities.kind` (`'ael' | 'nacional'`), la
