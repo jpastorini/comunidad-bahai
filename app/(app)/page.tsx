@@ -47,7 +47,11 @@ export default async function HomePage() {
       <main className="scroll-area flex-1 px-3.5 pt-3">
         {featured && (
           <FeaturedMessageCard
-            eyebrow="✦ Asamblea Local"
+            eyebrow={
+              featured.source === "asamblea_nacional"
+                ? "✦ Asamblea Nacional"
+                : "✦ Asamblea Local"
+            }
             title={featured.title}
             excerpt={featured.excerpt}
             ctaLabel="Leer comunicado"

@@ -1583,6 +1583,22 @@ prop no es un `tone` genérico sino un booleano `national` derivado de
 el bloque de confirmación y el botón "Enterado/a", que asumían fondo
 blanco.
 
+**Dónde se ven los comunicados nacionales** (decidido el 2026-09-17): en
+la lista de `/comunicados`, mezclados por fecha con los locales, y en la
+tarjeta destacada del Inicio, que muestra **el más reciente de las dos
+instituciones** con el rótulo diciendo cuál lo firma. Antes filtraba solo
+`asamblea_local` y un comunicado nacional no asomaba nunca ahí, aunque
+fuera lo más importante de la semana. Se descartó darle una tarjeta
+propia en el Inicio: duplicar la destacada por institución hace que el
+Inicio compita consigo mismo.
+
+De paso, el hub que agrupa Comunicados, Boletín, Chat y Tesorería dejó de
+llamarse **"Asamblea Local"** y pasó a ser **"Institucional"** (la
+pestaña de la TabBar y el título de las cuatro pantallas). Desde la 057
+mezcla dos instituciones, así que el nombre viejo había dejado de ser
+cierto; el subtítulo con el nombre de la comunidad sigue diciendo dónde
+estás parado.
+
 Tres cosas del diseño que conviene no romper:
 
 - **Ocultar solo existe en los nacionales.** El comunicado de tu propia

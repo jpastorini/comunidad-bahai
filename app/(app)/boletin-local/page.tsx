@@ -14,7 +14,7 @@ export default async function BoletinLocalPage() {
   return (
     <>
       <GoldHeader
-        title="Asamblea Local"
+        title="Institucional"
         subtitle={session.locality.name}
         backHref="/"
       />

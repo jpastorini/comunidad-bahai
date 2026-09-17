@@ -29,7 +29,7 @@ const TABS: Tab[] = [
   { href: "/mensajes", label: "Biblioteca", Icon: IconBiblioteca },
   { href: "/calendario", label: "Calendario", Icon: IconCalendario },
   { href: "/servicio", label: "Servicio", Icon: IconServicio },
-  { href: "/comunicados", label: "AEL", Icon: IconAEL },
+  { href: "/comunicados", label: "Institucional", Icon: IconAEL },
 ];
 
 export function TabBar({ aelHasUnseen = false }: { aelHasUnseen?: boolean }) {

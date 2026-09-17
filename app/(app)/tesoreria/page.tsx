@@ -82,7 +82,7 @@ export default async function TesoreriaPage() {
 
   return (
     <>
-      <GoldHeader title="Asamblea Local" subtitle={session.locality.name} backHref="/" />
+      <GoldHeader title="Institucional" subtitle={session.locality.name} backHref="/" />
       <SegmentedNav items={AEL_SEGMENTS} />
       <main className="scroll-area flex-1 px-4 pt-4">
         {/* Progreso del ejercicio: presupuesto y metas, calculado desde el

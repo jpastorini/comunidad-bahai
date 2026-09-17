@@ -95,7 +95,11 @@ export async function getLatestLocalAnnouncement(): Promise<Message | null> {
   const { data } = await supabase
     .from("messages")
     .select("id, date, title, excerpt, is_new, source")
-    .eq("source", "asamblea_local")
+    // El más reciente de las DOS instituciones (057): un comunicado
+    // nacional puede ser lo más importante que llegó esta semana y, si
+    // esto filtrara solo los locales, no asomaría nunca en el Inicio.
+    // Quién lo firma lo dice el rótulo de la tarjeta.
+    .in("source", ["asamblea_local", "asamblea_nacional"])
     .order("date", { ascending: false })
     .limit(1)
     .maybeSingle();

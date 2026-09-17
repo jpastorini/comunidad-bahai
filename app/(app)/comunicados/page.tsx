@@ -7,7 +7,6 @@ import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { requireMember } from "@/lib/auth";
 import { getLocalAnnouncements } from "@/lib/data";
 import { getMyMessageReads, isNewForReader } from "@/lib/message-reads";
-import { isNationalLocality } from "@/lib/types";
 import { getMyPollVotes, getPollResults, getPollsForMessages } from "@/lib/polls";
 import { markComunicadosSeenAction } from "./actions";
 
@@ -54,11 +53,7 @@ export default async function ComunicadosPage({
     <>
       <ScrollToHash />
       <GoldHeader
-        title={
-          isNationalLocality(session.locality)
-            ? "Asamblea Nacional"
-            : "Asamblea Local"
-        }
+        title="Institucional"
         subtitle={session.locality.name}
         backHref="/"
       />
