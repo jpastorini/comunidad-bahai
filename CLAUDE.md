@@ -1651,16 +1651,18 @@ consulta de la app.
 
 ## Pendientes conocidos
 
-- **Aplicar la 058 antes de desplegar.** Sin ella el recibo de un aporte
-  al Fondo Nacional sale sin firma (ver el ⚠️ de su sección); el resto de
-  la 058 es TypeScript y no depende de la migración. La 055, la 056 y la
-  057 ya están aplicadas y desplegadas.
-- **Probar la Comunidad Nacional en producción.** Falta el primer uso
-  real: asignarse "Miembro de la Asamblea Nacional" en
-  `/admin/nacional/miembros`, cambiar de sombrero desde `/perfil` y
+- **Probar el Usuario Nacional en producción.** Las cuatro migraciones
+  (055 a 058) están aplicadas y desplegadas (2026-09-17). Falta el primer
+  uso real, y el orden importa porque cada paso habilita el siguiente:
+  asignarse "Miembro de la Asamblea Nacional" en
+  `/admin/nacional/miembros` · cambiar de sombrero desde `/perfil` ·
   confirmar que con el sombrero nacional puesto se sigue apareciendo en
-  el padrón de la AEL —que es justamente lo que arreglan los diez
-  padrones migrados—.
+  el padrón de la AEL (es lo que arreglan los diez padrones migrados) ·
+  publicar un comunicado nacional y ver que el push llega UNA sola vez
+  teniendo dos membresías · abrir su informe de lectura y confirmar que
+  el denominador es todo el país · registrar un aporte al Fondo Nacional
+  a nombre de un creyente de otra localidad y ver que a esa persona le
+  aparece en `/perfil/aportes`, agrupado, y con la firma en el recibo.
 - **Cargar el domicilio fiscal en Datos de la Asamblea y cerrar los meses
   de abril a agosto de 2026** en `/admin/tesoreria/libro/cierres`,
   imprimiendo el Libro de Caja de cada uno. La 054 ya está aplicada y
