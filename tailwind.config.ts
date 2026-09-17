@@ -19,7 +19,10 @@ const config: Config = {
         // El fondo del comunicado nacional (057). Es "noche" con croma:
         // el casi-negro neutro que tenía antes se leía como luto, que es
         // justo lo que un comunicado del país no tiene que parecer.
-        plum: "#332040",
+        // ⚠️ No confundir con `green` (#6A8B5F), que es el salvia de los
+        // ESTADOS ("en orden", "confirmado") y vive sobre fondo blanco.
+        // Este es un fondo, y a esa distancia no se confunden.
+        pine: "#1F3A2C",
         muted: "#7A7670",
         bg: "#F8F7F2",
         card: "#FFFFFF",

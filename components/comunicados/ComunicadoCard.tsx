@@ -142,7 +142,7 @@ export function ComunicadoCard({
       id={`c-${m.id}`}
       className={
         national
-          ? "overflow-hidden rounded-2xl bg-plum shadow-card-elevated"
+          ? "overflow-hidden rounded-2xl bg-pine shadow-card-elevated"
           : featured
             ? "overflow-hidden rounded-2xl shadow-card-elevated ring-1 ring-gold/45"
             : "overflow-hidden rounded-2xl bg-card shadow-card"
@@ -161,7 +161,7 @@ export function ComunicadoCard({
       <div className="p-4">
         <div className="mb-2 flex items-center gap-2">
           {national && (
-            <span className="rounded bg-gold px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-plum">
+            <span className="rounded bg-gold px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-pine">
               Nacional
             </span>
           )}
