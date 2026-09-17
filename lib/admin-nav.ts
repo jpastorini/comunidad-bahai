@@ -96,6 +96,10 @@ export const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/tesoreria/libro", label: "Libro", match: ["/admin/tesoreria/recibo"] },
       // El cierre mensual y el Libro de Caja imprimible (054).
       { href: "/admin/tesoreria/libro/cierres", label: "Cierres" },
+      // Las 53 reglas deterministas sobre el libro, los cierres y los
+      // informes (059). Va después de Cierres porque es lo que se mira
+      // ANTES de cerrar un mes.
+      { href: "/admin/tesoreria/auditoria", label: "Auditoría" },
       { href: "/admin/tesoreria/informes", label: "Informes" },
       { href: "/admin/tesoreria/progreso", label: "Progreso" },
       { href: "/admin/tesoreria/presupuesto", label: "Presupuesto" },
