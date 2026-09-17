@@ -214,7 +214,13 @@ export async function switchLocalityAction(formData: FormData) {
   await requireMember();
   const supabase = createSupabaseServer();
   const localityId = (formData.get("locality_id") as string) || "";
-  if (!localityId) redirect("/perfil");
+  // A dónde volver: el panel si el cambio se hizo desde el panel, la app
+  // si fue desde el Inicio. Se valida que empiece con "/" y que no sea
+  // "//": un destino de afuera acá sería un redirect abierto.
+  const requested = (formData.get("redirect_to") as string) || "/";
+  const back =
+    requested.startsWith("/") && !requested.startsWith("//") ? requested : "/";
+  if (!localityId) redirect(back);
 
   const { error } = await supabase.rpc("switch_locality", {
     p_locality_id: localityId,
@@ -226,10 +232,10 @@ export async function switchLocalityAction(formData: FormData) {
       message: `No se pudo cambiar de comunidad: ${error.message}`,
     });
     revalidatePath("/perfil");
-    redirect("/perfil");
+    redirect(back);
   }
 
   setFlashToast({ tone: "success", message: "Listo, cambiaste de comunidad." });
   revalidatePath("/", "layout");
-  redirect("/");
+  redirect(back);
 }

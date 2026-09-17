@@ -1,6 +1,7 @@
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ChatNotifier } from "@/components/ChatNotifier";
 import { requirePanelAccess } from "@/lib/auth";
+import { getMyMemberships } from "@/lib/memberships";
 import { consumeFlashToast } from "@/lib/toast";
 import type { ChatTopic } from "@/lib/types";
 
@@ -17,6 +18,13 @@ export default async function PanelLayout({
   const session = await requirePanelAccess();
   const toast = consumeFlashToast();
 
+  // Comunidades entre las que puede cambiar DESDE EL PANEL: solo donde
+  // tiene rol de Asamblea. Si el selector ofreciera una donde es creyente
+  // común, el middleware la echaría del panel apenas cambie.
+  const memberships = (
+    await getMyMemberships(session.user.id, session.locality.id)
+  ).filter((m) => m.role === "admin");
+
   const chatTopics: ChatTopic[] = [];
   if (session.profile.can_respond_chat) chatTopics.push("secretaria");
   if (session.profile.can_manage_treasury) chatTopics.push("tesoreria");
@@ -25,6 +33,7 @@ export default async function PanelLayout({
     <AdminShell
       profile={session.profile}
       locality={session.locality}
+      memberships={memberships}
       toast={toast}
     >
       {/* Aviso de chat de los canales que atiende: Secretaría con el tag de

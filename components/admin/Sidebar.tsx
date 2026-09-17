@@ -14,7 +14,9 @@ import {
   IconTesoreria,
 } from "@/components/Icons";
 import { BahaiStar } from "@/components/BahaiStar";
+import { CommunitySwitcher } from "@/components/CommunitySwitcher";
 import { activeLeaf, visibleNav, type NavGroup } from "@/lib/admin-nav";
+import type { Membership } from "@/lib/memberships";
 import { ROLE_LABELS, type Locality, type Profile } from "@/lib/types";
 
 /** Un ícono por grupo (no por pantalla): siete distintos, sin repetir. */
@@ -52,10 +54,17 @@ function writeOpen(keys: string[]) {
 type Props = {
   profile: Profile;
   locality?: Locality;
+  /** Comunidades donde esta persona tiene rol de Asamblea (058-b). */
+  memberships?: Membership[];
   onNavigate?: () => void;
 };
 
-export function SidebarContent({ profile, locality, onNavigate }: Props) {
+export function SidebarContent({
+  profile,
+  locality,
+  memberships = [],
+  onNavigate,
+}: Props) {
   const pathname = usePathname();
   const groups = useMemo(
     () => visibleNav(profile, locality?.kind ?? "ael"),
@@ -100,8 +109,16 @@ export function SidebarContent({ profile, locality, onNavigate }: Props) {
           <div className="text-[9px] font-semibold uppercase tracking-[2.5px] text-white/55">
             Panel de la Asamblea
           </div>
+          {/* El nombre de la comunidad NO es una etiqueta: es el control
+              que decide qué Asamblea estás administrando. Con más de una,
+              se toca y se cambia (058-b). */}
           <div className="mt-1 font-display text-[20px] font-bold leading-tight text-white">
-            {locality?.name ?? "Comunidad Bahá'í"}
+            <CommunitySwitcher
+              memberships={memberships}
+              redirectTo="/admin"
+              fallback={locality?.name ?? "Comunidad Bahá'í"}
+              className="font-display text-[20px] font-bold leading-tight text-white"
+            />
           </div>
           {locality?.city && (
             <div className="mt-0.5 text-[10.5px] text-white/65">

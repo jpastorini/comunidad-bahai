@@ -1649,6 +1649,42 @@ la regla de la 056, en el único lugar donde había quedado sin migrar
 porque vive adentro de una función security definer y no de una
 consulta de la app.
 
+### El selector de comunidad (sin migración)
+
+Pedido el 2026-09-17, mirando el panel: el usuario no encontraba la
+Tesorería Nacional ni los comunicados nacionales, y pensaba que faltaban
+tags de permisos nacionales. **Las tres cosas eran el mismo problema, y
+ninguna era falta de funcionalidad**: los tags son por comunidad desde la
+055, y la Tesorería y los Comunicados nacionales son los MISMOS ítems del
+menú vistos con el sombrero nacional puesto. Lo que fallaba es que el
+sombrero era invisible.
+
+El nombre de la comunidad en el encabezado dorado —el del panel y el del
+Inicio— **no era una etiqueta**: es el control más importante de la
+pantalla. Decide qué Asamblea administrás, qué comunicados ves, qué
+Tesorería, y qué significan los permisos que marcás en la ficha de un
+creyente. Estaba dicho en el lugar correcto y con la forma equivocada.
+Ahora es `components/CommunitySwitcher.tsx`, que se disfraza del título
+que reemplaza (recibe las clases por prop) y con una sola comunidad
+imprime el nombre y nada más, así que para casi toda la comunidad no
+cambia nada.
+
+- **En el panel lista SOLO las comunidades donde tenés rol de Asamblea.**
+  Si ofreciera una donde sos creyente común, el middleware te echaría del
+  panel apenas cambies.
+- **Es un `<select>` nativo** a propósito: en el celular abre la rueda del
+  sistema y no hay que resolver el foco ni el tap-afuera. Pierde su
+  chevron con `appearance-none`, así que va uno dibujado al lado — sin
+  ninguna pista visual, un título no se lee como algo que se toca.
+- **`switchLocalityAction` acepta `redirect_to`** (validado: tiene que
+  empezar con "/" y no con "//", o sería un redirect abierto), para
+  volver al panel o al Inicio según dónde se tocó. `GoldHeader` suma
+  `titleNode` para que el Inicio ponga el selector donde iba el nombre.
+- En `/admin/nacional/miembros` los permisos ahora **dicen de qué
+  comunidad son**: son los de la elegida en el desplegable, y los de otra
+  se marcan en Creyentes → Creyentes con esa comunidad puesta. "Admin
+  Nacional" sí es de la persona.
+
 ## Pendientes conocidos
 
 - **Probar el Usuario Nacional en producción.** Las cuatro migraciones

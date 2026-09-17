@@ -181,6 +181,19 @@ function MemberCard({
           />
         </div>
 
+        {/* Desde la 055 el rol y los permisos son POR COMUNIDAD, y acá se
+            están editando los de la que quedó elegida en el desplegable.
+            Sin decirlo, marcar "Tesorería" parece un permiso global y no
+            lo es: alguien puede ser tesorero de la Nacional y creyente
+            común en su Asamblea Local. */}
+        <p className="mt-2 text-[11px] leading-[1.5] text-muted">
+          El rol y estos dos permisos son <strong>de la comunidad elegida
+          arriba</strong>. Los de otra comunidad —por ejemplo la Nacional— se
+          marcan en <strong>Creyentes → Creyentes</strong>, con esa comunidad
+          puesta en el selector del panel. “Admin Nacional” sí es de la
+          persona: da acceso a esta sección en cualquier comunidad.
+        </p>
+
         {hasNationalCommunity && (
           <div className="mt-4 rounded-xl border border-gold/30 bg-gold/[0.06] p-3">
             <Checkbox

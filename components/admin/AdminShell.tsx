@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { CommunitySwitcher } from "@/components/CommunitySwitcher";
+import type { Membership } from "@/lib/memberships";
 import { SidebarContent } from "./Sidebar";
 import { Toaster } from "@/components/Toaster";
 import type { Locality, Profile } from "@/lib/types";
@@ -8,6 +10,8 @@ import type { Locality, Profile } from "@/lib/types";
 type Props = {
   profile: Profile;
   locality?: Locality;
+  /** Comunidades donde esta persona tiene rol de Asamblea (058-b). */
+  memberships?: Membership[];
   children: React.ReactNode;
   toast?: { tone: "success" | "error" | "info"; message: string } | null;
 };
@@ -17,7 +21,13 @@ type Props = {
  *  - Desktop (md+): fixed sidebar 256px on the left, main content fills the rest.
  *  - Mobile: top bar with hamburger that opens a slide-in drawer.
  */
-export function AdminShell({ profile, locality, children, toast }: Props) {
+export function AdminShell({
+  profile,
+  locality,
+  memberships = [],
+  children,
+  toast,
+}: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
@@ -47,9 +57,12 @@ export function AdminShell({ profile, locality, children, toast }: Props) {
           <div className="text-[9px] font-semibold uppercase tracking-[1.5px] text-gold-dark">
             Panel de la Asamblea
           </div>
-          <div className="truncate font-display text-[15px] font-semibold leading-tight text-dark">
-            {locality?.name ?? "Comunidad Bahá'í"}
-          </div>
+          <CommunitySwitcher
+            memberships={memberships}
+            redirectTo="/admin"
+            fallback={locality?.name ?? "Comunidad Bahá'í"}
+            className="truncate font-display text-[15px] font-semibold leading-tight text-dark"
+          />
         </div>
         <div className="w-9" />
       </header>
@@ -72,6 +85,7 @@ export function AdminShell({ profile, locality, children, toast }: Props) {
         <SidebarContent
           profile={profile}
           locality={locality}
+          memberships={memberships}
           onNavigate={() => setDrawerOpen(false)}
         />
       </aside>
