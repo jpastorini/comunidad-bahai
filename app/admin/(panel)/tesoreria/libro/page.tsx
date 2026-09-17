@@ -1,6 +1,7 @@
 import { Banner, Button, Card, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { isNationalLocality } from "@/lib/types";
 import { getAttachmentCounts } from "@/lib/treasury-attachments";
 import { closedMonthKeys, getClosings } from "@/lib/treasury-closings";
 import { formatMoney } from "@/lib/treasury-format";
@@ -32,7 +33,9 @@ export default async function LibroTesoreriaPage({
     : (years[0] ?? new Date().getUTCFullYear() - 1843);
 
   const [catalog, entries, receiptResult, attachmentCounts, closings] = await Promise.all([
-    getLedgerCatalog(supabase, session.locality.id),
+    getLedgerCatalog(supabase, session.locality.id, {
+      nationwide: isNationalLocality(session.locality),
+    }),
     getLedgerEntries(supabase, year),
     supabase.rpc("next_receipt_number", { loc: session.locality.id }),
     getAttachmentCounts(supabase),

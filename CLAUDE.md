@@ -1378,7 +1378,7 @@ todas las localidades cierran el 17/4; si hay alguna base ya inscripta en
 la URCDP; y si aparecen ventas (libros, cenas) que exijan factura o CFE,
 que hoy el libro de aportes no contempla.
 
-## Usuario Nacional y Comunidad Nacional (055–058, en curso)
+## Usuario Nacional y Comunidad Nacional (055–058)
 
 El tesorero nacional pidió poder usar la app sin estar atado a una
 Asamblea Local. Charlado con el usuario el 2026-09-16, el pedido se
@@ -1614,20 +1614,47 @@ existe); el listado del creyente sí sale, porque
 `getMyMessageReads()` pide `select("*")` justamente para no depender de
 esa columna.
 
-### Lo que falta (058)
+### Tesorería nacional (058)
 
-**058 · Tesorería nacional.** Lo único que no sale gratis: una función
-security definer para que el tesorero nacional busque creyentes de
-**cualquier** localidad al vincular un aporte (el picker de
-contribuyentes solo ofrece los de la propia), y "Mis aportes" agrupado
-por comunidad.
+Resultó ser casi todo TypeScript. Lo que se había anotado como "una
+función security definer para buscar creyentes de cualquier localidad"
+**no hacía falta**: la policy de lectura de `profiles` es `using (true)`
+desde el schema inicial, así que alcanza con que `getLedgerCatalog()`
+reciba `nationwide: true` y traiga el padrón del país en vez del de la
+comunidad. Importa por qué: si el tesorero nacional no encuentra a quien
+giró desde Salto, escribe el nombre a mano y crea un contribuyente
+suelto —sin `profile_id`—, y entonces ese creyente **no ve su aporte**
+en "Mis aportes". El buscador ancho no es comodidad: es lo que mantiene
+el vínculo.
+
+**"Mis aportes" agrupa por comunidad SOLO si hay más de una**
+(`groupByLocality`): quien aporta a un solo Fondo ve la pantalla
+idéntica a antes. Con dos, el resumen del ejercicio suma una línea por
+comunidad y cada fila lleva la chapita de a cuál fue —el número de
+recibo y el nombre del fondo se repiten entre Asambleas y sin eso no se
+distinguen—. Los datos fiscales del recibo ya salían bien: `my_receipt()`
+los toma de la localidad DEL ASIENTO, así que un aporte al Fondo
+Nacional imprime el nombre y el RUT de la AEN.
+
+⚠️ **Lo que sí necesitó migración fue un arrastre de la 055.** El nombre
+que firma el recibo cuando nadie lo marcó emitido salía de
+`profiles.can_manage_treasury` + `locality_id`, o sea del SOMBRERO. El
+tesorero nacional tiene ese tag en la Comunidad Nacional y no en su AEL,
+así que mientras anduviera con el sombrero local la consulta no lo
+encontraba y el recibo salía sin firma —y la firma habría dependido de
+qué sombrero tuviera puesto un tercero en el momento en que el creyente
+abre el papel, que no es una propiedad del recibo—. La 058 reescribe
+`my_receipt()` para preguntarle a `profile_localities`. Es exactamente
+la regla de la 056, en el único lugar donde había quedado sin migrar
+porque vive adentro de una función security definer y no de una
+consulta de la app.
 
 ## Pendientes conocidos
 
-- **Aplicar la 057 antes de desplegar.** Sin ella, publicar desde la
-  Comunidad Nacional falla (el `source` nuevo viola el check de
-  `messages`) y ocultar no anda. La 055 y la 056 ya están aplicadas y
-  desplegadas (`60a5e89`, 2026-09-17).
+- **Aplicar la 058 antes de desplegar.** Sin ella el recibo de un aporte
+  al Fondo Nacional sale sin firma (ver el ⚠️ de su sección); el resto de
+  la 058 es TypeScript y no depende de la migración. La 055, la 056 y la
+  057 ya están aplicadas y desplegadas.
 - **Probar la Comunidad Nacional en producción.** Falta el primer uso
   real: asignarse "Miembro de la Asamblea Nacional" en
   `/admin/nacional/miembros`, cambiar de sombrero desde `/perfil` y

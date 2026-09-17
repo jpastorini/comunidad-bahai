@@ -39,7 +39,14 @@ export default async function MisAportesPage({
 
   const rows = all.filter((c) => c.treasuryYear === year);
   // Un aporte anulado se muestra (su recibo existió) pero no suma.
-  const totals = totalsByCurrency(rows.filter((c) => !c.voided_at));
+  const counted = rows.filter((c) => !c.voided_at);
+  const totals = totalsByCurrency(counted);
+  // 058: quien pertenece a dos comunidades —la suya y la Nacional—
+  // recibe acá los aportes de las dos, mezclados. Se separan SOLO
+  // cuando hay más de una: para quien aporta a una sola, la pantalla
+  // queda exactamente como estaba.
+  const byLocality = groupByLocality(counted);
+  const multi = byLocality.length > 1;
   const from = year ? treasuryYearStart(year) : null;
   const to = year ? treasuryYearEnd(year) : null;
 
@@ -92,11 +99,34 @@ export default async function MisAportesPage({
                 {rows.length} {rows.length === 1 ? "aporte" : "aportes"}
               </div>
             </div>
-          ) : (
+          ) : null}
+
+          {/* El desglose por comunidad: a qué Fondo fue cada peso. */}
+          {totals.length > 0 && multi && (
+            <div className="mt-3 space-y-1.5 border-t border-black/[0.06] pt-3">
+              {byLocality.map((g) => (
+                <div
+                  key={g.name}
+                  className="flex items-baseline justify-between gap-3"
+                >
+                  <span className="min-w-0 truncate text-[12px] text-muted">
+                    {g.name}
+                  </span>
+                  <span className="shrink-0 text-[13px] font-semibold tabular-nums text-dark">
+                    {g.totals
+                      .map((t) => `${formatMoney(t.amount)} ${t.currency}`)
+                      .join(" · ")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {totals.length === 0 ? (
             <p className="mt-2 text-[12.5px] text-muted">
               Sin aportes registrados a tu nombre en este ejercicio.
             </p>
-          )}
+          ) : null}
         </div>
 
         {/* Lista */}
@@ -126,6 +156,15 @@ export default async function MisAportesPage({
                     <div className="mt-0.5 truncate text-[11.5px] text-muted">
                       {[c.fund_name, c.subcategory_name].filter(Boolean).join(" · ") || "Fondo local"}
                     </div>
+                    {/* Con aportes a más de una comunidad, cada fila dice
+                        a cuál fue: el número de recibo y el fondo se
+                        repiten entre Asambleas y sin esto no se
+                        distinguen. */}
+                    {multi && c.locality_name && (
+                      <div className="mt-1 inline-block rounded bg-terra/[0.08] px-1.5 py-0.5 text-[10.5px] font-semibold text-terra">
+                        {c.locality_name}
+                      </div>
+                    )}
                     {c.receipt_name && (
                       <div className="mt-0.5 text-[11.5px] text-muted">
                         A nombre de <span className="font-semibold text-dark">{c.receipt_name}</span>
@@ -169,6 +208,30 @@ export default async function MisAportesPage({
       </main>
     </>
   );
+}
+
+/**
+ * Los aportes agrupados por comunidad, cada una con sus totales por
+ * moneda. El orden es por monto total descendente, así la comunidad
+ * donde más se aportó queda arriba; sin nombre de localidad va al final
+ * como "Otra comunidad" (no debería pasar: `my_contributions()` hace el
+ * join, pero un aporte de una localidad borrada lo dejaría en null).
+ */
+function groupByLocality(rows: MyContribution[]) {
+  const map = new Map<string, MyContribution[]>();
+  for (const r of rows) {
+    const key = r.locality_name ?? "Otra comunidad";
+    const list = map.get(key);
+    if (list) list.push(r);
+    else map.set(key, [r]);
+  }
+  return [...map.entries()]
+    .map(([name, list]) => ({
+      name,
+      totals: totalsByCurrency(list),
+      count: list.length,
+    }))
+    .sort((a, b) => b.count - a.count);
 }
 
 function totalsByCurrency(rows: MyContribution[]) {

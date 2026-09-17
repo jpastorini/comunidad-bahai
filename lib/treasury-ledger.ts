@@ -1,6 +1,10 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { activeMembers, getLocalityMembers } from "./memberships";
+import {
+  activeMembers,
+  getLocalityMembers,
+  type LocalityMember,
+} from "./memberships";
 import { addMoney } from "./treasury-format";
 
 /**
@@ -112,9 +116,22 @@ export function todayISO(now: Date = new Date()): string {
   }).format(now);
 }
 
+/**
+ * El catálogo del libro. `nationwide` (058) cambia UNA cosa: de dónde
+ * salen los creyentes que ofrece el buscador de contribuyentes.
+ *
+ * El tesorero nacional recibe aportes de gente de cualquier localidad
+ * —alguien de Salto gira al Fondo Nacional— y con el padrón de su propia
+ * comunidad no la encuentra: tendría que escribir el nombre a mano y
+ * crear un contribuyente suelto, que es justo lo que rompe "Mis aportes"
+ * (el creyente no vería su aporte, porque no quedaría vinculado a su
+ * perfil). No hace falta ninguna función nueva para esto: la policy de
+ * lectura de `profiles` es `using (true)` desde el schema inicial.
+ */
 export async function getLedgerCatalog(
   supabase: SupabaseClient,
-  localityId: string
+  localityId: string,
+  opts: { nationwide?: boolean } = {}
 ): Promise<LedgerCatalog> {
   const [accounts, funds, categories, subcategories, contributors, roster] =
     await Promise.all([
@@ -140,8 +157,15 @@ export async function getLedgerCatalog(
         .order("name"),
       // Los creyentes activos de la comunidad, por MEMBRESÍA (056): es
       // la misma lista de /admin/miembros, e incluye a quien pertenece
-      // acá aunque ande con el sombrero de otra comunidad.
-      getLocalityMembers(supabase, localityId),
+      // acá aunque ande con el sombrero de otra comunidad. En la
+      // Tesorería nacional, todo el país (058).
+      opts.nationwide
+        ? supabase
+            .from("profiles")
+            .select("id, full_name")
+            .is("disabled_at", null)
+            .order("full_name")
+        : getLocalityMembers(supabase, localityId),
     ]);
 
   return {
@@ -150,9 +174,11 @@ export async function getLedgerCatalog(
     categories: (categories.data ?? []) as TreasuryCategory[],
     subcategories: (subcategories.data ?? []) as TreasurySubcategory[],
     contributors: (contributors.data ?? []) as TreasuryContributor[],
-    members: activeMembers(roster).map(
-      (m): LedgerMember => ({ id: m.id, full_name: m.full_name })
-    ),
+    members: opts.nationwide
+      ? ((roster as { data?: LedgerMember[] | null }).data ?? [])
+      : activeMembers(roster as LocalityMember[]).map(
+          (m): LedgerMember => ({ id: m.id, full_name: m.full_name })
+        ),
   };
 }
 
