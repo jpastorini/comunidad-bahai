@@ -190,6 +190,35 @@ export default async function ProfilePage() {
         {/* Instalar app (se oculta si ya está instalada) */}
         <InstallAppButton />
 
+        {/* Mis aportes: las contribuciones registradas a nombre de la
+            persona, con su recibo. La lista sale de una función acotada
+            (046); el libro sigue siendo del tesorero.
+            Va ARRIBA de los ajustes (pantalla, avisos, devocional) porque
+            es lo único de esta pantalla que se viene a CONSULTAR; el resto
+            se toca una vez y no se vuelve. El fondo dorado suave es lo que
+            lo separa de la fila de ajustes que sigue —es la única tarjeta
+            teñida de /perfil— y el ícono se invierte a blanco para no
+            perderse contra él. */}
+        {session.profile.is_bahai && (
+          <Link
+            href="/perfil/aportes"
+            className="tap mb-5 flex items-center justify-between rounded-2xl bg-gold/10 px-4 py-3.5 ring-1 ring-gold/25"
+          >
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-card text-gold-dark shadow-card-soft">
+                <IconTesoreria size={18} />
+              </span>
+              <div>
+                <div className="text-[13.5px] font-semibold text-dark">Mis aportes</div>
+                <div className="mt-0.5 font-body text-[11px] text-muted">
+                  Tus contribuciones al Fondo y sus recibos
+                </div>
+              </div>
+            </div>
+            <IconChevronRight size={14} className="text-gold-dark" />
+          </Link>
+        )}
+
         {/* Tamaño de letra global: por dispositivo, en cookie (lib/ui-zoom.ts) */}
         <div className="mb-5">
           <h3 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
@@ -232,29 +261,6 @@ export default async function ProfilePage() {
             />
           </div>
         </div>
-
-        {/* Mis aportes: las contribuciones registradas a nombre de la
-            persona, con su recibo. La lista sale de una función acotada
-            (046); el libro sigue siendo del tesorero. */}
-        {session.profile.is_bahai && (
-        <Link
-          href="/perfil/aportes"
-          className="tap mb-5 flex items-center justify-between rounded-2xl bg-card px-4 py-3.5 shadow-card-soft"
-        >
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#C4A235]/15 text-gold-dark">
-              <IconTesoreria size={18} />
-            </span>
-            <div>
-              <div className="text-[13.5px] font-semibold text-dark">Mis aportes</div>
-              <div className="mt-0.5 font-body text-[11px] text-muted">
-                Tus contribuciones al Fondo y sus recibos
-              </div>
-            </div>
-          </div>
-          <IconChevronRight size={14} className="text-muted" />
-        </Link>
-        )}
 
         {/* Mis fotos */}
         <MyPhotosSection
