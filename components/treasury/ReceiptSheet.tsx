@@ -33,8 +33,11 @@ export type ReceiptSheetProps = {
   /** El renglón sobre el nombre. Por defecto "Tesorero/a de la Asamblea". */
   treasurerTitle?: string | null;
   hasLogo: boolean;
-  /** URL firmada de la firma escaneada de ESTA comunidad (060). Hasta la
-   *  060 era un archivo del repo, el mismo para todo el país. */
+  /** La firma escaneada de ESTA comunidad (060). Hasta la 060 era un
+   *  archivo del repo, el mismo para todo el país.
+   *  ⚠️ Tiene que venir como `data:` URI (`loadSignatureImage`): con una
+   *  URL remota, la captura a PNG del botón "Compartir" deja la firma en
+   *  blanco sin avisar. */
   signatureUrl?: string | null;
   /** El color del recibo, por comunidad: la Tesorería Nacional los emite
    *  en azul oscuro. */

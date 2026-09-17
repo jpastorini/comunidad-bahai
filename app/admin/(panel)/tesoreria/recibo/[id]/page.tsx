@@ -94,6 +94,17 @@ export default async function ReciboPage({
         </div>
       )}
 
+      {receipt.ready && !receipt.signerName && (
+        <div className="mb-4">
+          <Banner tone="warning">
+            <strong>El recibo va a salir sin nombre bajo la firma.</strong> No
+            hay Tesorero/a declarado en Datos de la Asamblea, ni nadie con el
+            tag de Tesorería en esta comunidad. Cargalo donde corresponda o
+            escribilo en <strong>Tesorería → Recibo</strong>.
+          </Banner>
+        </div>
+      )}
+
       {receipt.ready && !receipt.signatureUrl && (
         <div className="mb-4">
           <Banner tone="info">
