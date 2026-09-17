@@ -1573,11 +1573,13 @@ por comunidad.
 
 ## Pendientes conocidos
 
-- **Aplicar la 056 antes de desplegar.** La 055 ya está aplicada. Sin la
-  056 no existe la Comunidad Nacional ni `localities.kind`, así que
-  `/seleccionar-localidad` no ofrece la salida nacional y la casilla
-  "Miembro de la Asamblea Nacional" no aparece. Los padrones sí caen con
-  gracia: `getLocalityMembers()` reintenta con el padrón viejo y loguea.
+- **Probar la Comunidad Nacional en producción.** La 055 y la 056 están
+  aplicadas y desplegadas (`60a5e89`, 2026-09-17). Falta el primer uso
+  real: asignarse "Miembro de la Asamblea Nacional" en
+  `/admin/nacional/miembros`, cambiar de sombrero desde `/perfil` y
+  confirmar que con el sombrero nacional puesto se sigue apareciendo en
+  el padrón de la AEL —que es justamente lo que arreglan los diez
+  padrones migrados—.
 - **Cargar el domicilio fiscal en Datos de la Asamblea y cerrar los meses
   de abril a agosto de 2026** en `/admin/tesoreria/libro/cierres`,
   imprimiendo el Libro de Caja de cada uno. La 054 ya está aplicada y
