@@ -1394,9 +1394,17 @@ con la hoja a la vista mientras se toca):
   extraído del Apps Script de la planilla de Montevideo y servido igual a
   todas las localidades. Con la Comunidad Nacional (056) dejó de ser un
   detalle: la AEN imprimiría la firma del tesorero de Montevideo. Ahora va
-  al bucket **privado** `recibo-firmas` (`<locality_id>/firma/<uuid>.png`),
-  se lee por URL firmada y se sube **desde el navegador**, por el techo de
-  4,5 MB de Vercel. ⚠️ La policy de LECTURA es "cualquier autenticado", no
+  al bucket **privado** `recibo-firmas` (`<locality_id>/firma/<uuid>.png`)
+  y se sube **desde el navegador**, por el techo de 4,5 MB de Vercel.
+  ⚠️ Al RENDERIZAR no va por URL firmada sino inlineada como `data:` URI
+  (`loadSignatureImage`), y eso no es una optimización: el botón
+  "Compartir por WhatsApp" captura la hoja con `html-to-image`, que para
+  cada `<img>` remoto vuelve a pedir el archivo por su cuenta —le pega a
+  la URL un `&<timestamp>` SIN nombre de parámetro— y si el pedido falla
+  hace `dataURL = imagePlaceholder || `: deja la imagen vacía, no tira
+  error y solo loguea un warning. Además la URL firmada vence a la hora,
+  así que una pestaña abierta hace rato perdía la firma por otro camino.
+  Si se agrega otra imagen a la hoja, va por ahí también. ⚠️ La policy de LECTURA es "cualquier autenticado", no
   por carpeta, y es el único camino que funciona: un creyente de
   Montevideo que aportó al Fondo Nacional abre una copia cuyo recibo es de
   la AEN. No se pierde nada — esa imagen va impresa en el papel que igual
