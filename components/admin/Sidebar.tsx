@@ -57,7 +57,10 @@ type Props = {
 
 export function SidebarContent({ profile, locality, onNavigate }: Props) {
   const pathname = usePathname();
-  const groups = useMemo(() => visibleNav(profile), [profile]);
+  const groups = useMemo(
+    () => visibleNav(profile, locality?.kind ?? "ael"),
+    [profile, locality?.kind]
+  );
   const active = useMemo(() => activeLeaf(groups, pathname), [groups, pathname]);
   const activeGroupKey = active?.group.key ?? null;
 

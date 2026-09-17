@@ -15,6 +15,12 @@ export type HeaderUser = {
    * un componente cliente al que todas las páginas le pasan constantes.
    */
   isBahai: boolean;
+  /**
+   * true = la comunidad que tiene puesta es la Comunidad Nacional (056),
+   * que no celebra Fiesta de los 19 Días. Mismo mecanismo que isBahai:
+   * lo pone el layout y lo lee SegmentedNav, que es cliente.
+   */
+  isNationalCommunity: boolean;
 };
 
 /**
@@ -47,6 +53,15 @@ export function HeaderUserProvider({
 export function useIsBahai(): boolean {
   const user = useContext(HeaderUserContext);
   return user?.isBahai ?? true;
+}
+
+/**
+ * ¿La comunidad activa es la Nacional? Fuera del provider devuelve
+ * false: el caso por defecto es una Asamblea Local.
+ */
+export function useIsNationalCommunity(): boolean {
+  const user = useContext(HeaderUserContext);
+  return user?.isNationalCommunity ?? false;
 }
 
 /**

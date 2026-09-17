@@ -1,5 +1,6 @@
 import "server-only";
 import webpush from "web-push";
+import { getLocalityMembers } from "./memberships";
 import { createSupabaseAdmin } from "./supabase/admin";
 import type { ChatTopic } from "./types";
 
@@ -91,13 +92,14 @@ export async function getLocalityMemberIds(
 ): Promise<string[]> {
   const supabase = createSupabaseAdmin();
   if (!supabase) return [];
-  let query = supabase
-    .from("profiles")
-    .select("id")
-    .eq("locality_id", localityId);
-  if (opts.bahaiOnly) query = query.eq("is_bahai", true);
-  const { data } = await query;
-  return ((data ?? []) as Array<{ id: string }>).map((d) => d.id);
+  // ⚠️ Por MEMBRESÍA, no por el sombrero puesto (056). Quien pertenece a
+  // dos comunidades tiene que recibir el aviso de las dos, ande con el
+  // sombrero que ande. Preguntarle a `profiles.locality_id` lo dejaba
+  // afuera de una de ellas sin que nadie se enterara.
+  const members = await getLocalityMembers(supabase, localityId);
+  return members
+    .filter((m) => (opts.bahaiOnly ? m.is_bahai : true))
+    .map((m) => m.id);
 }
 
 /** Alcance de push de una localidad: cuántos de sus miembros tienen al
@@ -109,11 +111,9 @@ export async function getLocalityPushReach(
   const supabase = createSupabaseAdmin();
   if (!supabase) return { withPush: 0, total: 0 };
 
-  const { data: members } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("locality_id", localityId);
-  const memberIds = ((members ?? []) as Array<{ id: string }>).map((m) => m.id);
+  const memberIds = (await getLocalityMembers(supabase, localityId)).map(
+    (m) => m.id
+  );
   if (memberIds.length === 0) return { withPush: 0, total: 0 };
 
   const { data: subs } = await supabase
@@ -134,12 +134,10 @@ export async function getLocalityAdminIds(
 ): Promise<string[]> {
   const supabase = createSupabaseAdmin();
   if (!supabase) return [];
-  const { data } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("locality_id", localityId)
-    .eq("role", "admin");
-  return ((data ?? []) as Array<{ id: string }>).map((d) => d.id);
+  // El rol es el de la MEMBRESÍA: alguien puede ser de la Asamblea acá y
+  // creyente común en su otra comunidad (056).
+  const members = await getLocalityMembers(supabase, localityId);
+  return members.filter((m) => m.role === "admin").map((m) => m.id);
 }
 
 /** IDs de quienes atienden un canal del chat en una localidad (para avisar
@@ -153,14 +151,13 @@ export async function getChatAdminIds(
 ): Promise<string[]> {
   const supabase = createSupabaseAdmin();
   if (!supabase) return [];
-  const tagColumn =
-    topic === "tesoreria" ? "can_manage_treasury" : "can_respond_chat";
-  const { data } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("locality_id", localityId)
-    .eq(tagColumn, true);
-  return ((data ?? []) as Array<{ id: string }>)
-    .map((d) => d.id)
+  // Los tags también son de la membresía (056): el tesorero nacional
+  // atiende el chat de la Comunidad Nacional y no el de su AEL.
+  const members = await getLocalityMembers(supabase, localityId);
+  return members
+    .filter((m) =>
+      topic === "tesoreria" ? m.can_manage_treasury : m.can_respond_chat
+    )
+    .map((m) => m.id)
     .filter((id) => id !== excludeUserId);
 }

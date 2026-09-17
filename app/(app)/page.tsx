@@ -7,6 +7,7 @@ import { GoldHeader } from "@/components/GoldHeader";
 import { SectionGrid } from "@/components/home/SectionGrid";
 import { UpcomingEvents } from "@/components/home/UpcomingEvents";
 import { requireMember } from "@/lib/auth";
+import { isNationalLocality } from "@/lib/types";
 import {
   getBadges,
   getChatDuty,
@@ -58,7 +59,11 @@ export default async function HomePage() {
           topic={citaDelDia.topic}
           dateLabel={civilDateLabel()}
         />
-        <SectionGrid badges={badges} isBahai={session.profile.is_bahai} />
+        <SectionGrid
+          badges={badges}
+          isBahai={session.profile.is_bahai}
+          isNational={isNationalLocality(session.locality)}
+        />
         <ChatDutyCard duties={chatDuty} />
         <UpcomingEvents events={upcoming} />
         <FeaturedPhotos photos={featuredPhotos} />

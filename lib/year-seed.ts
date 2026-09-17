@@ -17,8 +17,13 @@ export type YearSeedResult = {
  */
 export async function ensureYearSeeded(
   localityId: string,
-  today: Date = new Date()
+  today: Date = new Date(),
+  // La Comunidad Nacional (056) recibe los Días Sagrados —son del
+  // calendario Badí' y los observa todo el mundo— pero no las Fiestas:
+  // la Fiesta de los 19 Días se celebra en la comunidad local.
+  opts: { seedFeasts?: boolean } = {}
 ): Promise<YearSeedResult> {
+  const { seedFeasts = true } = opts;
   const currentYear = getCurrentBahaiYear(today);
   if (currentYear == null) {
     return {
@@ -34,9 +39,11 @@ export async function ensureYearSeeded(
   let holyDaysSeeded = 0;
 
   const seedYear = async (y: number) => {
-    const f = await ensureFeastsSeeded(localityId, y);
-    if (f.error) errors.push(`feasts BE${y}: ${f.error}`);
-    feastsSeeded += f.seeded;
+    if (seedFeasts) {
+      const f = await ensureFeastsSeeded(localityId, y);
+      if (f.error) errors.push(`feasts BE${y}: ${f.error}`);
+      feastsSeeded += f.seeded;
+    }
 
     const h = await ensureHolyDaysSeeded(localityId, y);
     if (h.error) errors.push(`holy days BE${y}: ${h.error}`);

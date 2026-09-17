@@ -24,6 +24,8 @@ type Props = {
   };
   /** false = Amigo/a de la Fe: sin el acceso a Fiestas (047). */
   isBahai?: boolean;
+  /** La Comunidad Nacional no celebra Fiesta de 19 Días (056). */
+  isNational?: boolean;
 };
 
 /**
@@ -31,7 +33,11 @@ type Props = {
  * surfacea destinos de alta intención o que quedan a 2 toques dentro de
  * un hub (Chat y Comunicados viven en AEL; Fiestas vive en Calendario).
  */
-export function SectionGrid({ badges, isBahai = true }: Props) {
+export function SectionGrid({
+  badges,
+  isBahai = true,
+  isNational = false,
+}: Props) {
   const TERRA = "#2A3F8F";
   const AMBER = "#7E44B8";
   const GOLD = "#96790E";
@@ -66,7 +72,7 @@ export function SectionGrid({ badges, isBahai = true }: Props) {
       hasUnseen: badges?.comunicados_has_unseen ?? false,
     },
     // Un Amigo/a de la Fe no tiene Fiesta: la grilla queda de tres.
-    ...(isBahai ? [fiestas] : []),
+    ...(isBahai && !isNational ? [fiestas] : []),
   ];
 
   return (

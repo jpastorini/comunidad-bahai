@@ -10,6 +10,7 @@
 
 import { getBahaiYearCalendar, getCurrentBahaiYear } from "./bahai-calendar";
 import { civilDateISO } from "./citas";
+import { activeMembers, getLocalityMembers } from "./memberships";
 import { createSupabaseAdmin } from "./supabase/admin";
 import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
 import { usageSectionLabel } from "./usage-sections";
@@ -157,27 +158,22 @@ export async function getUsageReport(
   const supabase = createSupabaseServer();
   const args = { p_from: range.from, p_to: range.to };
 
-  const [profilesRes, sectionsRes, daysRes, peopleRes] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("id, full_name, avatar_url, is_bahai, last_seen_at, pwa_installed_at")
-      .eq("locality_id", localityId)
-      .is("disabled_at", null)
-      .order("full_name", { ascending: true }),
+  const [roster, sectionsRes, daysRes, peopleRes] = await Promise.all([
+    // Por membresía (056), no por el sombrero puesto.
+    getLocalityMembers(supabase, localityId),
     supabase.rpc("usage_by_section", args),
     supabase.rpc("usage_by_day", args),
     supabase.rpc("usage_by_person", args),
   ]);
 
-  const firstError =
-    profilesRes.error ?? sectionsRes.error ?? daysRes.error ?? peopleRes.error;
+  const firstError = sectionsRes.error ?? daysRes.error ?? peopleRes.error;
   if (firstError) {
     // Antes de la 049 no existen ni la columna ni las funciones.
     console.error("[usage] report:", firstError.message);
     return null;
   }
 
-  const profiles = (profilesRes.data ?? []) as ProfileRow[];
+  const profiles: ProfileRow[] = activeMembers(roster);
   const ids = new Set(profiles.map((p) => p.id));
 
   // Quién tiene push: la RLS de push_subscriptions solo deja ver las

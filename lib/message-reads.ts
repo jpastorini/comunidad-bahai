@@ -13,6 +13,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { activeMembers, getLocalityMembers } from "./memberships";
 import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
 import type { Message, MessageRead } from "./types";
 
@@ -76,17 +77,17 @@ export async function getAudience(
   supabase: SupabaseClient,
   localityId: string
 ): Promise<AudienceProfile[]> {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, full_name, avatar_url, is_bahai, last_seen_at")
-    .eq("locality_id", localityId)
-    .is("disabled_at", null)
-    .order("full_name", { ascending: true });
-  if (error) {
-    console.error("[message-reads] getAudience:", error.message);
-    return [];
-  }
-  return (data ?? []) as AudienceProfile[];
+  // Por MEMBRESÍA (056): quien pertenece a la localidad aunque ande con
+  // el sombrero de otra. Si no, el informe lo cuenta como "no vio" a
+  // alguien que sí es destinatario.
+  const members = activeMembers(await getLocalityMembers(supabase, localityId));
+  return members.map((m) => ({
+    id: m.id,
+    full_name: m.full_name,
+    avatar_url: m.avatar_url,
+    is_bahai: m.is_bahai,
+    last_seen_at: m.last_seen_at,
+  })) as AudienceProfile[];
 }
 
 export function audienceFor(m: Message, all: AudienceProfile[]): AudienceProfile[] {

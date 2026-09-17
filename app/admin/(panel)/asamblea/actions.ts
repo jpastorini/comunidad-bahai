@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { ASSEMBLY_DOCS_BUCKET, ASSEMBLY_SIZE } from "@/lib/assembly";
 import { requireAdmin } from "@/lib/auth";
 import { isSchemaMissing } from "@/lib/polls-shared";
+import { getLocalityMembers } from "@/lib/memberships";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 import { ASSEMBLY_OFFICES, type AssemblyOffice } from "@/lib/types";
@@ -172,15 +173,11 @@ export async function saveAssemblyTermAction(formData: FormData) {
     fail("La fecha de elección no es válida.", year);
   }
 
-  // Los perfiles de la localidad, para tomar el nombre del elegido.
-  const { data: profileRows } = await supabase
-    .from("profiles")
-    .select("id, full_name, email")
-    .eq("locality_id", localityId);
+  // Las personas de la comunidad, para tomar el nombre del elegido. Por
+  // membresía (056), o sea también quien ande con el sombrero de otra.
   const nameById = new Map<string, string>();
-  for (const p of profileRows ?? []) {
-    const row = p as { id: string; full_name: string | null; email: string | null };
-    nameById.set(row.id, row.full_name?.trim() || row.email || "Sin nombre");
+  for (const p of await getLocalityMembers(supabase, localityId)) {
+    nameById.set(p.id, p.full_name?.trim() || p.email || "Sin nombre");
   }
 
   type Row = {

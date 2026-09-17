@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useIsBahai } from "./HeaderUser";
+import { useIsBahai, useIsNationalCommunity } from "./HeaderUser";
 
 export type SegmentItem = {
   href: string;
@@ -11,6 +11,8 @@ export type SegmentItem = {
   prefix?: string;
   /** Solo para creyentes: un Amigo/a de la Fe no ve este segmento (047). */
   bahaiOnly?: boolean;
+  /** Solo en una Asamblea Local: la Comunidad Nacional no lo tiene (056). */
+  aelOnly?: boolean;
 };
 
 /**
@@ -21,7 +23,10 @@ export type SegmentItem = {
 export function SegmentedNav({ items }: { items: SegmentItem[] }) {
   const pathname = usePathname();
   const isBahai = useIsBahai();
-  const visible = isBahai ? items : items.filter((i) => !i.bahaiOnly);
+  const isNational = useIsNationalCommunity();
+  const visible = items.filter(
+    (i) => (isBahai || !i.bahaiOnly) && !(isNational && i.aelOnly)
+  );
 
   return (
     <div className="shrink-0 px-4 pb-2 pt-3">
@@ -77,7 +82,13 @@ export const CHAT_SEGMENTS: SegmentItem[] = [
 /** Items del hub Calendario (todo lo que ocurre en el tiempo). */
 export const CALENDARIO_SEGMENTS: SegmentItem[] = [
   { href: "/calendario", label: "Calendario", prefix: "/calendario" },
-  { href: "/fiestas", label: "Fiestas", prefix: "/fiestas", bahaiOnly: true },
+  {
+    href: "/fiestas",
+    label: "Fiestas",
+    prefix: "/fiestas",
+    bahaiOnly: true,
+    aelOnly: true,
+  },
   { href: "/dias-sagrados", label: "Días Sagrados", prefix: "/dias-sagrados" },
   { href: "/actividades", label: "Actividades", prefix: "/actividades" },
 ];

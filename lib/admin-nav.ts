@@ -1,4 +1,4 @@
-import type { Profile } from "@/lib/types";
+import type { LocalityKind, Profile } from "@/lib/types";
 
 /**
  * Estructura del menú del panel de la Asamblea.
@@ -23,6 +23,8 @@ export type NavLeaf = {
   match?: string[];
   /** Si es true, el ítem prende solo con la ruta exacta (para "/admin"). */
   exact?: boolean;
+  /** Solo en una Asamblea Local: la Comunidad Nacional no lo tiene (056). */
+  aelOnly?: boolean;
 };
 
 export type NavGroup = {
@@ -69,7 +71,7 @@ export const ADMIN_NAV: NavGroup[] = [
     label: "Vida comunitaria",
     children: [
       { href: "/admin/calendario", label: "Calendario" },
-      { href: "/admin/fiestas", label: "Fiestas de 19 Días" },
+      { href: "/admin/fiestas", label: "Fiestas de 19 Días", aelOnly: true },
       { href: "/admin/sugerencias", label: "Sugerencias" },
       { href: "/admin/actividades", label: "Actividades" },
       { href: "/admin/servicio", label: "Servicio" },
@@ -139,7 +141,11 @@ export function canSee(req: NavRequirement | undefined, profile: Profile): boole
 }
 
 /** Grupos y hojas visibles para este perfil; grupos sin hijos visibles se van. */
-export function visibleNav(profile: Profile): NavGroup[] {
+export function visibleNav(
+  profile: Profile,
+  localityKind: LocalityKind = "ael"
+): NavGroup[] {
+  const isNational = localityKind === "nacional";
   const out: NavGroup[] = [];
   for (const group of ADMIN_NAV) {
     if (group.requires && !canSee(group.requires, profile)) continue;
@@ -147,8 +153,10 @@ export function visibleNav(profile: Profile): NavGroup[] {
       if (canSee(undefined, profile)) out.push(group);
       continue;
     }
-    const children = group.children.filter((leaf) =>
-      canSee(leaf.requires ?? group.requires, profile)
+    const children = group.children.filter(
+      (leaf) =>
+        canSee(leaf.requires ?? group.requires, profile) &&
+        !(isNational && leaf.aelOnly)
     );
     if (children.length > 0) out.push({ ...group, children });
   }

@@ -7,7 +7,7 @@ import {
   createSupabaseServer,
   isSupabaseConfigured,
 } from "./supabase/server";
-import type { Locality, Profile } from "./types";
+import { isNationalLocality, type Locality, type Profile } from "./types";
 
 export type AdminSession = {
   user: { id: string; email: string };
@@ -406,6 +406,22 @@ export async function requireBahai(
 ): Promise<MemberSession & { locality: Locality }> {
   const session = await requireMember(redirectTo);
   if (!session.profile.is_bahai) {
+    redirect("/");
+  }
+  return session;
+}
+
+/**
+ * La Fiesta de los 19 Días se celebra en la comunidad local: la
+ * Comunidad Nacional (056) no la tiene. Quien ande con ese sombrero
+ * puesto vuelve al Inicio en vez de encontrar una pantalla vacía.
+ * Incluye el guard de creyente, porque un Amigo/a de la Fe tampoco.
+ */
+export async function requireFeastAccess(
+  redirectTo: string = "/"
+): Promise<MemberSession & { locality: Locality }> {
+  const session = await requireBahai(redirectTo);
+  if (isNationalLocality(session.locality)) {
     redirect("/");
   }
   return session;

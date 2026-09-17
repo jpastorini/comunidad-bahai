@@ -11,6 +11,7 @@ import {
 import { currentAssemblyYear, getAssemblyData } from "@/lib/assembly";
 import { requireAdmin } from "@/lib/auth";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { activeMembers, getLocalityMembers } from "@/lib/memberships";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { ASSEMBLY_SIZE, ASSEMBLY_OFFICE_LABELS } from "@/lib/types";
 import { removeStatutesAction } from "./actions";
@@ -45,18 +46,15 @@ export default async function AdminAsambleaPage({
   const requested = parseInt(searchParams.ejercicio ?? "", 10);
   const year = Number.isFinite(requested) && requested >= 100 && requested <= 400 ? requested : current;
 
-  const [data, { data: profileRows }] = await Promise.all([
+  const [data, roster] = await Promise.all([
     getAssemblyData(supabase, localityId, year),
-    supabase
-      .from("profiles")
-      .select("id, full_name, email, role, can_manage_treasury, can_respond_chat")
-      .eq("locality_id", localityId)
-      .is("disabled_at", null)
-      .order("role", { ascending: false })
-      .order("full_name", { ascending: true }),
+    // Por membresía (056): el rol y los tags son los de ESTA comunidad.
+    getLocalityMembers(supabase, localityId),
   ]);
 
-  const profiles: PickableProfile[] = ((profileRows ?? []) as ProfileRow[]).map((p) => ({
+  const profiles: PickableProfile[] = activeMembers(roster)
+    .sort((a, b) => b.role.localeCompare(a.role))
+    .map((p) => ({
     id: p.id,
     name: p.full_name?.trim() || p.email || "Sin nombre",
     role: p.role,

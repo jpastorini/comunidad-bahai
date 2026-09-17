@@ -1,6 +1,7 @@
 import { ChatNotifier } from "@/components/ChatNotifier";
 import { DayChangeRefresh } from "@/components/DayChangeRefresh";
 import { HeaderUserProvider } from "@/components/HeaderUser";
+import { isNationalLocality } from "@/lib/types";
 import { InstallSheet } from "@/components/InstallSheet";
 import { NotificationsSheet } from "@/components/NotificationsSheet";
 import { PhotoFab } from "@/components/PhotoFab";
@@ -49,6 +50,7 @@ export default async function AppLayout({
           fullName: session.profile.full_name,
           unreadCount: unreadNotifs,
           isBahai: session.profile.is_bahai,
+          isNationalCommunity: isNationalLocality(session.locality),
         }}
       >
         {children}

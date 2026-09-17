@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Banner, Button, DataTable, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
+import { isNationalLocality } from "@/lib/types";
 import { getCalendarKind } from "@/lib/calendar-kinds";
 import { getUnifiedCalendarItems } from "@/lib/data";
 import type { UnifiedCalendarItem } from "@/lib/data";
@@ -30,7 +31,9 @@ export default async function AdminCalendarPage({
   searchParams: { vista?: string; m?: string };
 }) {
   const session = await requireAdmin();
-  await ensureYearSeeded(session.locality.id);
+  await ensureYearSeeded(session.locality.id, new Date(), {
+    seedFeasts: !isNationalLocality(session.locality),
+  });
   const items = await getUnifiedCalendarItems();
 
   const vista = searchParams?.vista === "lista" ? "lista" : "mes";

@@ -8,7 +8,12 @@ import {
 } from "@/components/admin/ui";
 import { requireNationalAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { ROLE_LABELS, type Locality, type Profile } from "@/lib/types";
+import {
+  ROLE_LABELS,
+  isNationalLocality,
+  type Locality,
+  type Profile,
+} from "@/lib/types";
 import { updateMemberLocalityAction } from "../actions";
 
 export const revalidate = 60;
@@ -30,12 +35,28 @@ export default async function NacionalMiembrosPage() {
       // lista se reordene tras un UPDATE y descoordine los inputs.
       .order("id", { ascending: true })
       .limit(100),
-    supabase.from("localities").select("id, name, is_active").order("name"),
+    supabase.from("localities").select("id, name, is_active, kind").order("name"),
   ]);
 
   const profiles = (profilesRaw ?? []) as Profile[];
   const localities = (localitiesRaw ?? []) as Locality[];
   const localityMap = new Map(localities.map((l) => [l.id, l]));
+
+  // Quiénes integran hoy la Asamblea Nacional: los que tienen membresía
+  // (055) en la Comunidad Nacional (056) con rol de Asamblea. Se lee
+  // acá y no del perfil porque el rol es POR COMUNIDAD: la misma
+  // persona puede ser de la AEN y creyente común en su AEL.
+  const nationalLocality = localities.find((l) => isNationalLocality(l)) ?? null;
+  const nationalAssembly = new Set<string>();
+  if (nationalLocality) {
+    const { data: rows } = await supabase
+      .from("profile_localities")
+      .select("profile_id, role")
+      .eq("locality_id", nationalLocality.id);
+    for (const r of (rows ?? []) as Array<{ profile_id: string; role: string }>) {
+      if (r.role === "admin") nationalAssembly.add(r.profile_id);
+    }
+  }
 
   return (
     <>
@@ -63,6 +84,8 @@ export default async function NacionalMiembrosPage() {
             localities={localities}
             currentLocality={p.locality_id ? localityMap.get(p.locality_id) : undefined}
             isMe={p.id === session.user.id}
+            inNationalAssembly={nationalAssembly.has(p.id)}
+            hasNationalCommunity={!!nationalLocality}
           />
         ))}
       </div>
@@ -75,11 +98,15 @@ function MemberCard({
   localities,
   currentLocality,
   isMe,
+  inNationalAssembly,
+  hasNationalCommunity,
 }: {
   profile: Profile;
   localities: Locality[];
   currentLocality: Locality | undefined;
   isMe: boolean;
+  inNationalAssembly: boolean;
+  hasNationalCommunity: boolean;
 }) {
   return (
     <Card>
@@ -153,6 +180,22 @@ function MemberCard({
             defaultChecked={profile.can_manage_treasury}
           />
         </div>
+
+        {hasNationalCommunity && !isMe && (
+          <div className="mt-4 rounded-xl border border-gold/30 bg-gold/[0.06] p-3">
+            <Checkbox
+              name="national_assembly"
+              label="Miembro de la Asamblea Nacional"
+              defaultChecked={inNationalAssembly}
+            />
+            <p className="mt-1.5 text-[11px] leading-[1.5] text-muted">
+              Se SUMA a su comunidad local, no la reemplaza: la persona
+              pertenece a las dos y elige cuál tiene puesta desde su perfil.
+              En la Comunidad Nacional queda con rol de Asamblea; en su
+              localidad conserva el rol y los permisos que tenga allá.
+            </p>
+          </div>
+        )}
 
         <div className="mt-4 flex justify-end">
           <button

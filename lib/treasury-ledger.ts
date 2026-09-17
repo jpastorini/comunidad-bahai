@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { activeMembers, getLocalityMembers } from "./memberships";
 import { addMoney } from "./treasury-format";
 
 /**
@@ -115,7 +116,7 @@ export async function getLedgerCatalog(
   supabase: SupabaseClient,
   localityId: string
 ): Promise<LedgerCatalog> {
-  const [accounts, funds, categories, subcategories, contributors, members] =
+  const [accounts, funds, categories, subcategories, contributors, roster] =
     await Promise.all([
       supabase
         .from("treasury_accounts")
@@ -137,15 +138,10 @@ export async function getLedgerCatalog(
         .from("treasury_contributors")
         .select("id, name, kind, profile_id, is_active")
         .order("name"),
-      // Los creyentes activos de la localidad. El tesorero es admin, así
-      // que la RLS de profiles ya lo deja leerlos (es la misma lista de
-      // /admin/miembros).
-      supabase
-        .from("profiles")
-        .select("id, full_name")
-        .eq("locality_id", localityId)
-        .is("disabled_at", null)
-        .order("full_name"),
+      // Los creyentes activos de la comunidad, por MEMBRESÍA (056): es
+      // la misma lista de /admin/miembros, e incluye a quien pertenece
+      // acá aunque ande con el sombrero de otra comunidad.
+      getLocalityMembers(supabase, localityId),
     ]);
 
   return {
@@ -154,7 +150,9 @@ export async function getLedgerCatalog(
     categories: (categories.data ?? []) as TreasuryCategory[],
     subcategories: (subcategories.data ?? []) as TreasurySubcategory[],
     contributors: (contributors.data ?? []) as TreasuryContributor[],
-    members: (members.data ?? []) as LedgerMember[],
+    members: activeMembers(roster).map(
+      (m): LedgerMember => ({ id: m.id, full_name: m.full_name })
+    ),
   };
 }
 

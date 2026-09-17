@@ -1472,9 +1472,10 @@ y de su AEL— desaparece de los padrones de la comunidad cuyo sombrero no
 tiene puesto. El peor es el push: falla **en silencio**, nadie se entera
 de que el comunicado no le llegó a alguien.
 
-Los ocho, que migran a `profile_localities` en la MISMA tanda que el
-tenant nacional (no después: el primer caso de dos sombreros aparece el
-día uno):
+Los que había, ya migrados a `profile_localities` en la 056 —todos
+pasan por `getLocalityMembers()` (`lib/memberships.ts`), que llama a la
+función `locality_members()` y cae al padrón viejo si la migración
+todavía no corrió, para que el push nunca se quede sin destinatarios—:
 
 1. `/admin/miembros` — la lista de creyentes (`page.tsx`).
 2. `getLocalityMemberIds()` (`lib/push.ts`) — el push de comunicados,
@@ -1489,22 +1490,62 @@ día uno):
    contribuyentes del libro.
 8. `/admin/asamblea` (`page.tsx` y `actions.ts`) — la precarga de la
    composición desde quienes tienen rol de Asamblea.
+9. `getLocalityAdminIds()` y `getChatAdminIds()` (`lib/push.ts`), que
+   aparecieron al migrar: el rol y los tags que deciden a quién avisar
+   también son de la membresía.
+10. `updateMemberLocalityAction` (`/admin/nacional`), que escribía
+    `profiles.locality_id` directo y dejaba a la persona con un sombrero
+    sin membresía debajo.
 
 La regla para cualquier consulta nueva: si la pregunta es "¿quién es de
 esta comunidad?", va contra `profile_localities`; si es "¿qué puede ver
 quien está preguntando?", va contra `current_locality_id()`.
 
-### Lo que falta (056, 057, 058)
+### La Comunidad Nacional (056)
 
-**056 · El tenant nacional.** `localities.kind` (`'ael' | 'nacional'`), la
-fila de la Comunidad Nacional, el helper `is_national_assembly()`, el
-tercer token de invitación y la salida "No pertenezco a una comunidad
-local" en `/seleccionar-localidad`. Decidido con el usuario: la Comunidad
-Nacional **no** celebra Fiesta de 19 Días (se apaga por `kind`) y **sí**
-tiene Boletín, Disponibilidad, Sugerencias y Servicio. Faltan las
-etiquetas: `BalanceSheet`, `CashBookSheet` y el recibo escriben
-"Asamblea Espiritual **Local** de los Bahá'ís de X" cuando no hay nombre
-registrado.
+Es `localities.kind = 'nacional'`, una fila más sembrada por la
+migración ("Comunidad Bahá'í del Uruguay", una sola, garantizada por un
+índice único parcial). Hereda el libro contable, los recibos, los
+informes, los cierres, el balance, el chat por canal, la ficha legal, el
+link de invitación y la aprobación de altas, porque todo eso ya era por
+localidad. Lo único que se apagó es la **Fiesta de los 19 Días**, que se
+celebra en la comunidad local: `aelOnly` en `ADMIN_NAV` y en
+`SegmentedNav`, la tarjeta del Inicio, `requireFeastAccess()`
+(`lib/auth.ts`), el redirect de `/admin/fiestas` y el `seedFeasts: false`
+de `ensureYearSeeded()`. Los Días Sagrados sí se siembran: son del
+calendario Badí' y los observa todo el mundo.
+
+- **`is_national_assembly(uid)`** = admin **con el sombrero nacional
+  puesto**. Autoriza a escribir contenido con `locality_id IS NULL` y
+  nada más. Que mire el sombrero es deliberado: se publica en nombre de
+  la institución con la que estás actuando en ese momento.
+- **La ficha legal se siembra con el nombre registrado** ("Asamblea
+  Espiritual Nacional de los Bahá'ís del Uruguay"). No es cosmético: el
+  recibo, el Libro de Caja, la hoja interna, el deck y el balance
+  imprimen `registered_name` y, cuando está vacío, caen a "Asamblea
+  Espiritual **Local** de los Bahá'ís de <localidad>". Con la fila
+  sembrada, los documentos de la AEN salen bien desde el primero.
+- **No hace falta un tercer token de invitación**: `locality_invites` es
+  por localidad, así que la Comunidad Nacional tiene el suyo (y el de
+  Amigos de la Fe) como cualquier otra.
+- **El primer ingreso** ofrece "No pertenezco a una Asamblea Local" al
+  pie de la lista, separado y en dorado. La Comunidad Nacional NO va
+  mezclada entre las Asambleas Locales: es una respuesta distinta, y
+  mezclarla haría que alguien la eligiera creyendo que es su ciudad.
+- **Cómo se asigna el rol de la AEN.** Es una membresía en la Comunidad
+  Nacional con rol de Asamblea, y se marca con la casilla "Miembro de la
+  Asamblea Nacional" de `/admin/nacional/miembros`. Se SUMA a la
+  comunidad local, no la reemplaza. Esa pantalla es la única puerta
+  —requiere `is_national_admin`— porque al principio la AEN no tiene a
+  nadie que la administre; después se gestiona sola desde
+  `/admin/miembros` con el sombrero nacional puesto. ⚠️ Ese action
+  además dejó de escribir `profiles.locality_id` a mano: ahora la
+  mudanza va por `move_membership()`, porque poner un sombrero sin la
+  membresía correspondiente dejaba a la persona en una comunidad a la
+  que no pertenece (y sin poder volver: `switch_locality()` no la
+  dejaría).
+
+### Lo que falta (057, 058)
 
 **057 · Comunicados nacionales.** `messages.source` suma
 `'asamblea_nacional'` con `locality_id IS NULL`. Heredan audiencia (047)
@@ -1532,11 +1573,11 @@ por comunidad.
 
 ## Pendientes conocidos
 
-- **Aplicar la 055 antes de desplegar.** Sin ella, el primer ingreso
-  (`join_locality`), la ficha de `/admin/miembros` (upsert en
-  `profile_localities`), la invitación y la aprobación de cambio de
-  localidad fallan: las cuatro escriben la membresía. El selector de
-  comunidad en `/perfil` cae con gracia (lista vacía, no se muestra).
+- **Aplicar la 056 antes de desplegar.** La 055 ya está aplicada. Sin la
+  056 no existe la Comunidad Nacional ni `localities.kind`, así que
+  `/seleccionar-localidad` no ofrece la salida nacional y la casilla
+  "Miembro de la Asamblea Nacional" no aparece. Los padrones sí caen con
+  gracia: `getLocalityMembers()` reintenta con el padrón viejo y loguea.
 - **Cargar el domicilio fiscal en Datos de la Asamblea y cerrar los meses
   de abril a agosto de 2026** en `/admin/tesoreria/libro/cierres`,
   imprimiendo el Libro de Caja de cada uno. La 054 ya está aplicada y

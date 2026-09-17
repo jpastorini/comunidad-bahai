@@ -9,6 +9,7 @@ import {
 import { requireAdmin } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { getOrCreateLocalityInvite } from "@/lib/invites";
+import { getLocalityMembers } from "@/lib/memberships";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import {
   CONDITION_LABELS,
@@ -29,20 +30,12 @@ export default async function AdminMiembrosPage() {
   const session = await requireAdmin();
   const supabase = createSupabaseServer();
 
-  const [{ data }, { data: requestRows }, invite] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select(
-        "id, full_name, email, role, can_respond_chat, can_manage_treasury, can_manage_bulletin, is_bahai, locality_id, disabled_at, created_at"
-      )
-      .eq("locality_id", session.locality.id)
-      .order("role", { ascending: false })
-      .order("created_at", { ascending: true })
-      // Desempate determinístico: sin esto, las filas con mismo rol y
-      // created_at empatado pueden volver en distinto orden tras un UPDATE,
-      // descoordinando los inputs no controlados (nombre) del resto.
-      .order("id", { ascending: true })
-      .limit(100),
+  const [roster, { data: requestRows }, invite] = await Promise.all([
+    // Por MEMBRESÍA (056): el padrón de esta comunidad, con el rol y los
+    // tags de acá. Antes preguntaba por el sombrero puesto, así que
+    // quien anduviera con el de otra comunidad desaparecía de su propia
+    // lista. El orden se hace acá porque la función devuelve por nombre.
+    getLocalityMembers(supabase, session.locality.id),
     // Solicitudes de ingreso PENDIENTES hacia esta localidad.
     supabase
       .from("locality_change_requests")
@@ -53,7 +46,22 @@ export default async function AdminMiembrosPage() {
     getOrCreateLocalityInvite(session.locality.id),
   ]);
 
-  const profiles = (data ?? []) as Profile[];
+  // Mismo orden que antes lo hacía Postgres. El desempate por id no es
+  // decorativo: sin él, dos filas con igual rol y created_at pueden
+  // volver en distinto orden tras un UPDATE y descoordinar los inputs no
+  // controlados (el nombre) del resto de la lista.
+  const profiles = [...roster]
+    .sort(
+      (a, b) =>
+        b.role.localeCompare(a.role) ||
+        a.created_at.localeCompare(b.created_at) ||
+        a.id.localeCompare(b.id)
+    )
+    .slice(0, 100)
+    .map((m) => ({
+      ...m,
+      locality_id: session.locality.id,
+    })) as unknown as Profile[];
   const activeProfiles = profiles.filter((p) => !p.disabled_at);
   const disabledProfiles = profiles.filter((p) => p.disabled_at);
   const pendingRequests = (requestRows ?? []) as LocalityChangeRequest[];

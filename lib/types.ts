@@ -181,6 +181,8 @@ export const ROLE_LABELS: Record<Profile["role"], string> = {
   admin: "Miembro Asamblea Local",
 };
 
+export type LocalityKind = "ael" | "nacional";
+
 export type Locality = {
   id: string;
   name: string;
@@ -188,8 +190,21 @@ export type Locality = {
   country: string;
   description: string | null;
   is_active: boolean;
+  /**
+   * 'ael' = una Asamblea Espiritual Local. 'nacional' = la Comunidad
+   * Nacional (056), el tenant de la AEN: hereda todo menos la Fiesta de
+   * los 19 Días, que se celebra en la comunidad local.
+   */
+  kind: LocalityKind;
   created_at: string;
 };
+
+/** ¿Es la Comunidad Nacional? Tolera la fila sin `kind` (pre-056). */
+export function isNationalLocality(
+  locality: { kind?: LocalityKind | null } | null | undefined
+): boolean {
+  return locality?.kind === "nacional";
+}
 
 // ─── Datos de la Asamblea (052) ─────────────────────────────────────
 

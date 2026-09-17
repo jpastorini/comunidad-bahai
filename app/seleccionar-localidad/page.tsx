@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { BahaiStar } from "@/components/BahaiStar";
 import { createSupabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
-import type { Locality } from "@/lib/types";
+import { isNationalLocality, type Locality } from "@/lib/types";
 import { selectLocalityAction } from "./actions";
 
 export const revalidate = 60;
@@ -59,7 +59,12 @@ export default async function SeleccionarLocalidadPage({
     redirect(searchParams.next ?? (profile.role === "admin" ? "/admin" : "/"));
   }
 
-  const list = (localities ?? []) as Locality[];
+  const all = (localities ?? []) as Locality[];
+  // La Comunidad Nacional (056) no va mezclada con las Asambleas
+  // Locales: es una respuesta distinta —"no pertenezco a ninguna"— y
+  // mezclarla haría que alguien la eligiera creyendo que es su ciudad.
+  const list = all.filter((l) => !isNationalLocality(l));
+  const national = all.find((l) => isNationalLocality(l)) ?? null;
   const error = searchParams.error ? ERROR_COPY[searchParams.error] : null;
   // En modo cambio, la elección crea una SOLICITUD (no cambia directo).
   const isExistingMember = !!profile?.locality_id;
@@ -151,6 +156,36 @@ export default async function SeleccionarLocalidadPage({
                 </li>
               ))}
             </ul>
+          )}
+
+          {national && !isExistingMember && (
+            <div className="mt-5 border-t border-black/[0.07] pt-5">
+              <div className="mb-2 text-center text-[11px] font-semibold uppercase tracking-wide text-muted">
+                ¿No está tu comunidad?
+              </div>
+              <form action={selectLocalityAction}>
+                <input type="hidden" name="locality_id" value={national.id} />
+                {searchParams.next && (
+                  <input type="hidden" name="next" value={searchParams.next} />
+                )}
+                <button
+                  type="submit"
+                  className="tap flex w-full items-center justify-between gap-3 rounded-2xl border border-gold/30 bg-gold/[0.06] px-4 py-4 text-left hover:bg-gold/10 active:scale-[0.98]"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="font-display text-[16px] font-semibold leading-tight text-dark">
+                      No pertenezco a una Asamblea Local
+                    </div>
+                    <div className="mt-1 font-body text-[11.5px] leading-[1.5] text-muted">
+                      Vas a formar parte de la {national.name}: la Biblioteca,
+                      el calendario, los comunicados nacionales y el chat con
+                      la Secretaría Nacional. Si después se forma tu Asamblea
+                      Local, te podés sumar desde tu perfil.
+                    </div>
+                  </div>
+                </button>
+              </form>
+            </div>
           )}
 
           <p className="mt-6 text-center text-[11px] text-muted">

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { activeMembers, getLocalityMembers } from "./memberships";
 import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
 import {
   cellKey,
@@ -58,13 +59,10 @@ export async function getLocalityAvailability(
   if (!isSupabaseConfigured()) return empty;
   const supabase = createSupabaseServer();
 
-  const [membersRes, slotsRes] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("id, full_name, email")
-      .eq("locality_id", localityId)
-      .eq("role", "admin")
-      .order("full_name", { ascending: true }),
+  // Por MEMBRESÍA (056): el rol de Asamblea es el de ESTA comunidad, no
+  // el del sombrero que la persona tenga puesto.
+  const [roster, slotsRes] = await Promise.all([
+    getLocalityMembers(supabase, localityId),
     supabase
       .from("availability_slots")
       .select("user_id, weekday, hour, level")
@@ -72,16 +70,12 @@ export async function getLocalityAvailability(
       .is("event_date", null),
   ]);
 
-  const members: AvailabilityMember[] = (
-    (membersRes.data ?? []) as Array<{
-      id: string;
-      full_name: string | null;
-      email: string | null;
-    }>
-  ).map((m) => ({
-    id: m.id,
-    name: m.full_name?.trim() || m.email?.split("@")[0] || "Miembro",
-  }));
+  const members: AvailabilityMember[] = roster
+    .filter((m) => m.role === "admin")
+    .map((m) => ({
+      id: m.id,
+      name: m.full_name?.trim() || m.email?.split("@")[0] || "Miembro",
+    }));
   const nameById = new Map(members.map((m) => [m.id, m.name]));
 
   const cells: LocalityAvailability["cells"] = {};
@@ -113,16 +107,11 @@ export async function getAvailabilityFillStats(
 ): Promise<{ filled: number; total: number; missing: string[] }> {
   if (!isSupabaseConfigured()) return { filled: 0, total: 0, missing: [] };
   const supabase = createSupabaseServer();
-  const [membersRes, slotsRes] = await Promise.all([
+  const [roster, slotsRes] = await Promise.all([
     // Con nombre, para que el Inicio del panel diga a QUIÉN falta: un
-    // "5 de 9" solo no le dice a nadie a quién recordarle.
-    supabase
-      .from("profiles")
-      .select("id, full_name")
-      .eq("locality_id", localityId)
-      .eq("role", "admin")
-      .is("disabled_at", null)
-      .order("full_name", { ascending: true }),
+    // "5 de 9" solo no le dice a nadie a quién recordarle. Por
+    // membresía y con el rol de esta comunidad (056).
+    getLocalityMembers(supabase, localityId),
     supabase
       .from("availability_slots")
       .select("user_id")
@@ -132,7 +121,7 @@ export async function getAvailabilityFillStats(
   const filled = new Set(
     ((slotsRes.data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)
   );
-  const members = (membersRes.data ?? []) as Array<{ id: string; full_name: string | null }>;
+  const members = activeMembers(roster).filter((m) => m.role === "admin");
   const missing = members
     .filter((m) => !filled.has(m.id))
     .map((m) => m.full_name?.trim() || "Sin nombre");
