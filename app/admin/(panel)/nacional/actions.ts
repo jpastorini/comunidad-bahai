@@ -157,7 +157,14 @@ export async function updateMemberLocalityAction(formData: FormData) {
   // que se SUMA a la comunidad local: la persona pertenece a las dos y
   // cambia de sombrero desde su perfil. Esta es la única puerta para
   // asignarlo, porque la AEN todavía no tiene a nadie que la administre.
-  if (!error && id !== session.user.id) {
+  // ⚠️ Esto SÍ se puede en la propia ficha, a diferencia del rol y del
+  // flag de Nacional. La regla de "no te tocás vos mismo" existe para
+  // que nadie se degrade sin querer con un control disabled; acá es al
+  // revés: el primer miembro de la AEN se lo tiene que asignar alguien,
+  // y ese alguien es el admin nacional, que suele ser él mismo. Sacar
+  // la casilla no te deja encerrado: `is_national_admin` no se toca acá
+  // y te deja volver a marcarla.
+  if (!error) {
     const { data: national } = await supabase
       .from("localities")
       .select("id")

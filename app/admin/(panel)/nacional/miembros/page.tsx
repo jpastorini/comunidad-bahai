@@ -181,7 +181,7 @@ function MemberCard({
           />
         </div>
 
-        {hasNationalCommunity && !isMe && (
+        {hasNationalCommunity && (
           <div className="mt-4 rounded-xl border border-gold/30 bg-gold/[0.06] p-3">
             <Checkbox
               name="national_assembly"
@@ -193,6 +193,7 @@ function MemberCard({
               pertenece a las dos y elige cuál tiene puesta desde su perfil.
               En la Comunidad Nacional queda con rol de Asamblea; en su
               localidad conserva el rol y los permisos que tenga allá.
+              {isMe ? " Esta casilla sí podés marcarla en tu propia ficha." : ""}
             </p>
           </div>
         )}
