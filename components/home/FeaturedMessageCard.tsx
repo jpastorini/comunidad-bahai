@@ -8,6 +8,13 @@ type Props = {
   excerpt: string;
   ctaLabel?: string;
   href: string;
+  /**
+   * 057: el comunicado destacado puede ser de la Asamblea Nacional. Va
+   * en pino, igual que su tarjeta en la lista — si la institución que
+   * firma cambia y el color no, el rótulo de arriba es lo único que lo
+   * dice y nadie lee un rótulo de 9 px.
+   */
+  national?: boolean;
 };
 
 export function FeaturedMessageCard({
@@ -16,11 +23,14 @@ export function FeaturedMessageCard({
   excerpt,
   ctaLabel = "Leer comunicado",
   href,
+  national = false,
 }: Props) {
   return (
     <Link
       href={href}
-      className="tap relative mb-3 block overflow-hidden rounded-[18px] bg-terra-grad px-[18px] py-[15px]"
+      className={`tap relative mb-3 block overflow-hidden rounded-[18px] px-[18px] py-[15px] ${
+        national ? "bg-pine-grad" : "bg-terra-grad"
+      }`}
     >
       <div className="pointer-events-none absolute -bottom-3 -right-2 opacity-[0.06]">
         <BahaiStar size={80} color="#fff" />

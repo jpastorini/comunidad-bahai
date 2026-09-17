@@ -42,6 +42,9 @@ const config: Config = {
       backgroundImage: {
         "gold-grad": "linear-gradient(160deg, #96790E, #C4A235)",
         "terra-grad": "linear-gradient(135deg, #2A3F8F, #3D56B0)",
+        // La otra institución (057): mismo tratamiento que el terra, en
+        // el verde pino de la tarjeta del comunicado nacional.
+        "pine-grad": "linear-gradient(135deg, #1F3A2C, #2E5540)",
       },
     },
   },

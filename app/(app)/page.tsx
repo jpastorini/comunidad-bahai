@@ -47,6 +47,7 @@ export default async function HomePage() {
       <main className="scroll-area flex-1 px-3.5 pt-3">
         {featured && (
           <FeaturedMessageCard
+            national={featured.source === "asamblea_nacional"}
             eyebrow={
               featured.source === "asamblea_nacional"
                 ? "✦ Asamblea Nacional"
