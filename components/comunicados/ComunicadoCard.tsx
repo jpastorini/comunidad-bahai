@@ -142,7 +142,7 @@ export function ComunicadoCard({
       id={`c-${m.id}`}
       className={
         national
-          ? "overflow-hidden rounded-2xl bg-dark shadow-card-elevated"
+          ? "overflow-hidden rounded-2xl bg-plum shadow-card-elevated"
           : featured
             ? "overflow-hidden rounded-2xl shadow-card-elevated ring-1 ring-gold/45"
             : "overflow-hidden rounded-2xl bg-card shadow-card"
@@ -161,7 +161,7 @@ export function ComunicadoCard({
       <div className="p-4">
         <div className="mb-2 flex items-center gap-2">
           {national && (
-            <span className="rounded bg-gold px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-dark">
+            <span className="rounded bg-gold px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-plum">
               Nacional
             </span>
           )}
@@ -175,7 +175,9 @@ export function ComunicadoCard({
           {isNew && (
             <span
               className={`rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide ${
-                national ? "bg-white/15 text-gold-light" : "bg-terra text-white"
+                national
+                  ? "bg-gold/25 text-gold-light ring-1 ring-gold/40"
+                  : "bg-terra text-white"
               }`}
             >
               Nuevo
@@ -200,7 +202,7 @@ export function ComunicadoCard({
         )}
         <p
           className={`mt-2 whitespace-pre-line font-body text-[12.5px] leading-[1.55] ${
-            national ? "text-white/[0.72]" : "text-dark"
+            national ? "text-white/[0.80]" : "text-dark"
           }`}
         >
           {m.full_text ?? m.excerpt}
@@ -301,7 +303,7 @@ export function ComunicadoCard({
               type="button"
               onClick={toggleHidden}
               disabled={pending}
-              className="tap text-[11.5px] font-medium text-white/50 hover:text-white/80 disabled:opacity-50"
+              className="tap text-[11.5px] font-medium text-white/65 hover:text-white disabled:opacity-50"
             >
               {isHidden ? "Devolver a mi lista" : "Ocultar de mi lista"}
             </button>

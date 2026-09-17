@@ -16,6 +16,10 @@ const config: Config = {
         "terra-light": "#3D56B0",
         amber: "#7E44B8",
         dark: "#2A2833",
+        // El fondo del comunicado nacional (057). Es "noche" con croma:
+        // el casi-negro neutro que tenía antes se leía como luto, que es
+        // justo lo que un comunicado del país no tiene que parecer.
+        plum: "#332040",
         muted: "#7A7670",
         bg: "#F8F7F2",
         card: "#FFFFFF",

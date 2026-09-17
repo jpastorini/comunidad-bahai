@@ -1564,9 +1564,15 @@ nacional". El formulario esconde "Pregunta para votar": una votación
 del país entero es otra cosa que una consulta de comunidad y todavía no
 está pensada.
 
-**La tarjeta va en noche y dorado** (fondo `dark` #2A2833, chapita
-"Nacional" y fecha en `gold`, título blanco, cuerpo al 72 %), el mismo
-registro que el deck de la Fiesta. Es la ÚNICA tarjeta oscura de una
+**La tarjeta va en noche y dorado** (fondo `plum` #332040, chapita
+"Nacional" y fecha en `gold`, título blanco, cuerpo al 80 %), el mismo
+registro que el deck de la Fiesta. ⚠️ El fondo arrancó siendo `dark`
+(#2A2833) y el primer comunicado real se leyó como un aviso de
+fallecimiento: ese casi-negro **no tiene croma**, y sin croma la única
+lectura que queda es el luto. `plum` es la misma oscuridad con violeta
+adentro —no azul, que es de la Asamblea Local, ni verde, que significa
+"en orden"—. Si se vuelve a tocar, que sea agregando color, no
+aclarando. Es la ÚNICA tarjeta oscura de una
 lista blanca: se distingue sin leer una palabra. Se descartó el rojo (es
 el color de lo urgente) y el verde (`#6A8B5F` ya significa "en orden" en
 toda la app, incluida la línea "Enterado/a" de esa misma tarjeta). El
