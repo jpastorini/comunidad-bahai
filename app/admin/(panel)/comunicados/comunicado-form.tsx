@@ -1,4 +1,5 @@
 import {
+  Banner,
   Button,
   Card,
   Checkbox,
@@ -16,14 +17,35 @@ type Props = {
   /** La encuesta del comunicado (051), si tiene, y cuántos ya votaron. */
   poll?: MessagePoll | null;
   pollParticipants?: number;
+  /** 057: se está publicando desde la Comunidad Nacional. */
+  national?: boolean;
 };
 
-export function ComunicadoForm({ comunicado, poll = null, pollParticipants = 0 }: Props) {
+export function ComunicadoForm({
+  comunicado,
+  poll = null,
+  pollParticipants = 0,
+  national = false,
+}: Props) {
   const today = new Date().toISOString().slice(0, 10);
 
   return (
     <form action={upsertComunicadoAction} encType="multipart/form-data">
       {comunicado && <input type="hidden" name="id" value={comunicado.id} />}
+
+      {/* El aviso no es decorativo: el formulario es el mismo que el de
+          una Asamblea Local y el destinatario lo decide el sombrero
+          puesto. Publicar al país creyendo que le hablás a tu localidad
+          es el error caro, así que se dice antes de escribir. */}
+      {national && (
+        <div className="mb-4">
+          <Banner tone="warning">
+            Este comunicado lo va a ver <strong>toda la comunidad bahá'í del
+            país</strong>, en cualquier localidad, y les va a llegar un aviso.
+            Se publica en nombre de la Asamblea Espiritual Nacional.
+          </Banner>
+        </div>
+      )}
 
       <Card>
         <div className="grid gap-4 md:grid-cols-2">
@@ -126,17 +148,21 @@ export function ComunicadoForm({ comunicado, poll = null, pollParticipants = 0 }
 
       {/* Encuesta (051): una pregunta para votar dentro del comunicado.
           Hereda la audiencia de arriba: si el comunicado es "solo
-          creyentes", la encuesta también. */}
-      <Card className="mt-5">
-        <h2 className="mb-1 font-display text-[18px] font-semibold text-dark">
-          Pregunta para votar
-        </h2>
-        <p className="mb-4 text-[12px] text-muted">
-          Opcional. Quién la recibe lo decide “Quién lo recibe”, más arriba: una
-          encuesta en un comunicado “solo creyentes” es solo para creyentes.
-        </p>
-        <PollFields poll={poll} participants={pollParticipants} />
-      </Card>
+          creyentes", la encuesta también. Un comunicado nacional no
+          lleva pregunta (057): una votación del país entero es otra
+          cosa que una consulta de comunidad, y todavía no está pensada. */}
+      {!national && (
+        <Card className="mt-5">
+          <h2 className="mb-1 font-display text-[18px] font-semibold text-dark">
+            Pregunta para votar
+          </h2>
+          <p className="mb-4 text-[12px] text-muted">
+            Opcional. Quién la recibe lo decide “Quién lo recibe”, más arriba: una
+            encuesta en un comunicado “solo creyentes” es solo para creyentes.
+          </p>
+          <PollFields poll={poll} participants={pollParticipants} />
+        </Card>
+      )}
 
       <Card className="mt-5">
         <h2 className="mb-1 font-display text-[18px] font-semibold text-dark">

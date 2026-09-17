@@ -102,6 +102,27 @@ export async function getLocalityMemberIds(
     .map((m) => m.id);
 }
 
+/**
+ * IDs de TODAS las personas del país (para un comunicado de la Asamblea
+ * Nacional, 057). Sale de `profiles` y no de las membresías porque cada
+ * persona tiene una sola fila ahí: así nadie recibe el aviso dos veces
+ * por pertenecer a su AEL y a la Comunidad Nacional.
+ */
+export async function getAllMemberIds(
+  opts: { bahaiOnly?: boolean } = {}
+): Promise<string[]> {
+  const supabase = createSupabaseAdmin();
+  if (!supabase) return [];
+  let query = supabase.from("profiles").select("id").is("disabled_at", null);
+  if (opts.bahaiOnly) query = query.eq("is_bahai", true);
+  const { data, error } = await query;
+  if (error) {
+    console.error("[push] getAllMemberIds:", error.message);
+    return [];
+  }
+  return ((data ?? []) as Array<{ id: string }>).map((d) => d.id);
+}
+
 /** Alcance de push de una localidad: cuántos de sus miembros tienen al
  *  menos una suscripción activa, sobre el total. Usa service-role porque la
  *  RLS de push_subscriptions solo deja ver las propias. */

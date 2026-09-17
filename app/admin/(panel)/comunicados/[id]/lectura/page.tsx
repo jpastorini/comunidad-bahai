@@ -33,13 +33,19 @@ export default async function ComunicadoLecturaPage({
     .from("messages")
     .select("*")
     .eq("id", params.id)
-    .eq("source", "asamblea_local")
+    .in("source", ["asamblea_local", "asamblea_nacional"])
     .maybeSingle();
   if (!data) notFound();
   const m = data as Message;
 
+  // 057: la audiencia de un comunicado nacional es todo el país, no la
+  // localidad de quien mira el informe. Se decide por el comunicado y
+  // no por el sombrero: un nacional se mide contra el país aunque lo
+  // abra una Asamblea Local.
+  const audienceLocality = m.source === "asamblea_nacional" ? null : session.locality.id;
+
   const [report, poll] = await Promise.all([
-    getReadReport(m, session.locality.id),
+    getReadReport(m, audienceLocality),
     getPollForMessage(m.id),
   ]);
   // La encuesta (051), si el comunicado tiene una: totales, participación
@@ -155,7 +161,8 @@ export default async function ComunicadoLecturaPage({
           </div>
 
           <p className="mt-6 text-[11px] text-muted">
-            La audiencia son las personas activas de {session.locality.name}
+            La audiencia son las personas activas de{" "}
+            {m.source === "asamblea_nacional" ? "todo el país" : session.locality.name}
             {m.audience === "todos" ? "" : " que son creyentes"}. Los datos de
             contacto están en{" "}
             <Link href="/admin/miembros" className="text-terra hover:underline">

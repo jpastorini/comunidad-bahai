@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ComunicadoCard } from "@/components/comunicados/ComunicadoCard";
 import { ScrollToHash } from "@/components/comunicados/ScrollToHash";
 import { GoldHeader } from "@/components/GoldHeader";
@@ -6,12 +7,18 @@ import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { requireMember } from "@/lib/auth";
 import { getLocalAnnouncements } from "@/lib/data";
 import { getMyMessageReads, isNewForReader } from "@/lib/message-reads";
+import { isNationalLocality } from "@/lib/types";
 import { getMyPollVotes, getPollResults, getPollsForMessages } from "@/lib/polls";
 import { markComunicadosSeenAction } from "./actions";
 
 export const revalidate = 60;
 
-export default async function ComunicadosPage() {
+export default async function ComunicadosPage({
+  searchParams,
+}: {
+  searchParams: { ocultos?: string };
+}) {
+  const showHidden = searchParams.ocultos === "1";
   const [session, announcements] = await Promise.all([
     requireMember("/comunicados"),
     getLocalAnnouncements(),
@@ -33,10 +40,28 @@ export default async function ComunicadosPage() {
     getPollResults(pollIds),
   ]);
 
+  // 057: los nacionales que la persona ocultó salen de la lista, salvo
+  // que esté mirando justamente los ocultos. Se filtra acá y no en la
+  // consulta porque la marca vive en `message_reads`, que ya se trajo.
+  const hiddenIds = new Set(
+    [...reads.values()].filter((r) => r.hidden_at).map((r) => r.message_id)
+  );
+  const visible = announcements.filter((m) =>
+    showHidden ? hiddenIds.has(m.id) : !hiddenIds.has(m.id)
+  );
+
   return (
     <>
       <ScrollToHash />
-      <GoldHeader title="Asamblea Local" subtitle={session.locality.name} backHref="/" />
+      <GoldHeader
+        title={
+          isNationalLocality(session.locality)
+            ? "Asamblea Nacional"
+            : "Asamblea Local"
+        }
+        subtitle={session.locality.name}
+        backHref="/"
+      />
       <SegmentedNav items={AEL_SEGMENTS} />
       <div className="shrink-0 px-4 pb-1.5 pt-0.5">
         <div
@@ -50,13 +75,15 @@ export default async function ComunicadosPage() {
         </div>
       </div>
       <main className="scroll-area flex-1 px-4 pb-4 pt-1">
-        {announcements.length === 0 ? (
+        {visible.length === 0 ? (
           <div className="py-12 text-center text-[13px] text-muted">
-            Aún no hay comunicados publicados.
+            {showHidden
+              ? "No ocultaste ningún comunicado."
+              : "Aún no hay comunicados publicados."}
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {announcements.map((m, i) => {
+            {visible.map((m, i) => {
               const read = reads.get(m.id) ?? null;
               const poll = polls.get(m.id) ?? null;
               return (
@@ -72,6 +99,21 @@ export default async function ComunicadosPage() {
                 />
               );
             })}
+          </div>
+        )}
+
+        {/* La salida y la vuelta de los ocultos. Aparece solo si hay
+            alguno: si nadie ocultó nada, el link no dice nada. */}
+        {(hiddenIds.size > 0 || showHidden) && (
+          <div className="mt-6 text-center">
+            <Link
+              href={showHidden ? "/comunicados" : "/comunicados?ocultos=1"}
+              className="text-[12px] font-semibold text-muted hover:text-dark"
+            >
+              {showHidden
+                ? "← Volver a mis comunicados"
+                : `Ver ocultos (${hiddenIds.size})`}
+            </Link>
           </div>
         )}
       </main>

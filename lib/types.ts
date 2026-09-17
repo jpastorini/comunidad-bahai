@@ -1,4 +1,8 @@
-export type MessageSource = "casa_universal" | "asamblea_local";
+export type MessageSource =
+  | "casa_universal"
+  | "asamblea_local"
+  /** 057: de la Asamblea Nacional, para todo el país (locality_id null). */
+  | "asamblea_nacional";
 
 export type Message = {
   id: string;
@@ -40,6 +44,8 @@ export type MessageRead = {
   profile_id: string;
   seen_at: string;
   confirmed_at: string | null;
+  /** 057: la persona sacó este comunicado nacional de su lista. */
+  hidden_at: string | null;
 };
 
 /**

@@ -1545,25 +1545,76 @@ calendario Badí' y los observa todo el mundo.
   que no pertenece (y sin poder volver: `switch_locality()` no la
   dejaría).
 
-### Lo que falta (057, 058)
+### Comunicados nacionales (057)
 
-**057 · Comunicados nacionales.** `messages.source` suma
-`'asamblea_nacional'` con `locality_id IS NULL`. Heredan audiencia (047)
-y confirmación "Enterado/a" (048); **no** llevan encuesta. Se pueden
-**ocultar**, y ocultar **exige `seen_at`** (`message_reads.hidden_at`):
-así el informe de la AEN no cuenta como "no vio" a quien lo descartó, y
-queda un "ver ocultos" para recuperarlo. La tarjeta va en **noche y
-dorado** —fondo `#2A2833`, chapita y eyebrow `#C4A235`, título blanco,
-cuerpo al 72 %—, el mismo registro que el deck de la Fiesta: es la única
-tarjeta oscura de una lista blanca y se ve sin leer una palabra. Se
-descartó el rojo (es el color de lo urgente) y el verde (`#6A8B5F` ya
-significa "en orden" en toda la app, incluida la línea "Enterado/a" de
-esa misma tarjeta). ⚠️ `ComunicadoCard` necesita un prop `tone` con
-variantes para el botón de PDF, la chapita "Nuevo", el "Enterado/a" y el
-bloque de encuesta, que hoy asumen fondo blanco. Falta también el push
-nacional (`getLocalityMemberIds` es por localidad) y el informe de
-lectura con denominador nacional; los dos **deduplicados por persona**,
-que con dos membresías se cuenta dos veces.
+Un comunicado de la AEN es **un comunicado con `locality_id IS NULL`** y
+`source = 'asamblea_nacional'`: no hay tabla nueva ni pantalla aparte.
+La RLS de la 021 ya lo muestra en todas las localidades y la 056 ya
+autoriza a la AEN a escribirlo, así que la migración solo suma el valor
+de `source`, la columna `hidden_at` y una línea de policy.
+
+**Se escribe en la MISMA pantalla de Comunicados**, con el sombrero
+nacional puesto: la institución que habla es la que tenés puesta
+(`isNationalLocality(session.locality)` decide `source` y
+`locality_id`). Es el mismo criterio que el menú del panel —un solo
+mecanismo, no una pantalla por caso—, y el riesgo que eso trae
+—publicarle al país creyendo que le hablás a tu localidad— se cubre con
+un aviso ámbar arriba del formulario y el título "Nuevo comunicado
+nacional". El formulario esconde "Pregunta para votar": una votación
+del país entero es otra cosa que una consulta de comunidad y todavía no
+está pensada.
+
+**La tarjeta va en noche y dorado** (fondo `dark` #2A2833, chapita
+"Nacional" y fecha en `gold`, título blanco, cuerpo al 72 %), el mismo
+registro que el deck de la Fiesta. Es la ÚNICA tarjeta oscura de una
+lista blanca: se distingue sin leer una palabra. Se descartó el rojo (es
+el color de lo urgente) y el verde (`#6A8B5F` ya significa "en orden" en
+toda la app, incluida la línea "Enterado/a" de esa misma tarjeta). El
+prop no es un `tone` genérico sino un booleano `national` derivado de
+`m.source`: la variante oscura toca el botón de PDF, la chapita "Nuevo",
+el bloque de confirmación y el botón "Enterado/a", que asumían fondo
+blanco.
+
+Tres cosas del diseño que conviene no romper:
+
+- **Ocultar solo existe en los nacionales.** El comunicado de tu propia
+  Asamblea no se esconde; el del país no siempre te toca.
+  `message_reads.hidden_at` es una marca por persona sobre la fila de
+  lectura que ya existía, así que **ocultar cuenta como haberlo visto**
+  —descartar es un acto de lectura— y el informe de la AEN no lo anota
+  como "no vio". No hace falta constraint: `seen_at` es `not null
+  default now()`, no existe una fila oculta sin vista. Se recupera desde
+  "Ver ocultos (N)" al pie de `/comunicados` (`?ocultos=1`), donde la
+  misma tarjeta ofrece "Devolver a mi lista".
+- **La audiencia nacional se cuenta desde `profiles`, no desde las
+  membresías.** Cada persona tiene UNA fila en `profiles`, así que la
+  deduplicación sale gratis; recorrer `profile_localities` contaría dos
+  veces a quien pertenece a su AEL y a la Comunidad Nacional, y tanto el
+  denominador del informe (`getAudience(supabase, null)`) como el push
+  (`getAllMemberIds()`) saldrían inflados. Es la excepción a la regla de
+  los padrones de la 056, y es por la misma razón que esa regla existe.
+- **Quién lo decide es el COMUNICADO, no el sombrero.** El informe de
+  lectura mide un nacional contra el país aunque lo abra una Asamblea
+  Local, y el editor muestra la variante nacional según
+  `comunicado.source`. El sombrero solo decide qué se publica y qué
+  lista se ve en el panel.
+
+⚠️ **La policy de `message_reads` había que ampliarla o el informe
+nacional salía vacío.** `message_reads` lleva la localidad de QUIEN LEE,
+y la 048 solo dejaba al admin ver las filas de su propia localidad: la
+AEN, parada en la Comunidad Nacional, habría visto únicamente las
+lecturas de sus pocos miembros y ninguna de las 25 personas de
+Montevideo que sí lo leyeron. La línea nueva es acotada a propósito:
+`is_national_assembly()` lee las filas de los comunicados con
+`locality_id is null` y de ningún otro.
+
+⚠️ Hasta que corra la 057, publicar desde la Comunidad Nacional falla
+(el `source` nuevo viola el check) y ocultar no anda (`hidden_at` no
+existe); el listado del creyente sí sale, porque
+`getMyMessageReads()` pide `select("*")` justamente para no depender de
+esa columna.
+
+### Lo que falta (058)
 
 **058 · Tesorería nacional.** Lo único que no sale gratis: una función
 security definer para que el tesorero nacional busque creyentes de
@@ -1573,8 +1624,11 @@ por comunidad.
 
 ## Pendientes conocidos
 
-- **Probar la Comunidad Nacional en producción.** La 055 y la 056 están
-  aplicadas y desplegadas (`60a5e89`, 2026-09-17). Falta el primer uso
+- **Aplicar la 057 antes de desplegar.** Sin ella, publicar desde la
+  Comunidad Nacional falla (el `source` nuevo viola el check de
+  `messages`) y ocultar no anda. La 055 y la 056 ya están aplicadas y
+  desplegadas (`60a5e89`, 2026-09-17).
+- **Probar la Comunidad Nacional en producción.** Falta el primer uso
   real: asignarse "Miembro de la Asamblea Nacional" en
   `/admin/nacional/miembros`, cambiar de sombrero desde `/perfil` y
   confirmar que con el sombrero nacional puesto se sigue apareciendo en

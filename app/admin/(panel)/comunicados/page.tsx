@@ -7,25 +7,31 @@ import { getLocalityPushReach } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { formatMessageDate } from "@/lib/format";
 import type { Message } from "@/lib/types";
+import { isNationalLocality } from "@/lib/types";
 import { deleteComunicadoAction } from "./actions";
 
 export default async function AdminComunicadosPage() {
   const session = await requireAdmin();
   const supabase = createSupabaseServer();
+  // 057: la Asamblea Nacional gestiona los comunicados nacionales; una
+  // Asamblea Local, los suyos. Es la misma pantalla y lo que cambia es
+  // la comunidad que tenés puesta.
+  const national = isNationalLocality(session.locality);
   const [{ data }, pushReach] = await Promise.all([
     supabase
       .from("messages")
       .select("*")
-      .eq("source", "asamblea_local")
+      .eq("source", national ? "asamblea_nacional" : "asamblea_local")
       .order("date", { ascending: false }),
     getLocalityPushReach(session.locality.id),
   ]);
 
   const rows = (data ?? []) as Message[];
   // Quién vio cada comunicado (048) y cuántos votaron su encuesta (051).
-  // `null` = la tabla no existe todavía.
+  // `null` = la tabla no existe todavía. La audiencia de un comunicado
+  // nacional es todo el país, y por eso va `null` como localidad.
   const [readCounts, pollCounts] = await Promise.all([
-    getReadCountsForMessages(rows, session.locality.id),
+    getReadCountsForMessages(rows, national ? null : session.locality.id),
     getPollCountsForMessages(rows.map((m) => m.id)),
   ]);
 

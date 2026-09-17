@@ -144,3 +144,51 @@ export async function castVoteAction(
   const results = await getPollResults([pollId]);
   return { ok: true, results: results.get(pollId) ?? { participants: 0, votes: {} } };
 }
+
+// ─── Ocultar un comunicado nacional (migración 057) ────────────────
+//
+// El comunicado de tu Asamblea es tuyo y no se esconde; el nacional
+// llega a todo el país y no siempre te toca. Es una marca por persona
+// sobre la MISMA fila de lectura, así que ocultarlo cuenta como haberlo
+// visto —descartar es un acto de lectura— y el informe de la AEN no lo
+// anota como "no vio". Estas dos SÍ revalidan: la lista tiene que
+// reordenarse al toque, a diferencia del "visto" automático.
+
+/** Saca el comunicado de la lista de esta persona. */
+export async function hideMessageAction(messageId: string): Promise<boolean> {
+  const me = await getOptionalMember();
+  if (!me) return false;
+  const supabase = createSupabaseServer();
+  const { error } = await supabase.from("message_reads").upsert(
+    {
+      message_id: messageId,
+      profile_id: me.user.id,
+      hidden_at: new Date().toISOString(),
+    },
+    { onConflict: "message_id,profile_id" }
+  );
+  if (error) {
+    console.error("[message-reads] hide:", error.message);
+    return false;
+  }
+  revalidatePath("/comunicados");
+  return true;
+}
+
+/** Lo devuelve a la lista. */
+export async function unhideMessageAction(messageId: string): Promise<boolean> {
+  const me = await getOptionalMember();
+  if (!me) return false;
+  const supabase = createSupabaseServer();
+  const { error } = await supabase
+    .from("message_reads")
+    .update({ hidden_at: null })
+    .eq("message_id", messageId)
+    .eq("profile_id", me.user.id);
+  if (error) {
+    console.error("[message-reads] unhide:", error.message);
+    return false;
+  }
+  revalidatePath("/comunicados");
+  return true;
+}

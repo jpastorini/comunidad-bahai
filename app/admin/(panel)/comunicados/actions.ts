@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { savePoll } from "@/lib/polls-admin";
-import { getLocalityMemberIds, sendPushToUsers } from "@/lib/push";
+import { getAllMemberIds, getLocalityMemberIds, sendPushToUsers } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
-import type { MessageAudience } from "@/lib/types";
+import { isNationalLocality, type MessageAudience } from "@/lib/types";
 
 const BUCKET = "comunicados";
 
@@ -50,13 +50,19 @@ export async function upsertComunicadoAction(formData: FormData) {
   const audience: MessageAudience =
     formData.get("audience") === "todos" ? "todos" : "creyentes";
 
+  // 057: con el sombrero de la Comunidad Nacional puesto, lo que se
+  // publica es un comunicado NACIONAL —`locality_id` null, que desde la
+  // 021 significa "lo ven todas las localidades"— y no el de una
+  // Asamblea Local. La institución que habla es la que tenés puesta.
+  const national = isNationalLocality(session.locality);
+
   const payload: Record<string, unknown> = {
     date: formData.get("date") as string,
     title,
     subject,
     excerpt,
     full_text: fullText,
-    source: "asamblea_local",
+    source: national ? "asamblea_nacional" : "asamblea_local",
     audience,
     // 048: "Nuevo" dejó de escribirse a mano (es por lector). Lo que el
     // formulario declara es si pide confirmación de lectura.
@@ -87,8 +93,8 @@ export async function upsertComunicadoAction(formData: FormData) {
     payload.image_url = null;
   }
 
-  // Los comunicados son SIEMPRE locales: fijamos la localidad explícita
-  // (ya no hay trigger de auto-locality en messages).
+  // La localidad va explícita (no hay trigger de auto-locality en
+  // messages desde la 021): la de la Asamblea, o null si es nacional.
   let messageId = id;
   let error: { message: string } | null = null;
   if (id) {
@@ -96,7 +102,10 @@ export async function upsertComunicadoAction(formData: FormData) {
   } else {
     const res = await supabase
       .from("messages")
-      .insert({ ...payload, locality_id: session.locality.id })
+      .insert({
+        ...payload,
+        locality_id: national ? null : session.locality.id,
+      })
       .select("id")
       .single();
     error = res.error;
@@ -118,11 +127,17 @@ export async function upsertComunicadoAction(formData: FormData) {
   // aviso lleva directo a la tarjeta (`#c-<id>`), que con una encuesta
   // es lo que importa: la pregunta tiene que quedar bajo el dedo.
   if (!id && !error && messageId) {
-    const recipients = await getLocalityMemberIds(session.locality.id, {
-      bahaiOnly: audience === "creyentes",
-    });
+    const recipients = national
+      ? await getAllMemberIds({ bahaiOnly: audience === "creyentes" })
+      : await getLocalityMemberIds(session.locality.id, {
+          bahaiOnly: audience === "creyentes",
+        });
     await sendPushToUsers(recipients, {
-      title: pollQuestion ? "La Asamblea pregunta" : "Nuevo comunicado",
+      title: national
+        ? "Comunicado de la Asamblea Nacional"
+        : pollQuestion
+          ? "La Asamblea pregunta"
+          : "Nuevo comunicado",
       body: pollQuestion ?? title,
       url: `/comunicados#c-${messageId}`,
       tag: "comunicado",
@@ -145,7 +160,7 @@ export async function upsertComunicadoAction(formData: FormData) {
 }
 
 export async function deleteComunicadoAction(formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const supabase = createSupabaseServer();
   const id = formData.get("id") as string;
   if (id) {
@@ -153,7 +168,14 @@ export async function deleteComunicadoAction(formData: FormData) {
       .from("messages")
       .delete()
       .eq("id", id)
-      .eq("source", "asamblea_local");
+      // El mismo origen que esta Asamblea publica: la AEN borra los
+      // nacionales, una AEL los suyos.
+      .eq(
+        "source",
+        isNationalLocality(session.locality)
+          ? "asamblea_nacional"
+          : "asamblea_local"
+      );
     setFlashToast(
       error
         ? { tone: "error", message: `No se pudo borrar: ${error.message}` }

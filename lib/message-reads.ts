@@ -27,7 +27,10 @@ export async function getMyMessageReads(
   const supabase = createSupabaseServer();
   const { data, error } = await supabase
     .from("message_reads")
-    .select("message_id, profile_id, seen_at, confirmed_at")
+    // "*" y no la lista de columnas: si la 057 (hidden_at) todavía no
+    // corrió, pedirla por nombre haría fallar la consulta entera y el
+    // listado perdería el estado de lectura de todos los comunicados.
+    .select("*")
     .eq("profile_id", userId)
     .in("message_id", messageIds);
   if (error) {
@@ -75,8 +78,27 @@ export type AudienceProfile = {
 
 export async function getAudience(
   supabase: SupabaseClient,
-  localityId: string
+  localityId: string | null
 ): Promise<AudienceProfile[]> {
+  // `null` = todo el país: es la audiencia de un comunicado nacional
+  // (057). Se consulta `profiles` y NO las membresías porque cada
+  // persona tiene una sola fila ahí, así que la deduplicación sale
+  // gratis; recorrer las membresías contaría dos veces a quien
+  // pertenece a su AEL y a la Comunidad Nacional, y el denominador del
+  // informe saldría inflado.
+  if (localityId === null) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, avatar_url, is_bahai, last_seen_at")
+      .is("disabled_at", null)
+      .order("full_name", { ascending: true });
+    if (error) {
+      console.error("[message-reads] getAudience nacional:", error.message);
+      return [];
+    }
+    return (data ?? []) as AudienceProfile[];
+  }
+
   // Por MEMBRESÍA (056): quien pertenece a la localidad aunque ande con
   // el sombrero de otra. Si no, el informe lo cuenta como "no vio" a
   // alguien que sí es destinatario.
@@ -101,7 +123,7 @@ export function audienceFor(m: Message, all: AudienceProfile[]): AudienceProfile
  */
 export async function getReadCountsForMessages(
   messages: Message[],
-  localityId: string
+  localityId: string | null
 ): Promise<Map<string, ReadCounts> | null> {
   const out = new Map<string, ReadCounts>();
   if (!isSupabaseConfigured() || messages.length === 0) return out;
@@ -170,7 +192,7 @@ export type ReadReport = {
  */
 export async function getReadReport(
   m: Message,
-  localityId: string
+  localityId: string | null
 ): Promise<ReadReport | null> {
   if (!isSupabaseConfigured()) return null;
   const supabase = createSupabaseServer();

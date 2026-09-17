@@ -15,11 +15,13 @@ export default async function EditComunicadoPage({
     .from("messages")
     .select("*")
     .eq("id", params.id)
-    .eq("source", "asamblea_local")
+    .in("source", ["asamblea_local", "asamblea_nacional"])
     .maybeSingle();
 
   if (!data) notFound();
   const comunicado = data as Message;
+  // 057: lo decide el comunicado que se está editando, no el sombrero.
+  const national = comunicado.source === "asamblea_nacional";
 
   // La encuesta (051), si tiene, y cuántos votaron: con votos, la
   // pregunta y las opciones se muestran congeladas.
@@ -32,13 +34,14 @@ export default async function EditComunicadoPage({
     <FormShell>
       <PageHeader back={{ href: "/admin/comunicados", label: "Comunicados" }}
         eyebrow="Comunicación"
-        title="Editar comunicado"
+        title={national ? "Editar comunicado nacional" : "Editar comunicado"}
         description={comunicado.title}
       />
       <ComunicadoForm
         comunicado={comunicado}
         poll={poll}
         pollParticipants={counts?.get(comunicado.id)?.participants ?? 0}
+        national={national}
       />
     </FormShell>
   );

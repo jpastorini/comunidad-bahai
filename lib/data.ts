@@ -78,7 +78,11 @@ export async function getLocalAnnouncements(): Promise<Message[]> {
     .select(
       "id, date, title, excerpt, full_text, is_new, source, subject, pdf_url, image_url, ask_confirmation"
     )
-    .eq("source", "asamblea_local")
+    // Los de la Asamblea Local y los de la Nacional en la misma lista
+    // (057). No hace falta filtrar por localidad: la RLS de `messages`
+    // ya devuelve los de esta localidad más los de `locality_id null`,
+    // que es lo que significa "nacional" desde la 021.
+    .in("source", ["asamblea_local", "asamblea_nacional"])
     .order("date", { ascending: false });
   if (error || !data?.length) return seedLocalAnnouncements;
   return data as Message[];
