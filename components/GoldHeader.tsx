@@ -8,13 +8,6 @@ import { IconChevronLeft } from "./Icons";
 
 type GoldHeaderProps = {
   title: string;
-  /**
-   * Reemplaza al título por un nodo propio, conservando el lugar y el
-   * tamaño. Lo usa el Inicio para poner el selector de comunidad (058-b)
-   * donde antes había un nombre fijo. `title` sigue siendo obligatorio:
-   * es el texto accesible y el fallback.
-   */
-  titleNode?: ReactNode;
   subtitle?: string;
   /** Pass a href (e.g. "/") to render a back link. */
   backHref?: string;
@@ -28,7 +21,6 @@ type GoldHeaderProps = {
 
 export function GoldHeader({
   title,
-  titleNode,
   subtitle,
   backHref,
   backLabel,
@@ -70,7 +62,7 @@ export function GoldHeader({
       </div>
 
       <h1 className="relative font-display text-[27px] font-semibold leading-tight tracking-[0.3px] text-white">
-        {titleNode ?? title}
+        {title}
       </h1>
 
       {subtitle && (

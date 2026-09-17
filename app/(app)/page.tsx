@@ -3,12 +3,10 @@ import { CitaDelDiaCard } from "@/components/home/CitaDelDiaCard";
 import { FeaturedMessageCard } from "@/components/home/FeaturedMessageCard";
 import { FeaturedPhotos } from "@/components/home/FeaturedPhotos";
 import { HomeFeed } from "@/components/home/HomeFeed";
-import { CommunitySwitcher } from "@/components/CommunitySwitcher";
 import { GoldHeader } from "@/components/GoldHeader";
 import { SectionGrid } from "@/components/home/SectionGrid";
 import { UpcomingEvents } from "@/components/home/UpcomingEvents";
 import { requireMember } from "@/lib/auth";
-import { getMyMemberships } from "@/lib/memberships";
 import { isNationalLocality } from "@/lib/types";
 import {
   getBadges,
@@ -24,7 +22,7 @@ export const revalidate = 60;
 
 export default async function HomePage() {
   const session = await requireMember("/");
-  const [featured, upcoming, badges, feed, featuredPhotos, chatDuty, memberships] =
+  const [featured, upcoming, badges, feed, featuredPhotos, chatDuty] =
     await Promise.all([
       getLatestLocalAnnouncement(),
       getUpcomingCalendarEvents(2),
@@ -34,10 +32,6 @@ export default async function HomePage() {
       // Solo consulta si la persona atiende algún canal; para la
       // comunidad no agrega ninguna ida a Supabase.
       getChatDuty(session.profile),
-      // Las comunidades de esta persona, para el selector del encabezado
-      // (058-b). Con una sola —el caso de casi todo el mundo— no se
-      // dibuja nada distinto.
-      getMyMemberships(session.user.id, session.locality.id),
     ]);
 
   // Cita del día: determinística por fecha, sin consulta a la base.
@@ -47,14 +41,6 @@ export default async function HomePage() {
     <>
       <GoldHeader
         title={session.locality.name}
-        titleNode={
-          <CommunitySwitcher
-            memberships={memberships}
-            redirectTo="/"
-            fallback={session.locality.name}
-            className="font-display text-[27px] font-semibold leading-tight tracking-[0.3px] text-white"
-          />
-        }
         subtitle="Centro de Comunicados"
         starSize={130}
       />

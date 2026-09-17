@@ -1677,6 +1677,15 @@ que reemplaza (recibe las clases por prop) y con una sola comunidad
 imprime el nombre y nada más, así que para casi toda la comunidad no
 cambia nada.
 
+- **Va SOLO en el panel**, no en la app del creyente. Se probó en el
+  encabezado del Inicio y se sacó el mismo día (2026-09-17): ahí le
+  ofrecía a un miembro de Asamblea cambiar el contexto de toda su app de
+  creyente, que no es lo que va a hacer desde el Inicio, y a cualquier
+  otra persona le mostraba una decisión que no le corresponde. En el
+  panel sí, porque ahí estás administrando y elegir cuál es la pregunta.
+  Queda además el bloque de `/perfil`, discreto y solo con más de una
+  membresía: es la única vuelta atrás para alguien que pertenece a dos
+  comunidades sin ser Asamblea en ninguna.
 - **En el panel lista SOLO las comunidades donde tenés rol de Asamblea.**
   Si ofreciera una donde sos creyente común, el middleware te echaría del
   panel apenas cambies.
