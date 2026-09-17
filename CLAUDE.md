@@ -298,7 +298,12 @@ oficiales. Ver la sección "Datos de la Asamblea" más abajo. ·
 la app le sugiere párrafos y citas de los Escritos, los mensajes de la
 Casa Universal y los libros Ruhi donde se habla de eso, con Haiku
 eligiendo entre lo que encuentra la base. Ver la sección "Buscador de
-pasajes" más abajo.
+pasajes" más abajo. ·
+**El recibo, por comunidad** (migración 060): la firma del Tesorero/a en
+un bucket privado por localidad, el nombre resuelto desde la composición
+de la Asamblea (052) con una sola función para las dos caras del papel, y
+cuatro temas de color —la Tesorería Nacional los emite en azul oscuro—.
+Ver la sección "El recibo, por comunidad" más abajo.
 
 ## Buscador de pasajes (migración 053)
 
@@ -508,8 +513,8 @@ solo mecanismo. Grupos: Inicio (ítem suelto) · Asamblea (Tareas,
 Reuniones, Informes de Tesorería, Datos de la Asamblea) · Comunicación (Comunicados, Encuestas, Boletín,
 Chat de Secretaría) · Vida comunitaria (Calendario, Fiestas, Sugerencias,
 Actividades, Servicio, Materiales, Fotos) · Creyentes (Creyentes, Uso de
-la app) · Tesorería (Libro, Informes, Progreso, Presupuesto, Metas,
-Mensajes, Cómo aportar) · Admin Nacional.
+la app) · Tesorería (Libro, Cierres, Informes, Progreso, Presupuesto, Metas,
+Mensajes, Recibo, Cómo aportar) · Admin Nacional.
 
 Tres reglas de comportamiento (`components/admin/Sidebar.tsx`):
 
@@ -1377,6 +1382,71 @@ operación o de cierre para los dólares; 5 o 10 años de retención; si
 todas las localidades cierran el 17/4; si hay alguna base ya inscripta en
 la URCDP; y si aparecen ventas (libros, cenas) que exijan factura o CFE,
 que hoy el libro de aportes no contempla.
+
+### El recibo, por comunidad: firma, quién firma y color (migración 060)
+
+Hasta acá el recibo era el MISMO para todo el país, de tres maneras
+distintas, y las tres se arreglan juntas en **Tesorería → Recibo**
+(`/admin/tesoreria/recibo/ajustes`, detrás del tag `can_manage_treasury`,
+con la hoja a la vista mientras se toca):
+
+- **La firma era un archivo del repo**, `public/recibo/firma.png`,
+  extraído del Apps Script de la planilla de Montevideo y servido igual a
+  todas las localidades. Con la Comunidad Nacional (056) dejó de ser un
+  detalle: la AEN imprimiría la firma del tesorero de Montevideo. Ahora va
+  al bucket **privado** `recibo-firmas` (`<locality_id>/firma/<uuid>.png`),
+  se lee por URL firmada y se sube **desde el navegador**, por el techo de
+  4,5 MB de Vercel. ⚠️ La policy de LECTURA es "cualquier autenticado", no
+  por carpeta, y es el único camino que funciona: un creyente de
+  Montevideo que aportó al Fondo Nacional abre una copia cuyo recibo es de
+  la AEN. No se pierde nada — esa imagen va impresa en el papel que igual
+  recibe. Sin firma cargada el renglón queda en blanco, para firmar a
+  mano; NO hay fallback al archivo viejo, que es justamente el bug. La
+  pantalla ofrece importarlo de un toque (`fetch("/recibo/firma.png")` →
+  bucket) para quien sí quiera esa firma. El **logo** sigue siendo común:
+  el Más Grande Nombre es de la Fe, no de una Asamblea.
+
+- **El nombre lo ponía `session.profile.full_name`**, o sea el de quien
+  tuviera el recibo abierto; la copia del creyente, en cambio, salía de
+  `my_receipt()`. Las dos caras del mismo papel podían decir cosas
+  distintas. Ahora lo resuelve **una sola función**,
+  `receipt_signer_name(localidad, fecha, emitido_por)` (security definer),
+  que usan la pantalla del tesorero por RPC y `my_receipt()` por dentro.
+  ⚠️ **El nombre no es un dato nuevo**: sale del Tesorero/a declarado en
+  Datos de la Asamblea (052) — duplicarlo sería el problema que ya tienen
+  las metas, que viven en dos lados. La precedencia es override explícito
+  → Tesorero/a **del ejercicio que contiene la fecha del asiento**
+  (`assembly_terms.elected_on` es el primer día de Riḍván, o sea el corte
+  exacto, así que un recibo del 183 reimpreso hoy sale con el tesorero del
+  183) → el del ejercicio más reciente → `receipt_issued_by` → el tag por
+  membresía (058). Quien marcó el recibo emitido pasó de PRIMERO a
+  anteúltimo: imprimir un recibo no convierte a nadie en Tesorero/a.
+
+- **Los colores eran una decena de hexadecimales terracota sueltos.** Hay
+  cuatro temas —Terracota (el de siempre, default), Azul oscuro (el que
+  emite la Tesorería Nacional), Verde pino, Ciruela— y el elegido es por
+  comunidad. Son **presets con su juego completo de 20 tonos**
+  (`lib/receipt-theme.ts`) y no un color libre: la hoja deriva tres
+  paradas de degradé, dos fondos de banda, la barra de la cita, los
+  subrayados y siete tonos de texto, y con un hex elegido a mano el título
+  del encabezado desaparece. Medido: donde el texto realmente cae, los
+  tres nuevos contrastan MEJOR que el terracota que ya estaba (7,0–7,9
+  contra 4,9 en el título). ⚠️ En `ReceiptSheet` no queda ni un color
+  escrito: si agregás un elemento con color propio, sumale su token al
+  tema o va a quedar terracota en los cuatro. La única excepción a
+  propósito es el rojo de "ANULADO", que es semántico. El bloque de
+  impresión ahora fuerza `print-color-adjust: exact`, que si no el
+  navegador tira el degradé —justamente lo que distingue una comunidad de
+  otra.
+
+La apariencia es la de la comunidad que **emitió** el recibo, no la de
+quien lo abre: un aporte al Fondo Nacional se ve azul aunque lo mire un
+creyente de Montevideo (`my_receipt()` lee `treasury_receipt_settings` por
+`e.locality_id`).
+
+⚠️ Hasta que corra la 060, la pantalla de ajustes avisa y no guarda, el
+recibo sale terracota y el nombre vuelve a ser el de quien lo tiene
+abierto (fallback explícito, para no dejar el renglón en blanco).
 
 ## Usuario Nacional y Comunidad Nacional (055–058)
 

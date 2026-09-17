@@ -71,6 +71,13 @@ export type MyReceipt = {
   rut?: string | null;
   fiscal_address?: string | null;
   voided_at?: string | null;
+  /** La apariencia del recibo es la de la comunidad que lo EMITIÓ (060):
+   *  un aporte al Fondo Nacional se ve azul aunque lo abra un creyente de
+   *  Montevideo. `signature_path` hay que firmarlo antes de mostrarlo
+   *  (`signSignatureUrl`), el bucket es privado. */
+  theme?: string | null;
+  signature_path?: string | null;
+  treasurer_title?: string | null;
 };
 
 export async function getMyReceipt(

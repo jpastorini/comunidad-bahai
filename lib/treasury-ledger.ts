@@ -354,6 +354,9 @@ export type ReceiptData = {
   contributions_count: number;
   receipt_issued: boolean;
   receipt_issued_at: string | null;
+  /** Quién lo marcó emitido. Es el ÚLTIMO respaldo del nombre que firma
+   *  (060): imprimir un recibo no convierte a nadie en Tesorero/a. */
+  receipt_issued_by: string | null;
   /** Anulado: la hoja imprime "ANULADO" cruzado. */
   voided_at: string | null;
   void_reason: string | null;
@@ -380,7 +383,8 @@ export async function getEntryForReceipt(
     .from("treasury_entries")
     .select(
       `id, entry_date, currency, amount, receipt_number, description,
-       contributions_count, receipt_issued, receipt_issued_at, receipt_name,
+       contributions_count, receipt_issued, receipt_issued_at, receipt_issued_by,
+       receipt_name,
        voided_at, void_reason,
        account:treasury_accounts(name),
        subcategory:treasury_subcategories(name),
@@ -402,6 +406,7 @@ export async function getEntryForReceipt(
     contributions_count: number;
     receipt_issued: boolean;
     receipt_issued_at: string | null;
+    receipt_issued_by: string | null;
     receipt_name: string | null;
     voided_at: string | null;
     void_reason: string | null;
@@ -421,6 +426,7 @@ export async function getEntryForReceipt(
     contributions_count: row.contributions_count,
     receipt_issued: row.receipt_issued,
     receipt_issued_at: row.receipt_issued_at,
+    receipt_issued_by: row.receipt_issued_by ?? null,
     voided_at: row.voided_at ?? null,
     void_reason: row.void_reason ?? null,
     account_name: row.account?.name ?? null,

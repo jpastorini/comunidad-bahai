@@ -94,6 +94,11 @@ export const ADMIN_NAV: NavGroup[] = [
     children: [
       // El recibo se abre desde el libro: prende "Libro".
       { href: "/admin/tesoreria/libro", label: "Libro", match: ["/admin/tesoreria/recibo"] },
+      // Quién firma, con qué firma y de qué color sale el recibo (060).
+      // ⚠️ El href es más largo que el `match` de "Libro" de arriba, así
+      // que la coincidencia de prefijo más larga lo prende a él: un
+      // recibo concreto (/recibo/<uuid>) sigue prendiendo "Libro".
+      { href: "/admin/tesoreria/recibo/ajustes", label: "Recibo" },
       // El cierre mensual y el Libro de Caja imprimible (054).
       { href: "/admin/tesoreria/libro/cierres", label: "Cierres" },
       // Las 53 reglas deterministas sobre el libro, los cierres y los

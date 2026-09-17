@@ -242,6 +242,13 @@ export const ASSEMBLY_SIZE = 9;
 export const ASSEMBLY_DOCS_BUCKET = "asamblea-docs";
 export const MAX_STATUTES_BYTES = 15 * 1024 * 1024;
 
+/** El bucket PRIVADO de la firma del Tesorero/a (060), por la misma
+ *  razón: el formulario de ajustes del recibo sube el PNG desde el
+ *  navegador. Un escaneo de firma pesa kilobytes; el tope es para que un
+ *  foto de 8 MP no termine adentro de un A5. */
+export const RECEIPT_SIGNATURE_BUCKET = "recibo-firmas";
+export const MAX_SIGNATURE_BYTES = 2 * 1024 * 1024;
+
 /** Los cuatro oficiales de la Asamblea. */
 export type AssemblyOffice = "coordinador" | "vicecoordinador" | "secretario" | "tesorero";
 

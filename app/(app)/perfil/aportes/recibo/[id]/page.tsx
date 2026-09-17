@@ -3,6 +3,7 @@ import { GoldHeader } from "@/components/GoldHeader";
 import { requireBahai } from "@/lib/auth";
 import { getMyReceipt } from "@/lib/my-contributions";
 import { receiptAssets } from "@/lib/receipt-assets";
+import { signSignatureUrl } from "@/lib/receipt-settings";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { formatReceiptDate, receiptLocalityName } from "@/lib/treasury-format";
 import { MyReceiptView } from "./my-receipt-view";
@@ -25,7 +26,11 @@ export default async function MiReciboPage({
   const receipt = await getMyReceipt(supabase, params.id);
   if (!receipt) notFound();
 
-  const { hasLogo, hasSignature } = receiptAssets();
+  const { hasLogo } = receiptAssets();
+  // El bucket de firmas es privado; la RLS (060) deja leerlo a cualquier
+  // autenticado a propósito, porque el recibo puede ser de otra
+  // comunidad (un aporte al Fondo Nacional).
+  const signatureUrl = await signSignatureUrl(supabase, receipt.signature_path);
   const destination = [receipt.subcategory_name, receipt.fund_name]
     .filter(Boolean)
     .join(" — ");
@@ -52,8 +57,10 @@ export default async function MiReciboPage({
             receipt.locality_name ?? session.locality.name
           )}
           treasurerName={receipt.treasurer_name ?? ""}
+          treasurerTitle={receipt.treasurer_title}
           hasLogo={hasLogo}
-          hasSignature={hasSignature}
+          signatureUrl={signatureUrl}
+          theme={receipt.theme}
           legal={{
             registeredName: receipt.registered_name ?? null,
             rut: receipt.rut ?? null,

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Banner, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { receiptAssets } from "@/lib/receipt-assets";
+import { getReceiptSettings } from "@/lib/receipt-settings";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { formatReceiptDate, receiptLocalityName } from "@/lib/treasury-format";
 import {
@@ -28,7 +29,18 @@ export default async function ReciboPage({
   ]);
   if (!entry) notFound();
 
-  const { hasLogo, hasSignature } = receiptAssets();
+  // La firma, el tema y el nombre que va impreso (060). El nombre lo
+  // resuelve la base con la MISMA función que usa la copia del creyente:
+  // hasta la 060 esta pantalla imprimía el nombre de quien la tuviera
+  // abierta, así que las dos caras del papel podían no coincidir. La
+  // fecha del asiento decide el ejercicio, o sea que un recibo del 183
+  // reimpreso hoy sale con el tesorero del 183.
+  const receipt = await getReceiptSettings(supabase, session.locality.id, {
+    entryDate: entry.entry_date,
+    issuedBy: entry.receipt_issued_by,
+  });
+
+  const { hasLogo } = receiptAssets();
   const voided = Boolean(entry.voided_at);
 
   const destination = [entry.subcategory_name, entry.fund_name]
@@ -72,11 +84,21 @@ export default async function ReciboPage({
         </div>
       )}
 
-      {!hasLogo && !hasSignature && (
+      {!receipt.ready && (
+        <div className="mb-4">
+          <Banner tone="warning">
+            <strong>Falta aplicar la migración 060.</strong> Mientras tanto el
+            recibo sale terracota y con el nombre de quien lo tenga abierto,
+            como hasta ahora.
+          </Banner>
+        </div>
+      )}
+
+      {receipt.ready && !receipt.signatureUrl && (
         <div className="mb-4">
           <Banner tone="info">
-            Falta cargar el logo y la firma en <code>public/recibo/</code>. El
-            recibo se emite igual, sin esas imágenes.
+            El recibo sale sin firma. Subí la del Tesorero/a en{" "}
+            <strong>Tesorería → Recibo</strong>; ahí también se elige el color.
           </Banner>
         </div>
       )}
@@ -90,6 +112,9 @@ export default async function ReciboPage({
         </div>
       )}
 
+      {/* `treasurerName`: sin la 060 no existe la función que resuelve el
+          firmante, así que se mantiene lo que había (el nombre de quien
+          tiene la pantalla abierta) para no dejar el renglón en blanco. */}
       <ReceiptView
         id={entry.id}
         receiptNumber={entry.receipt_number}
@@ -99,10 +124,14 @@ export default async function ReciboPage({
         amount={Math.abs(entry.amount)}
         destination={destination || "—"}
         localityName={receiptLocalityName(session.locality.name)}
-        treasurerName={session.profile.full_name ?? ""}
+        treasurerName={
+          receipt.signerName ?? (receipt.ready ? "" : session.profile.full_name ?? "")
+        }
+        treasurerTitle={receipt.settings?.treasurer_title}
         issued={entry.receipt_issued}
         hasLogo={hasLogo}
-        hasSignature={hasSignature}
+        signatureUrl={receipt.signatureUrl}
+        theme={receipt.settings?.theme}
         legal={legal}
         voided={voided}
       />
