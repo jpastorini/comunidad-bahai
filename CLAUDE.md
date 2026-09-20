@@ -513,8 +513,8 @@ solo mecanismo. Grupos: Inicio (ítem suelto) · Asamblea (Tareas,
 Reuniones, Informes de Tesorería, Datos de la Asamblea) · Comunicación (Comunicados, Encuestas, Boletín,
 Chat de Secretaría) · Vida comunitaria (Calendario, Fiestas, Sugerencias,
 Actividades, Servicio, Materiales, Fotos) · Creyentes (Creyentes, Uso de
-la app) · Tesorería (Libro, Cierres, Informes, Progreso, Presupuesto, Metas,
-Mensajes, Recibo, Cómo aportar) · Admin Nacional.
+la app) · Tesorería (Libro, Recibo, Catálogo, Cierres, Auditoría, Informes,
+Progreso, Presupuesto, Metas, Mensajes, Cómo aportar) · Admin Nacional.
 
 Tres reglas de comportamiento (`components/admin/Sidebar.tsx`):
 
@@ -971,6 +971,48 @@ faltan, el recibo se emite igual.
 márgenes `auto`**: `getComputedStyle` los devuelve resueltos en píxeles y
 el clon sale corrido y recortado. El helper ya fuerza `margin: 0`, pero el
 centrado va siempre en un envoltorio.
+
+### Catálogo del libro (sin migración)
+
+Tesorería → Catálogo (`/admin/tesoreria/catalogo`, tag
+`can_manage_treasury`): las cuentas, los fondos, las categorías y las
+subcategorías, en una sola pantalla con el mismo renglón para las cuatro
+(nombre, cuánto se usa, flechas para ordenar, Editar y la acción de
+quitar). Pedido el 2026-09-19 porque esas cosas cambian con las
+necesidades y oportunidades de la comunidad y no había dónde tocarlas. No
+hizo falta migración: las cuatro tablas de la 040 ya tenían `is_active` y
+`sort_order`, y la RLS ya dejaba escribir al tesorero. Datos y conteo de
+uso en `lib/treasury-catalog.ts`; reglas en `catalogo/actions.ts`.
+
+Tres reglas, decididas con el usuario:
+
+- **Quitar = eliminar si nunca se usó, desactivar si sí.** El uso se
+  cuenta en movimientos (anulados incluidos), líneas de presupuesto,
+  metas y subcategorías (las de una categoría, o las que sugieren un
+  fondo). Con cero, "Eliminar" con confirmación en el mismo renglón; con
+  algo, "Desactivar", que se deshace con "Reactivar". Lo inactivo deja de
+  ofrecerse en los desplegables del libro (movimiento y transferencia)
+  pero se sigue mostrando en el movimiento que ya lo tiene y en el filtro
+  por fondo de la lista, porque el historial lo necesita. El action
+  recuenta antes de borrar y la FK `restrict` es la red de abajo.
+- **La categoría de una subcategoría CON movimientos no se cambia.**
+  `treasury_entries.category_id` se copia al guardar cada movimiento y
+  los meses cerrados están congelados por trigger (054): re-emparentar
+  dejaría los informes por categoría a medio camino. El `<select>` va
+  disabled y **fuera del payload** (regla de CLAUDE.md sobre controles
+  disabled). El camino es crear la subcategoría nueva en la categoría
+  correcta y desactivar la vieja. Nombre y fondo sugerido se cambian
+  siempre.
+- **Desactivar una categoría desactiva sus subcategorías**, porque el
+  formulario del libro filtra por la subcategoría, no por la categoría.
+  Reactivarla no las reactiva: se elige una por una.
+
+Ordenar reescribe `sort_order` como 1..n de todo ese tipo (los huecos de
+la carga inicial desaparecen la primera vez); en las subcategorías el
+vecino es el más cercano de la MISMA categoría, porque se muestran
+agrupadas. Una comunidad que arranca vacía (la Nacional hoy) arma el
+catálogo a mano desde acá: se descartó un botón de "catálogo inicial"
+porque la estructura de la AEN no la conocemos.
 
 ### Informes de Tesorería (migraciones 041 y 044)
 

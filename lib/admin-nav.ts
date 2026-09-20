@@ -99,6 +99,9 @@ export const ADMIN_NAV: NavGroup[] = [
       // que la coincidencia de prefijo más larga lo prende a él: un
       // recibo concreto (/recibo/<uuid>) sigue prendiendo "Libro".
       { href: "/admin/tesoreria/recibo/ajustes", label: "Recibo" },
+      // Cuentas, fondos, categorías y subcategorías con que se carga el
+      // libro: agregar, renombrar, ordenar, dar de baja.
+      { href: "/admin/tesoreria/catalogo", label: "Catálogo" },
       // El cierre mensual y el Libro de Caja imprimible (054).
       { href: "/admin/tesoreria/libro/cierres", label: "Cierres" },
       // Las 53 reglas deterministas sobre el libro, los cierres y los

@@ -266,11 +266,17 @@ export function EntryForm({
             className={inputClass}
           >
             <option value="">Sin fondo</option>
-            {catalog.funds.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
+            {/* Un fondo dado de baja en el Catálogo no se ofrece más, pero
+                el que ya tiene este movimiento (o el que sugiere la
+                subcategoría elegida) se sigue mostrando: si no, el select
+                quedaría en blanco con un valor puesto por debajo. */}
+            {catalog.funds
+              .filter((f) => f.is_active || f.id === fundId)
+              .map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
           </select>
         </Field>
       </div>

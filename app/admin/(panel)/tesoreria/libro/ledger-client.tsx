@@ -876,10 +876,12 @@ function TransferForm({
   // Las subcategorías de movimiento entre cuentas: cambio de caja y
   // compra de divisas. Si la localidad las nombró distinto, se ofrecen
   // todas y que elija.
-  const transferSubs = catalog.subcategories.filter((s) =>
+  // Solo las activas: las dadas de baja en el Catálogo no se ofrecen.
+  const activeSubs = catalog.subcategories.filter((s) => s.is_active);
+  const transferSubs = activeSubs.filter((s) =>
     /cambio de caja|divisa|transferencia/i.test(s.name)
   );
-  const options = transferSubs.length > 0 ? transferSubs : catalog.subcategories;
+  const options = transferSubs.length > 0 ? transferSubs : activeSubs;
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -937,7 +939,7 @@ function TransferForm({
         <div className="grid grid-cols-2 gap-2">
           <select name="from_account_id" required className={inputClass}>
             <option value="">Cuenta…</option>
-            {catalog.accounts.map((a) => (
+            {catalog.accounts.filter((a) => a.is_active).map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
               </option>
@@ -970,7 +972,7 @@ function TransferForm({
         <div className="grid grid-cols-2 gap-2">
           <select name="to_account_id" required className={inputClass}>
             <option value="">Cuenta…</option>
-            {catalog.accounts.map((a) => (
+            {catalog.accounts.filter((a) => a.is_active).map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
               </option>
