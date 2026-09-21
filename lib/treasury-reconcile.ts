@@ -70,6 +70,10 @@ export type CurrencyTotals = {
   diff: number;
   /** Saldo del libro de esa cuenta al último día del extracto. */
   ledgerBalance: number;
+  /** El saldo que declara la plataforma, si el archivo lo trae (BROU). */
+  statementBalance: number | null;
+  /** statementBalance - ledgerBalance, o null si la plataforma no lo dice. */
+  balanceDiff: number | null;
 };
 
 export type ReconcileResult = {
@@ -106,7 +110,14 @@ const REVERSAL_RE = /devoluci|revers|anulad|rechaz|reintegro/i;
 export function reconcile(
   lines: StatementLine[],
   allEntries: ReconcileEntry[],
-  opts: { from: string; to: string; windowDays?: number }
+  opts: {
+    from: string;
+    to: string;
+    windowDays?: number;
+    /** El saldo que declara la plataforma al cierre del extracto, si lo
+     *  trae: se compara con el saldo del libro de esa moneda. */
+    statementBalance?: { amount: number; currency: string } | null;
+  }
 ): ReconcileResult {
   const windowDays = opts.windowDays ?? DEFAULT_WINDOW_DAYS;
   const { from, to } = opts;
@@ -253,14 +264,24 @@ export function reconcile(
     const ledgerBalance = live
       .filter((e) => e.currency === currency && e.entry_date <= to)
       .reduce((s, e) => addMoney(s, e.amount), 0);
-    return { currency, statementNet, ledgerNet, diff: addMoney(statementNet, -ledgerNet), ledgerBalance };
+    const sb = opts.statementBalance;
+    const statementBalance = sb && sb.currency === currency ? sb.amount : null;
+    return {
+      currency,
+      statementNet,
+      ledgerNet,
+      diff: addMoney(statementNet, -ledgerNet),
+      ledgerBalance,
+      statementBalance,
+      balanceDiff: statementBalance == null ? null : addMoney(statementBalance, -ledgerBalance),
+    };
   });
 
   const clean =
     unmatchedLines.length === 0 &&
     unmatchedEntries.length === 0 &&
     matched.every((m) => m.missingFee == null) &&
-    totals.every((t) => sameMoney(t.diff, 0));
+    totals.every((t) => sameMoney(t.diff, 0) && (t.balanceDiff == null || sameMoney(t.balanceDiff, 0)));
 
   return { from, to, windowDays, matched, reversed, unmatchedLines, unmatchedEntries, totals, clean };
 }

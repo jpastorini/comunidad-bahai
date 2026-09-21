@@ -2,6 +2,7 @@
 
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import {
+  PLATFORM_LABELS,
   parseStatement,
   type ParsedStatement,
   type StatementPlatform,
@@ -144,17 +145,42 @@ export async function reconcileAction(formData: FormData): Promise<ReconcileActi
     voided_at: r.voided_at ?? null,
   }));
 
-  const result = reconcile(parsed.lines, entries, { from: parsed.from, to: parsed.to });
+  const result = reconcile(parsed.lines, entries, {
+    from: parsed.from,
+    to: parsed.to,
+    statementBalance: parsed.closingBalance,
+  });
+
+  // El error barato de esta pantalla es comparar el archivo contra la
+  // cuenta equivocada (el del BROU contra "Cuenta Prex", o el de dólares
+  // contra la de pesos): no se bloquea, porque los nombres del catálogo
+  // son libres, pero se avisa arriba del resultado.
+  const accountName = account.name as string;
+  const warnings = [...parsed.warnings];
+  const platformWord = { prex: /prex/i, brou: /brou/i, mercadopago: /mercado\s*pago|\bmp\b|point|pos\b/i }[
+    parsed.platform
+  ];
+  if (!platformWord.test(accountName)) {
+    warnings.unshift(
+      `El archivo es de ${PLATFORM_LABELS[parsed.platform]} y la cuenta elegida es "${accountName}". ¿Es la cuenta correcta?`
+    );
+  }
+  const statementCurrency = parsed.lines[0]?.currency;
+  if (statementCurrency === "USD" && /peso/i.test(accountName)) {
+    warnings.unshift(`El extracto está en dólares y la cuenta elegida es "${accountName}".`);
+  } else if (statementCurrency === "UYU" && /d[oó]lar|usd/i.test(accountName)) {
+    warnings.unshift(`El extracto está en pesos y la cuenta elegida es "${accountName}".`);
+  }
 
   return {
     ok: true,
     fileName: file.name,
     platform: parsed.platform,
-    account: { id: account.id as string, name: account.name as string },
+    account: { id: account.id as string, name: accountName },
     statement: {
       lineCount: parsed.lines.length,
       skipped: parsed.skipped,
-      warnings: parsed.warnings,
+      warnings,
     },
     result,
   };

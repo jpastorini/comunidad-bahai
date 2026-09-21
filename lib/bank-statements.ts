@@ -47,6 +47,9 @@ export type StatementLine = {
    *  como línea aparte, y el libro la tiene como dos asientos. */
   grossAmount: number | null;
   status: string | null;
+  /** BROU: el "Asunto", lo que escribió quien giró (nombre y concepto).
+   *  Es lo más útil para reconocer un aporte sin registrar. */
+  memo: string | null;
 };
 
 export type ParsedStatement = {
@@ -59,6 +62,9 @@ export type ParsedStatement = {
   /** Rango de fechas del extracto (de las líneas leídas). */
   from: string;
   to: string;
+  /** El saldo que declara la plataforma, si el archivo lo trae (el BROU
+   *  lo pone arriba; Prex no lo trae). En la moneda del extracto. */
+  closingBalance: { amount: number; currency: string; asOf: string } | null;
   warnings: string[];
 };
 
@@ -187,8 +193,9 @@ export function parseStatement(rows: CellMatrix): ParsedStatement | ParseFailure
     };
   }
   if (detected.platform === "prex") return parsePrex(rows, detected.headerRow);
+  if (detected.platform === "brou") return parseBrou(rows, detected.headerRow);
   return {
-    error: `Es un archivo de ${PLATFORM_LABELS[detected.platform]}. Por ahora la conciliación lee solo Prex; ${PLATFORM_LABELS[detected.platform]} viene en el próximo paso.`,
+    error: `Es un archivo de ${PLATFORM_LABELS[detected.platform]}. Por ahora la conciliación lee Prex y BROU; ${PLATFORM_LABELS[detected.platform]} viene en el próximo paso.`,
     platform: detected.platform,
   };
 }
@@ -263,6 +270,7 @@ export function parsePrex(rows: CellMatrix, headerRow: number): ParsedStatement 
       reference: extractReference(description),
       grossAmount,
       status,
+      memo: null,
     });
   }
 
@@ -284,6 +292,151 @@ export function parsePrex(rows: CellMatrix, headerRow: number): ParsedStatement 
     skipped,
     from: lines[0].date,
     to: lines[lines.length - 1].date,
+    closingBalance: null,
     warnings,
   };
+}
+
+// ─── BROU ──────────────────────────────────────────────────────────────
+
+/**
+ * La pantalla "Saldos y Movimientos" de eBROU guardada como Excel. Arriba
+ * el bloque de la cuenta ("Fecha: 19/09/2026 22:07", el nombre, "Saldo
+ * disponible\n$ 578.239,81", "Moneda\n$"), y más abajo la tabla de los
+ * últimos movimientos: Fecha (serial de Excel), Descripción, Número de
+ * documento, Asunto, Dependencia, Débito, Crédito. Una sola moneda por
+ * cuenta y sin saldo por línea, pero el saldo de arriba es un dato real:
+ * se devuelve en `closingBalance` para cotejarlo con el libro.
+ *
+ * Trae solo los últimos ~20 movimientos, así que la conciliación cubre
+ * lo que el archivo cubre; si eBROU exporta por rango de fechas con otra
+ * disposición, se agrega acá como segunda variante.
+ */
+export function parseBrou(rows: CellMatrix, headerRow: number): ParsedStatement | ParseFailure {
+  const header = (rows[headerRow] ?? []).map(normalizeHeader);
+  const col = (name: string) => header.indexOf(name);
+  const cDate = col("fecha");
+  const cDesc = col("descripcion");
+  const cDoc = header.findIndex((h) => h.startsWith("numero de documento") || h === "documento");
+  const cMemo = col("asunto");
+  const cDebit = col("debito");
+  const cCredit = col("credito");
+  if (cDate < 0 || cDesc < 0 || cDebit < 0 || cCredit < 0) {
+    return { error: "El archivo del BROU no trae las columnas Fecha, Descripción, Débito y Crédito.", platform: "brou" };
+  }
+
+  const { currency, balance, asOf, accountLabel } = brouHeaderBlock(rows, headerRow);
+  const lines: StatementLine[] = [];
+  const skipped: ParsedStatement["skipped"] = [];
+  const warnings: string[] = [];
+
+  for (let i = headerRow + 1; i < rows.length; i++) {
+    const r = rows[i] ?? [];
+    const row = i + 1;
+    if (r.every((c) => c == null || String(c).trim() === "")) continue;
+
+    const date = brouDate(r[cDate]);
+    const debit = cellNumber(r[cDebit]);
+    const credit = cellNumber(r[cCredit]);
+    if (date == null && debit == null && credit == null) continue; // pie, leyenda del banco
+    if (date == null) {
+      skipped.push({ row, reason: "sin fecha legible" });
+      continue;
+    }
+    // Débito y Crédito vienen en dos columnas, siempre positivas.
+    const amount = round2((credit ?? 0) - Math.abs(debit ?? 0));
+    if (amount === 0) {
+      skipped.push({ row, reason: "sin importe" });
+      continue;
+    }
+    const description = cellText(r[cDesc]);
+    const memo = cMemo >= 0 ? cellText(r[cMemo]) || null : null;
+    const doc = cDoc >= 0 ? cellText(r[cDoc]).replace(/\D/g, "") : "";
+
+    lines.push({
+      key: `L${row}`,
+      row,
+      date,
+      amount,
+      currency,
+      description,
+      reference: doc.length >= 4 ? doc : extractReference(`${description} ${memo ?? ""}`),
+      grossAmount: null,
+      status: null,
+      memo,
+    });
+  }
+
+  if (lines.length === 0) {
+    return { error: "El archivo del BROU no tiene movimientos.", platform: "brou" };
+  }
+
+  lines.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.row - b.row));
+  const to = lines[lines.length - 1].date;
+  if (accountLabel) warnings.push(`Cuenta según el archivo: ${accountLabel}.`);
+  warnings.push(
+    "eBROU exporta solo los últimos movimientos: el período conciliado es el que cubre el archivo, no un mes entero."
+  );
+
+  return {
+    platform: "brou",
+    lines,
+    skipped,
+    from: lines[0].date,
+    to,
+    closingBalance: balance != null ? { amount: balance, currency, asOf: asOf ?? to } : null,
+    warnings,
+  };
+}
+
+/** Las fechas del BROU vienen como serial de Excel; si alguien las guardó
+ *  como texto, WPS las escribe m/d/yy (locale de quien exportó). Se prueba
+ *  d/m primero y, si el mes no cierra, m/d. */
+function brouDate(c: Cell): string | null {
+  const iso = cellDate(c);
+  if (iso) return iso;
+  const m = String(c ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (!m) return null;
+  const y = m[3].length === 2 ? 2000 + parseInt(m[3], 10) : parseInt(m[3], 10);
+  return isoDate(y, parseInt(m[1], 10), parseInt(m[2], 10));
+}
+
+/**
+ * El bloque de arriba del archivo del BROU: moneda, saldo disponible,
+ * fecha de la consulta y nombre de la cuenta. Cada dato viene en una celda
+ * con el rótulo y el valor separados por un salto de línea
+ * ("Saldo disponible\n$ 578.239,81"). Todo es opcional: si el banco cambia
+ * el bloque, el extracto se lee igual, sin saldo.
+ */
+function brouHeaderBlock(rows: CellMatrix, headerRow: number) {
+  let currency = "UYU";
+  let balance: number | null = null;
+  let asOf: string | null = null;
+  let accountLabel: string | null = null;
+  let sawCurrency = false;
+
+  for (let i = 0; i < headerRow; i++) {
+    for (const c of rows[i] ?? []) {
+      const text = String(c ?? "").trim();
+      if (!text) continue;
+      const [label, ...rest] = text.split(/\r?\n/);
+      const value = rest.join(" ").trim();
+      const key = normalizeHeader(label);
+
+      if (key === "moneda" && !sawCurrency) {
+        sawCurrency = true;
+        if (/u\$s|usd|d[oó]lar/i.test(value)) currency = "USD";
+      } else if (key === "saldo disponible" && balance == null) {
+        balance = cellNumber(value.replace(/^U\$S|^\$/i, ""));
+      } else if (key.startsWith("fecha:") || key === "fecha") {
+        const m = text.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+        if (m) asOf = cellDate(m[1]);
+      } else if (!accountLabel && /^\d+\s+\S/.test(text) && rest.length === 0 && i < headerRow) {
+        // "3 AEN Pesos UY": el número de orden de la cuenta y su nombre.
+        accountLabel = text;
+      }
+    }
+  }
+  if (!sawCurrency && accountLabel && /d[oó]lar|usd/i.test(accountLabel)) currency = "USD";
+  return { currency, balance, asOf, accountLabel };
 }

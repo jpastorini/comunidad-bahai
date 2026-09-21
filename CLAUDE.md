@@ -304,10 +304,10 @@ un bucket privado por localidad, el nombre resuelto desde la composición
 de la Asamblea (052) con una sola función para las dos caras del papel, y
 cuatro temas de color —la Tesorería Nacional los emite en azul oscuro—.
 Ver la sección "El recibo, por comunidad" más abajo. ·
-**Conciliación con el extracto** (sin migración): el archivo que exporta
-Prex contra el libro de esa cuenta, sin guardar nada; BROU y Mercado Pago
-se reconocen pero todavía no se leen. Ver la sección "Conciliación con el
-extracto" más abajo.
+**Conciliación con el extracto** (sin migración): el archivo que exportan
+Prex y el BROU contra el libro de esa cuenta, sin guardar nada; Mercado
+Pago se reconoce pero todavía no se lee. Ver la sección "Conciliación con
+el extracto" más abajo.
 
 ## Buscador de pasajes (migración 053)
 
@@ -1353,10 +1353,16 @@ Tres módulos, con la misma separación que el Libro de Caja:
   no viven en el repo). Ubican las columnas **por nombre de encabezado**
   normalizado, nunca por posición, y si no reconocen el archivo fallan con
   mensaje: un extracto mal leído es peor que ninguno. `detectPlatform()`
-  reconoce Prex, BROU y Mercado Pago; solo Prex se parsea hoy, los otros
-  dos devuelven "viene en el próximo paso". `cellDate()` acepta el serial
+  reconoce Prex, BROU y Mercado Pago; se parsean Prex y BROU, Mercado
+  Pago devuelve "viene en el próximo paso". `cellDate()` acepta el serial
   de Excel, dd/mm/yyyy e ISO con hora; `cellNumber()` decide el decimal
-  por el último separador ("1,600.00", "-5058.26", "1.500,50").
+  por el último separador ("1,600.00", "-5058.26", "1.500,50"). El BROU
+  además entrega `memo` (el Asunto) por línea y `closingBalance` (el
+  saldo disponible del bloque de arriba, con la fecha de la consulta), que
+  `reconcile()` compara con el saldo del libro (`balanceDiff`). El action
+  avisa si el archivo no parece de la cuenta elegida (BROU contra "Cuenta
+  Prex", dólares contra pesos): no bloquea, porque los nombres del
+  catálogo son libres.
 - `lib/bank-statements-read.ts`: el único que importa SheetJS (`xlsx`),
   server-only, con `raw: true` para que números y fechas lleguen crudos y
   no como texto formateado según el locale de quien exportó.
@@ -1388,10 +1394,12 @@ Lo que se aprendió de los tres archivos reales (2026-09-21):
   escribió quien giró: nombre y concepto, lo más útil para reconocer un
   aporte), Dependencia, Débito y Crédito. Solo los **últimos ~20
   movimientos**, sin saldo por línea, con el saldo disponible arriba. Las
-  comisiones vienen como líneas propias ("SPI - COMISIÓN"). El usuario
-  averigua si eBROU exporta por rango de fechas; si no, la conciliación
-  del BROU queda acotada a esos 20 y hay que importar cada dos semanas. La
-  muestra era la cuenta de la **AEN**, no la de Montevideo.
+  comisiones vienen como líneas propias ("SPI - COMISIÓN"), así que
+  cierran solas contra el gasto del libro. Se lee este formato tal cual
+  (2026-09-21): la conciliación cubre lo que el archivo cubre y hay que
+  importar cada dos semanas. Si eBROU exporta por rango de fechas con otra
+  disposición, es una segunda variante dentro de `parseBrou()`. La muestra
+  era la cuenta de la **AEN**, no la de Montevideo.
 - **Mercado Pago**: lo que bajó el usuario es el **informe de cobros con
   Point** (el POS), no el estado de cuenta: una fila por cobro con valor,
   comisión + IVA, retención de impuestos, neto acreditado y fecha de
@@ -1401,8 +1409,8 @@ Lo que se aprendió de los tres archivos reales (2026-09-21):
   esconder el gasto. La cuenta tiene una semana de vida; lo más probable
   es que el dinero se pase a Prex.
 
-Pasos siguientes, en este orden: parser del BROU cuando se sepa qué
-exporta · guardar las líneas y marcar "mes conciliado" en Cierres ·
+Pasos siguientes, en este orden: guardar las líneas y marcar "mes
+conciliado" en Cierres ·
 "Registrar en el libro" prellenado desde una línea suelta (mismo patrón
 pendiente del aviso del chat) · Mercado Pago con los dos asientos · la
 sección de conciliación bancaria en la hoja interna.
@@ -1925,12 +1933,12 @@ cambia nada.
 
 ## Pendientes conocidos
 
-- **Conciliación: falta el BROU** (esperando saber si eBROU exporta
-  movimientos por rango de fechas; la pantalla de "Saldos y Movimientos"
-  trae solo los últimos 20), persistir las líneas, marcar el mes como
-  conciliado en Cierres, "Registrar en el libro" desde una línea suelta y
-  Mercado Pago con aporte bruto + gasto por comisión. Ver "Conciliación
-  con el extracto".
+- **Conciliación: Prex y BROU se leen; falta** persistir las líneas,
+  marcar el mes como conciliado en Cierres, "Registrar en el libro" desde
+  una línea suelta y Mercado Pago (es el POS, cuenta de una semana; aporte
+  bruto + gasto por comisión, cuando tengan un mes de uso). El BROU se lee
+  del formato "Saldos y Movimientos" (últimos 20); si eBROU exporta por
+  rango, sumar la variante. Ver "Conciliación con el extracto".
 - **Probar el Usuario Nacional en producción.** Las cuatro migraciones
   (055 a 058) están aplicadas y desplegadas (2026-09-17). Falta el primer
   uso real, y el orden importa porque cada paso habilita el siguiente:

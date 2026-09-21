@@ -26,9 +26,9 @@ export function ReconcileClient({ accounts }: { accounts: Account[] }) {
   const [outcome, setOutcome] = useState<ReconcileActionResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
 
-  // La cuenta que se llama como la plataforma que ya se lee: un toque menos.
-  const defaultAccount =
-    accounts.find((a) => /prex/i.test(a.name))?.id ?? accounts[0]?.id ?? "";
+  // La primera del catálogo (en Montevideo, BROU Pesos). Si el archivo no
+  // corresponde a la cuenta elegida, el action lo avisa arriba del resultado.
+  const defaultAccount = accounts[0]?.id ?? "";
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -56,7 +56,7 @@ export function ReconcileClient({ accounts }: { accounts: Account[] }) {
             label="Extracto de la plataforma"
             name="file"
             required
-            hint="Por ahora, Prex (Estado de cuenta → Excel)"
+            hint="Prex: Estado de cuenta → Excel · BROU: Saldos y Movimientos → Excel"
           >
             <input
               id="file"
@@ -94,6 +94,7 @@ function Outcome({ data }: { data: Extract<ReconcileActionResult, { ok: true }> 
   const { result: r, statement } = data;
   const missingFees = r.matched.filter((m) => m.missingFee != null);
   const pendingCount = r.unmatchedLines.length + missingFees.length;
+  const hasStatementBalance = r.totals.some((t) => t.statementBalance != null);
 
   return (
     <>
@@ -120,7 +121,11 @@ function Outcome({ data }: { data: Extract<ReconcileActionResult, { ok: true }> 
                 <th className="py-1.5 pr-3 text-right font-semibold">Movimiento en {PLATFORM_LABELS[data.platform]}</th>
                 <th className="py-1.5 pr-3 text-right font-semibold">Movimiento en el libro</th>
                 <th className="py-1.5 pr-3 text-right font-semibold">Diferencia</th>
-                <th className="py-1.5 text-right font-semibold">Saldo del libro al {formatReceiptDate(r.to)}</th>
+                {hasStatementBalance && (
+                  <th className="py-1.5 pr-3 text-right font-semibold">Saldo en {PLATFORM_LABELS[data.platform]}</th>
+                )}
+                <th className="py-1.5 pr-3 text-right font-semibold">Saldo del libro al {formatReceiptDate(r.to)}</th>
+                {hasStatementBalance && <th className="py-1.5 text-right font-semibold">Diferencia de saldo</th>}
               </tr>
             </thead>
             <tbody>
@@ -129,22 +134,29 @@ function Outcome({ data }: { data: Extract<ReconcileActionResult, { ok: true }> 
                   <td className="py-2 pr-3 font-semibold text-dark">{t.currency}</td>
                   <td className="py-2 pr-3 text-right tabular-nums">{signed(t.statementNet)}</td>
                   <td className="py-2 pr-3 text-right tabular-nums">{signed(t.ledgerNet)}</td>
-                  <td
-                    className={`py-2 pr-3 text-right font-semibold tabular-nums ${
-                      Math.abs(t.diff) < 0.005 ? "text-green" : "text-rose-700"
-                    }`}
-                  >
+                  <td className={`py-2 pr-3 text-right font-semibold tabular-nums ${diffTone(t.diff)}`}>
                     {Math.abs(t.diff) < 0.005 ? "—" : signed(t.diff)}
                   </td>
-                  <td className="py-2 text-right tabular-nums">{formatMoney(t.ledgerBalance)}</td>
+                  {hasStatementBalance && (
+                    <td className="py-2 pr-3 text-right tabular-nums">
+                      {t.statementBalance == null ? "—" : formatMoney(t.statementBalance)}
+                    </td>
+                  )}
+                  <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(t.ledgerBalance)}</td>
+                  {hasStatementBalance && (
+                    <td className={`py-2 text-right font-semibold tabular-nums ${diffTone(t.balanceDiff ?? 0)}`}>
+                      {t.balanceDiff == null || Math.abs(t.balanceDiff) < 0.005 ? "—" : signed(t.balanceDiff)}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         <p className="mt-3 text-[12px] text-muted">
-          El extracto de {PLATFORM_LABELS[data.platform]} no trae saldo, así que se compara el
-          movimiento neto del período; el saldo es el del libro, para cotejarlo con el de la app.
+          {hasStatementBalance
+            ? `El saldo en ${PLATFORM_LABELS[data.platform]} es el que declara el archivo al momento de exportarlo; el del libro, al último movimiento del extracto. Si hubo movimientos entre las dos fechas, difieren por eso.`
+            : `El extracto de ${PLATFORM_LABELS[data.platform]} no trae saldo, así que se compara el movimiento neto del período; el saldo es el del libro, para cotejarlo con el de la app.`}
         </p>
 
         {statement.warnings.map((w) => (
@@ -260,6 +272,10 @@ function signed(n: number): string {
   return `${n < 0 ? "− " : "+ "}${formatMoney(Math.abs(n))}`;
 }
 
+function diffTone(n: number): string {
+  return Math.abs(n) < 0.005 ? "text-green" : "text-rose-700";
+}
+
 function SectionTitle({ title, count, hint }: { title: string; count: number; hint: string }) {
   return (
     <div>
@@ -289,6 +305,7 @@ function LineRow({ line, hint }: { line: StatementLine; hint?: string }) {
         <div className="truncate text-[13px] text-dark">
           <span className="tabular-nums text-muted">{formatReceiptDate(line.date)}</span> · {line.description || "Sin descripción"}
         </div>
+        {line.memo && <div className="truncate text-[12px] text-dark/80">{line.memo}</div>}
         <div className="text-[11.5px] text-muted">
           Fila {line.row}
           {line.reference && ` · ref. ${line.reference}`}
