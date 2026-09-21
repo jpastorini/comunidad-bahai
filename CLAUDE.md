@@ -303,7 +303,11 @@ pasajes" más abajo. ·
 un bucket privado por localidad, el nombre resuelto desde la composición
 de la Asamblea (052) con una sola función para las dos caras del papel, y
 cuatro temas de color —la Tesorería Nacional los emite en azul oscuro—.
-Ver la sección "El recibo, por comunidad" más abajo.
+Ver la sección "El recibo, por comunidad" más abajo. ·
+**Conciliación con el extracto** (sin migración): el archivo que exporta
+Prex contra el libro de esa cuenta, sin guardar nada; BROU y Mercado Pago
+se reconocen pero todavía no se leen. Ver la sección "Conciliación con el
+extracto" más abajo.
 
 ## Buscador de pasajes (migración 053)
 
@@ -513,7 +517,7 @@ solo mecanismo. Grupos: Inicio (ítem suelto) · Asamblea (Tareas,
 Reuniones, Informes de Tesorería, Datos de la Asamblea) · Comunicación (Comunicados, Encuestas, Boletín,
 Chat de Secretaría) · Vida comunitaria (Calendario, Fiestas, Sugerencias,
 Actividades, Servicio, Materiales, Fotos) · Creyentes (Creyentes, Uso de
-la app) · Tesorería (Libro, Recibo, Catálogo, Cierres, Auditoría, Informes,
+la app) · Tesorería (Libro, Recibo, Catálogo, Cierres, Conciliación, Auditoría, Informes,
 Progreso, Presupuesto, Metas, Mensajes, Cómo aportar) · Admin Nacional.
 
 Tres reglas de comportamiento (`components/admin/Sidebar.tsx`):
@@ -1330,6 +1334,87 @@ siendo solo del deck (`getPublicReport` filtra `comunidad`). En el
 registro de la Asamblea (`/admin/informes`) el balance se lista junto a
 las hojas internas porque también se aprueba en reunión.
 
+### Conciliación con el extracto (sin migración)
+
+Tesorería → Conciliación (`/admin/tesoreria/conciliacion`, tag
+`can_manage_treasury`): el tesorero elige la cuenta del libro, sube el
+archivo que exporta la plataforma y ve qué falta de cada lado. **No guarda
+nada**, ni el archivo ni el resultado. Es el primer paso, decidido con el
+usuario el 2026-09-21 ("empezar con lo más sencillo e ir agregando"),
+para ver si la herramienta sirve antes de persistir. Importa por qué
+existe: la auditoría (059) compara el libro consigo mismo; el extracto es
+la única fuente **externa** de verdad, y es la conciliación bancaria del
+punto 17 de la lista legal.
+
+Tres módulos, con la misma separación que el Libro de Caja:
+
+- `lib/bank-statements.ts`: los parsers, puros sobre una matriz de celdas
+  (se prueban con un arreglo a mano; los archivos reales traen nombres y
+  no viven en el repo). Ubican las columnas **por nombre de encabezado**
+  normalizado, nunca por posición, y si no reconocen el archivo fallan con
+  mensaje: un extracto mal leído es peor que ninguno. `detectPlatform()`
+  reconoce Prex, BROU y Mercado Pago; solo Prex se parsea hoy, los otros
+  dos devuelven "viene en el próximo paso". `cellDate()` acepta el serial
+  de Excel, dd/mm/yyyy e ISO con hora; `cellNumber()` decide el decimal
+  por el último separador ("1,600.00", "-5058.26", "1.500,50").
+- `lib/bank-statements-read.ts`: el único que importa SheetJS (`xlsx`),
+  server-only, con `raw: true` para que números y fechas lleguen crudos y
+  no como texto formateado según el locale de quien exportó.
+- `lib/treasury-reconcile.ts`: `reconcile()`, pura. Una línea cierra con
+  un movimiento de la misma moneda, el mismo importe con signo y fecha a
+  lo sumo 3 días (`DEFAULT_WINDOW_DAYS`), gana el más cercano, uno a uno.
+  Después: **comisión adentro** (Prex, `grossAmount`) cierra contra la
+  transferencia más el gasto, y si falta el gasto avisa `missingFee`;
+  **dos movimientos que suman** la línea; y una salida **devuelta** por la
+  plataforma (descripción con "devolución"/"rechazo") se aparea consigo
+  misma y no se le pide al libro. Anulados (054) y saldos de apertura no
+  cuentan. Del libro solo se reclama lo que cae DENTRO del rango del
+  extracto. Totales por moneda, nunca sumadas: neto del extracto contra
+  neto del libro, más el saldo del libro a la fecha final (Prex no trae
+  saldo por línea, así que el saldo se coteja a mano con la app).
+
+Lo que se aprendió de los tres archivos reales (2026-09-21):
+
+- **Prex** ("Estado de cuenta" → Excel): tabla limpia con Fecha
+  (dd/mm/yyyy, texto), Descripción, Moneda Origen, Importe Origen, Moneda,
+  Importe (numérico, con signo), Estado ("Confirmado"). Origen ≠ Importe
+  cuando la comisión va adentro (5.014 pedidos → 5.058,26 cobrados). La
+  referencia es la tira de dígitos de la descripción. Una transferencia
+  rechazada aparece como salida + "DEVOLUCIÓN TRANSFERENCIA" + salida de
+  nuevo.
+- **BROU**: la pantalla "Saldos y Movimientos" de eBROU guardada como XLS
+  (BIFF viejo, generado con WPS): encabezado en la fila ~33 con Fecha
+  (serial de Excel), Descripción, Número de documento, Asunto (lo que
+  escribió quien giró: nombre y concepto, lo más útil para reconocer un
+  aporte), Dependencia, Débito y Crédito. Solo los **últimos ~20
+  movimientos**, sin saldo por línea, con el saldo disponible arriba. Las
+  comisiones vienen como líneas propias ("SPI - COMISIÓN"). El usuario
+  averigua si eBROU exporta por rango de fechas; si no, la conciliación
+  del BROU queda acotada a esos 20 y hay que importar cada dos semanas. La
+  muestra era la cuenta de la **AEN**, no la de Montevideo.
+- **Mercado Pago**: lo que bajó el usuario es el **informe de cobros con
+  Point** (el POS), no el estado de cuenta: una fila por cobro con valor,
+  comisión + IVA, retención de impuestos, neto acreditado y fecha de
+  liberación (ISO con -03:00). Regla contable acordada: el aporte va por
+  el **bruto** (el recibo dice lo que la persona dio) más un gasto por
+  comisión y retención; registrar el neto haría mentir al recibo y
+  esconder el gasto. La cuenta tiene una semana de vida; lo más probable
+  es que el dinero se pase a Prex.
+
+Pasos siguientes, en este orden: parser del BROU cuando se sepa qué
+exporta · guardar las líneas y marcar "mes conciliado" en Cierres ·
+"Registrar en el libro" prellenado desde una línea suelta (mismo patrón
+pendiente del aviso del chat) · Mercado Pago con los dos asientos · la
+sección de conciliación bancaria en la hoja interna.
+
+⚠️ `xlsx` está instalado desde el registro de npm (0.18.5, la última que
+SheetJS publicó ahí); la versión mantenida vive en su CDN. Las advisories
+de la 0.18 son sobre archivos armados a propósito, y acá sube archivos
+solo el tesorero. Para actualizar:
+`npm install https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`. Al
+leer el xlsx de Mercado Pago SheetJS imprime "Bad uncompressed size" en
+stderr: es ruido, lo lee bien.
+
 ### Adecuación a la ley uruguaya (relevamiento 2026-09-12)
 
 Qué le pide la normativa al libro y a los informes, contrastado con lo que
@@ -1840,6 +1925,12 @@ cambia nada.
 
 ## Pendientes conocidos
 
+- **Conciliación: falta el BROU** (esperando saber si eBROU exporta
+  movimientos por rango de fechas; la pantalla de "Saldos y Movimientos"
+  trae solo los últimos 20), persistir las líneas, marcar el mes como
+  conciliado en Cierres, "Registrar en el libro" desde una línea suelta y
+  Mercado Pago con aporte bruto + gasto por comisión. Ver "Conciliación
+  con el extracto".
 - **Probar el Usuario Nacional en producción.** Las cuatro migraciones
   (055 a 058) están aplicadas y desplegadas (2026-09-17). Falta el primer
   uso real, y el orden importa porque cada paso habilita el siguiente:
