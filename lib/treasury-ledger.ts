@@ -200,50 +200,91 @@ export async function getLedgerYears(
 const ENTRY_FIELDS =
   "id, entry_date, bahai_year, account_id, subcategory_id, category_id, fund_id, currency, amount, description, receipt_number, contributions_count, contributor_id, receipt_name, receipt_issued, transfer_group_id, is_opening_balance, voided_at, void_reason, adjusts_entry_id, adjustment_reason";
 
-/** Todos los movimientos del año, anulados incluidos: el libro los
- *  muestra tachados, porque su número de recibo sigue en la serie. */
-export async function getLedgerEntries(
+const LEGACY_ENTRY_FIELDS =
+  "id, entry_date, bahai_year, account_id, subcategory_id, category_id, fund_id, currency, amount, description, receipt_number, contributions_count, contributor_id, receipt_name, receipt_issued, transfer_group_id, is_opening_balance";
+
+/** Filtro de la consulta: un año bahá'í, o un rango de fechas civiles. */
+type LedgerScope =
+  | { kind: "year"; year: number }
+  | { kind: "range"; from: string; to: string };
+
+async function fetchLedgerEntries(
   supabase: SupabaseClient,
-  year: number
+  scope: LedgerScope
 ): Promise<TreasuryEntry[]> {
-  const { data, error } = await supabase
-    .from("treasury_entries")
-    .select(ENTRY_FIELDS)
-    .eq("bahai_year", year)
-    .order("entry_date", { ascending: false })
-    .order("receipt_number", { ascending: false, nullsFirst: false });
+  /** El mismo encuadre y el mismo orden para la consulta y su reintento
+   *  sin las columnas de la 054. */
+  const build = (fields: string) => {
+    const base = supabase.from("treasury_entries").select(fields);
+    const scoped =
+      scope.kind === "year"
+        ? base.eq("bahai_year", scope.year)
+        : base.gte("entry_date", scope.from).lte("entry_date", scope.to);
+    return scoped
+      .order("entry_date", { ascending: false })
+      .order("receipt_number", { ascending: false, nullsFirst: false });
+  };
+
+  const { data, error } = await build(ENTRY_FIELDS);
 
   if (error) {
     // Antes de la 054 las columnas nuevas no existen (42703): se vuelve a
     // pedir sin ellas para que el libro siga andando hasta aplicarla.
     if (error.code === "42703") {
-      const { data: legacy } = await supabase
-        .from("treasury_entries")
-        .select(
-          "id, entry_date, bahai_year, account_id, subcategory_id, category_id, fund_id, currency, amount, description, receipt_number, contributions_count, contributor_id, receipt_name, receipt_issued, transfer_group_id, is_opening_balance"
-        )
-        .eq("bahai_year", year)
-        .order("entry_date", { ascending: false })
-        .order("receipt_number", { ascending: false, nullsFirst: false });
-      return ((legacy ?? []) as Array<Omit<TreasuryEntry, "voided_at" | "void_reason" | "adjusts_entry_id" | "adjustment_reason">>).map(
-        (e) => ({
-          ...e,
-          amount: Number(e.amount),
-          voided_at: null,
-          void_reason: null,
-          adjusts_entry_id: null,
-          adjustment_reason: null,
-        })
-      );
+      const { data: legacy } = await build(LEGACY_ENTRY_FIELDS);
+      // El `select()` recibe los campos como variable, así que
+      // supabase-js no puede inferir la forma de la fila y devuelve su
+      // tipo genérico: la conversión pasa por `unknown`.
+      return (
+        (legacy ?? []) as unknown as Array<
+          Omit<
+            TreasuryEntry,
+            "voided_at" | "void_reason" | "adjusts_entry_id" | "adjustment_reason"
+          >
+        >
+      ).map((e) => ({
+        ...e,
+        amount: Number(e.amount),
+        voided_at: null,
+        void_reason: null,
+        adjusts_entry_id: null,
+        adjustment_reason: null,
+      }));
     }
     console.error("[getLedgerEntries]", error);
     return [];
   }
 
-  return ((data ?? []) as TreasuryEntry[]).map((e) => ({
+  return ((data ?? []) as unknown as TreasuryEntry[]).map((e) => ({
     ...e,
     amount: Number(e.amount),
   }));
+}
+
+/** Todos los movimientos del año, anulados incluidos: el libro los
+ *  muestra tachados, porque su número de recibo sigue en la serie. */
+export function getLedgerEntries(
+  supabase: SupabaseClient,
+  year: number
+): Promise<TreasuryEntry[]> {
+  return fetchLedgerEntries(supabase, { kind: "year", year });
+}
+
+/**
+ * Los movimientos de un rango de fechas civiles, ambas puntas incluidas.
+ *
+ * Existe porque un extracto bancario no sabe de años bahá'ís: el
+ * ejercicio arranca el primer día de Riḍván (21 de abril), así que un
+ * extracto de abril tiene sus primeras semanas en un año y el resto en
+ * el siguiente. Pedirle al tesorero que mire dos libros para cuadrar un
+ * mes sería pedirle que encuentre la diferencia en dos pantallas.
+ */
+export function getLedgerEntriesByRange(
+  supabase: SupabaseClient,
+  from: string,
+  to: string
+): Promise<TreasuryEntry[]> {
+  return fetchLedgerEntries(supabase, { kind: "range", from, to });
 }
 
 export type BalanceRow = {

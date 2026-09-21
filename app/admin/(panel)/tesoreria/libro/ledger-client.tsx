@@ -4,8 +4,21 @@ import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LedgerCatalog, TreasuryEntry } from "@/lib/treasury-ledger";
-import { monthKeyOf, monthLabel } from "@/lib/treasury-cashbook";
+import { monthKeyOf, monthLabel, monthRange } from "@/lib/treasury-cashbook";
 import { formatMoney } from "@/lib/treasury-format";
+import {
+  activeFilterCount,
+  applyLedgerFilters,
+  EMPTY_FILTERS,
+  entryKind,
+  filteredTotals,
+  KIND_LABELS,
+  ledgerCSV,
+  ledgerCSVFilename,
+  type EntryKind,
+  type LedgerFilters,
+  type LedgerNames,
+} from "@/lib/treasury-ledger-filters";
 import {
   deleteEntryAction,
   revertEntryAction,
@@ -29,6 +42,12 @@ type Props = {
   /** Movimientos que ya cerraron contra el extracto de la plataforma
    *  (061), para la marca de la lista. */
   reconciledIds: string[];
+  /** Si viene, la lista es de ese rango de fechas y no de un ejercicio.
+   *  Lo resuelve el servidor: un rango puede cruzar el corte de Riḍván. */
+  range: { from: string; to: string } | null;
+  /** Cómo se llama lo que está en pantalla ("183 E.B." o "1 abr – 30 abr
+   *  2026"), para el nombre del archivo exportado. */
+  scopeLabel: string;
 };
 
 /**
@@ -52,6 +71,8 @@ export function LedgerClient({
   attachmentCounts,
   closedMonths,
   reconciledIds,
+  range,
+  scopeLabel,
 }: Props) {
   const router = useRouter();
   const closed = useMemo(() => new Set(closedMonths), [closedMonths]);
@@ -61,24 +82,28 @@ export function LedgerClient({
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState<TreasuryEntry | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [fundFilter, setFundFilter] = useState("");
+  // Los filtros trabajan sobre lo cargado y por eso son estado, no URL.
+  // El período es la excepción: cambia QUÉ se carga, así que viaja en la
+  // dirección y lo resuelve el servidor.
+  const [filters, setFilters] = useState<LedgerFilters>(EMPTY_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const set = <K extends keyof LedgerFilters>(k: K, v: LedgerFilters[K]) =>
+    setFilters((f) => ({ ...f, [k]: v }));
   // Los nombres de quienes aportan son confidenciales y la pantalla del
   // tesorero no siempre está sola. Arrancan ocultos en cada carga; el
   // estado sobrevive a los router.refresh() de la propia sesión de carga.
   const [showNames, setShowNames] = useState(false);
 
-  const names = useMemo(() => {
-    const accounts = new Map(catalog.accounts.map((a) => [a.id, a.name]));
-    const funds = new Map(catalog.funds.map((f) => [f.id, f.name]));
-    const subcategories = new Map(
-      catalog.subcategories.map((s) => [s.id, s.name])
-    );
-    const contributors = new Map(
-      catalog.contributors.map((c) => [c.id, c.name])
-    );
-    return { accounts, funds, subcategories, contributors };
-  }, [catalog]);
+  const names: LedgerNames = useMemo(
+    () => ({
+      accounts: new Map(catalog.accounts.map((a) => [a.id, a.name])),
+      funds: new Map(catalog.funds.map((f) => [f.id, f.name])),
+      categories: new Map(catalog.categories.map((c) => [c.id, c.name])),
+      subcategories: new Map(catalog.subcategories.map((s) => [s.id, s.name])),
+      contributors: new Map(catalog.contributors.map((c) => [c.id, c.name])),
+    }),
+    [catalog]
+  );
 
   // El último seudónimo que usó cada contribuyente, para que el
   // formulario lo proponga. Las entradas vienen de la más nueva a la más
@@ -93,27 +118,55 @@ export function LedgerClient({
     return out;
   }, [entries]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return entries.filter((e) => {
-      if (fundFilter && e.fund_id !== fundFilter) return false;
-      if (!q) return true;
-      const haystack = [
-        e.description ?? "",
-        names.subcategories.get(e.subcategory_id) ?? "",
-        names.accounts.get(e.account_id) ?? "",
-        e.contributor_id ? names.contributors.get(e.contributor_id) ?? "" : "",
-        e.receipt_name ?? "",
-        e.receipt_number ? String(e.receipt_number) : "",
-      ]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [entries, search, fundFilter, names]);
+  const filtered = useMemo(
+    () => applyLedgerFilters(entries, filters, names, reconciled),
+    [entries, filters, names, reconciled]
+  );
+  const totals = useMemo(() => filteredTotals(filtered), [filtered]);
+  const activeCount = activeFilterCount(filters);
+
+  // Las subcategorías que se ofrecen son las de la categoría elegida: con
+  // el catálogo entero en un desplegable no se encuentra ninguna.
+  const subcategoryOptions = useMemo(
+    () =>
+      filters.categoryId
+        ? catalog.subcategories.filter((s) => s.category_id === filters.categoryId)
+        : catalog.subcategories,
+    [catalog.subcategories, filters.categoryId]
+  );
+
+  /** Las monedas y los tipos que EXISTEN en lo cargado: ofrecer dólares
+   *  en un libro que solo tiene pesos es ofrecer una lista vacía. */
+  const currencies = useMemo(
+    () => [...new Set(entries.map((e) => e.currency))].sort(),
+    [entries]
+  );
+  const kinds = useMemo(
+    () =>
+      (["ingreso", "gasto", "transferencia", "apertura"] as EntryKind[]).filter(
+        (k) => entries.some((e) => entryKind(e) === k)
+      ),
+    [entries]
+  );
 
   function refresh() {
     router.refresh();
+  }
+
+  /** El período cambia qué se carga, así que se navega. */
+  function goToRange(from: string, to: string) {
+    router.push(`/admin/tesoreria/libro?from=${from}&to=${to}`);
+  }
+
+  function exportCSV() {
+    const csv = ledgerCSV(filtered, names, reconciled, { showNames });
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = ledgerCSVFilename(scopeLabel);
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   /** Nombre del contribuyente, o el antifaz si están ocultos. La cantidad
@@ -133,38 +186,49 @@ export function LedgerClient({
     <>
       {/* Barra de herramientas */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        {years.length > 1 && (
-          <select
-            value={year}
-            onChange={(e) => router.push(`/admin/tesoreria/libro?year=${e.target.value}`)}
-            className={controlClass}
-          >
-            {years.map((y) => (
-              <option key={y} value={y}>
-                Año {y} E.B.
-              </option>
-            ))}
-          </select>
-        )}
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por rubro, descripción, recibo…"
-          className={`${controlClass} min-w-[200px] flex-1`}
-        />
         <select
-          value={fundFilter}
-          onChange={(e) => setFundFilter(e.target.value)}
+          value={range ? "" : String(year)}
+          onChange={(e) =>
+            router.push(
+              e.target.value
+                ? `/admin/tesoreria/libro?year=${e.target.value}`
+                : "/admin/tesoreria/libro"
+            )
+          }
           className={controlClass}
         >
-          <option value="">Todos los fondos</option>
-          {catalog.funds.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.name}
+          {range && <option value="">Período elegido</option>}
+          {years.map((y) => (
+            <option key={y} value={y}>
+              Año {y} E.B.
             </option>
           ))}
         </select>
+        <input
+          type="search"
+          value={filters.search}
+          onChange={(e) => set("search", e.target.value)}
+          placeholder="Buscar por rubro, descripción, recibo…"
+          className={`${controlClass} min-w-[200px] flex-1`}
+        />
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((v) => !v)}
+          aria-expanded={filtersOpen}
+          className={`tap inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[12.5px] font-semibold ${
+            activeCount > 0 || range
+              ? "border-terra/30 bg-terra/[0.07] text-terra"
+              : "border-black/10 text-dark hover:bg-bg"
+          }`}
+        >
+          <FilterIcon />
+          Filtros
+          {activeCount > 0 && (
+            <span className="rounded-full bg-terra px-1.5 text-[10.5px] font-semibold text-white">
+              {activeCount}
+            </span>
+          )}
+        </button>
         <button
           type="button"
           onClick={() => setShowNames((v) => !v)}
@@ -181,6 +245,19 @@ export function LedgerClient({
         </button>
         <button
           type="button"
+          onClick={exportCSV}
+          disabled={filtered.length === 0}
+          className="tap rounded-xl border border-black/10 px-3 py-2 text-[12.5px] font-semibold text-dark hover:bg-bg disabled:opacity-40"
+          title={
+            showNames
+              ? "Bajar lo que está en pantalla como CSV"
+              : "Bajar lo que está en pantalla como CSV. Los nombres están ocultos, así que el archivo tampoco los lleva."
+          }
+        >
+          Exportar CSV
+        </button>
+        <button
+          type="button"
           onClick={() => setTransferOpen(true)}
           className="tap rounded-xl border border-black/10 px-3 py-2 text-[12.5px] font-semibold text-dark hover:bg-bg"
         >
@@ -194,6 +271,22 @@ export function LedgerClient({
           {openForm ? "Cerrar" : "+ Movimiento"}
         </button>
       </div>
+
+      {filtersOpen && (
+        <FiltersPanel
+          filters={filters}
+          set={set}
+          onClear={() => setFilters(EMPTY_FILTERS)}
+          catalog={catalog}
+          subcategoryOptions={subcategoryOptions}
+          currencies={currencies}
+          kinds={kinds}
+          range={range}
+          today={today}
+          onRange={goToRange}
+          onClearRange={() => router.push("/admin/tesoreria/libro")}
+        />
+      )}
 
       {/* Alta rápida: siempre visible en PC, con botón en el teléfono */}
       <div
@@ -214,7 +307,7 @@ export function LedgerClient({
         />
       </div>
 
-      <div className="mb-2 flex items-baseline justify-between px-1">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 px-1">
         <h3 className="text-[13px] font-semibold text-dark">
           Movimientos
           <span className="ml-1.5 text-[11.5px] font-normal text-muted">
@@ -223,7 +316,54 @@ export function LedgerClient({
               : `${filtered.length} de ${entries.length}`}
           </span>
         </h3>
+        {(activeCount > 0 || range) && (
+          <button
+            type="button"
+            onClick={() => {
+              setFilters(EMPTY_FILTERS);
+              if (range) router.push("/admin/tesoreria/libro");
+            }}
+            className="tap text-[11.5px] font-semibold text-terra hover:underline"
+          >
+            Limpiar todo
+          </button>
+        )}
       </div>
+
+      {/* Los totales de lo que quedó a la vista. Es la razón de ser de
+          los filtros: el número que se pone al lado del extracto para
+          ver dónde está la diferencia. Solo aparece con algo filtrado,
+          porque sin filtros ya está arriba el movimiento del período. */}
+      {(activeCount > 0 || range) && totals.length > 0 && (
+        <div className="mb-3 grid gap-2 sm:grid-cols-2">
+          {totals.map((t) => (
+            <div
+              key={t.currency}
+              className="rounded-2xl border border-terra/15 bg-terra/[0.04] px-3.5 py-2.5"
+            >
+              <div className="mb-1 flex items-baseline justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-terra">
+                  Seleccionado · {t.currency}
+                </span>
+                <span className="text-[11px] text-muted">
+                  {t.count} {t.count === 1 ? "movimiento" : "movimientos"}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-0.5 text-[12.5px]">
+                <Total label="Ingresos" value={t.income} tone="income" />
+                <Total label="Gastos" value={t.expense} tone="expense" />
+                {t.internal !== 0 && (
+                  <Total label="Internos" value={t.internal} />
+                )}
+                {t.opening !== 0 && (
+                  <Total label="Apertura" value={t.opening} />
+                )}
+                <Total label="Neto" value={t.net} strong />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* PC: tabla */}
       <div className="hidden overflow-x-auto rounded-2xl bg-card shadow-card-soft sm:block">
@@ -492,6 +632,346 @@ export function LedgerClient({
 
 const controlClass =
   "rounded-xl border border-black/10 bg-card px-3 py-2 text-[12.5px] text-dark outline-none focus:border-terra";
+
+/**
+ * El panel de filtros.
+ *
+ * El período va primero y separado del resto por una línea, porque es de
+ * otra naturaleza: los demás filtros esconden filas de lo que ya está en
+ * pantalla, y el período cambia lo que se trae de la base. Eso se nota
+ * —hay una navegación— y el orden lo explica sin decirlo.
+ */
+function FiltersPanel({
+  filters,
+  set,
+  onClear,
+  catalog,
+  subcategoryOptions,
+  currencies,
+  kinds,
+  range,
+  today,
+  onRange,
+  onClearRange,
+}: {
+  filters: LedgerFilters;
+  set: <K extends keyof LedgerFilters>(k: K, v: LedgerFilters[K]) => void;
+  onClear: () => void;
+  catalog: LedgerCatalog;
+  subcategoryOptions: LedgerCatalog["subcategories"];
+  currencies: string[];
+  kinds: EntryKind[];
+  range: { from: string; to: string } | null;
+  today: string;
+  onRange: (from: string, to: string) => void;
+  onClearRange: () => void;
+}) {
+  // Los atajos son meses CIVILES porque así vienen los extractos y así
+  // se cierra el libro (054), aunque el ejercicio corra de Riḍván a
+  // Riḍván. Doce hacia atrás alcanzan para cualquier conciliación.
+  const months = useMemo(() => {
+    const out: string[] = [];
+    let k = monthKeyOf(today);
+    for (let i = 0; i < 12; i++) {
+      out.push(k);
+      const [y, m] = k.split("-").map((p) => parseInt(p, 10));
+      const d = new Date(Date.UTC(y, m - 2, 1));
+      k = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    }
+    return out;
+  }, [today]);
+
+  const activeMonth =
+    range && months.find((k) => {
+      const r = monthRange(k);
+      return r.from === range.from && r.to === range.to;
+    });
+
+  return (
+    <div className="mb-4 rounded-2xl bg-card p-4 shadow-card-soft">
+      <div className="mb-2 flex items-baseline justify-between">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+          Período
+        </h3>
+        {range && (
+          <button
+            type="button"
+            onClick={onClearRange}
+            className="tap text-[11.5px] font-semibold text-terra hover:underline"
+          >
+            Volver al ejercicio
+          </button>
+        )}
+      </div>
+      <p className="mb-2 text-[11.5px] text-muted">
+        Un rango de fechas trae los movimientos aunque queden a los dos
+        lados de Riḍván, que es donde cambia el ejercicio contable. Es lo
+        que hace falta para cuadrar contra un extracto.
+      </p>
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        {months.map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => {
+              const r = monthRange(k);
+              onRange(r.from, r.to);
+            }}
+            className={`tap rounded-full border px-2.5 py-1 text-[11.5px] font-semibold ${
+              activeMonth === k
+                ? "border-terra bg-terra text-white"
+                : "border-black/10 text-dark hover:bg-bg"
+            }`}
+          >
+            {monthLabel(k)}
+          </button>
+        ))}
+      </div>
+      <RangeInputs range={range} onRange={onRange} />
+
+      <div className="mt-4 border-t border-black/[0.06] pt-3">
+        <div className="mb-2 flex items-baseline justify-between">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Acotar la lista
+          </h3>
+          <button
+            type="button"
+            onClick={onClear}
+            className="tap text-[11.5px] font-semibold text-terra hover:underline"
+          >
+            Limpiar filtros
+          </button>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <Picker
+            label="Cuenta"
+            value={filters.accountId}
+            onChange={(v) => set("accountId", v)}
+            all="Todas las cuentas"
+            options={catalog.accounts}
+          />
+          <Picker
+            label="Fondo"
+            value={filters.fundId}
+            onChange={(v) => set("fundId", v)}
+            all="Todos los fondos"
+            options={catalog.funds}
+          />
+          <Picker
+            label="Categoría"
+            value={filters.categoryId}
+            onChange={(v) => {
+              set("categoryId", v);
+              // La subcategoría elegida puede no pertenecer a la
+              // categoría nueva: dejarla puesta daría cero filas sin que
+              // se vea por qué.
+              set("subcategoryId", "");
+            }}
+            all="Todas las categorías"
+            options={catalog.categories}
+          />
+          <Picker
+            label="Subcategoría"
+            value={filters.subcategoryId}
+            onChange={(v) => set("subcategoryId", v)}
+            all="Todas las subcategorías"
+            options={subcategoryOptions}
+          />
+          {currencies.length > 1 && (
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold text-muted">
+                Moneda
+              </span>
+              <select
+                value={filters.currency}
+                onChange={(e) => set("currency", e.target.value)}
+                className={`${controlClass} w-full`}
+              >
+                <option value="">Todas</option>
+                {currencies.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-semibold text-muted">
+              Tipo
+            </span>
+            <select
+              value={filters.kind}
+              onChange={(e) => set("kind", e.target.value as EntryKind | "")}
+              className={`${controlClass} w-full`}
+            >
+              <option value="">Todos los movimientos</option>
+              {kinds.map((k) => (
+                <option key={k} value={k}>
+                  {KIND_LABELS[k]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-semibold text-muted">
+              Extracto
+            </span>
+            <select
+              value={filters.reconciled}
+              onChange={(e) =>
+                set("reconciled", e.target.value as LedgerFilters["reconciled"])
+              }
+              className={`${controlClass} w-full`}
+            >
+              <option value="">Conciliados y sin conciliar</option>
+              <option value="no">Todavía sin conciliar</option>
+              <option value="si">Ya conciliados</option>
+            </select>
+          </label>
+        </div>
+        <p className="mt-2 text-[11.5px] text-muted">
+          &quot;Sin conciliar&quot; es lo que el libro tiene y el extracto
+          todavía no cerró. Una cuenta de la que nunca se importó un
+          extracto aparece entera sin conciliar, que es lo que corresponde.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Las dos puntas del rango. Se aplican con el botón y no al tipear,
+ *  porque cada cambio es una ida al servidor y un `<input type="date">`
+ *  emite una fecha a medio escribir mientras se completa. */
+function RangeInputs({
+  range,
+  onRange,
+}: {
+  range: { from: string; to: string } | null;
+  onRange: (from: string, to: string) => void;
+}) {
+  const [from, setFrom] = useState(range?.from ?? "");
+  const [to, setTo] = useState(range?.to ?? "");
+  const ready = Boolean(from && to && from <= to);
+  return (
+    <div className="flex flex-wrap items-end gap-2">
+      <label className="block">
+        <span className="mb-1 block text-[11px] font-semibold text-muted">
+          Desde
+        </span>
+        <input
+          type="date"
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+          className={controlClass}
+        />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-[11px] font-semibold text-muted">
+          Hasta
+        </span>
+        <input
+          type="date"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          className={controlClass}
+        />
+      </label>
+      <button
+        type="button"
+        disabled={!ready}
+        onClick={() => onRange(from, to)}
+        className="tap rounded-xl bg-terra px-3 py-2 text-[12.5px] font-semibold text-white disabled:opacity-40"
+      >
+        Aplicar
+      </button>
+      {from && to && from > to && (
+        <span className="text-[11.5px] text-rose-700">
+          La fecha de inicio es posterior a la del final.
+        </span>
+      )}
+    </div>
+  );
+}
+
+function Picker({
+  label,
+  value,
+  onChange,
+  all,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  all: string;
+  options: Array<{ id: string; name: string }>;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[11px] font-semibold text-muted">
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`${controlClass} w-full`}
+      >
+        <option value="">{all}</option>
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+/** Una cifra de la barra de totales de lo filtrado. */
+function Total({
+  label,
+  value,
+  tone,
+  strong,
+}: {
+  label: string;
+  value: number;
+  tone?: "income" | "expense";
+  strong?: boolean;
+}) {
+  const color =
+    tone === "income"
+      ? "text-emerald-700"
+      : tone === "expense"
+        ? "text-rose-700"
+        : value < 0
+          ? "text-rose-700"
+          : "text-dark";
+  return (
+    <span className="whitespace-nowrap">
+      <span className="text-muted">{label} </span>
+      <span
+        className={`tabular-nums ${color} ${strong ? "font-semibold" : ""}`}
+      >
+        {formatMoney(value)}
+      </span>
+    </span>
+  );
+}
+
+function FilterIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M3 5h18l-7 8v6l-4 2v-8L3 5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 function Th({
   children,

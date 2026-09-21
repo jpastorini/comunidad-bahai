@@ -978,6 +978,59 @@ márgenes `auto`**: `getComputedStyle` los devuelve resueltos en píxeles y
 el clon sale corrido y recortado. El helper ya fuerza `margin: 0`, pero el
 centrado va siempre en un envoltorio.
 
+### Filtros y exportación del Libro (sin migración)
+
+Pedido el 2026-09-21 con un caso concreto: los movimientos de Prex no
+coincidían con el detalle del libro y no había forma de achicar la lista
+para encontrar dónde. Había búsqueda por texto, filtro por fondo y
+selector de año, y nada más.
+
+Lo nuevo son tres cosas, y la separación entre ellas es el diseño:
+
+- **El período viaja en la URL** (`?from=&to=`) y lo resuelve el
+  servidor con `getLedgerEntriesByRange()`, porque cambia QUÉ se trae de
+  la base. Existe por una razón que se paga cara: el ejercicio contable
+  arranca el primer día de Riḍván (21 de abril), así que **un extracto
+  de abril tiene sus primeras semanas en un ejercicio y el resto en el
+  siguiente** — y esa sola cosa puede ser toda la diferencia que se está
+  buscando. Los atajos son meses CIVILES, que es como vienen los
+  extractos y como se cierra el libro (054), aunque el ejercicio no lo
+  sea. ⚠️ Con un rango puesto, las tarjetas de arriba dicen **"Movimiento
+  del período por cuenta"**, no "Saldo": un saldo no tiene período —es
+  todo el libro hasta una fecha— y llamarle saldo a la suma de un mes
+  sería el peor error posible justo en la pantalla que se usa para
+  cuadrar. Por lo mismo, en un rango no se imprimen "Saldo anterior" ni
+  "Saldo actual", que solo significan algo sobre un ejercicio entero.
+- **Los demás filtros son estado del cliente** sobre lo ya cargado
+  (cuenta, fondo, categoría, subcategoría, moneda, tipo, conciliado sí/no
+  y el buscador de siempre): son instantáneos y no navegan. La lógica
+  vive en `lib/treasury-ledger-filters.ts`, PURO, por la misma razón que
+  `treasury-cashbook.ts`: la lista y el CSV tienen que decir lo mismo.
+  El filtro **"todavía sin conciliar"** es el diagnóstico directo del
+  caso Prex —lo que el libro tiene y el extracto no cerró (061)— y se
+  alimenta de los mismos `reconciledIds` que ya dibujaban la chapita
+  "banco ✓".
+- **Los totales de lo filtrado**, por moneda, encima de la lista. Es la
+  razón de ser de todo lo anterior: filtrar sin ver el total de lo
+  filtrado deja al tesorero sumando a mano. El **neto** son ingresos +
+  gastos y deja afuera transferencias y aperturas —no son movimiento del
+  Fondo, mismo criterio que `periodTotals()` y el informe—, pero las
+  informa aparte, porque una transferencia SÍ sale en el extracto de la
+  cuenta que la envió. Un anulado no suma en ninguna columna pero se
+  cuenta en `count`, porque está a la vista.
+
+**El CSV es una copia de lo que se está mirando**, no una puerta lateral:
+si los nombres están ocultos, el archivo dice "(nombre oculto)". Va con
+BOM, separador `;` y coma decimal, porque el destino es un Excel en
+es-UY: con `,` de separador Excel mete la fila entera en una celda, y con
+punto decimal la columna no se puede sumar sin convertirla.
+
+De paso se arregló un bug latente que el rango habría hecho frecuente: el
+`bahai_year` del alta salía del año EN PANTALLA, así que cargar un
+movimiento del 15 de abril mirando el ejercicio siguiente lo etiquetaba
+mal. Ahora sale de `treasuryYearForDate(entry_date)`, o sea de la fecha
+del propio movimiento.
+
 ### Catálogo del libro (sin migración)
 
 Tesorería → Catálogo (`/admin/tesoreria/catalogo`, tag

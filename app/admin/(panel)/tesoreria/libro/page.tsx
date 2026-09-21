@@ -6,10 +6,13 @@ import { getAttachmentCounts } from "@/lib/treasury-attachments";
 import { closedMonthKeys, getClosings } from "@/lib/treasury-closings";
 import { formatMoney } from "@/lib/treasury-format";
 import { getReconciledEntryIds } from "@/lib/treasury-statements";
+import { treasuryYearForDate } from "@/lib/treasury-year";
+import { formatRangeLabel, isISODate } from "@/lib/treasury-ledger-filters";
 import {
   balancesBy,
   getLedgerCatalog,
   getLedgerEntries,
+  getLedgerEntriesByRange,
   getLedgerYears,
   periodTotals,
   todayISO,
@@ -21,7 +24,7 @@ export const dynamic = "force-dynamic";
 export default async function LibroTesoreriaPage({
   searchParams,
 }: {
-  searchParams: { year?: string };
+  searchParams: { year?: string; from?: string; to?: string };
 }) {
   const session = await requireAdmin();
   ensureTreasuryTag(session.profile);
@@ -33,12 +36,23 @@ export default async function LibroTesoreriaPage({
     ? requested
     : (years[0] ?? new Date().getUTCFullYear() - 1843);
 
+  // El rango de fechas manda sobre el año: un extracto no sabe de años
+  // bahá'ís y puede cruzar el corte de Riḍván. Solo se toma si las dos
+  // puntas son fechas válidas y están en orden; cualquier otra cosa cae
+  // al libro del año, que es el encuadre de siempre.
+  const from = searchParams.from ?? "";
+  const to = searchParams.to ?? "";
+  const range =
+    isISODate(from) && isISODate(to) && from <= to ? { from, to } : null;
+
   const [catalog, entries, receiptResult, attachmentCounts, closings, reconciled] =
     await Promise.all([
       getLedgerCatalog(supabase, session.locality.id, {
         nationwide: isNationalLocality(session.locality),
       }),
-      getLedgerEntries(supabase, year),
+      range
+        ? getLedgerEntriesByRange(supabase, range.from, range.to)
+        : getLedgerEntries(supabase, year),
       supabase.rpc("next_receipt_number", { loc: session.locality.id }),
       getAttachmentCounts(supabase),
       getClosings(supabase),
@@ -56,14 +70,33 @@ export default async function LibroTesoreriaPage({
   const nextReceipt = Number(receiptResult.data) || 1;
   const catalogEmpty = catalog.accounts.length === 0;
 
+  // Con un rango, las tarjetas de arriba NO son saldos: son la variación
+  // del período. Un saldo no tiene período —es todo el libro hasta una
+  // fecha— y llamar "saldo" a la suma de un mes suelto sería el peor
+  // error posible en la pantalla que se usa justamente para cuadrar.
+  const scopeLabel = range
+    ? formatRangeLabel(range.from, range.to)
+    : `${year} E.B.`;
+  const balancesTitle = range ? "Movimiento del período por" : "Saldo por";
+  // El ejercicio del alta sale de la fecha del movimiento; esto es solo
+  // el valor de respaldo cuando esa fecha no cae en ningún ejercicio.
+  const formYear = range ? (treasuryYearForDate(range.to) ?? year) : year;
+
   return (
     <>
       <PageHeader
         eyebrow="Tesorería"
-        title={`Libro ${year} E.B.`}
-        description="Cada línea es un movimiento. El saldo se calcula solo."
+        title={range ? `Libro · ${scopeLabel}` : `Libro ${year} E.B.`}
+        description={
+          range
+            ? "Movimientos del período elegido, sin importar a qué ejercicio pertenezcan."
+            : "Cada línea es un movimiento. El saldo se calcula solo."
+        }
         actions={
           <>
+            <Button variant="secondary" href="/admin/tesoreria/conciliacion">
+              Conciliación
+            </Button>
             <Button variant="secondary" href="/admin/tesoreria/libro/cierres">
               Cierres
             </Button>
@@ -83,7 +116,7 @@ export default async function LibroTesoreriaPage({
           {/* Saldos: primero por cuenta, que es la plata donde está. */}
           <Card className="mb-4">
             <h2 className="mb-3 font-display text-[18px] font-semibold text-dark">
-              Saldo por cuenta
+              {balancesTitle} cuenta
             </h2>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {byAccount.map((b) => (
@@ -106,7 +139,7 @@ export default async function LibroTesoreriaPage({
               ))}
               {byAccount.length === 0 && (
                 <p className="text-[12.5px] text-muted">
-                  Sin movimientos en este año.
+                  Sin movimientos en {range ? "este período" : "este año"}.
                 </p>
               )}
             </div>
@@ -115,7 +148,7 @@ export default async function LibroTesoreriaPage({
           {/* Saldos por fondo: la misma plata, "coloreada" por destino. */}
           <Card className="mb-4">
             <h2 className="mb-1 font-display text-[18px] font-semibold text-dark">
-              Saldo por fondo
+              {balancesTitle} fondo
             </h2>
             <p className="mb-3 text-[12px] text-muted">
               Es la misma plata de arriba, agrupada por el fondo al que
@@ -149,7 +182,7 @@ export default async function LibroTesoreriaPage({
           {totals.length > 0 && (
             <Card className="mb-5">
               <h2 className="mb-1 font-display text-[18px] font-semibold text-dark">
-                Movimiento del año
+                {range ? "Movimiento del período" : "Movimiento del año"}
               </h2>
               <p className="mb-3 text-[12px] text-muted">
                 Los cambios de caja y las compras de divisas no cuentan como
@@ -165,7 +198,11 @@ export default async function LibroTesoreriaPage({
                     <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
                       {t.currency}
                     </div>
-                    <Row label="Saldo anterior" value={t.opening} />
+                    {/* El "saldo anterior" es el arrastre del ejercicio, así
+                        que solo significa algo cuando se está mirando un
+                        ejercicio entero. En un rango se omite, junto con el
+                        saldo que se derivaría de él. */}
+                    {!range && <Row label="Saldo anterior" value={t.opening} />}
                     <Row label="Ingresos" value={t.income} tone="income" />
                     <Row label="Gastos" value={t.expense} tone="expense" />
                     {t.internalCount > 0 && (
@@ -176,11 +213,14 @@ export default async function LibroTesoreriaPage({
                     )}
                     <div className="mt-1 border-t border-black/[0.06] pt-1">
                       <Row
-                        label="Saldo actual"
+                        label={range ? "Neto del período" : "Saldo actual"}
                         value={
-                          Math.round(
-                            (t.opening + t.income + t.expense + t.internal) * 100
-                          ) / 100
+                          range
+                            ? Math.round((t.income + t.expense) * 100) / 100
+                            : Math.round(
+                                (t.opening + t.income + t.expense + t.internal) *
+                                  100
+                              ) / 100
                         }
                         strong
                       />
@@ -194,13 +234,15 @@ export default async function LibroTesoreriaPage({
           <LedgerClient
             catalog={catalog}
             entries={entries}
-            year={year}
+            year={formYear}
             years={years}
             today={todayISO()}
             nextReceipt={nextReceipt}
             attachmentCounts={attachmentCounts}
             closedMonths={closedMonths}
             reconciledIds={[...reconciled]}
+            range={range}
+            scopeLabel={scopeLabel}
           />
         </>
       )}

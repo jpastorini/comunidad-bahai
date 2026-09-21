@@ -10,6 +10,7 @@ import type {
   TreasuryEntry,
 } from "@/lib/treasury-ledger";
 import { parseMoney } from "@/lib/treasury-format";
+import { treasuryYearForDate } from "@/lib/treasury-year";
 import { saveEntryAction } from "./actions";
 import { ContributorPicker, type ContributorSelection } from "./contributor-picker";
 
@@ -56,6 +57,12 @@ export function EntryForm({
   const amountRef = useRef<HTMLInputElement>(null);
   const attachmentsRef = useRef<AttachmentsHandle>(null);
 
+  // La fecha es estado porque de ella sale el ejercicio contable del
+  // movimiento. Antes el año venía del que estaba en pantalla, y con la
+  // lista filtrada por un rango que cruza Riḍván eso etiqueta mal: un
+  // movimiento del 15 de abril es del ejercicio anterior aunque se esté
+  // mirando el siguiente.
+  const [entryDate, setEntryDate] = useState(entry?.entry_date ?? today);
   const [direction, setDirection] = useState<"ingreso" | "gasto">(
     entry ? (entry.amount < 0 ? "gasto" : "ingreso") : "ingreso"
   );
@@ -182,7 +189,11 @@ export function EntryForm({
   return (
     <form ref={formRef} onSubmit={onSubmit} className="space-y-3">
       {isEdit && <input type="hidden" name="id" value={entry!.id} />}
-      <input type="hidden" name="bahai_year" value={year} />
+      <input
+        type="hidden"
+        name="bahai_year"
+        value={treasuryYearForDate(entryDate) ?? year}
+      />
       <input type="hidden" name="direction" value={direction} />
       <input type="hidden" name="currency" value={currency} />
       <input type="hidden" name="fund_id" value={fundId} />
@@ -210,7 +221,8 @@ export function EntryForm({
           <input
             type="date"
             name="entry_date"
-            defaultValue={entry?.entry_date ?? today}
+            value={entryDate}
+            onChange={(e) => setEntryDate(e.target.value)}
             required
             className={inputClass}
           />
