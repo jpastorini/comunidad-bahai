@@ -107,6 +107,54 @@ export function shiftDate(iso: string, days: number): string {
 
 const REVERSAL_RE = /devoluci|revers|anulad|rechaz|reintegro/i;
 
+/**
+ * Totales por moneda, nunca sumadas entre sí: neto del extracto contra
+ * neto del libro en [from, to], saldo del libro a `to` (acumulado, con
+ * apertura) y, si la plataforma lo declara, su saldo y la diferencia.
+ * Aparte de `reconcile()` porque la pantalla persistida lo necesita sin
+ * volver a cruzar nada.
+ */
+export function reconcileTotals(
+  lines: StatementLine[],
+  allEntries: ReconcileEntry[],
+  opts: { from: string; to: string; statementBalance?: { amount: number; currency: string } | null }
+): CurrencyTotals[] {
+  const { from, to } = opts;
+  const live = allEntries.filter((e) => !e.voided_at);
+  const currencies = new Set<string>([
+    ...lines.map((l) => l.currency),
+    ...live.filter((e) => e.entry_date >= from && e.entry_date <= to).map((e) => e.currency),
+  ]);
+  return [...currencies].sort().map((currency) => {
+    const statementNet = lines
+      .filter((l) => l.currency === currency)
+      .reduce((s, l) => addMoney(s, l.amount), 0);
+    const ledgerNet = live
+      .filter(
+        (e) =>
+          e.currency === currency &&
+          !e.is_opening_balance &&
+          e.entry_date >= from &&
+          e.entry_date <= to
+      )
+      .reduce((s, e) => addMoney(s, e.amount), 0);
+    const ledgerBalance = live
+      .filter((e) => e.currency === currency && e.entry_date <= to)
+      .reduce((s, e) => addMoney(s, e.amount), 0);
+    const sb = opts.statementBalance;
+    const statementBalance = sb && sb.currency === currency ? sb.amount : null;
+    return {
+      currency,
+      statementNet,
+      ledgerNet,
+      diff: addMoney(statementNet, -ledgerNet),
+      ledgerBalance,
+      statementBalance,
+      balanceDiff: statementBalance == null ? null : addMoney(statementBalance, -ledgerBalance),
+    };
+  });
+}
+
 export function reconcile(
   lines: StatementLine[],
   allEntries: ReconcileEntry[],
@@ -243,38 +291,10 @@ export function reconcile(
     (e) => !usedEntries.has(e.id) && e.entry_date >= from && e.entry_date <= to
   );
 
-  // Totales por moneda: nunca se suman monedas distintas.
-  const currencies = new Set<string>([
-    ...lines.map((l) => l.currency),
-    ...live.filter((e) => e.entry_date >= from && e.entry_date <= to).map((e) => e.currency),
-  ]);
-  const totals: CurrencyTotals[] = [...currencies].sort().map((currency) => {
-    const statementNet = lines
-      .filter((l) => l.currency === currency)
-      .reduce((s, l) => addMoney(s, l.amount), 0);
-    const ledgerNet = live
-      .filter(
-        (e) =>
-          e.currency === currency &&
-          !e.is_opening_balance &&
-          e.entry_date >= from &&
-          e.entry_date <= to
-      )
-      .reduce((s, e) => addMoney(s, e.amount), 0);
-    const ledgerBalance = live
-      .filter((e) => e.currency === currency && e.entry_date <= to)
-      .reduce((s, e) => addMoney(s, e.amount), 0);
-    const sb = opts.statementBalance;
-    const statementBalance = sb && sb.currency === currency ? sb.amount : null;
-    return {
-      currency,
-      statementNet,
-      ledgerNet,
-      diff: addMoney(statementNet, -ledgerNet),
-      ledgerBalance,
-      statementBalance,
-      balanceDiff: statementBalance == null ? null : addMoney(statementBalance, -ledgerBalance),
-    };
+  const totals = reconcileTotals(lines, allEntries, {
+    from,
+    to,
+    statementBalance: opts.statementBalance,
   });
 
   const clean =

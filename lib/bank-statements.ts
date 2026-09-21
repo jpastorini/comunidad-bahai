@@ -440,3 +440,54 @@ function brouHeaderBlock(rows: CellMatrix, headerRow: number) {
   if (!sawCurrency && accountLabel && /d[oó]lar|usd/i.test(accountLabel)) currency = "USD";
   return { currency, balance, asOf, accountLabel };
 }
+
+// ─── Huella ────────────────────────────────────────────────────────────
+
+/**
+ * La huella de una línea, estable entre exportaciones: fecha, importe,
+ * moneda, descripción normalizada, referencia y memo. Es lo que permite
+ * re-importar sin duplicar (eBROU exporta los últimos 20 movimientos y
+ * cada archivo se superpone con el anterior). NO entra la fila del
+ * archivo, que cambia de una exportación a la otra.
+ *
+ * Dos líneas idénticas en el mismo archivo (dos depósitos iguales el
+ * mismo día, sin referencia) reciben sufijo "#1", "#2"… por orden de
+ * aparición; en la exportación siguiente se numeran igual, así que
+ * siguen coincidiendo. Hash FNV-1a de 52 bits en hex, sin dependencias:
+ * no es criptográfico ni hace falta, solo tiene que ser estable.
+ */
+export function assignFingerprints(lines: StatementLine[]): Map<string, string> {
+  const seen = new Map<string, number>();
+  const out = new Map<string, string>();
+  const ordered = [...lines].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : a.row - b.row
+  );
+  for (const l of ordered) {
+    const base = [
+      l.date,
+      l.amount.toFixed(2),
+      l.currency,
+      normalizeHeader(l.description),
+      l.reference ?? "",
+      normalizeHeader(l.memo ?? ""),
+    ].join("|");
+    const n = (seen.get(base) ?? 0) + 1;
+    seen.set(base, n);
+    out.set(l.key, fnv1a(`${base}#${n}`));
+  }
+  return out;
+}
+
+function fnv1a(s: string): string {
+  // Dos acumuladores de 32 bits para bajar la chance de colisión sin
+  // BigInt (no hace falta en Node, pero el módulo también corre en el
+  // navegador si algún día se parsea del lado del cliente).
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
+    h2 = Math.imul(h2 ^ c, 0x811c9dc5) >>> 0;
+  }
+  return h1.toString(16).padStart(8, "0") + h2.toString(16).padStart(8, "0");
+}

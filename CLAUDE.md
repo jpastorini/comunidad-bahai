@@ -304,10 +304,12 @@ un bucket privado por localidad, el nombre resuelto desde la composición
 de la Asamblea (052) con una sola función para las dos caras del papel, y
 cuatro temas de color —la Tesorería Nacional los emite en azul oscuro—.
 Ver la sección "El recibo, por comunidad" más abajo. ·
-**Conciliación con el extracto** (sin migración): el archivo que exportan
-Prex y el BROU contra el libro de esa cuenta, sin guardar nada; Mercado
-Pago se reconoce pero todavía no se lee. Ver la sección "Conciliación con
-el extracto" más abajo.
+**Conciliación con el extracto** (migración 061): el archivo que exportan
+Prex y el BROU contra el libro de esa cuenta; lo importado se guarda
+(líneas con huella, pares con el libro, archivo original), "conciliado"
+se deriva por cuenta y mes en Cierres y cada movimiento cerrado lleva su
+marca en el Libro. Mercado Pago se reconoce pero todavía no se lee. Ver la
+sección "Conciliación con el extracto" más abajo.
 
 ## Buscador de pasajes (migración 053)
 
@@ -1334,19 +1336,76 @@ siendo solo del deck (`getPublicReport` filtra `comunidad`). En el
 registro de la Asamblea (`/admin/informes`) el balance se lista junto a
 las hojas internas porque también se aprueba en reunión.
 
-### Conciliación con el extracto (sin migración)
+### Conciliación con el extracto (migración 061)
 
-Tesorería → Conciliación (`/admin/tesoreria/conciliacion`, tag
-`can_manage_treasury`): el tesorero elige la cuenta del libro, sube el
-archivo que exporta la plataforma y ve qué falta de cada lado. **No guarda
-nada**, ni el archivo ni el resultado. Es el primer paso, decidido con el
-usuario el 2026-09-21 ("empezar con lo más sencillo e ir agregando"),
-para ver si la herramienta sirve antes de persistir. Importa por qué
-existe: la auditoría (059) compara el libro consigo mismo; el extracto es
-la única fuente **externa** de verdad, y es la conciliación bancaria del
-punto 17 de la lista legal.
+Tesorería → Conciliación (`/admin/tesoreria/conciliacion?cuenta=<id>`,
+tag `can_manage_treasury`): el tesorero importa el archivo que exporta
+la plataforma y la pantalla muestra el estado de ESA cuenta: lo que está
+en la plataforma y no en el libro, lo que está en el libro y no en la
+plataforma, y los totales. Importa por qué existe: la auditoría (059)
+compara el libro consigo mismo; el extracto es la única fuente
+**externa** de verdad, y es la conciliación bancaria del punto 17 de la
+lista legal. Arrancó sin migración el 2026-09-21 ("empezar con lo más
+sencillo e ir agregando") y el mismo día, probada la lectura de Prex y
+BROU, se persistió (061), con tres decisiones del usuario: guardar el
+archivo original, marcar los movimientos en el Libro, y que los pares del
+motor se guarden solos sin pasar por un "aceptar".
 
-Tres módulos, con la misma separación que el Libro de Caja:
+**Lo que se persiste** (`lib/treasury-statements.ts`, server-only):
+
+- `treasury_statement_imports`: una fila por archivo (cuenta,
+  plataforma, período, saldo declarado y a qué fecha, cuántas líneas y
+  cuántas nuevas, quién). El archivo original va al bucket PRIVADO
+  `extractos` (`<locality_id>/<account_id>/<uuid>.<ext>`), mismo molde
+  que los comprobantes (043). Borrar una importación se lleva sus líneas
+  y sus pares: es para el archivo subido a la cuenta equivocada.
+- `treasury_statement_lines`: cada línea con **huella única por
+  cuenta** (`assignFingerprints()` en `lib/bank-statements.ts`: fecha,
+  importe, moneda, descripción normalizada, referencia y memo, con
+  sufijo "#n" para las idénticas dentro de un archivo; FNV-1a, sin
+  dependencias). Es lo que hace que el BROU funcione: cada exportación
+  trae los últimos 20 y se superpone con la anterior; re-importar ignora
+  las conocidas (`on conflict` por select previo) y la pantalla dice
+  "12 nuevas, 8 ya estaban". Una línea puede quedar **descartada** con
+  motivo (`dismissed_*`): no le corresponde asiento (devuelta por la
+  plataforma, movimiento de otra cuenta). Las devoluciones las descarta
+  el motor solo (`dismissed_auto`).
+- `treasury_statement_matches`: línea ↔ movimiento, muchos a uno hacia
+  la línea (Prex: comisión adentro = una línea, dos asientos), con
+  `unique (entry_id)`: un movimiento cierra contra UNA línea. `kind`
+  (exacto / comisión / suma / manual) y `matched_by` (motor /
+  tesorero). Borrar el movimiento suelta el par (cascade) y la línea
+  vuelve a pendiente.
+
+**"Conciliado" se deriva, no se guarda** (`monthReconciliation()`),
+como "Aprobado" en los informes: un mes de una cuenta está conciliado
+cuando hay líneas que lo cubren, ninguna quedó pendiente, y ningún
+movimiento del libro de esa cuenta en el mes quedó sin par. Se muestra
+en **Cierres** por cuenta (`AccountMonthStatus`: conciliado / N
+pendientes / sin extracto), solo para las cuentas que alguna vez
+importaron (Caja Chica no tiene extracto y sería ruido), y **no bloquea
+el cierre**: avisa. En el **Libro** cada movimiento con par lleva la
+chapita "banco ✓" (`getReconciledEntryIds()`).
+
+**Al importar** (`importStatementAction`): parsear · huellas y
+descartar conocidas · subir el archivo (si el bucket falla, se importa
+igual y se avisa) · crear importación y líneas nuevas · correr el motor
+sobre TODAS las líneas pendientes de la cuenta (no solo las nuevas: un
+movimiento cargado hoy puede cerrar una línea de hace dos semanas)
+contra los movimientos sin par, y guardar. Lo que el motor no resuelve
+lo hace el tesorero en la pantalla: **Vincular a un movimiento** (un
+desplegable con los movimientos sin par de la misma moneda a ±30 días,
+ordenados por parecido), **No corresponde al libro** (con motivo),
+**Deshacer**. Cuando la línea cerró contra la transferencia pero la suma
+de sus movimientos no da el importe (`LineView.diff`), aparece en
+pendientes como "Comisión de la transferencia … gasto a registrar".
+
+⚠️ Hasta que corra la 061, la pantalla avisa y no importa
+(`isStatementsSchemaMissing`: 42P01 / 42703 / PGRST205); Cierres y
+Libro siguen andando sin la conciliación, porque las lecturas caen a
+vacío.
+
+Tres módulos puros debajo, con la misma separación que el Libro de Caja:
 
 - `lib/bank-statements.ts`: los parsers, puros sobre una matriz de celdas
   (se prueban con un arreglo a mano; los archivos reales traen nombres y
@@ -1409,11 +1468,11 @@ Lo que se aprendió de los tres archivos reales (2026-09-21):
   esconder el gasto. La cuenta tiene una semana de vida; lo más probable
   es que el dinero se pase a Prex.
 
-Pasos siguientes, en este orden: guardar las líneas y marcar "mes
-conciliado" en Cierres ·
-"Registrar en el libro" prellenado desde una línea suelta (mismo patrón
-pendiente del aviso del chat) · Mercado Pago con los dos asientos · la
-sección de conciliación bancaria en la hoja interna.
+Pasos siguientes, en este orden: "Registrar en el libro" prellenado
+desde una línea suelta, que nazca ya vinculada (mismo patrón pendiente
+del aviso del chat) · Mercado Pago con los dos asientos · la sección de
+conciliación bancaria en la hoja interna · reglas de auditoría (059)
+sobre los pares.
 
 ⚠️ `xlsx` está instalado desde el registro de npm (0.18.5, la última que
 SheetJS publicó ahí); la versión mantenida vive en su CDN. Las advisories
@@ -1933,12 +1992,14 @@ cambia nada.
 
 ## Pendientes conocidos
 
-- **Conciliación: Prex y BROU se leen; falta** persistir las líneas,
-  marcar el mes como conciliado en Cierres, "Registrar en el libro" desde
-  una línea suelta y Mercado Pago (es el POS, cuenta de una semana; aporte
-  bruto + gasto por comisión, cuando tengan un mes de uso). El BROU se lee
-  del formato "Saldos y Movimientos" (últimos 20); si eBROU exporta por
-  rango, sumar la variante. Ver "Conciliación con el extracto".
+- **Aplicar la 061 y probar la conciliación en producción**: importar el
+  BROU y el Prex reales, ver que el segundo archivo del BROU no duplica,
+  resolver a mano lo que quede suelto y mirar Cierres. Después: "Registrar
+  en el libro" desde una línea suelta, y Mercado Pago (es el POS, cuenta
+  de una semana; aporte bruto + gasto por comisión, cuando tengan un mes
+  de uso). El BROU se lee del formato "Saldos y Movimientos" (últimos
+  20); si eBROU exporta por rango, sumar la variante. Ver "Conciliación
+  con el extracto".
 - **Probar el Usuario Nacional en producción.** Las cuatro migraciones
   (055 a 058) están aplicadas y desplegadas (2026-09-17). Falta el primer
   uso real, y el orden importa porque cada paso habilita el siguiente:

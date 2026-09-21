@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { monthLabel } from "@/lib/treasury-cashbook";
 import { formatMoney } from "@/lib/treasury-format";
+import type { AccountMonthStatus } from "@/lib/treasury-statements";
 import { closeMonthAction, reopenMonthAction } from "../cierre-actions";
 
 export type MonthRow = {
@@ -17,6 +18,9 @@ export type MonthRow = {
   reopenings: Array<{ at: string; by: string | null; reason: string }>;
   canClose: boolean;
   canReopen: boolean;
+  /** Estado de conciliación con el extracto, por cuenta con extracto
+   *  (061). Vacío si ninguna cuenta importó todavía. */
+  reconciliation: AccountMonthStatus[];
 };
 
 /**
@@ -106,6 +110,38 @@ function MonthCard({ row: r, onChanged }: { row: MonthRow; onChanged: () => void
               </>
             )}
           </div>
+          {r.reconciliation.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px]">
+              <span className="text-muted">Conciliación:</span>
+              {r.reconciliation.map((a) => (
+                <Link
+                  key={a.accountId}
+                  href={`/admin/tesoreria/conciliacion?cuenta=${a.accountId}`}
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${
+                    a.status === "conciliado"
+                      ? "bg-emerald-50 text-emerald-700"
+                      : a.status === "pendiente"
+                        ? "bg-amber-50 text-amber-800"
+                        : "bg-black/[0.05] text-muted"
+                  }`}
+                  title={
+                    a.status === "conciliado"
+                      ? "Todo lo del extracto está en el libro y viceversa"
+                      : a.status === "pendiente"
+                        ? `${a.pendingLines} del extracto sin par · ${a.pendingEntries} del libro sin par`
+                        : "Ningún extracto cubre este mes"
+                  }
+                >
+                  {a.accountName}
+                  {a.status === "conciliado"
+                    ? " ✓"
+                    : a.status === "pendiente"
+                      ? ` · ${a.pendingLines + a.pendingEntries} pendientes`
+                      : " · sin extracto"}
+                </Link>
+              ))}
+            </div>
+          )}
           {r.totals.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[12px] tabular-nums">
               {r.totals.map((t) => (

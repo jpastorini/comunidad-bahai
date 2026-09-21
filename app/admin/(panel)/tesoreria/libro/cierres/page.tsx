@@ -19,6 +19,12 @@ import {
   nextMonthToClose,
 } from "@/lib/treasury-closings";
 import { todayISO } from "@/lib/treasury-ledger";
+import {
+  getImports,
+  getMatches,
+  getStoredLines,
+  monthReconciliation,
+} from "@/lib/treasury-statements";
 import { CierresClient, type MonthRow } from "./cierres-client";
 
 export const dynamic = "force-dynamic";
@@ -39,13 +45,20 @@ export default async function CierresPage() {
   const today = todayISO();
   const currentMonth = monthKeyOf(today);
 
-  const [closings, firstMonth, entries, names] = await Promise.all([
-    getClosings(supabase),
-    getFirstEntryMonth(supabase),
-    getCashbookEntries(supabase, currentMonth),
-    getCashbookNames(supabase),
-  ]);
+  const [closings, firstMonth, entries, names, statementLines, statementMatches, imports] =
+    await Promise.all([
+      getClosings(supabase),
+      getFirstEntryMonth(supabase),
+      getCashbookEntries(supabase, currentMonth),
+      getCashbookNames(supabase),
+      getStoredLines(supabase),
+      getMatches(supabase),
+      getImports(supabase),
+    ]);
   const people = await getCloserNames(supabase, closings);
+  // Solo las cuentas que alguna vez importaron un extracto (061): Caja
+  // Chica no tiene extracto y listarla como "sin extracto" sería ruido.
+  const accountsWithImports = new Set(imports.rows.map((i) => i.account_id));
 
   const months = firstMonth ? monthKeysBetween(firstMonth, currentMonth).reverse() : [];
   const expected = nextMonthToClose(closings, firstMonth, today);
@@ -81,6 +94,14 @@ export default async function CierresPage() {
       })),
       canClose: expected === month,
       canReopen: reopenable === month,
+      reconciliation: monthReconciliation(
+        month,
+        statementLines,
+        statementMatches,
+        entries,
+        names.accounts,
+        accountsWithImports
+      ),
     };
   });
 

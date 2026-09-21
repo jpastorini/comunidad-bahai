@@ -5,6 +5,7 @@ import { isNationalLocality } from "@/lib/types";
 import { getAttachmentCounts } from "@/lib/treasury-attachments";
 import { closedMonthKeys, getClosings } from "@/lib/treasury-closings";
 import { formatMoney } from "@/lib/treasury-format";
+import { getReconciledEntryIds } from "@/lib/treasury-statements";
 import {
   balancesBy,
   getLedgerCatalog,
@@ -32,15 +33,17 @@ export default async function LibroTesoreriaPage({
     ? requested
     : (years[0] ?? new Date().getUTCFullYear() - 1843);
 
-  const [catalog, entries, receiptResult, attachmentCounts, closings] = await Promise.all([
-    getLedgerCatalog(supabase, session.locality.id, {
-      nationwide: isNationalLocality(session.locality),
-    }),
-    getLedgerEntries(supabase, year),
-    supabase.rpc("next_receipt_number", { loc: session.locality.id }),
-    getAttachmentCounts(supabase),
-    getClosings(supabase),
-  ]);
+  const [catalog, entries, receiptResult, attachmentCounts, closings, reconciled] =
+    await Promise.all([
+      getLedgerCatalog(supabase, session.locality.id, {
+        nationwide: isNationalLocality(session.locality),
+      }),
+      getLedgerEntries(supabase, year),
+      supabase.rpc("next_receipt_number", { loc: session.locality.id }),
+      getAttachmentCounts(supabase),
+      getClosings(supabase),
+      getReconciledEntryIds(supabase),
+    ]);
   const closedMonths = closedMonthKeys(closings);
 
   const accountNames = new Map(catalog.accounts.map((a) => [a.id, a.name]));
@@ -197,6 +200,7 @@ export default async function LibroTesoreriaPage({
             nextReceipt={nextReceipt}
             attachmentCounts={attachmentCounts}
             closedMonths={closedMonths}
+            reconciledIds={[...reconciled]}
           />
         </>
       )}

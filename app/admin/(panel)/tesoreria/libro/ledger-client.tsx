@@ -26,6 +26,9 @@ type Props = {
   /** Meses civiles cerrados ("YYYY-MM"): sus movimientos no se editan ni
    *  se borran, se revierten con un contra-asiento (054). */
   closedMonths: string[];
+  /** Movimientos que ya cerraron contra el extracto de la plataforma
+   *  (061), para la marca de la lista. */
+  reconciledIds: string[];
 };
 
 /**
@@ -48,9 +51,11 @@ export function LedgerClient({
   nextReceipt,
   attachmentCounts,
   closedMonths,
+  reconciledIds,
 }: Props) {
   const router = useRouter();
   const closed = useMemo(() => new Set(closedMonths), [closedMonths]);
+  const reconciled = useMemo(() => new Set(reconciledIds), [reconciledIds]);
   /** El mes del movimiento ya se cerró: solo se puede revertir. */
   const isLocked = (e: TreasuryEntry) => closed.has(monthKeyOf(e.entry_date));
   const [openForm, setOpenForm] = useState(false);
@@ -260,6 +265,7 @@ export function LedgerClient({
                 <Td className="text-muted">
                   {e.description ?? "—"}
                   <Clip count={attachmentCounts[e.id] ?? 0} />
+                  <BankMark on={reconciled.has(e.id)} />
                   <StateChips entry={e} />
                 </Td>
                 <Td>{contributorLabel(e) ?? <Masked />}</Td>
@@ -332,6 +338,7 @@ export function LedgerClient({
               {formatDate(e.entry_date)} · {names.accounts.get(e.account_id)}
               {e.fund_id ? ` · ${names.funds.get(e.fund_id)}` : ""}
               <Clip count={attachmentCounts[e.id] ?? 0} />
+              <BankMark on={reconciled.has(e.id)} />
               <StateChips entry={e} />
             </div>
             {(e.description || e.contributor_id) && (
@@ -508,6 +515,19 @@ function Td({
 
 /** Clip de comprobantes. No dice "0": la ausencia se nota sola y la
  *  lista ya tiene bastante ruido. */
+/** El movimiento ya cerró contra el extracto de la plataforma (061). */
+function BankMark({ on }: { on: boolean }) {
+  if (!on) return null;
+  return (
+    <span
+      className="ml-1.5 inline-flex items-center rounded-full bg-emerald-50 px-1.5 py-0.5 align-middle text-[10px] font-semibold text-emerald-700"
+      title="Conciliado con el extracto de la plataforma"
+    >
+      banco ✓
+    </span>
+  );
+}
+
 function Clip({ count }: { count: number }) {
   if (count === 0) return null;
   return (
