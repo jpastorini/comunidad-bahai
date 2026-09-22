@@ -309,7 +309,10 @@ Prex y el BROU contra el libro de esa cuenta; lo importado se guarda
 (líneas con huella, pares con el libro, archivo original), "conciliado"
 se deriva por cuenta y mes en Cierres y cada movimiento cerrado lleva su
 marca en el Libro. Mercado Pago se reconoce pero todavía no se lee. Ver la
-sección "Conciliación con el extracto" más abajo.
+sección "Conciliación con el extracto" más abajo. ·
+**Importar los ejercicios anteriores** (migración 062): un año entero del
+libro desde la planilla con que se llevaba antes, con vista previa y
+deshacer. Ver la sección "Importar un ejercicio" más abajo.
 
 ## Buscador de pasajes (migración 053)
 
@@ -519,8 +522,9 @@ solo mecanismo. Grupos: Inicio (ítem suelto) · Asamblea (Tareas,
 Reuniones, Informes de Tesorería, Datos de la Asamblea) · Comunicación (Comunicados, Encuestas, Boletín,
 Chat de Secretaría) · Vida comunitaria (Calendario, Fiestas, Sugerencias,
 Actividades, Servicio, Materiales, Fotos) · Creyentes (Creyentes, Uso de
-la app) · Tesorería (Libro, Recibo, Catálogo, Cierres, Conciliación, Auditoría, Informes,
-Progreso, Presupuesto, Metas, Mensajes, Cómo aportar) · Admin Nacional.
+la app) · Tesorería (Libro, Recibo, Catálogo, Importar, Cierres, Conciliación,
+Auditoría, Informes, Progreso, Presupuesto, Metas, Mensajes, Cómo aportar) ·
+Admin Nacional.
 
 Tres reglas de comportamiento (`components/admin/Sidebar.tsx`):
 
@@ -1535,6 +1539,96 @@ solo el tesorero. Para actualizar:
 leer el xlsx de Mercado Pago SheetJS imprime "Bad uncompressed size" en
 stderr: es ruido, lo lee bien.
 
+### Importar un ejercicio anterior (migración 062)
+
+Tesorería → Importar (`/admin/tesoreria/libro/importar`, tag
+`can_manage_treasury`): cargar al libro un año entero desde la planilla
+con que se llevaba antes. Pedido el 2026-09-22 por la **Tesorería
+Nacional**, que tiene cinco años de planillas y el libro vacío, y lo
+quiere adentro para correrle la auditoría (059). Reemplaza a
+`scripts/import-tesoreria.mjs`, que hacía lo mismo generando SQL para el
+editor de Supabase y costaba una sesión de desarrollo por año.
+
+**La regla que manda sobre todas: la apertura la trae un solo ejercicio,
+el más viejo.** `buildCashbook` acumula TODO lo anterior al mes, así que
+si cada año importado trajera su propio "Saldo anterior" el saldo se
+contaría dos veces — los movimientos del año anterior YA SON la apertura
+del siguiente. Del segundo ejercicio en adelante la apertura declarada no
+se importa: **se compara** con el cierre calculado, cuenta por cuenta y
+moneda. Esa comparación es lo mejor que tiene el importador, porque es la
+única verificación de que el año anterior entró completo, y por eso se
+importa **del más viejo al más nuevo**: al revés la verificación no
+existe y un descuadre aparece al final sin saber de qué año viene. El
+modo se puede forzar ("sobreescribir") y el aviso queda guardado.
+
+⚠️ De paso hubo que arreglar `APERTURA_FALTANTE` en la auditoría: pedía
+un asiento de apertura por cada ejercicio, lo que con años importados
+habría gritado por cada cuenta de cada año. Ahora no espera apertura si
+el ejercicio anterior está EN el libro (el saldo se arrastra solo); la
+regla sigue valiendo para el caso para el que se escribió, que es el
+saldo copiado a mano sin el año anterior cargado.
+
+Tres piezas, con la misma separación que la conciliación:
+
+- `lib/ledger-import.ts` — PURO. `parseLedgerSheet()` ubica las columnas
+  **por nombre de encabezado** (`SYNONYMS`, normalizado sin acentos), se
+  queda con la fila que reconoce MÁS campos —una planilla tiene título
+  arriba y a veces una fila de ejemplo— y falla con mensaje si no
+  reconoce el molde. `planImport()` arma el plan: catálogo existente vs.
+  nuevo, contribuyentes, transferencias atadas (misma fecha, mismo rubro
+  de transferencia, signos opuestos), saldos, totales, la comparación de
+  aperturas y los avisos.
+  ⚠️ **`sheetNumber()` NO es `cellNumber()` de los extractos, y la
+  diferencia es plata.** Un extracto lo exporta una plataforma y puede
+  venir en formato inglés ("1,600.00", BROU); una planilla la escribió
+  una persona en es-UY, donde el punto separa miles. `cellNumber("3.500")`
+  devuelve **3,5**: un gasto de tres mil quinientos entraría como tres
+  pesos con cincuenta, y no lo delata ningún total porque el total
+  también saldría mal. Con punto solo, manda cuántos dígitos quedan a la
+  derecha del último punto: tres es miles, uno o dos es decimal.
+- `lib/treasury-imports.ts` — server-only: el lote y `buildLedgerContext()`.
+  ⚠️ El catálogo se trae COMPLETO, activos e inactivos: una planilla de
+  hace cinco años usa rubros dados de baja, y mirando solo los activos el
+  import los crearía de nuevo y partiría el historial de ese rubro en dos.
+- La pantalla, con **un solo formulario y dos pasos sobre él**. "Ver qué
+  entra" no guarda nada; "Importar" vuelve a mandar el MISMO archivo y el
+  servidor lo lee de nuevo. El plan no se guarda entre los dos pasos a
+  propósito: el parser es puro, releer da lo mismo, y así no existe un
+  estado intermedio que pueda quedar viejo entre lo que la persona aprobó
+  y lo que entra al libro. Cambiar el año, el archivo o el modo de
+  aperturas tira el plan.
+
+**Deshacer es lo que hace barato equivocarse.** Los asientos llevan
+`import_batch_id` y `undo_ledger_import()` borra el lote entero. Existe
+porque el guard de la 054 no deja borrar un movimiento con recibo
+emitido, y los aportes históricos vienen todos con el recibo emitido —que
+es la verdad—. La excepción es angosta: el guard la acepta solo si el
+asiento pertenece al lote nombrado en la GUC `app.undo_import`, que la
+función pone con `set local` y muere con la transacción. **Un mes cerrado
+sigue congelado**, así que el orden de trabajo es importar los cinco años
+→ auditar → corregir → recién ahí cerrar los meses. El catálogo creado no
+se borra al deshacer: es inofensivo y podría estar en uso.
+
+Si un chunk de asientos falla, el action deshace el lote entero en vez de
+dejar medio ejercicio cargado: medio libro es peor que ninguno, porque
+los saldos mienten sin que nada lo delate. El catálogo nuevo se crea
+**activo** (en una comunidad vacía esto ES el catálogo) y los
+contribuyentes **sin `profile_id`**: vincular un nombre de hace cinco
+años con un creyente de la app es decisión de persona, y se hace después
+desde el libro. La planilla original va al bucket PRIVADO `planillas`.
+
+**La numeración de recibos sigue siendo única por localidad**, no por
+ejercicio. En Montevideo la serie es continua entre años (el 183 arranca
+en el 281) y en la AEN también, así que los años viejos rellenan números
+más bajos. El importador lo **verifica** antes de insertar en vez de
+asumirlo: si una comunidad reiniciara la serie cada año, el índice único
+rechazaría la importación entera y enterarse por un error de base de
+datos a mitad del segundo año es caro. Que la serie sea por ejercicio
+sería otra migración.
+
+⚠️ Hasta que corra la 062, la pantalla avisa, deja ver la vista previa y
+no importa.
+
 ### Adecuación a la ley uruguaya (relevamiento 2026-09-12)
 
 Qué le pide la normativa al libro y a los informes, contrastado con lo que
@@ -2045,6 +2139,17 @@ cambia nada.
 
 ## Pendientes conocidos
 
+- **Aplicar la 062 e importar los cinco ejercicios de la Tesorería
+  Nacional**, del más viejo al más nuevo. El parser está escrito contra el
+  molde de la planilla de Montevideo y probado con una planilla sintética;
+  **falta verlo contra una planilla real de la AEN**. Si el molde es otro
+  —por ejemplo el libro de tres columnas que mencionan los estatutos,
+  Contribuciones / Gastos / Saldo— no hay cuenta, fondo ni rubro que
+  importar y hay que charlar qué se puede reconstruir antes de codear. Con
+  el archivo a mano hay dos cosas más para confirmar: que la serie de
+  recibos sea continua entre años (la pantalla lo verifica igual) y si el
+  corte del ejercicio de la AEN es Riḍván o alguna otra fecha. Ver
+  "Importar un ejercicio anterior".
 - **Aplicar la 061 y probar la conciliación en producción**: importar el
   BROU y el Prex reales, ver que el segundo archivo del BROU no duplica,
   resolver a mano lo que quede suelto y mirar Cierres. Después: "Registrar

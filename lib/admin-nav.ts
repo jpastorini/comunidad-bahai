@@ -102,6 +102,10 @@ export const ADMIN_NAV: NavGroup[] = [
       // Cuentas, fondos, categorías y subcategorías con que se carga el
       // libro: agregar, renombrar, ordenar, dar de baja.
       { href: "/admin/tesoreria/catalogo", label: "Catálogo" },
+      // Cargar un ejercicio entero desde la planilla con que se llevaba
+      // antes (062). Va acá y no al final porque es de la misma familia
+      // que Catálogo: lo que se hace para que el libro exista.
+      { href: "/admin/tesoreria/libro/importar", label: "Importar" },
       // El cierre mensual y el Libro de Caja imprimible (054).
       { href: "/admin/tesoreria/libro/cierres", label: "Cierres" },
       // El extracto de la plataforma (Prex por ahora) contra el libro de

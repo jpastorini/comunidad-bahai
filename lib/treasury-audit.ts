@@ -1105,6 +1105,23 @@ const C: Rule[] = [
       const start = treasuryYearStart(ctx.bahaiYear);
       if (!prevEnd || !start) return [];
 
+      // ⚠️ Si el ejercicio anterior está EN el libro, el saldo se arrastra
+      // solo y no hay nada que asentar: el Libro de Caja acumula todo lo
+      // anterior al mes, así que una apertura repetida contaría dos veces
+      // el mismo saldo. La apertura la trae un solo ejercicio, el más
+      // viejo del libro. La regla es para el caso contrario —el ejercicio
+      // pasado no está cargado y el saldo se copia a mano—, que es lo que
+      // pasa mientras no se importen los años anteriores (062).
+      const prevStart = treasuryYearStart(ctx.bahaiYear - 1);
+      if (
+        prevStart &&
+        live(ctx).some(
+          (e) => !e.is_opening_balance && e.entry_date >= prevStart && e.entry_date <= prevEnd
+        )
+      ) {
+        return [];
+      }
+
       // Saldo al cierre del ejercicio anterior, por cuenta y moneda.
       const closing = new Map<string, number>();
       for (const e of live(ctx)) {
