@@ -259,6 +259,34 @@ export function isISODate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Cuántos movimientos señalados acepta la dirección. Un hallazgo de
+ *  contribuyentes duplicados puede apuntar a decenas; más que esto es un
+ *  link armado a mano y una URL que ningún navegador quiere. */
+const MAX_FOCUS_IDS = 60;
+
+/**
+ * Los ids del parámetro `ids` de la dirección del Libro: "a,b,c" → [a,b,c].
+ *
+ * Se validan como UUID y se deduplican antes de tocar la base. No es
+ * paranoia de inyección (PostgREST parametriza y la RLS acota igual):
+ * es que un id basura convierte un `in(...)` en una consulta que
+ * devuelve vacío sin decir por qué, y el tesorero ve un libro en blanco
+ * creyendo que el movimiento se borró.
+ */
+export function parseFocusIds(raw: string | undefined): string[] {
+  if (!raw) return [];
+  const out: string[] = [];
+  for (const part of raw.split(",")) {
+    const id = part.trim();
+    if (!UUID.test(id) || out.includes(id)) continue;
+    out.push(id);
+    if (out.length >= MAX_FOCUS_IDS) break;
+  }
+  return out;
+}
+
 const SHORT_MONTHS = [
   "ene", "feb", "mar", "abr", "may", "jun",
   "jul", "ago", "set", "oct", "nov", "dic",

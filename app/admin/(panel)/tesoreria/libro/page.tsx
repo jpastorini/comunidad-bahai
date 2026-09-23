@@ -7,11 +7,16 @@ import { closedMonthKeys, getClosings } from "@/lib/treasury-closings";
 import { formatMoney } from "@/lib/treasury-format";
 import { getReconciledEntryIds } from "@/lib/treasury-statements";
 import { treasuryYearForDate } from "@/lib/treasury-year";
-import { formatRangeLabel, isISODate } from "@/lib/treasury-ledger-filters";
+import {
+  formatRangeLabel,
+  isISODate,
+  parseFocusIds,
+} from "@/lib/treasury-ledger-filters";
 import {
   balancesBy,
   getLedgerCatalog,
   getLedgerEntries,
+  getLedgerEntriesByIds,
   getLedgerEntriesByRange,
   getLedgerYears,
   periodTotals,
@@ -24,7 +29,7 @@ export const dynamic = "force-dynamic";
 export default async function LibroTesoreriaPage({
   searchParams,
 }: {
-  searchParams: { year?: string; from?: string; to?: string };
+  searchParams: { year?: string; from?: string; to?: string; ids?: string };
 }) {
   const session = await requireAdmin();
   ensureTreasuryTag(session.profile);
@@ -45,14 +50,25 @@ export default async function LibroTesoreriaPage({
   const range =
     isISODate(from) && isISODate(to) && from <= to ? { from, to } : null;
 
+  // Y por encima de los dos manda una lista de movimientos señalados
+  // (`?ids=`), que es como la Auditoría trae al tesorero hasta el
+  // asiento del que habla un hallazgo. No es un encuadre del libro sino
+  // una consulta puntual: por eso arriba no se dibujan saldos (unos
+  // pocos movimientos sueltos no tienen saldo que mostrar) y si es uno
+  // solo se abre su ficha directamente.
+  const focusIds = parseFocusIds(searchParams.ids);
+  const focusing = focusIds.length > 0;
+
   const [catalog, entries, receiptResult, attachmentCounts, closings, reconciled] =
     await Promise.all([
       getLedgerCatalog(supabase, session.locality.id, {
         nationwide: isNationalLocality(session.locality),
       }),
-      range
-        ? getLedgerEntriesByRange(supabase, range.from, range.to)
-        : getLedgerEntries(supabase, year),
+      focusing
+        ? getLedgerEntriesByIds(supabase, focusIds)
+        : range
+          ? getLedgerEntriesByRange(supabase, range.from, range.to)
+          : getLedgerEntries(supabase, year),
       supabase.rpc("next_receipt_number", { loc: session.locality.id }),
       getAttachmentCounts(supabase),
       getClosings(supabase),
@@ -74,23 +90,39 @@ export default async function LibroTesoreriaPage({
   // del período. Un saldo no tiene período —es todo el libro hasta una
   // fecha— y llamar "saldo" a la suma de un mes suelto sería el peor
   // error posible en la pantalla que se usa justamente para cuadrar.
-  const scopeLabel = range
-    ? formatRangeLabel(range.from, range.to)
-    : `${year} E.B.`;
+  const scopeLabel = focusing
+    ? "movimientos señalados"
+    : range
+      ? formatRangeLabel(range.from, range.to)
+      : `${year} E.B.`;
   const balancesTitle = range ? "Movimiento del período por" : "Saldo por";
   // El ejercicio del alta sale de la fecha del movimiento; esto es solo
   // el valor de respaldo cuando esa fecha no cae en ningún ejercicio.
-  const formYear = range ? (treasuryYearForDate(range.to) ?? year) : year;
+  const formYear = focusing
+    ? (treasuryYearForDate(entries[0]?.entry_date ?? "") ?? year)
+    : range
+      ? (treasuryYearForDate(range.to) ?? year)
+      : year;
 
   return (
     <>
       <PageHeader
         eyebrow="Tesorería"
-        title={range ? `Libro · ${scopeLabel}` : `Libro ${year} E.B.`}
+        title={
+          focusing
+            ? entries.length === 1
+              ? "Libro · un movimiento"
+              : `Libro · ${entries.length} movimientos`
+            : range
+              ? `Libro · ${scopeLabel}`
+              : `Libro ${year} E.B.`
+        }
         description={
-          range
-            ? "Movimientos del período elegido, sin importar a qué ejercicio pertenezcan."
-            : "Cada línea es un movimiento. El saldo se calcula solo."
+          focusing
+            ? "Los movimientos señalados desde otra pantalla, no un encuadre del libro: por eso arriba no se muestran saldos."
+            : range
+              ? "Movimientos del período elegido, sin importar a qué ejercicio pertenezcan."
+              : "Cada línea es un movimiento. El saldo se calcula solo."
         }
         actions={
           <>
@@ -113,6 +145,11 @@ export default async function LibroTesoreriaPage({
         </Banner>
       ) : (
         <>
+          {/* Con movimientos señalados no se dibujan saldos: sumar unos
+              pocos asientos sueltos daría una cifra que no es el saldo de
+              nada y que alguien podría copiar a un informe. */}
+          {!focusing && (
+            <>
           {/* Saldos: primero por cuenta, que es la plata donde está. */}
           <Card className="mb-4">
             <h2 className="mb-3 font-display text-[18px] font-semibold text-dark">
@@ -230,6 +267,8 @@ export default async function LibroTesoreriaPage({
               </div>
             </Card>
           )}
+            </>
+          )}
 
           <LedgerClient
             catalog={catalog}
@@ -243,6 +282,7 @@ export default async function LibroTesoreriaPage({
             reconciledIds={[...reconciled]}
             range={range}
             scopeLabel={scopeLabel}
+            focusIds={focusIds}
           />
         </>
       )}

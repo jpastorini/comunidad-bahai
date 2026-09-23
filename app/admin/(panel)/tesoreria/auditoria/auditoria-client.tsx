@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Finding, Severity } from "@/lib/treasury-audit";
+import { remedyFor } from "@/lib/treasury-audit-remedies";
 import { dispatchFindingAction, saveAuditRunAction } from "./actions";
 
 export type FindingRow = Finding & {
@@ -205,6 +206,10 @@ function FindingCard({ f, onChanged }: { f: FindingRow; onChanged: () => void })
   }
 
   const done = f.status !== "pendiente";
+  // La nota de cómo se arregla es de la CLASE de problema y sale de un
+  // mapa por código: un hallazgo despachado no la necesita más, así que
+  // solo se muestra mientras está pendiente.
+  const remedy = done ? null : remedyFor(f.code);
 
   return (
     <div
@@ -232,10 +237,32 @@ function FindingCard({ f, onChanged }: { f: FindingRow; onChanged: () => void })
         {f.entryIds.length > 0 && (
           <p className="mt-2 text-[12px] text-muted">
             Afecta a {f.entryIds.length} movimiento{f.entryIds.length === 1 ? "" : "s"}.{" "}
-            <Link href="/admin/tesoreria/libro" className="font-semibold text-terra hover:underline">
-              Ir al libro
+            <Link
+              href={`/admin/tesoreria/libro?ids=${f.entryIds.slice(0, 60).join(",")}`}
+              className="font-semibold text-terra hover:underline"
+            >
+              {f.entryIds.length === 1
+                ? "Abrir el movimiento"
+                : `Abrir los ${f.entryIds.length} movimientos`}
             </Link>
           </p>
+        )}
+
+        {remedy && (
+          <div className="mt-3 rounded-xl border border-black/[0.06] bg-bg/50 px-3.5 py-2.5">
+            <div className="mb-1 text-[10.5px] font-semibold uppercase tracking-wider text-muted">
+              Cómo se corrige
+            </div>
+            <p className="text-[12.5px] leading-relaxed text-dark">{remedy.fix}</p>
+            {remedy.where && (
+              <Link
+                href={remedy.where.href}
+                className="mt-1.5 inline-block text-[12px] font-semibold text-terra hover:underline"
+              >
+                {remedy.where.label} →
+              </Link>
+            )}
+          </div>
         )}
 
         {done && (

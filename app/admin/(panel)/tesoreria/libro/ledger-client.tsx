@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LedgerCatalog, TreasuryEntry } from "@/lib/treasury-ledger";
@@ -48,6 +48,10 @@ type Props = {
   /** Cómo se llama lo que está en pantalla ("183 E.B." o "1 abr – 30 abr
    *  2026"), para el nombre del archivo exportado. */
   scopeLabel: string;
+  /** Movimientos señalados desde otra pantalla (hoy, un hallazgo de la
+   *  Auditoría). La lista ya viene filtrada a estos: acá sirven para
+   *  avisarlo y para abrir la ficha cuando es uno solo. */
+  focusIds?: string[];
 };
 
 /**
@@ -73,6 +77,7 @@ export function LedgerClient({
   reconciledIds,
   range,
   scopeLabel,
+  focusIds = [],
 }: Props) {
   const router = useRouter();
   const closed = useMemo(() => new Set(closedMonths), [closedMonths]);
@@ -93,6 +98,23 @@ export function LedgerClient({
   // tesorero no siempre está sola. Arrancan ocultos en cada carga; el
   // estado sobrevive a los router.refresh() de la propia sesión de carga.
   const [showNames, setShowNames] = useState(false);
+
+  // Un solo movimiento señalado abre su ficha sola: el hallazgo de la
+  // Auditoría ya sabía de cuál hablaba y hacer buscarlo en una lista de
+  // una fila sería devolverle el trabajo a la persona.
+  //
+  // El candado es un ref y no una dependencia del efecto porque después
+  // de guardar se llama a router.refresh(): las entradas llegan nuevas,
+  // el efecto volvería a correr y la ficha reaparecería sobre la lista
+  // apenas la cerraste.
+  const autoOpened = useRef(false);
+  useEffect(() => {
+    if (autoOpened.current || focusIds.length !== 1) return;
+    const only = entries.find((e) => e.id === focusIds[0]);
+    if (!only) return;
+    autoOpened.current = true;
+    setEditing(only);
+  }, [entries, focusIds]);
 
   const names: LedgerNames = useMemo(
     () => ({
@@ -184,6 +206,38 @@ export function LedgerClient({
 
   return (
     <>
+      {/* Movimientos señalados desde otra pantalla. La salida está a la
+          vista desde el primer momento: alguien que llega acá por un
+          link no tiene por qué deducir que el libro entero sigue ahí. */}
+      {focusIds.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-terra/25 bg-terra/[0.06] px-3.5 py-2.5">
+          <p className="text-[12.5px] text-dark">
+            {entries.length === 0 ? (
+              <>
+                No se encontró el movimiento señalado: puede haberse borrado
+                desde que se corrió la auditoría.
+              </>
+            ) : (
+              <>
+                Estás viendo{" "}
+                <strong>
+                  {entries.length === 1
+                    ? "un movimiento señalado"
+                    : `${entries.length} movimientos señalados`}
+                </strong>
+                , no el libro completo.
+              </>
+            )}
+          </p>
+          <Link
+            href="/admin/tesoreria/libro"
+            className="tap shrink-0 text-[12px] font-semibold text-terra hover:underline"
+          >
+            Ver el libro completo
+          </Link>
+        </div>
+      )}
+
       {/* Barra de herramientas */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <select

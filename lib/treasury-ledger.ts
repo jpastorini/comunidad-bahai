@@ -203,10 +203,12 @@ const ENTRY_FIELDS =
 const LEGACY_ENTRY_FIELDS =
   "id, entry_date, bahai_year, account_id, subcategory_id, category_id, fund_id, currency, amount, description, receipt_number, contributions_count, contributor_id, receipt_name, receipt_issued, transfer_group_id, is_opening_balance";
 
-/** Filtro de la consulta: un año bahá'í, o un rango de fechas civiles. */
+/** Filtro de la consulta: un año bahá'í, un rango de fechas civiles, o
+ *  una lista de movimientos señalados. */
 type LedgerScope =
   | { kind: "year"; year: number }
-  | { kind: "range"; from: string; to: string };
+  | { kind: "range"; from: string; to: string }
+  | { kind: "ids"; ids: string[] };
 
 async function fetchLedgerEntries(
   supabase: SupabaseClient,
@@ -219,7 +221,9 @@ async function fetchLedgerEntries(
     const scoped =
       scope.kind === "year"
         ? base.eq("bahai_year", scope.year)
-        : base.gte("entry_date", scope.from).lte("entry_date", scope.to);
+        : scope.kind === "ids"
+          ? base.in("id", scope.ids)
+          : base.gte("entry_date", scope.from).lte("entry_date", scope.to);
     return scoped
       .order("entry_date", { ascending: false })
       .order("receipt_number", { ascending: false, nullsFirst: false });
@@ -285,6 +289,24 @@ export function getLedgerEntriesByRange(
   to: string
 ): Promise<TreasuryEntry[]> {
   return fetchLedgerEntries(supabase, { kind: "range", from, to });
+}
+
+/**
+ * Los movimientos que alguien señaló por id. Hoy la usa la Auditoría:
+ * un hallazgo sabe exactamente de qué asientos habla, y mandar al
+ * tesorero al libro entero a buscarlos por fecha es perder lo único que
+ * el hallazgo tenía resuelto.
+ *
+ * No se pasa por el rango de fechas a propósito: los dos movimientos de
+ * un recibo duplicado pueden estar a meses de distancia, y un rango que
+ * los cubra traería cientos de filas que nadie pidió.
+ */
+export function getLedgerEntriesByIds(
+  supabase: SupabaseClient,
+  ids: string[]
+): Promise<TreasuryEntry[]> {
+  if (ids.length === 0) return Promise.resolve([]);
+  return fetchLedgerEntries(supabase, { kind: "ids", ids });
 }
 
 export type BalanceRow = {
