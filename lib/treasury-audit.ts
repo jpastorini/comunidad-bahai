@@ -1072,7 +1072,13 @@ const C: Rule[] = [
       const groups = new Map<string, AuditEntry[]>();
       for (const e of live(ctx)) {
         if (!e.is_opening_balance) continue;
-        const key = `${e.account_id}|${e.currency}|${e.bahai_year ?? "?"}`;
+        // ⚠️ El fondo forma parte de la identidad de una apertura. La
+        // plata está coloreada por fondo, así que una misma cuenta abre
+        // el ejercicio con un saldo por cada fondo que tenga adentro —en
+        // la planilla 182 de la AEN, Cuenta Prex abre con cinco—. Sin el
+        // fondo en la clave, un libro bien llevado se reporta como si
+        // tuviera la apertura duplicada.
+        const key = `${e.account_id}|${e.currency}|${e.fund_id ?? "-"}|${e.bahai_year ?? "?"}`;
         const list = groups.get(key) ?? [];
         list.push(e);
         groups.set(key, list);

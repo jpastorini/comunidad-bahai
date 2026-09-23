@@ -1617,6 +1617,40 @@ contribuyentes **sin `profile_id`**: vincular un nombre de hace cinco
 años con un creyente de la app es decisión de persona, y se hace después
 desde el libro. La planilla original va al bucket PRIVADO `planillas`.
 
+**Lo que enseñó la planilla real de la AEN** (`Tesoreria 182.xlsx`,
+2026-09-22: 2187 filas de las que 157 son movimientos, hoja "Movimientos
+182" + hoja "RUBROS"). Es el molde de Montevideo, pero con cuatro cosas
+que el parser no esperaba y que van a repetirse en los otros cuatro años:
+
+- **Los encabezados llevan "N.º" adelante** ("N° Cuenta", "N° Recibo",
+  "N aportes"). Con comparación exacta no matcheaba ninguno, y como la
+  cuenta es obligatoria el archivo entero se rechazaba. `headerKey()`
+  saca ese prefijo; exige un separador detrás (°, punto o espacio) o
+  "Nombre" quedaría en "ombre". La columna del contribuyente se llama
+  **"Persona"**.
+- ⚠️ **La columna de recibo también se usa para el comprobante del
+  proveedor.** Hay gastos con "6283" o "6131" ahí. Importado como
+  `receipt_number` haría dos daños: mueve la serie correlativa
+  (`next_receipt_number()` es max + 1) y abre miles de huecos que la
+  auditoría reporta como recibos faltantes. La regla es que el número de
+  recibo es SOLO de los aportes (importe positivo y no apertura); en los
+  demás va a la descripción como "Comprobante N". Con eso la serie del
+  182 queda limpia: 181 a 280.
+- **Las aperturas son por (cuenta, moneda, FONDO)**: Cuenta Prex abre el
+  182 con cinco, una por fondo. Por eso `APERTURA_DUPLICADA` sumó el
+  fondo a su clave — sin eso, un libro bien llevado se reportaba como
+  duplicado en cuanto se importa un año.
+- **Un recibo anulado se escribía con importe en cero** y "Recibo
+  Anulado" en la descripción (el N.º 210). El libro no guarda un
+  movimiento sin importe (`amount <> 0`), así que la fila no entra y el
+  número queda como hueco; el aviso lo dice con todas las letras para que
+  no aparezca después en la auditoría como un vacío sin explicación.
+
+Y dos que son de la planilla y las arregla el tesorero, no el código: el
+**recibo 229 está en dos filas** (un mismo papel cubriendo un aporte en
+pesos y otro en dólares, que el modelo no sabe expresar) y falta el 247
+—casi seguro el mismo error de tipeo—. De ahí los `blockers`.
+
 **La numeración de recibos sigue siendo única por localidad**, no por
 ejercicio. En Montevideo la serie es continua entre años (el 183 arranca
 en el 281) y en la AEN también, así que los años viejos rellenan números
@@ -1625,6 +1659,16 @@ asumirlo: si una comunidad reiniciara la serie cada año, el índice único
 rechazaría la importación entera y enterarse por un error de base de
 datos a mitad del segundo año es caro. Que la serie sea por ejercicio
 sería otra migración.
+
+**`blockers` es lo único que no se puede pasar por arriba.** Los avisos
+se confirman igual y quedan guardados; un número de recibo repetido —en
+la planilla o contra el libro— no, porque el índice único rechazaría el
+lote entero y lo que volvería sería un error de clave duplicada en vez de
+una frase. La pantalla los muestra en rojo, deshabilita el botón y dice
+qué fila corregir; el action los vuelve a chequear antes de insertar.
+Cuando hay repetidos, el plan agrega los **huecos** de la serie al mismo
+bloque: un número repetido y otro faltante en el mismo archivo son casi
+siempre el mismo error de tipeo, y verlos juntos lo resuelve en un minuto.
 
 ⚠️ Hasta que corra la 062, la pantalla avisa, deja ver la vista previa y
 no importa.

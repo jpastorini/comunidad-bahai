@@ -110,19 +110,12 @@ const SYNONYMS: Record<string, string[]> = {
   income: ["ingreso", "ingresos", "entrada", "entradas", "haber", "credito", "debe"],
   expense: ["gasto", "gastos", "egreso", "egresos", "salida", "salidas", "debito"],
   amount: ["importe", "monto"],
-  receipt: [
-    "recibo",
-    "n recibo",
-    "nro recibo",
-    "n° recibo",
-    "numero de recibo",
-    "numero recibo",
-    "recibo n",
-    "recibo n°",
-  ],
-  count: ["cantidad", "cantidad de aportes", "aportes", "n aportes"],
+  // Se comparan contra `headerKey()`, que ya sacó el "N.º" de adelante:
+  // "N° Recibo" llega acá como "recibo" y "N aportes" como "aportes".
+  receipt: ["recibo", "recibo n", "comprobante"],
+  count: ["aportes", "cantidad"],
   description: ["descripcion", "detalle", "observaciones", "observacion", "glosa"],
-  contributor: ["contribuyente", "aportante", "donante", "nombre"],
+  contributor: ["contribuyente", "persona", "aportante", "donante", "nombre"],
   receiptIssued: ["recibo emitido", "emitido", "impreso", "recibo impreso"],
 };
 
@@ -131,8 +124,26 @@ const REQUIRED = ["date", "account", "subcategory"] as const;
 
 type ColumnMap = Map<string, number>;
 
+/**
+ * El encabezado listo para comparar. Además de normalizar acentos y
+ * mayúsculas, saca el "N.º" de adelante: la planilla de la AEN titula
+ * "N° Cuenta", "N° Recibo" y "N aportes", y con comparación exacta
+ * ninguno de los tres matcheaba — la columna de cuenta es obligatoria,
+ * así que el archivo entero se rechazaba por eso. Sacar el prefijo
+ * resuelve los tres de una vez y no confunde "N° Recibo" ("recibo") con
+ * "Recibo emitido", que conserva su nombre.
+ */
+function headerKey(c: Cell): string {
+  // El prefijo tiene que venir seguido de un separador (°, punto o
+  // espacio), o "Nombre" quedaría en "ombre".
+  return normalizeHeader(c)
+    .replace(/^(?:n|nro|num|numero)(?:\s*[°º.]\s*|\s+)(?:de\s+)?/, "")
+    .replace(/^(?:cant|cantidad)(?:\s*\.\s*|\s+)(?:de\s+)?/, "")
+    .trim();
+}
+
 function mapColumns(header: Cell[]): ColumnMap {
-  const normalized = header.map(normalizeHeader);
+  const normalized = header.map(headerKey);
   const map: ColumnMap = new Map();
   for (const [field, names] of Object.entries(SYNONYMS)) {
     for (const name of names) {
@@ -295,10 +306,21 @@ export function parseLedgerSheet(rows: CellMatrix): ParsedSheet | ParseFailure {
         : Math.round((income - Math.abs(expense)) * 100) / 100;
 
     if (!amount) {
+      // Un recibo anulado en la planilla vieja se escribía poniendo el
+      // importe en cero y "Anulado" en la descripción. Acá eso es otra
+      // cosa —`voided_at`, con su motivo, conservando el número— pero el
+      // libro no puede guardar un movimiento sin importe, así que la fila
+      // no entra y su número queda como hueco en la serie. Se dice con
+      // todas las letras, porque si no la auditoría lo reporta después
+      // como un vacío sin explicación.
+      const voidRef = sheetNumber(at(r, "receipt"));
+      const looksVoided = /anulad/i.test(text(at(r, "description")) + " " + text(at(r, "subcategory")));
       warnings.push({
-        level: "aviso",
+        level: looksVoided ? "alto" : "aviso",
         row: rowNumber,
-        text: "La fila no tiene importe (o es cero); no se importa.",
+        text: looksVoided
+          ? `La planilla anula el recibo N.º ${voidRef ?? "—"} poniéndolo en cero. Un movimiento sin importe no entra al libro, así que ese número va a figurar como hueco en la auditoría; si querés que quede anulado en regla, cargalo a mano con su importe original y anulalo.`
+          : "La fila no tiene importe (o es cero); no se importa.",
       });
       continue;
     }
@@ -323,8 +345,29 @@ export function parseLedgerSheet(rows: CellMatrix): ParsedSheet | ParseFailure {
       });
     }
 
-    const receiptRaw = sheetNumber(at(r, "receipt"));
+    const raw = sheetNumber(at(r, "receipt"));
+    const number = raw != null && Number.isInteger(raw) && raw > 0 ? raw : null;
     const contributor = text(at(r, "contributor"));
+    const isOpening =
+      OPENING_RE.test(subcategory) || OPENING_RE.test(text(at(r, "description")));
+
+    // ⚠️ El número de recibo es SOLO de los aportes. En la planilla la
+    // misma columna se usa para anotar el número del comprobante que
+    // entregó el proveedor de un gasto (en la 182 de la AEN hay gastos
+    // con "6283" ahí), y eso importado como recibo hace dos daños: mueve
+    // la serie correlativa —`next_receipt_number()` es max + 1— y abre
+    // miles de huecos que la auditoría reporta como recibos faltantes.
+    // El número no se pierde: se guarda en la descripción.
+    const isContribution = amount > 0 && !isOpening;
+    let description = text(at(r, "description"));
+    if (number != null && !isContribution) {
+      description = description ? `${description} · Comprobante ${number}` : `Comprobante ${number}`;
+      warnings.push({
+        level: "aviso",
+        row: rowNumber,
+        text: `La columna de recibo dice ${number} en ${isOpening ? "un saldo de apertura" : "un gasto"}. El número de recibo del libro es el de los aportes, así que va a la descripción como "Comprobante ${number}".`,
+      });
+    }
 
     out.push({
       row: rowNumber,
@@ -335,18 +378,16 @@ export function parseLedgerSheet(rows: CellMatrix): ParsedSheet | ParseFailure {
       fund: text(at(r, "fund")) || null,
       currency,
       amount,
-      description: text(at(r, "description")),
-      receiptNumber:
-        receiptRaw != null && Number.isInteger(receiptRaw) && receiptRaw > 0 ? receiptRaw : null,
+      description,
+      receiptNumber: isContribution ? number : null,
       contributionsCount: Math.max(0, Math.trunc(sheetNumber(at(r, "count")) ?? 0)),
       contributor: contributor || null,
-      // Un aporte de un ejercicio cerrado hace años tiene el recibo
-      // entregado, diga lo que diga la columna. Solo se cree al archivo
-      // cuando la columna existe.
-      receiptIssued: map.has("receiptIssued")
-        ? readBoolean(at(r, "receiptIssued"))
-        : receiptRaw != null,
-      isOpening: OPENING_RE.test(subcategory) || OPENING_RE.test(text(at(r, "description"))),
+      // Sin columna que lo diga, se importa como NO emitido. Marcarlo
+      // emitido congela el movimiento contra cualquier edición (054), y
+      // un año recién importado es justamente lo que más se corrige; el
+      // número, que es lo que pide la DGI, se conserva igual.
+      receiptIssued: map.has("receiptIssued") ? readBoolean(at(r, "receiptIssued")) : false,
+      isOpening,
       transferGroup: null,
     });
   }
@@ -426,6 +467,11 @@ export type ImportPlan = {
   balances: Balance[];
   totals: Array<{ currency: Currency; income: number; expense: number; net: number }>;
   warnings: ImportWarning[];
+  /** Lo que impide importar tal cual está. Vacío = se puede confirmar.
+   *  A diferencia de los avisos, esto NO se puede pasar por arriba: son
+   *  cosas que la base rechazaría, así que la salida es corregir la
+   *  planilla y volver a subirla. */
+  blockers: string[];
 };
 
 const key = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
@@ -525,29 +571,64 @@ export function planImport(
   }
 
   // ─── Transferencias: atar las dos patas ────────────────────────
-  // Misma fecha, mismo rubro, signos opuestos. Pueden cruzar monedas: el
-  // tipo de cambio queda implícito en los dos importes.
-  const pending = new Map<string, number>();
-  let transfersPaired = 0;
+  //
+  // Misma fecha y mismo rubro; una sale y otra entra. Pueden cruzar
+  // monedas (el tipo de cambio queda implícito en los dos importes) y
+  // pueden ser de la misma cuenta y distinto fondo, que es como se
+  // reasigna plata dentro de una caja.
+  //
+  // Se resuelve por GRUPO y no llevando un solo pendiente: en la 182 de
+  // la AEN hay días con tres filas del mismo rubro —dos costos de giro y
+  // ninguna contraparte— y con un único pendiente la tercera pisaba a la
+  // segunda, que entonces no se ataba NI se avisaba. Primero se buscan
+  // los pares de igual magnitud, que son los seguros; recién después se
+  // emparejan los que quedan, por orden.
+  const groups = new Map<string, number[]>();
   entries.forEach((e, i) => {
     if (!TRANSFER_RE.test(e.subcategory)) return;
     const k = `${e.date}|${key(e.subcategory)}`;
-    const waiting = pending.get(k);
-    if (waiting !== undefined && Math.sign(entries[waiting].amount) !== Math.sign(e.amount)) {
-      const group = uuid();
-      entries[waiting].transferGroup = group;
-      e.transferGroup = group;
-      pending.delete(k);
-      transfersPaired++;
-    } else {
-      pending.set(k, i);
-    }
+    groups.set(k, [...(groups.get(k) ?? []), i]);
   });
-  for (const i of pending.values()) {
+
+  let transfersPaired = 0;
+  const unpaired: number[] = [];
+  for (const indices of groups.values()) {
+    const outgoing = indices.filter((i) => entries[i].amount < 0);
+    const incoming = indices.filter((i) => entries[i].amount > 0);
+    const taken = new Set<number>();
+
+    const tie = (a: number, b: number) => {
+      const group = uuid();
+      entries[a].transferGroup = group;
+      entries[b].transferGroup = group;
+      taken.add(a);
+      taken.add(b);
+      transfersPaired++;
+    };
+
+    for (const pass of [true, false]) {
+      for (const o of outgoing) {
+        if (taken.has(o)) continue;
+        const match = incoming.find(
+          (i) =>
+            !taken.has(i) &&
+            (!pass || Math.abs(entries[i].amount) === Math.abs(entries[o].amount))
+        );
+        if (match !== undefined) tie(o, match);
+      }
+    }
+    for (const i of indices) if (!taken.has(i)) unpaired.push(i);
+  }
+
+  for (const i of unpaired) {
+    // Aviso y no alerta: el costo del giro se anota con el mismo rubro
+    // que la transferencia y NO lleva grupo —es gasto real, mismo
+    // criterio que la conciliación—, así que una pata sola suele ser
+    // exactamente eso y no un error.
     warnings.push({
-      level: "alto",
+      level: "aviso",
       row: entries[i].row,
-      text: `"${entries[i].subcategory}" parece una transferencia y no encontré su contraparte; entra como un movimiento suelto.`,
+      text: `"${entries[i].subcategory}" no encontró contraparte; entra como movimiento suelto. Si es el costo del giro está bien: un gasto por transferencia no va atado.`,
     });
   }
 
@@ -599,26 +680,46 @@ export function planImport(
   ).size;
 
   // ─── Recibos: que la serie no choque ───────────────────────────
+  // Esto SÍ frena la importación, y no es una excepción a "ningún aviso
+  // bloquea": el índice único de recibos es por comunidad, así que la
+  // base rechazaría el lote entero. Vale mucho más decirlo acá, con el
+  // número y la fila, que dejar que vuelva un error de clave duplicada.
+  const blockers: string[] = [];
   const used = new Set(ctx.usedReceipts);
   const seenHere = new Map<number, number>();
+  const missingNumbers: number[] = [];
   for (const e of entries) {
     if (e.receiptNumber == null) continue;
     if (used.has(e.receiptNumber)) {
-      warnings.push({
-        level: "alto",
-        row: e.row,
-        text: `El recibo N.º ${e.receiptNumber} ya existe en el libro. Los números son únicos por comunidad: la importación se va a rechazar hasta que se resuelva.`,
-      });
+      blockers.push(
+        `El recibo N.º ${e.receiptNumber} (fila ${e.row}) ya existe en el libro.`
+      );
     }
     const first = seenHere.get(e.receiptNumber);
     if (first !== undefined) {
-      warnings.push({
-        level: "alto",
-        row: e.row,
-        text: `El recibo N.º ${e.receiptNumber} aparece dos veces en la planilla (también en la fila ${first}).`,
-      });
+      blockers.push(
+        `El recibo N.º ${e.receiptNumber} está en dos filas de la planilla, la ${first} y la ${e.row}.`
+      );
     } else {
       seenHere.set(e.receiptNumber, e.row);
+    }
+  }
+
+  // Los huecos de la serie, para poder decirlos junto a los repetidos: un
+  // número repetido y un hueco en el mismo archivo casi siempre son el
+  // mismo error de tipeo, y verlos juntos lo resuelve en un minuto.
+  if (blockers.length > 0) {
+    const sorted = [...seenHere.keys()].sort((a, b) => a - b);
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i] - sorted[i - 1] > 50) continue;
+      for (let n = sorted[i - 1] + 1; n < sorted[i]; n++) missingNumbers.push(n);
+    }
+    if (missingNumbers.length > 0) {
+      blockers.push(
+        `En la planilla no figura${missingNumbers.length === 1 ? "" : "n"} el N.º ${missingNumbers
+          .slice(0, 6)
+          .join(", ")}: si un número está repetido y otro falta, suele ser el mismo error de tipeo.`
+      );
     }
   }
 
@@ -674,5 +775,6 @@ export function planImport(
       net: add(t.income, -t.expense),
     })),
     warnings,
+    blockers,
   };
 }

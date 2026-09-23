@@ -207,6 +207,12 @@ export async function confirmImportAction(formData: FormData): Promise<ConfirmRe
   if (plan.entries.length === 0) {
     return { ok: false, error: "No hay ningún movimiento para importar." };
   }
+  // Los bloqueos se chequean también acá, no solo en la pantalla: el
+  // índice único de recibos rechazaría el lote entero y el error que
+  // volvería sería una clave duplicada, no una frase.
+  if (plan.blockers.length > 0) {
+    return { ok: false, error: plan.blockers.join(" ") };
+  }
 
   // ─── 1. El catálogo que falta ──────────────────────────────────
   // Se crean ACTIVOS: en una comunidad que arranca vacía —la Nacional—

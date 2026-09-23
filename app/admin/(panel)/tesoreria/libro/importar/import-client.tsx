@@ -265,11 +265,30 @@ function PlanView({
           Ejercicio {plan.bahaiYear} · {plan.entries.length}{" "}
           {plan.entries.length === 1 ? "movimiento" : "movimientos"}
         </h2>
-        <Button type="button" onClick={onConfirm} disabled={disabled}>
+        <Button type="button" onClick={onConfirm} disabled={disabled || plan.blockers.length > 0}>
           Importar {plan.entries.length}{" "}
           {plan.entries.length === 1 ? "movimiento" : "movimientos"}
         </Button>
       </div>
+
+      {plan.blockers.length > 0 && (
+        <div className="mt-3 rounded-xl border border-red-300 bg-red-50 px-3.5 py-3">
+          <h3 className="text-[13px] font-semibold text-red-800">
+            Hay que corregir la planilla antes de importar
+          </h3>
+          <p className="mt-1 text-[12px] text-red-900/80">
+            Los números de recibo son únicos por comunidad, así que esto la base no lo aceptaría.
+            Corregí el archivo y volvé a subirlo.
+          </p>
+          <ul className="mt-2 space-y-1">
+            {plan.blockers.map((b) => (
+              <li key={b} className="text-[12.5px] text-red-900">
+                {b}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {alreadyImported && (
         <p className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-[12.5px] text-amber-900">
