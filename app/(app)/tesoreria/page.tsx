@@ -5,6 +5,7 @@ import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { BudgetReportShare } from "@/components/treasury/BudgetReportShare";
 import { MonthlyReportShare } from "@/components/treasury/MonthlyReportShare";
 import { ProgressBoard } from "@/components/treasury/ProgressBoard";
+import { ScrollToHash } from "@/components/comunicados/ScrollToHash";
 import { requireBahai } from "@/lib/auth";
 import { getTreasury } from "@/lib/data";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -89,6 +90,8 @@ export default async function TesoreriaPage() {
       <GoldHeader title="Institucional" subtitle={session.locality.name} backHref="/" />
       <SegmentedNav items={AEL_SEGMENTS} />
       <main className="scroll-area flex-1 px-4 pt-4">
+        {/* "Mis aportes" enlaza a #compromiso, al pie de la pantalla. */}
+        <ScrollToHash />
         {/* Progreso del ejercicio: presupuesto y metas, calculado desde el
             libro. Reemplaza al anillo que leía un porcentaje escrito a
             mano y que ya contradecía a los movimientos. */}

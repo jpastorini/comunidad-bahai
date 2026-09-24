@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { GoldHeader } from "@/components/GoldHeader";
-import { IconChevronRight } from "@/components/Icons";
+import { IconChat, IconChevronRight, IconMetas, IconTesoreria } from "@/components/Icons";
 import { requireBahai } from "@/lib/auth";
 import { getMyContributions, type MyContribution } from "@/lib/my-contributions";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -200,6 +200,35 @@ export default async function MisAportesPage({
           </div>
         )}
 
+        {/* La Tesorería de la comunidad, a un toque. Quien mira sus
+            aportes se pregunta enseguida cómo va el Fondo, cuál es su
+            compromiso, o por qué un giro no aparece en la lista. */}
+        <section className="mt-5">
+          <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Tesorería de {session.locality.name}
+          </h2>
+          <div className="overflow-hidden rounded-2xl bg-card shadow-card-soft">
+            {TREASURY_LINKS.map((l, i) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={`tap flex items-center gap-3 p-3.5 ${
+                  i > 0 ? "border-t border-black/[0.06]" : ""
+                }`}
+              >
+                <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[11px] bg-terra/10 text-terra">
+                  <l.Icon size={17} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12.5px] font-semibold text-dark">{l.title}</div>
+                  <div className="mt-0.5 text-[10.5px] text-muted">{l.hint}</div>
+                </div>
+                <IconChevronRight size={14} className="shrink-0 text-muted" />
+              </Link>
+            ))}
+          </div>
+        </section>
+
         <p className="mt-5 px-1 text-center text-[10.5px] italic leading-relaxed text-muted">
           Las contribuciones a los fondos bahá'ís son voluntarias y
           estrictamente confidenciales. Solo vos y la Tesorería ven esta
@@ -209,6 +238,32 @@ export default async function MisAportesPage({
     </>
   );
 }
+
+/**
+ * Los caminos a la Tesorería de la comunidad que se tiene puesta. El
+ * compromiso vive dentro de `/tesoreria` y se llega por el hash
+ * (`ScrollToHash`).
+ */
+const TREASURY_LINKS = [
+  {
+    href: "/tesoreria",
+    Icon: IconTesoreria,
+    title: "Cómo va el Fondo",
+    hint: "Presupuesto y metas del ejercicio, y cómo aportar.",
+  },
+  {
+    href: "/tesoreria#compromiso",
+    Icon: IconMetas,
+    title: "Mi compromiso mensual",
+    hint: "Declararlo o cambiarlo; la app te lo recuerda el 10.",
+  },
+  {
+    href: "/chat/tesoreria",
+    Icon: IconChat,
+    title: "Escribirle al tesorero",
+    hint: "¿Un giro que no aparece acá? Avisale en privado.",
+  },
+];
 
 /**
  * Los aportes agrupados por comunidad, cada una con sus totales por

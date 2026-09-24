@@ -28,7 +28,7 @@ export function CommitmentSection({
   const [editing, setEditing] = useState(!commitment);
 
   return (
-    <section className="mb-3.5 rounded-2xl border border-amber/20 bg-card p-4 shadow-card-soft">
+    <section id="compromiso" className="mb-3.5 scroll-mt-4 rounded-2xl border border-amber/20 bg-card p-4 shadow-card-soft">
       <h2 className="font-display text-[17px] font-semibold leading-tight text-dark">
         Compromiso mensual
       </h2>
