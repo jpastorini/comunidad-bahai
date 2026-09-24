@@ -14,9 +14,9 @@
  */
 
 import { cache } from "react";
-import { celebrationDateFor } from "./bahai-calendar";
 import { chatFailure } from "./chat-errors";
 import { CALENDAR_KINDS, effectiveEventColor } from "./calendar-kinds";
+import { feastCelebration } from "./feast-schedule";
 import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
 import {
   seedActivities,
@@ -549,28 +549,18 @@ export async function getUnifiedCalendarItems(): Promise<UnifiedCalendarItem[]> 
       const locs = locationsByFeast.get(f.id) ?? [];
       const firstLoc = locs[0];
 
-      // Si la Asamblea cargó al menos una location, usamos su fecha/hora
-      // como referencia (puede no ser exactamente la noche anterior si
-      // la celebración la mueven). Sino, fallback a noche anterior + "Al atardecer".
-      let day: number, month: number, year: number, time: string;
-      if (firstLoc) {
-        const d = new Date(firstLoc.starts_at);
-        year = d.getFullYear();
-        month = d.getMonth() + 1;
-        day = d.getDate();
-        time = d.toLocaleTimeString("es-MX", {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        });
-      } else {
-        const celebrationIso = celebrationDateFor(f.gregorian_date!);
-        const parts = celebrationIso.split("-").map((n) => parseInt(n, 10));
-        year = parts[0];
-        month = parts[1];
-        day = parts[2];
-        time = "Al atardecer";
-      }
+      // Si la Asamblea cargó al menos un lugar, manda su fecha/hora (la
+      // celebración puede no ser la noche anterior si la mueven). Si no,
+      // la víspera + "Al atardecer". La regla vive en feast-schedule.ts
+      // porque los recordatorios por push tienen que decir lo mismo.
+      const celebration = feastCelebration(
+        f.gregorian_date!,
+        firstLoc?.starts_at
+      );
+      const [year, month, day] = celebration.date
+        .split("-")
+        .map((n) => parseInt(n, 10));
+      const time = celebration.time;
 
       const locationLabel = firstLoc?.name
         ? locs.length > 1

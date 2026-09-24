@@ -9,6 +9,7 @@ import {
   getFeastNews,
   getFeastPrayers,
 } from "@/lib/data";
+import { getFeastRsvpList } from "@/lib/feast-rsvps";
 import { formatDateTime } from "@/lib/format";
 import type { FeastStatus, FeastSuggestion } from "@/lib/types";
 import { FeastForm } from "../feast-form";
@@ -41,6 +42,12 @@ export default async function EditFeastPage({
     .order("created_at", { ascending: false });
 
   const status = feast.status as FeastStatus;
+
+  const rsvps = await getFeastRsvpList(
+    supabase,
+    params.id,
+    locations.map((l) => l.id)
+  );
 
   // Advertencia: Fiesta publicada o iniciada sin lugares cargados.
   // Los miembros entran al detalle y no ven horarios/direcciones.
@@ -152,6 +159,51 @@ export default async function EditFeastPage({
           </div>
         </Card>
       </div>
+
+      {/* Quiénes van (065). Solo la Asamblea lo ve: al creyente no se le
+          muestra ni el total. */}
+      {status !== "draft" && !rsvps.missing && (
+        <Card className="mb-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-display text-[20px] font-semibold text-dark">
+              Quiénes van
+            </h2>
+            <span className="text-[13px] font-semibold text-terra">
+              {rsvps.total === 0
+                ? "Nadie confirmó todavía"
+                : `${rsvps.total} ${rsvps.total === 1 ? "persona" : "personas"}`}
+            </span>
+          </div>
+          <p className="mt-1 text-[12px] text-muted">
+            {status === "published"
+              ? "Los creyentes confirman desde la página de la Fiesta hasta que la inicies. Solo la Asamblea ve esta lista."
+              : "La lista se cerró al iniciar la Fiesta."}
+          </p>
+          {rsvps.byLocation.length > 0 && (
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              {rsvps.byLocation.map((g) => {
+                const loc = locations.find((l) => l.id === g.locationId);
+                return (
+                  <div key={g.locationId ?? "none"}>
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                      {loc ? loc.name : locations.length > 0 ? "Sin lugar elegido" : "Confirmaron"}
+                      {" · "}
+                      {g.people.length}
+                    </h3>
+                    <ul className="mt-1.5 divide-y divide-black/[0.05]">
+                      {g.people.map((p, i) => (
+                        <li key={i} className="py-1.5 text-[13px] text-dark">
+                          {p.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      )}
 
       <FeastForm feast={feast} locations={locations} prayers={prayers} news={news} />
 

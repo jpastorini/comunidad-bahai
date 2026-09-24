@@ -317,6 +317,9 @@ sección "Compromisos con el Fondo" más abajo. ·
 **Importar los ejercicios anteriores** (migración 062): un año entero del
 libro desde la planilla con que se llevaba antes, con vista previa y
 deshacer. Ver la sección "Importar un ejercicio" más abajo. ·
+**"Voy" en la Fiesta** (migración 065): el creyente confirma que va (y a
+qué lugar), la Asamblea ve la lista y el día de la celebración sale un
+aviso a toda la comunidad. Ver la sección "Voy en la Fiesta" más abajo. ·
 **Servicio que funciona** (migración 064): el creyente se ofrece y se
 retira, y la Asamblea recibe un push. Ver la sección "Servicio y datos de ejemplo" más abajo. ·
 **Tirar para actualizar** (`components/PullToRefresh.tsx`, montado en el
@@ -656,6 +659,37 @@ materiales / eventos hay" se sacaron a propósito: no llevan a ninguna
 acción. Si agregás una tarjeta, que responda una pregunta y que su
 consulta falle a un valor neutro (el Inicio no puede romperse porque una
 tabla no exista todavía).
+
+## "Voy" en la Fiesta y su recordatorio (migración 065)
+
+Decidido con el usuario el 2026-09-24, con cuatro reglas: **solo "Voy"**
+(sin "No puedo"; se puede deshacer si fue un error), **quién va lo ve solo
+la Asamblea** —el creyente ve su propia respuesta, ni siquiera el
+total—, **se confirma mientras la Fiesta está publicada y no iniciada**,
+y **el día de la celebración sale un recordatorio a toda la comunidad de
+creyentes**, confirmada o no (el aviso es la invitación).
+
+- **`feast_rsvps`**, una fila por (Fiesta, persona) con `location_id`
+  opcional: una Fiesta puede tener varios lugares y con más de uno la
+  persona elige adónde (`RsvpBlock`, `app/(app)/fiestas/[id]/`). La RLS
+  lo sostiene todo: escribe solo quien es creyente, sobre su fila, en
+  una Fiesta `published` que puede ver y con un lugar de esa Fiesta; al
+  iniciar la Fiesta la lista queda congelada. Lee la persona y la
+  Asamblea de la localidad. Datos en `lib/feast-rsvps.ts`.
+- **La Asamblea ve "Quiénes van"** en `/admin/fiestas/[id]`, arriba del
+  formulario, agrupado por lugar.
+- **El recordatorio** es `sendFeastDayReminders()` (`lib/reminders.ts`),
+  colgado del cron de la mañana (8:00), sin gastar un cron más. "El día"
+  sale de `feastCelebration()` (`lib/feast-schedule.ts`): la fecha del
+  primer lugar cargado o, sin lugares, la víspera. Es la MISMA regla del
+  calendario unificado, a propósito: si cada uno calculara por su cuenta,
+  el aviso diría "hoy" el día que la pantalla dice "mañana".
+  `feasts.reminder_sent_at` frena los reintentos. Si la Fiesta todavía no
+  empezó, el aviso invita a confirmar.
+
+⚠️ Hasta que corra la 065, el bloque "Voy" no aparece (la lectura detecta
+el esquema faltante), la lista del panel no se muestra, y el aviso de la
+Fiesta falla en el log sin tumbar los otros dos de la mañana.
 
 ## Programa de la Fiesta (migración 050)
 
@@ -2354,6 +2388,11 @@ cambia nada.
   "Institucional" se corta y las etiquetas se pegan. Es de antes de las
   transiciones. Opciones: etiquetas más cortas, achicar el `px-4` de las
   píldoras solo en ese caso, o que la barra no escale con el zoom.
+- **Aplicar la 065 y probar "Voy" con la próxima Fiesta publicada.**
+  Confirmar desde un celular, ver el nombre en `/admin/fiestas/<id>`, y
+  a las 8:00 del día de la celebración mirar que llegue el aviso (y una
+  sola vez). Queda abierto: un aviso solo para quienes confirmaron (hora,
+  dirección), y la lista impresa para la anfitriona.
 - **Aplicar la 064 y cargar las primeras necesidades de servicio.**
   Probar ofrecerse desde un celular y ver que llega el push a la
   Asamblea y que el nombre aparece en `/admin/servicio/<id>/voluntarios`.

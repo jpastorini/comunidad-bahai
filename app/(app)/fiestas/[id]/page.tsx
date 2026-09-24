@@ -13,7 +13,10 @@ import {
   getBahaiMonth,
 } from "@/lib/bahai-calendar";
 import { NEWS_SCOPE_LABELS, NEWS_SCOPE_ORDER } from "@/lib/feast-program";
+import { getMyRsvp } from "@/lib/feast-rsvps";
+import { createSupabaseServer } from "@/lib/supabase/server";
 import type { FeastNewsItem } from "@/lib/types";
+import { RsvpBlock } from "./rsvp-block";
 import { SuggestionForm } from "./suggestion-form";
 
 export const revalidate = 60;
@@ -42,6 +45,13 @@ export default async function FeastDetailPage({
 
   const month = getBahaiMonth(feast.bahai_month_index);
   const isInProgress = feast.status === "in_progress";
+
+  // "Voy" (065): solo mientras está publicada y no empezó. Sin la
+  // migración, getMyRsvp avisa `missing` y el bloque no aparece.
+  const myRsvp =
+    session && feast.status === "published"
+      ? await getMyRsvp(createSupabaseServer(), feast.id, session.user.id)
+      : null;
 
   return (
     <>
@@ -118,6 +128,15 @@ export default async function FeastDetailPage({
             </ul>
           )}
         </Section>
+
+        {myRsvp && !myRsvp.missing && (
+          <RsvpBlock
+            feastId={feast.id}
+            locations={locations.map((l) => ({ id: l.id, name: l.name }))}
+            initialGoing={myRsvp.going}
+            initialLocationId={myRsvp.locationId}
+          />
+        )}
 
         {/* Programa — solo visible cuando la Fiesta ya inició */}
         {isInProgress && (

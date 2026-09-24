@@ -1,5 +1,6 @@
 import "server-only";
 import { createSupabaseAdmin } from "./supabase/admin";
+import { feastCelebration } from "./feast-schedule";
 import {
   civilDateISO,
   civilDayNumber,
@@ -114,6 +115,100 @@ export async function sendTomorrowEventReminders(): Promise<{
   }
 
   return { sent: processedIds.length };
+}
+
+/**
+ * El día de la celebración de cada Fiesta de los 19 Días, avisa a TODA la
+ * comunidad de creyentes de esa localidad (065). Decidido con el usuario:
+ * a todos, hayan dicho "Voy" o no — el aviso es la invitación, no un
+ * recordatorio de un compromiso.
+ *
+ * "El día" lo decide `feastCelebration()`, la MISMA regla que usa el
+ * calendario: la fecha del primer lugar cargado, o la víspera si la
+ * Asamblea no cargó ninguno. Si cada uno calculara por su cuenta, el aviso
+ * podría decir "hoy" el día que la pantalla dice "mañana".
+ *
+ * Solo Fiestas publicadas o iniciadas (un borrador no existe para la
+ * comunidad). `reminder_sent_at` frena los reintentos del cron.
+ */
+export async function sendFeastDayReminders(): Promise<{
+  sent: number;
+  error?: string;
+}> {
+  const supabase = createSupabaseAdmin();
+  if (!supabase) return { sent: 0, error: "no-admin-client" };
+
+  const today = civilDateISO();
+  // La celebración cae dentro del mes bahá'í o en su víspera: alcanza con
+  // mirar las Fiestas cuyo día 1 está entre 20 días atrás y 2 adelante.
+  const shift = (days: number) => {
+    const [y, m, d] = today.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+  };
+
+  const { data, error } = await supabase
+    .from("feasts")
+    .select("id, locality_id, bahai_month_name, gregorian_date, status")
+    .in("status", ["published", "in_progress"])
+    .is("reminder_sent_at", null)
+    .gte("gregorian_date", shift(-20))
+    .lte("gregorian_date", shift(2));
+  if (error) return { sent: 0, error: error.message };
+
+  const feasts = (data ?? []) as Array<{
+    id: string;
+    locality_id: string | null;
+    bahai_month_name: string;
+    gregorian_date: string | null;
+    status: string;
+  }>;
+  if (feasts.length === 0) return { sent: 0 };
+
+  const { data: locRows } = await supabase
+    .from("feast_locations")
+    .select("feast_id, name, starts_at")
+    .in("feast_id", feasts.map((f) => f.id))
+    .order("starts_at", { ascending: true });
+  const locsByFeast = new Map<string, Array<{ name: string; starts_at: string }>>();
+  for (const l of (locRows ?? []) as Array<{ feast_id: string; name: string; starts_at: string }>) {
+    const arr = locsByFeast.get(l.feast_id) ?? [];
+    arr.push(l);
+    locsByFeast.set(l.feast_id, arr);
+  }
+
+  const sentIds: string[] = [];
+  for (const f of feasts) {
+    if (!f.locality_id || !f.gregorian_date) continue;
+    const locs = locsByFeast.get(f.id) ?? [];
+    const when = feastCelebration(f.gregorian_date, locs[0]?.starts_at);
+    if (when.date !== today) continue;
+
+    const where =
+      locs.length > 1
+        ? ` en ${locs.length} lugares`
+        : locs.length === 1
+          ? ` en ${locs[0].name}`
+          : "";
+    const time = when.scheduled ? ` a las ${when.time}` : " al atardecer";
+    const invite = f.status === "published" ? " Tocá para confirmar que vas." : "";
+
+    const recipients = await getLocalityMemberIds(f.locality_id, { bahaiOnly: true });
+    await sendPushToUsers(recipients, {
+      title: `Hoy es la Fiesta de ${f.bahai_month_name}`,
+      body: `Nos encontramos${time}${where}.${invite}`,
+      url: `/fiestas/${f.id}`,
+      tag: `feast-${f.id}`,
+    });
+    sentIds.push(f.id);
+  }
+
+  if (sentIds.length > 0) {
+    await supabase
+      .from("feasts")
+      .update({ reminder_sent_at: new Date().toISOString() })
+      .in("id", sentIds);
+  }
+  return { sent: sentIds.length };
 }
 
 /** IDs de los creyentes activos que tienen prendida una preferencia
