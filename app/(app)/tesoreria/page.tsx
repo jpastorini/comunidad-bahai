@@ -22,10 +22,14 @@ export default async function TesoreriaPage() {
   const t = await getTreasury();
 
   const supabase = createSupabaseServer();
+  // El compromiso es con el Fondo de LA comunidad que se tiene puesta
+  // (063): quien pertenece a su AEL y a la Comunidad Nacional sostiene
+  // uno con cada una, y acá se edita el de esta.
   const { data: commitment } = await supabase
     .from("treasury_commitments")
     .select("*")
     .eq("user_id", session.user.id)
+    .eq("locality_id", session.locality.id)
     .maybeSingle();
 
   // Progreso del ejercicio. Los totales vienen de la función security
@@ -203,6 +207,7 @@ export default async function TesoreriaPage() {
         {/* Compromiso mensual del miembro logueado */}
         <CommitmentSection
           defaultName={session.profile.full_name ?? ""}
+          localityName={session.locality.name}
           commitment={(commitment as TreasuryCommitment | null) ?? null}
         />
       </main>

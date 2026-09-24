@@ -9,6 +9,9 @@ import {
 
 type Props = {
   defaultName: string;
+  /** La comunidad de cuyo Fondo es el compromiso (063). Se nombra para
+   *  quien pertenece a más de una y puede sostener uno con cada Fondo. */
+  localityName: string;
   commitment: TreasuryCommitment | null;
 };
 
@@ -17,7 +20,11 @@ type Props = {
  * - Si no tiene compromiso → muestra el form
  * - Si ya tiene uno → muestra resumen + botón "Editar" / "Quitar"
  */
-export function CommitmentSection({ defaultName, commitment }: Props) {
+export function CommitmentSection({
+  defaultName,
+  localityName,
+  commitment,
+}: Props) {
   const [editing, setEditing] = useState(!commitment);
 
   return (
@@ -25,6 +32,9 @@ export function CommitmentSection({ defaultName, commitment }: Props) {
       <h2 className="font-display text-[17px] font-semibold leading-tight text-dark">
         Compromiso mensual
       </h2>
+      <p className="mt-0.5 text-[12px] text-muted">
+        Con el Fondo de {localityName}.
+      </p>
 
       {/* Aviso de privacidad — estilo toast rojo, prominente */}
       <div
@@ -48,8 +58,8 @@ export function CommitmentSection({ defaultName, commitment }: Props) {
         </svg>
         <div>
           Esta información es <strong className="font-bold">privada</strong>:
-          solo la ve el tesorero de la Asamblea Local. Ningún otro creyente de
-          la comunidad puede verla.
+          solo la ve el tesorero de tu comunidad. Ningún otro creyente —ni el
+          resto de la Asamblea— puede verla.
         </div>
       </div>
 
@@ -101,7 +111,7 @@ function ExistingCommitment({
           </div>
           {commitment.want_reminder && (
             <div className="mt-2 inline-flex items-center gap-1.5 rounded bg-amber/15 px-2 py-0.5 text-[10px] font-semibold text-amber">
-              ✓ Quieres recordatorios si hay retraso
+              ✓ Recibís el recordatorio del 10 de cada mes
             </div>
           )}
         </div>
@@ -179,7 +189,8 @@ function CommitmentForm({
           <strong className="font-bold">Quiero que se me recuerde</strong>
           <br />
           <span className="text-[13px] text-muted">
-            Si hay un retraso en mi aporte, el tesorero podrá contactarme.
+            La app te avisa el 10 de cada mes, con una lectura de los
+            Escritos. Y si hay un retraso, el tesorero podrá contactarte.
           </span>
         </span>
       </label>

@@ -372,9 +372,21 @@ export type Treasury = {
 /** Compromiso mensual de aporte declarado por un miembro al Fondo Local. */
 export type TreasuryCommitment = {
   user_id: string;
+  /** La comunidad de cuyo Fondo es el compromiso (063). Antes no existía
+   *  y el tesorero de cualquier localidad los leía todos. */
+  locality_id: string;
   display_name: string;
   amount: number;
+  currency: "UYU" | "USD";
+  /**
+   * Un solo permiso para dos cosas, como está escrito en la casilla: la
+   * app avisa el 10 de cada mes y el tesorero puede contactar si hay un
+   * retraso. Quien no la marca no recibe ninguna de las dos.
+   */
   want_reminder: boolean;
+  /** Última vez que salió el aviso del 10, para que no salga dos veces
+   *  si el cron se reintenta. */
+  last_reminder_sent_at: string | null;
   created_at: string;
   updated_at: string;
 };

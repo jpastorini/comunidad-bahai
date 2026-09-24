@@ -117,6 +117,9 @@ export const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/tesoreria/auditoria", label: "Auditoría" },
       { href: "/admin/tesoreria/informes", label: "Informes" },
       { href: "/admin/tesoreria/progreso", label: "Progreso" },
+      // Quién declaró un compromiso mensual y cómo viene el mes (063):
+      // a quién llamar para agradecer y a quién para recordar.
+      { href: "/admin/tesoreria/compromisos", label: "Compromisos" },
       { href: "/admin/tesoreria/presupuesto", label: "Presupuesto" },
       { href: "/admin/tesoreria/metas", label: "Metas" },
       { href: "/admin/tesoreria/chat", label: "Mensajes" },

@@ -158,3 +158,35 @@ export function excerpt(text: string, max = 180): string {
   const lastSpace = cut.lastIndexOf(" ");
   return `${cut.slice(0, lastSpace > 0 ? lastSpace : max).trimEnd()}…`;
 }
+
+/**
+ * La cita del MES entre uno o más temas. Misma mecánica que la del día
+ * —determinística, sin tabla ni estado—, pero el índice avanza una vez
+ * por mes civil y el pool sale solo de los temas pedidos.
+ *
+ * La usa el recordatorio del compromiso con el Fondo, que se apoya en
+ * "Sacrificio", "Desprendimiento" y "Generosidad": el aviso llega doce
+ * veces al año y con un pool de una treintena de citas no se repite
+ * ninguna en más de dos años.
+ */
+export function getCitaDelMes(
+  topicIds: string[],
+  now: Date = new Date()
+): { cita: Cita; topic: CitaTopic } | null {
+  const seen = new Set<string>();
+  const pool: Array<{ cita: Cita; topic: CitaTopic }> = [];
+  for (const id of topicIds) {
+    const topic = findTopic(id);
+    if (!topic) continue;
+    for (const cita of topic.quotes) {
+      const key = normalizeText(cita.text);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      pool.push({ cita, topic });
+    }
+  }
+  if (pool.length === 0) return null;
+  const [y, m] = civilDateISO(now).split("-").map(Number);
+  const monthNumber = y * 12 + (m - 1);
+  return pool[(monthNumber * step(pool.length)) % pool.length];
+}

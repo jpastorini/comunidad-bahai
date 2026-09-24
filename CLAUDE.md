@@ -310,6 +310,10 @@ Prex y el BROU contra el libro de esa cuenta; lo importado se guarda
 se deriva por cuenta y mes en Cierres y cada movimiento cerrado lleva su
 marca en el Libro. Mercado Pago se reconoce pero todavía no se lee. Ver la
 sección "Conciliación con el extracto" más abajo. ·
+**Compromisos con el Fondo** (migración 063): el recordatorio del 10 de
+cada mes a quien lo pidió, con una cita sobre el sacrificio, y el informe
+del mes para el tesorero —a quién agradecer y a quién recordar—. Ver la
+sección "Compromisos con el Fondo" más abajo. ·
 **Importar los ejercicios anteriores** (migración 062): un año entero del
 libro desde la planilla con que se llevaba antes, con vista previa y
 deshacer. Ver la sección "Importar un ejercicio" más abajo.
@@ -523,7 +527,8 @@ Reuniones, Informes de Tesorería, Datos de la Asamblea) · Comunicación (Comun
 Chat de Secretaría) · Vida comunitaria (Calendario, Fiestas, Sugerencias,
 Actividades, Servicio, Materiales, Fotos) · Creyentes (Creyentes, Uso de
 la app) · Tesorería (Libro, Recibo, Catálogo, Importar, Cierres, Conciliación,
-Auditoría, Informes, Progreso, Presupuesto, Metas, Mensajes, Cómo aportar) ·
+Auditoría, Informes, Progreso, Compromisos, Presupuesto, Metas, Mensajes,
+Cómo aportar) ·
 Admin Nacional.
 
 Tres reglas de comportamiento (`components/admin/Sidebar.tsx`):
@@ -754,6 +759,93 @@ de este tamaño.
 guardar (`ask_confirmation` no existe) y el listado de `/comunicados`
 sale sin estado de lectura (el error se loguea y se sigue). No desplegar
 sin aplicar la migración antes.
+
+## Compromisos con el Fondo (migración 063)
+
+El compromiso mensual existe desde la migración **011**, anterior a la
+multi-tenencia (021), al libro contable (040) y a la Comunidad Nacional
+(056). Era una declaración suelta —nombre, monto, una casilla— que nadie
+volvía a mirar. La 063 lo ata a lo que ya hay y le suma las dos cosas que
+pidió el usuario: el recordatorio del 10 y el informe del mes.
+
+Lo que arregla la migración, antes que nada:
+
+- **No tenía `locality_id`**, y su policy de lectura era
+  `has_treasury_tag(auth.uid())` a secas: con la Tesorería Nacional
+  andando (058), el tesorero de CUALQUIER comunidad leía los compromisos
+  de todo el país. Ahora la RLS es la del libro: tag + `current_locality_id()`,
+  y a propósito **sin** `is_national_admin` (ese flag abre los nombres de
+  contribuyentes de todas las localidades y acá no hace falta).
+- **La PK pasó a ser (user_id, locality_id)**: quien pertenece a su AEL y
+  a la Comunidad Nacional (055) puede sostener un compromiso con cada
+  Fondo. El upsert va con `onConflict: "user_id,locality_id"` y la
+  pantalla del creyente edita el de la comunidad que tiene puesta.
+- **El monto ahora declara moneda.** Se asumía UYU en toda la app; el
+  informe compara contra el libro y "nunca sumar monedas distintas"
+  necesita saber cuál es cuál.
+
+### El aviso del 10 (`sendCommitmentReminders`, `lib/reminders.ts`)
+
+Sale a las 13:00, **colgado del cron de la Oración** (`/api/cron/oracion`):
+el plan Hobby de Vercel no da para un tercer cron y "a la tarde" en la
+comunidad empieza a esa hora. La función se saltea sola los demás días,
+así que el cron no sabe nada del calendario.
+
+Tres cosas que conviene no romper:
+
+- **El chequeo es positivo.** Se saltea a quien SÍ tiene un aporte
+  cargado este mes; si el tesorero todavía no lo cargó, a esa persona le
+  llega el recordatorio amable igual, que es inofensivo. Al revés
+  —decirle "no registramos tu aporte" a quien ya dio— sería el error
+  caro, y por eso el texto **no menciona montos, saldos ni deudas**: es
+  un recordatorio con una cita, no un estado de cuenta.
+- **La cita es determinística por mes**, `getCitaDelMes()` (`lib/citas.ts`),
+  sobre los temas `sacrificio`, `desprendimiento` y `generosidad` —unos
+  30 textos únicos, o sea más de dos años sin repetir con doce avisos por
+  año—. Misma mecánica que la Lectura de hoy: sin tabla ni estado.
+- **`last_reminder_sent_at` frena el MES, no el día.** Si el cron se
+  reintenta —o si algún día el aviso cambia de hora— nadie recibe dos
+  veces el mismo recordatorio.
+
+El permiso es **la casilla que ya existía**, `want_reminder`, con el texto
+reescrito para que diga las dos cosas que habilita: la app avisa el 10 y
+el tesorero puede contactar si hay un retraso. Un Amigo/a de la Fe (047) y
+un perfil deshabilitado quedan afuera del envío.
+
+### El informe del mes (`/admin/tesoreria/compromisos`)
+
+Tesorería → Compromisos, detrás del tag `can_manage_treasury`. Responde
+las dos preguntas del tesorero, y por eso la pantalla son grupos y no una
+tabla: **para llamar y recordar**, **para llamar y agradecer**, **no se
+puede saber**, y **aportaron sin compromiso declarado** (a esos también
+hay que agradecerles, y estaban en el libro pero no acá). Selector de mes
+de los últimos doce y totales por moneda arriba.
+
+- **El vínculo es `treasury_contributors.profile_id`** (046). Un
+  contribuyente suelto —escrito a mano, o importado de una planilla (062)—
+  no apunta a ningún perfil, así que de esa persona el informe NO puede
+  decir si aportó: sale en "no se puede saber", con el camino para
+  vincularla. Contarla como "no aportó" mandaría al tesorero a llamar a
+  alguien que ya dio. Esta pantalla es lo que hace visible el cuello que
+  "Mis aportes" ya tenía, y da la razón para ir vinculando.
+- **El mes es civil**, como los cierres (054) y los extractos (061). El
+  compromiso es mensual; el ejercicio contable arranca a mitad de abril y
+  acá no pinta nada.
+- **Cuenta cualquier aporte de la persona a esa comunidad**, sea al Fondo
+  Local, a Enseñanza o al que sea, con el desglose por fondo a la vista:
+  el compromiso es con el Fondo, no con un rubro. Lo que entró en otra
+  moneda se informa aparte, nunca sumado. No cuentan apertura,
+  transferencia ni anulado (054).
+- **El cálculo vive en `lib/treasury-commitments.ts`** y es el mismo que
+  decide a quién NO mandarle el aviso del 10. Si divergen, el tesorero
+  llama a alguien a quien la app ya le había dicho que estaba al día.
+
+De paso, la lista vieja de compromisos salió de "Cómo aportar" (la
+pantalla que está para jubilarse) y quedó un link a la nueva.
+
+⚠️ Hasta que corra la 063, la pantalla avisa y sale vacía, el aviso del 10
+no sale (se loguea el error y el cron de la oración sigue andando), y
+guardar un compromiso desde la app falla porque `locality_id` no existe.
 
 ## Amigos de la Fe (migración 047)
 
@@ -2183,6 +2275,14 @@ cambia nada.
 
 ## Pendientes conocidos
 
+- **Aplicar la 063 y probar los compromisos.** La migración toca la PK de
+  `treasury_commitments` y borra las filas sin localidad (perfiles que
+  nunca eligieron una), así que conviene mirar la tabla antes. Después:
+  declarar un compromiso desde la app, abrir
+  `/admin/tesoreria/compromisos` y ver que los aportes del mes aparezcan
+  —lo que va a faltar es el vínculo `profile_id` de los contribuyentes
+  importados de planilla—, y esperar al 10 para el primer aviso. Ver
+  "Compromisos con el Fondo".
 - **Aplicar la 062 e importar los cinco ejercicios de la Tesorería
   Nacional**, del más viejo al más nuevo. El parser está escrito contra el
   molde de la planilla de Montevideo y probado con una planilla sintética;
@@ -2298,9 +2398,11 @@ cambia nada.
 - **Presupuesto de crons.** El plan Hobby de Vercel permite pocos crons
   diarios, así que los dos avisos de la mañana (Lectura de hoy + eventos de
   mañana) comparten `/api/cron/manana` (11:00 UTC = 8:00 local) y el de la
-  oración va en `/api/cron/oracion` (16:00 UTC = 13:00 local). Si hacen
-  falta más horarios —o granularidad menor a un día— el camino es pg_cron +
-  pg_net desde Supabase pegándole a la ruta con el `CRON_SECRET`.
+  oración va en `/api/cron/oracion` (16:00 UTC = 13:00 local), del que
+  cuelga también el recordatorio del compromiso con el Fondo los días 10
+  (063). Si hacen falta más horarios —o granularidad menor a un día— el
+  camino es pg_cron + pg_net desde Supabase pegándole a la ruta con el
+  `CRON_SECRET`.
 - **Abreviaturas de las referencias** (PEB, SEAB, TB, PO, MVB…). La
   compilación de origen no trae la leyenda, así que las citas muestran la
   referencia tal cual. Si se consigue la lista, conviene mostrarla en

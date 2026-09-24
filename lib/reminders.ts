@@ -1,6 +1,12 @@
 import "server-only";
 import { createSupabaseAdmin } from "./supabase/admin";
-import { civilDayNumber, excerpt, getCitaDelDia } from "./citas";
+import {
+  civilDateISO,
+  civilDayNumber,
+  excerpt,
+  getCitaDelDia,
+  getCitaDelMes,
+} from "./citas";
 import {
   getLocalityAdminIds,
   getLocalityMemberIds,
@@ -161,4 +167,183 @@ export async function sendPrayerReminders(): Promise<{ recipients: number }> {
     tag: "oracion-obligatoria",
   });
   return { recipients: userIds.length };
+}
+
+// ─── Compromiso con el Fondo (día 10) ────────────────────────────
+
+/** Día del mes en que sale el recordatorio del compromiso. */
+const COMMITMENT_REMINDER_DAY = 10;
+
+/** Temas de los que sale la cita del recordatorio. Hay ~30 textos únicos
+ *  entre los tres, así que con doce avisos por año ninguno se repite en
+ *  más de dos años. */
+const COMMITMENT_TOPICS = ["sacrificio", "desprendimiento", "generosidad"];
+
+type CommitmentReminderRow = {
+  user_id: string;
+  locality_id: string;
+  last_reminder_sent_at: string | null;
+};
+
+/**
+ * Recordatorio del compromiso con el Fondo: el 10 de cada mes, a quienes
+ * lo pidieron (la casilla del compromiso) y de quienes el libro TODAVÍA
+ * no registra un aporte este mes.
+ *
+ * Tres decisiones que conviene no romper:
+ *
+ * - **El chequeo es positivo.** Se saltea a quien SÍ tiene un aporte
+ *   cargado; si el tesorero todavía no lo cargó, a esa persona le llega
+ *   el recordatorio amable igual, que es inofensivo. Al revés —decirle
+ *   "no registramos tu aporte" a quien ya dio— sería el error caro.
+ * - **El texto no menciona ni montos ni deudas.** Es un recordatorio
+ *   con una cita de los Escritos sobre el sacrificio, no un estado de
+ *   cuenta. Lo que la persona aportó lo ve en "Mis aportes".
+ * - **`last_reminder_sent_at` frena el mes, no el día.** Si el cron se
+ *   reintenta —o si alguna vez el aviso se mueve de hora— nadie recibe
+ *   el mismo recordatorio dos veces en el mismo mes.
+ *
+ * Cuelga del cron de las 13:00 (el de la Oración): el plan Hobby de
+ * Vercel no da para un tercer cron, y las 13:00 son "a la tarde".
+ */
+export async function sendCommitmentReminders(
+  now: Date = new Date()
+): Promise<{ recipients: number; skipped?: string; error?: string }> {
+  const today = civilDateISO(now);
+  const [year, month, day] = today.split("-").map(Number);
+  if (day !== COMMITMENT_REMINDER_DAY) return { recipients: 0, skipped: "no-es-el-10" };
+
+  const supabase = createSupabaseAdmin();
+  if (!supabase) return { recipients: 0, error: "no-admin-client" };
+
+  const monthKey = `${year}-${String(month).padStart(2, "0")}`;
+  const monthStart = `${monthKey}-01`;
+
+  const { data, error } = await supabase
+    .from("treasury_commitments")
+    .select("user_id, locality_id, last_reminder_sent_at")
+    .eq("want_reminder", true);
+
+  if (error) {
+    // Hasta que corra la 063 no existe `locality_id`: el aviso no sale y
+    // el resto del cron sigue andando.
+    console.error("[sendCommitmentReminders]", error);
+    return { recipients: 0, error: error.message };
+  }
+
+  // Ya avisados este mes (un reintento del cron, por ejemplo).
+  const pending = ((data ?? []) as CommitmentReminderRow[]).filter(
+    (c) => !c.last_reminder_sent_at || c.last_reminder_sent_at < monthStart
+  );
+  if (pending.length === 0) return { recipients: 0 };
+
+  // Amigos de la Fe (047) y perfiles deshabilitados quedan afuera: el
+  // Fondo no es de ellos y la pantalla no les existe.
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, is_bahai")
+    .in("id", pending.map((c) => c.user_id))
+    .is("disabled_at", null);
+  const eligible = new Set(
+    ((profiles ?? []) as Array<{ id: string; is_bahai: boolean | null }>)
+      .filter((p) => p.is_bahai !== false)
+      .map((p) => p.id)
+  );
+
+  const candidates = pending.filter((c) => eligible.has(c.user_id));
+  if (candidates.length === 0) return { recipients: 0 };
+
+  const alreadyGave = await profilesWithContributionThisMonth(
+    supabase,
+    candidates.map((c) => c.user_id),
+    monthKey
+  );
+
+  const targets = candidates.filter(
+    (c) => !alreadyGave.has(`${c.user_id}:${c.locality_id}`)
+  );
+  if (targets.length === 0) return { recipients: 0 };
+
+  const pick = getCitaDelMes(COMMITMENT_TOPICS, now);
+  const quote = pick ? `«${excerpt(pick.cita.text, 130)}»` : "";
+
+  await sendPushToUsers(
+    targets.map((c) => c.user_id),
+    {
+      title: "Tu compromiso con el Fondo",
+      body: `Con afecto te recordamos tu aporte de este mes. ${quote}`.trim(),
+      url: "/tesoreria",
+      // Un tag por mes: el de septiembre nunca se apila con el de agosto.
+      tag: `compromiso-${monthKey}`,
+    }
+  );
+
+  await supabase
+    .from("treasury_commitments")
+    .update({ last_reminder_sent_at: now.toISOString() })
+    .in("user_id", targets.map((c) => c.user_id));
+
+  return { recipients: targets.length };
+}
+
+/**
+ * De los perfiles dados, cuáles ya tienen un aporte cargado en el mes,
+ * como claves "<perfil>:<localidad>". El par lleva la localidad porque
+ * quien pertenece a su AEL y a la Comunidad Nacional (055) puede sostener
+ * un compromiso con cada Fondo: haber aportado a uno no exime del otro.
+ *
+ * Corre con service-role, así que filtra a mano lo que la RLS del libro
+ * filtraría: apertura, transferencia y anulado no son aportes.
+ */
+async function profilesWithContributionThisMonth(
+  supabase: ReturnType<typeof createSupabaseAdmin>,
+  userIds: string[],
+  monthKey: string
+): Promise<Set<string>> {
+  const gave = new Set<string>();
+  if (!supabase || userIds.length === 0) return gave;
+
+  const { data: contributors } = await supabase
+    .from("treasury_contributors")
+    .select("id, profile_id, locality_id")
+    .in("profile_id", userIds);
+
+  const rows = (contributors ?? []) as Array<{
+    id: string;
+    profile_id: string;
+    locality_id: string;
+  }>;
+  if (rows.length === 0) return gave;
+
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const [y, m] = monthKey.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+
+  const { data: entries, error } = await supabase
+    .from("treasury_entries")
+    .select("contributor_id, amount, is_opening_balance, transfer_group_id, voided_at")
+    .in("contributor_id", rows.map((r) => r.id))
+    .gte("entry_date", `${monthKey}-01`)
+    .lte("entry_date", `${monthKey}-${String(lastDay).padStart(2, "0")}`);
+
+  if (error) {
+    // Sin saber quién aportó, el aviso sale para todos: un recordatorio
+    // amable de más es mucho menos malo que ninguno.
+    console.error("[profilesWithContributionThisMonth]", error);
+    return gave;
+  }
+
+  for (const e of (entries ?? []) as Array<{
+    contributor_id: string;
+    amount: number | string;
+    is_opening_balance: boolean;
+    transfer_group_id: string | null;
+    voided_at: string | null;
+  }>) {
+    if (Number(e.amount) <= 0) continue;
+    if (e.is_opening_balance || e.transfer_group_id || e.voided_at) continue;
+    const c = byId.get(e.contributor_id);
+    if (c) gave.add(`${c.profile_id}:${c.locality_id}`);
+  }
+  return gave;
 }

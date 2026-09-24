@@ -7,9 +7,12 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 
 /**
- * Crea o actualiza el compromiso mensual del miembro logueado.
- * El miembro solo puede tener un compromiso vigente — re-enviar el form
- * sobreescribe el anterior (upsert por user_id).
+ * Crea o actualiza el compromiso mensual del creyente logueado con el
+ * Fondo de la comunidad que tiene puesta.
+ *
+ * Desde la 063 la clave es (user_id, locality_id): quien pertenece a su
+ * AEL y a la Comunidad Nacional puede sostener uno con cada Fondo, y el
+ * upsert tiene que decirlo o el segundo pisaría al primero.
  */
 export async function upsertCommitmentAction(formData: FormData) {
   const session = await requireMember("/tesoreria");
@@ -29,14 +32,17 @@ export async function upsertCommitmentAction(formData: FormData) {
     redirect("/tesoreria");
   }
 
-  const { error } = await supabase
-    .from("treasury_commitments")
-    .upsert({
+  const { error } = await supabase.from("treasury_commitments").upsert(
+    {
       user_id: session.user.id,
+      locality_id: session.locality.id,
       display_name,
       amount,
+      currency: "UYU",
       want_reminder,
-    });
+    },
+    { onConflict: "user_id,locality_id" }
+  );
 
   setFlashToast(
     error
@@ -45,7 +51,7 @@ export async function upsertCommitmentAction(formData: FormData) {
   );
 
   revalidatePath("/tesoreria");
-  revalidatePath("/admin/tesoreria");
+  revalidatePath("/admin/tesoreria/compromisos");
   redirect("/tesoreria");
 }
 
@@ -55,7 +61,8 @@ export async function deleteCommitmentAction() {
   const { error } = await supabase
     .from("treasury_commitments")
     .delete()
-    .eq("user_id", session.user.id);
+    .eq("user_id", session.user.id)
+    .eq("locality_id", session.locality.id);
 
   setFlashToast(
     error
@@ -64,6 +71,6 @@ export async function deleteCommitmentAction() {
   );
 
   revalidatePath("/tesoreria");
-  revalidatePath("/admin/tesoreria");
+  revalidatePath("/admin/tesoreria/compromisos");
   redirect("/tesoreria");
 }
