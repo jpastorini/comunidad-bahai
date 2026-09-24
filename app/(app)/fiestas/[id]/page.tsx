@@ -15,7 +15,9 @@ import {
 import { NEWS_SCOPE_LABELS, NEWS_SCOPE_ORDER } from "@/lib/feast-program";
 import { getMyRsvp } from "@/lib/feast-rsvps";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { getPublicationForFeast } from "@/lib/treasury-publications";
 import type { FeastNewsItem } from "@/lib/types";
+import { PublishedTreasury } from "@/components/treasury/PublishedTreasury";
 import { RsvpBlock } from "./rsvp-block";
 import { SuggestionForm } from "./suggestion-form";
 
@@ -51,6 +53,14 @@ export default async function FeastDetailPage({
   const myRsvp =
     session && feast.status === "published"
       ? await getMyRsvp(createSupabaseServer(), feast.id, session.user.id)
+      : null;
+
+  // La Tesorería de la Fiesta es la foto que el tesorero compartió (066),
+  // la vigente cuando se inició. Las cifras escritas a mano en el
+  // formulario quedan solo para las Fiestas de antes.
+  const publication =
+    isInProgress && session?.locality
+      ? await getPublicationForFeast(createSupabaseServer(), session.locality.id, feast)
       : null;
 
   return (
@@ -235,7 +245,11 @@ export default async function FeastDetailPage({
               </Section>
             )}
 
-            {(feast.treasury_income != null ||
+            {publication ? (
+              <Section title="Tesorería del mes">
+                <PublishedTreasury publication={publication} variant="month" />
+              </Section>
+            ) : (feast.treasury_income != null ||
               feast.treasury_expenses != null ||
               feast.treasury_final != null ||
               feast.treasury_pdf_url) && (

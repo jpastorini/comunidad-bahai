@@ -9,6 +9,7 @@ import {
   View,
 } from "@react-pdf/renderer";
 import type { FeastProgram } from "@/lib/feast-program";
+import { fmtAmount, fmtAmounts } from "@/lib/treasury-publication-content";
 
 /**
  * El folleto de la Fiesta: el programa impreso en A5, claro, para bajar
@@ -350,7 +351,36 @@ export function FeastBooklet({
 
         <View style={s.block} minPresenceAhead={60}>
           <Text style={s.label}>Informe de Tesorería</Text>
-          {p.treasury?.kind === "report" ? (
+          {p.treasury?.kind === "publication" ? (
+            <>
+              {p.treasury.month && (
+                <Text style={s.para}>
+                  Mes de {p.treasury.month.name} · Ingresos{" "}
+                  {fmtAmounts(p.treasury.month.income)} · Egresos{" "}
+                  {fmtAmounts(p.treasury.month.expenses)}.
+                </Text>
+              )}
+              {p.treasury.balances.length > 0 && (
+                <Text style={s.para}>
+                  Disponible por fondo:{" "}
+                  {p.treasury.balances
+                    .map((b) => `${b.label} ${fmtAmount(b)}`)
+                    .join(" · ")}
+                  .
+                </Text>
+              )}
+              <Text style={[s.para, { color: MIST }]}>{p.treasury.label}.</Text>
+              {p.treasury.report && (
+                <Text style={s.para}>
+                  El informe completo está en{" "}
+                  <Link src={`${origin}${p.treasury.report.href}`} style={s.link}>
+                    {origin.replace(/^https?:\/\//, "")}
+                    {p.treasury.report.href}
+                  </Link>
+                </Text>
+              )}
+            </>
+          ) : p.treasury?.kind === "report" ? (
             <>
               <Text style={s.para}>
                 {[p.treasury.title, p.treasury.subtitle].filter(Boolean).join(" · ")}

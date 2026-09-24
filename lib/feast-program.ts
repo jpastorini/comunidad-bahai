@@ -1,4 +1,10 @@
 import { celebrationDateFor, getBahaiMonth } from "./bahai-calendar";
+import type { ProgressData } from "./treasury-progress-content";
+import {
+  publicationLabel,
+  type PublicationMonth,
+  type TreasuryPublication,
+} from "./treasury-publication-content";
 import type {
   Feast,
   FeastLocation,
@@ -45,6 +51,16 @@ export type FeastProgramNewsSection = {
 };
 
 export type FeastProgramTreasury =
+  | {
+      /** La foto compartida por el tesorero (066): lo que se presenta. */
+      kind: "publication";
+      /** "Compartido el 24/09/2026 · movimientos hasta el 20/09/2026". */
+      label: string;
+      month: PublicationMonth | null;
+      balances: ProgressData["balances"];
+      /** El informe del mes, si hay uno publicado, como link aparte. */
+      report: { title: string; subtitle: string | null; href: string } | null;
+    }
   | {
       kind: "report";
       title: string;
@@ -144,8 +160,10 @@ export function buildFeastProgram(input: {
   news: FeastNewsItem[];
   /** Informes publicados para la comunidad; se elige el del mes que cierra. */
   reports: TreasuryReportRef[];
+  /** El estado del Fondo vigente al iniciar la Fiesta (066). */
+  publication: TreasuryPublication | null;
 }): FeastProgram {
-  const { feast, localityName, locations, prayers, news, reports } = input;
+  const { feast, localityName, locations, prayers, news, reports, publication } = input;
   const month = getBahaiMonth(feast.bahai_month_index);
   const celebrationDate = feast.gregorian_date
     ? celebrationDateFor(feast.gregorian_date)
@@ -166,7 +184,23 @@ export function buildFeastProgram(input: {
     : null;
 
   let treasury: FeastProgramTreasury | null = null;
-  if (report) {
+  if (publication) {
+    treasury = {
+      kind: "publication",
+      label: publicationLabel(publication),
+      month: publication.snapshot.month,
+      balances: publication.snapshot.progress?.balances ?? [],
+      report: report
+        ? {
+            title: report.title,
+            subtitle: report.subtitle,
+            href: `/i/${report.share_token}`,
+          }
+        : null,
+    };
+  } else if (report) {
+    // Sin foto compartida (Fiestas de antes de la 066): el informe o las
+    // cifras escritas a mano, como antes.
     treasury = {
       kind: "report",
       title: report.title,

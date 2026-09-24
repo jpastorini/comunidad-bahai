@@ -173,74 +173,25 @@ export function FeastForm({ feast, locations = [], prayers = [], news = [] }: Pr
         </Field>
       </Card>
 
-      {/* ─── Tesorería ─── */}
+      {/* ─── Tesorería ───
+          Ya no se escribe acá (066): la Fiesta muestra el estado del Fondo
+          que el tesorero calculó y compartió, el vigente al iniciarla. Las
+          cifras que tenían las Fiestas de antes se siguen mostrando y este
+          formulario no las toca. */}
       <Card className="mt-5">
         <h2 className="mb-1 font-display text-[20px] font-semibold text-dark">
           Tesorería del mes
         </h2>
-        <p className="mb-4 text-[12px] text-muted">
-          Fondo Local — todos los montos son opcionales.
+        <p className="text-[12.5px] text-muted">
+          Sale sola: la Fiesta muestra el estado del Fondo que el tesorero
+          compartió en{" "}
+          <a href="/admin/tesoreria/publicar" className="font-medium text-terra hover:underline">
+            Tesorería → Publicar
+          </a>
+          , el que esté vigente cuando se inicie la Fiesta. Para que muestre el
+          mes que cierra, que el tesorero lo calcule “hasta el fin del mes”
+          y lo comparta antes.
         </p>
-        <div className="grid gap-4 md:grid-cols-3">
-          <Field label="Ingresos del mes" name="treasury_income">
-            <TextInput
-              id="treasury_income"
-              name="treasury_income"
-              type="number"
-              step="1"
-              defaultValue={feast?.treasury_income ?? ""}
-            />
-          </Field>
-          <Field label="Egresos del mes" name="treasury_expenses">
-            <TextInput
-              id="treasury_expenses"
-              name="treasury_expenses"
-              type="number"
-              step="1"
-              defaultValue={feast?.treasury_expenses ?? ""}
-            />
-          </Field>
-          <Field label="Estado final" name="treasury_final">
-            <TextInput
-              id="treasury_final"
-              name="treasury_final"
-              type="number"
-              step="1"
-              defaultValue={feast?.treasury_final ?? ""}
-            />
-          </Field>
-        </div>
-        <div className="mt-4">
-          <div className="mb-1.5 text-[12px] font-semibold text-dark">
-            PDF de tesorería (opcional)
-          </div>
-          {feast?.treasury_pdf_url && (
-            <div className="mb-2 rounded-lg border border-black/[0.06] bg-bg p-2.5">
-              <a
-                href={feast.treasury_pdf_url}
-                target="_blank"
-                rel="noopener"
-                className="text-[12px] font-medium text-terra hover:underline"
-              >
-                Ver PDF actual
-              </a>
-              <label className="mt-2 flex items-center gap-2 text-[11px] text-muted">
-                <input
-                  type="checkbox"
-                  name="treasury_pdf_remove"
-                  className="h-3.5 w-3.5"
-                />
-                <span>Quitar al guardar</span>
-              </label>
-            </div>
-          )}
-          <input
-            type="file"
-            name="treasury_pdf_file"
-            accept="application/pdf"
-            className="block w-full cursor-pointer rounded-xl border border-dashed border-black/15 bg-bg/40 px-3 py-2.5 text-[12px] text-muted file:mr-3 file:rounded file:border-0 file:bg-terra file:px-3 file:py-1.5 file:text-[12px] file:font-semibold file:text-white hover:bg-bg/70"
-          />
-        </div>
       </Card>
 
       <div className="mt-6 flex items-center justify-end gap-2">

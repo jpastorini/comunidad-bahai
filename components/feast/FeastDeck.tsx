@@ -8,6 +8,7 @@ import type {
   FeastProgramNewsSection,
   FeastProgramPrayer,
 } from "@/lib/feast-program";
+import { fmtAmount, fmtAmounts } from "@/lib/treasury-publication-content";
 
 /**
  * El programa de la Fiesta de los Diecinueve Días como presentación: una
@@ -468,6 +469,45 @@ function News({ section }: { section: FeastProgramNewsSection }) {
 
 function Treasury({ p }: { p: FeastProgram }) {
   const t = p.treasury!;
+  if (t.kind === "publication") {
+    // La foto compartida por el tesorero (066), no un cálculo en vivo: lo
+    // que se proyecta es lo que la Tesorería dijo, con su fecha.
+    return (
+      <>
+        <div className="fd-head">
+          <div className="fd-kicker fd-reveal d1">Porción Administrativa</div>
+          <h2 className="fd-reveal d2">Informe de Tesorería</h2>
+          <p className="fd-sub fd-reveal d3">
+            {t.month ? `Mes de ${t.month.name}` : "Estado del Fondo"}
+          </p>
+        </div>
+        <div className="fd-center fd-reveal d4">
+          {t.month && (
+            <div className="fd-stats">
+              <TextStat label="Ingresos" value={fmtAmounts(t.month.income)} />
+              <TextStat label="Egresos" value={fmtAmounts(t.month.expenses)} />
+            </div>
+          )}
+          {t.balances.length > 0 && (
+            <div className="fd-funds">
+              {t.balances.map((b) => (
+                <div key={`${b.label}|${b.currency}`} className="fd-fund">
+                  <span>{b.label}</span>
+                  <strong>{fmtAmount(b)}</strong>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="fd-note">{t.label}</p>
+          {t.report && (
+            <a className="fd-cta fd-cta-sm" href={t.report.href} target="_blank" rel="noopener">
+              Abrir el informe completo →
+            </a>
+          )}
+        </div>
+      </>
+    );
+  }
   return (
     <>
       <div className="fd-head">
@@ -519,6 +559,16 @@ function Stat({
       <div className="fd-stat-value">
         {value != null ? value.toLocaleString("es-UY", { maximumFractionDigits: 0 }) : "—"}
       </div>
+      <div className="fd-stat-label">{label}</div>
+    </div>
+  );
+}
+
+/** Una cifra ya formateada (puede traer dos monedas: "$ 12.300 · USD 150"). */
+function TextStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="fd-stat">
+      <div className="fd-stat-value">{value}</div>
       <div className="fd-stat-label">{label}</div>
     </div>
   );
@@ -774,6 +824,12 @@ const DECK_CSS = `
 .fd-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(20px,4vw,48px); text-align: center; }
 .fd-stat-value { font-family: var(--font-cormorant), Georgia, serif; font-size: clamp(2.2rem,5vw,3.6rem); color: var(--ivory); line-height: 1; }
 .fd-stat-strong .fd-stat-value { color: var(--gold-bright); }
+.fd-funds {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem 1.6rem;
+  margin: clamp(22px,4vh,40px) auto 0; max-width: 64ch;
+}
+.fd-fund { display: flex; gap: .6rem; align-items: baseline; color: var(--mist); font-size: clamp(.95rem,1.8vw,1.15rem); font-weight: 300; }
+.fd-fund strong { color: var(--ivory); font-weight: 500; font-variant-numeric: tabular-nums; }
 .fd-stat-label { margin-top: .5rem; font-size: clamp(.8rem,1.6vw,.95rem); letter-spacing: .24em; text-transform: uppercase; color: var(--mist); }
 
 /* Cierre */

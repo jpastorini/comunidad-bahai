@@ -320,6 +320,10 @@ deshacer. Ver la sección "Importar un ejercicio" más abajo. ·
 **"Voy" en la Fiesta** (migración 065): el creyente confirma que va (y a
 qué lugar), la Asamblea ve la lista y el día de la celebración sale un
 aviso a toda la comunidad. Ver la sección "Voy en la Fiesta" más abajo. ·
+**El estado del Fondo, calculado y compartido** (migración 066): lo que
+la comunidad ve de la Tesorería —en `/tesoreria` y en la Fiesta— sale
+de un solo lugar, con dos botones. Ver la sección "El estado del Fondo"
+más abajo. ·
 **Servicio que funciona** (migración 064): el creyente se ofrece y se
 retira, y la Asamblea recibe un push. Ver la sección "Servicio y datos de ejemplo" más abajo. ·
 **Tirar para actualizar** (`components/PullToRefresh.tsx`, montado en el
@@ -354,6 +358,58 @@ estaba, porque cada pantalla monta su propio control: la nueva arranca
 ahí y la lleva a su lugar. (4) Los esqueletos brillan (`cb-shimmer`) en
 vez de parpadear. De paso, todos los encabezados usan `var(--safe-top)`
 en lugar de `env()` crudo.
+
+## El estado del Fondo: calcular y compartir (migración 066)
+
+Pedido el 2026-09-24. Lo que la comunidad veía de la Tesorería salía de
+cuatro lugares que podían decir cosas distintas: el tablero de
+`/tesoreria` (en vivo desde el libro), el "Informe mensual" y la imagen
+para WhatsApp (tabla vieja `treasury`, a mano), y las cifras de la Fiesta
+(tres campos del formulario de la Fiesta, a mano). Se charló calcularlo
+todo en vivo y el usuario prefirió lo contrario: **una cifra oficial,
+dicha por el tesorero y con fecha**, que no se recalcula sola.
+
+- **Tesorería → Publicar** (`/admin/tesoreria/publicar`, tag
+  `can_manage_treasury`) es el ÚNICO lugar donde se arma. **Calcular**
+  guarda un borrador (`treasury_publications`, uno por comunidad por
+  índice único parcial; calcular de nuevo lo reemplaza) y lo muestra con
+  el MISMO componente que ve la comunidad (`PublishedTreasury`), así la
+  vista previa no puede diferir. **Compartir** publica ESA fila: si entre
+  un paso y el otro entra un movimiento, sale lo que se revisó. Casilla
+  opcional para avisar por push a los creyentes (no a los Amigos de la Fe).
+- **El corte**: hasta hoy, hasta el fin del último mes bahá'í terminado
+  (`lastClosedMonthEnd()`, el atajo "para la Fiesta") u otra fecha.
+- **La foto** (`snapshot`, tipos en `lib/treasury-publication-content.ts`)
+  trae el mes bahá'í que contiene el corte (ingresos, egresos y aportes
+  por moneda, sin transferencias ni aperturas) y el `ProgressData` entero
+  del ejercicio, saldos por fondo incluidos, con los nombres ya resueltos.
+  Sale de `computePublicationSnapshot()` (`lib/treasury-publications.ts`)
+  con la MISMA `treasury_progress()` de siempre: una llamada para el
+  ejercicio y otra con el rango del mes. Sin nombres de contribuyentes.
+- **Quién la lee**: `/tesoreria`, `/fiestas/[id]`, el deck y el folleto
+  de `/programa/[id]`, y nada más. Ninguna pantalla de la comunidad llama
+  a `treasury_progress()` directo; si agregás una, que lea la publicación.
+  El tablero del panel (`/admin/tesoreria/progreso`) SÍ sigue en vivo: el
+  tesorero necesita ver el libro al día.
+- **La Fiesta se queda con la foto vigente al iniciarla**
+  (`getPublicationForFeast()`: la última con `published_at <=
+  feasts.started_at`; antes de iniciar, la última). Publicar otra al día
+  siguiente no le cambia lo que se presentó. No hizo falta columna en
+  `feasts`: `started_at` alcanza. Cada publicación queda como historia.
+- **Lo que se jubiló**: las cifras a mano del formulario de la Fiesta (el
+  action ya no las escribe —escribir null borraría las viejas—; las
+  columnas siguen y las Fiestas sin foto las muestran como antes), el
+  "Informe mensual" y los dos compartibles de imagen de `/tesoreria`. Los
+  medios de pago ("Cómo aportar") siguen en la tabla `treasury`: son un
+  dato fijo, no un cálculo.
+- **El informe de Tesorería** (deck con textos y aprobación) sigue aparte.
+  En la Fiesta la diapositiva muestra la foto y, si hay informe del mes
+  (`pickReportForFeast`), el link.
+
+⚠️ Hasta que corra la 066, `/tesoreria` dice "todavía no compartió el
+estado del Fondo" (ya NO muestra el tablero en vivo), la Fiesta cae a las
+cifras viejas y la pantalla de Publicar avisa y no guarda. Aplicar la
+migración y compartir una primera vez apenas se despliegue.
 
 ## Servicio y datos de ejemplo (migración 064)
 
@@ -607,7 +663,7 @@ Reuniones, Informes de Tesorería, Datos de la Asamblea) · Comunicación (Comun
 Chat de Secretaría) · Vida comunitaria (Calendario, Fiestas, Sugerencias,
 Actividades, Servicio, Materiales, Fotos) · Creyentes (Creyentes, Uso de
 la app) · Tesorería (Libro, Recibo, Catálogo, Importar, Cierres, Conciliación,
-Auditoría, Informes, Progreso, Compromisos, Presupuesto, Metas, Mensajes,
+Auditoría, Informes, Progreso, Publicar, Compromisos, Presupuesto, Metas, Mensajes,
 Cómo aportar) ·
 Admin Nacional.
 
@@ -756,13 +812,15 @@ qué secciones tienen contenido. Tres cosas del diseño:
   antes para ensayar: `loadFeastProgram()` devuelve `not-started` y la
   página redirige a `/fiestas/[id]`. Al creyente los dos botones le
   aparecen al iniciar la Fiesta.
-- **La Tesorería se enlaza, no se copia.** En la Fiesta del mes M se
+- **La Tesorería es la foto que compartió el tesorero** (066, ver "El
+  estado del Fondo"), la vigente al iniciar la Fiesta. Además, si hay
+  informe del mes, se enlaza: en la Fiesta del mes M se
   presenta el informe del mes que termina: `pickReportForFeast()` toma
   el informe publicado para la comunidad con `period_to` más cercano por
   debajo de la fecha oficial de M (tolerancia 45 días) y la diapositiva
   lleva a `/i/<token>`. No hay `feast_id` en los informes; la
-  coincidencia por fecha alcanza. Si no hay informe pero la Fiesta tiene
-  las cifras a mano (`treasury_income` etc.), se muestran esas.
+  coincidencia por fecha alcanza. Sin foto (Fiestas de antes de la 066),
+  el informe o las cifras a mano (`treasury_income` etc.) como antes.
 
 De paso se arregló el borrado de filas del formulario de Fiestas: la
 casilla "Eliminar al guardar" de lugares y oraciones llevaba un hidden
@@ -1400,8 +1458,9 @@ clases o va a salir cortada.
 
 ### Progreso: presupuesto y metas (migración 042)
 
-Tablero en `/admin/tesoreria/progreso` y, con el mismo componente, en
-`/tesoreria` de la comunidad (reemplazó al anillo que leía el
+Tablero en `/admin/tesoreria/progreso` (en vivo) y, con el mismo
+componente, en `/tesoreria` de la comunidad (desde la 066, como parte de
+la foto que comparte el tesorero, no en vivo) (reemplazó al anillo que leía el
 `current_amount` a mano). Cuatro bloques: la pauta del año, mes a mes,
 categorías del presupuesto, metas. Componente en
 `components/treasury/ProgressBoard.tsx`, cálculo en
@@ -2465,12 +2524,15 @@ cambia nada.
   datos de imprenta en un recibo emitido por sistema (hoy el pie dice
   "emitido por el sistema de Tesorería"), y si la cotización del balance
   va por cierre o por operación (hoy es la de cierre, declarada).
-- **Jubilar la tabla `treasury` vieja.** El anillo de `/tesoreria` ya se
-  fue (lo reemplazó el tablero de progreso, 042), pero siguen leyendo el
-  `current_amount` escrito a mano el "Informe mensual" de esa pantalla y
-  los dos compartibles de imagen (`MonthlyReportShare`,
-  `BudgetReportShare`), más el formulario de `/admin/tesoreria/aportar` ("Cómo aportar"). Todo eso
-  se puede calcular desde el libro; falta hacerlo y borrar el formulario.
+- **Aplicar la 066 y compartir el primer estado del Fondo** desde
+  Tesorería → Publicar; hasta entonces `/tesoreria` no muestra cifras.
+  Probar con la próxima Fiesta: calcular "hasta el fin del mes",
+  compartir, iniciar la Fiesta y ver la diapositiva.
+- **Jubilar la tabla `treasury` vieja.** Desde la 066 la comunidad solo
+  lee de ahí los medios de pago ("Cómo aportar"). Quedan en el panel el
+  formulario de `/admin/tesoreria/aportar` (con `MonthlyReportShare`) y
+  el `BudgetReportShare` del presupuesto, que leen cifras a mano: pasar
+  los medios de pago a otro lado y borrar el resto.
 - **Las metas viven en dos lados.** `treasury_goals` (042) es el dato,
   pero el editor del informe (041) todavía tiene sus propios campos de
   texto para "Meta de la Asamblea" y "Destino de los Fondos". Conviene

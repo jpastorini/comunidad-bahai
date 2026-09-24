@@ -117,6 +117,9 @@ export const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/tesoreria/auditoria", label: "Auditoría" },
       { href: "/admin/tesoreria/informes", label: "Informes" },
       { href: "/admin/tesoreria/progreso", label: "Progreso" },
+      // Calcular y compartir el estado del Fondo (066): lo ÚNICO que la
+      // comunidad ve de la Tesorería, en la app y en la Fiesta.
+      { href: "/admin/tesoreria/publicar", label: "Publicar" },
       // Quién declaró un compromiso mensual y cómo viene el mes (063):
       // a quién llamar para agradecer y a quién para recordar.
       { href: "/admin/tesoreria/compromisos", label: "Compromisos" },

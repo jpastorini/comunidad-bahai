@@ -53,7 +53,9 @@ export function ProgressBoard({
         <CategoriesBlock data={data} compact={compact} />
       )}
       {data.goals.length > 0 && <GoalsBlock data={data} compact={compact} />}
-      {data.balances.length > 0 && !compact && <BalancesBlock data={data} />}
+      {data.balances.length > 0 && !compact && (
+        <FundBalances balances={data.balances} />
+      )}
       <p className="px-1 text-[11px] leading-relaxed text-muted">
         Ejercicio {data.bahaiYear} E.B., de Riḍván a Riḍván:{" "}
         {fmtLongDate(data.from)} al {fmtLongDate(data.to)} · cifras al{" "}
@@ -617,15 +619,22 @@ function GoalRow({
 
 // ─── 5 · Saldos ──────────────────────────────────────────────────
 
-function BalancesBlock({ data }: { data: ProgressData }) {
+/** También lo usa el estado del Fondo que comparte el tesorero (066). */
+export function FundBalances({
+  balances,
+  eyebrow = "Al cierre",
+}: {
+  balances: ProgressData["balances"];
+  eyebrow?: string;
+}) {
   return (
     <Block
-      eyebrow="Al cierre"
+      eyebrow={eyebrow}
       title="Disponible por fondo"
       hint="La plata está «coloreada» por fondo: cada uno tiene su destino y no se mezcla con los otros ni entre monedas."
     >
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {data.balances.map((b) => (
+        {balances.map((b) => (
           <div
             key={`${b.label}|${b.currency}`}
             className="rounded-xl border border-black/[0.06] bg-bg/40 px-3 py-2.5"

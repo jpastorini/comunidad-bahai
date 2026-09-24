@@ -7,6 +7,7 @@ import {
 } from "./data";
 import { buildFeastProgram, type FeastProgram, type TreasuryReportRef } from "./feast-program";
 import { createSupabaseServer } from "./supabase/server";
+import { getPublicationForFeast } from "./treasury-publications";
 
 export type FeastProgramLoad =
   | { kind: "ok"; program: FeastProgram; isAdmin: boolean }
@@ -51,7 +52,10 @@ export async function loadFeastProgram(id: string): Promise<FeastProgramLoad> {
     .order("period_to", { ascending: false })
     .limit(12);
 
+  const publication = await getPublicationForFeast(supabase, session.locality.id, feast);
+
   const program = buildFeastProgram({
+    publication,
     feast,
     localityName: session.locality.name,
     locations,

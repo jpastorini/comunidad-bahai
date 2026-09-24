@@ -13,8 +13,8 @@ import {
 import type { FeastNewsScope } from "@/lib/types";
 
 // Bucket público que ya tiene policies de escritura para admins (003).
-// Carpetas: fiestas/ (PDF de tesorería del mes) y fiestas/noticias/
-// (fotos de las noticias del programa, 050).
+// Carpeta fiestas/noticias/ (fotos de las noticias del programa, 050).
+// El PDF de tesorería del mes que iba en fiestas/ ya no se sube (066).
 const BUCKET = "comunicados";
 
 async function uploadFile(
@@ -36,8 +36,6 @@ async function uploadFile(
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
-
-const uploadPdf = (file: File | null) => uploadFile(file, "fiestas", "pdf");
 
 // ─── Crear / editar Fiesta ─────────────────────────────────────
 export async function upsertFeastAction(formData: FormData) {
@@ -62,20 +60,11 @@ export async function upsertFeastAction(formData: FormData) {
     // international/national/local_reports quedaron sin uso: las noticias
     // son ítems en feast_news_items (050), ver persistNews().
     assembly_communique: (formData.get("assembly_communique") as string) || null,
-    treasury_income: parseOptionalNumber(formData.get("treasury_income")),
-    treasury_expenses: parseOptionalNumber(formData.get("treasury_expenses")),
-    treasury_final: parseOptionalNumber(formData.get("treasury_final")),
+    // treasury_income / _expenses / _final / _pdf_url ya no se escriben
+    // (066): la Tesorería de la Fiesta es la foto que comparte el tesorero.
+    // Quedan FUERA del payload a propósito: el formulario ya no los manda y
+    // escribir null borraría las cifras de las Fiestas de antes.
   };
-
-  // Treasury PDF
-  const pdfFile = formData.get("treasury_pdf_file") as File | null;
-  const removePdf = formData.get("treasury_pdf_remove") === "on";
-  if (pdfFile && pdfFile.size > 0) {
-    const url = await uploadPdf(pdfFile);
-    if (url) payload.treasury_pdf_url = url;
-  } else if (removePdf) {
-    payload.treasury_pdf_url = null;
-  }
 
   let feastId = id;
   if (id) {
@@ -292,12 +281,6 @@ async function persistNews(formData: FormData, feastId: string): Promise<string 
   }
 
   return firstError;
-}
-
-function parseOptionalNumber(v: FormDataEntryValue | null): number | null {
-  if (v == null || v === "") return null;
-  const n = parseFloat(v as string);
-  return isNaN(n) ? null : n;
 }
 
 // ─── Cambiar estado de Fiesta (draft / published / in_progress) ──
