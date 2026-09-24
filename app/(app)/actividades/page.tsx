@@ -33,6 +33,12 @@ export default async function ActividadesPage() {
       <GoldHeader title="Calendario" subtitle={session.locality.name} backHref="/" />
       <SegmentedNav items={CALENDARIO_SEGMENTS} />
       <main className="scroll-area flex-1 px-4 pt-1">
+        {activities.length === 0 && (
+          <div className="py-12 text-center text-[13px] text-muted">
+            Todavía no hay actividades cargadas. Cuando la Asamblea publique
+            círculos de estudio, devocionales o clases, van a aparecer acá.
+          </div>
+        )}
         <div className="flex flex-col gap-2.5 pb-3.5">
           {activities.map((a) => {
             const when = formatActivityWhen(a.starts_at);

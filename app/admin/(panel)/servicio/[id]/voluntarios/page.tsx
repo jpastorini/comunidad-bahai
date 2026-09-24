@@ -16,10 +16,32 @@ export default async function VolunteersPage({
     .maybeSingle();
   if (!need) notFound();
 
-  const { data: vols } = await supabase
+  // Dos consultas y no un embed: la FK de service_volunteers.user_id apunta
+  // a auth.users, no a profiles, así que PostgREST no tiene por dónde
+  // unirlas. El embed de antes fallaba siempre y la pantalla decía "Nadie
+  // se ha ofrecido" aunque hubiera voluntarios.
+  const { data: volRows, error: volError } = await supabase
     .from("service_volunteers")
-    .select("created_at, profiles:profiles!service_volunteers_user_id_fkey(full_name, email)")
-    .eq("need_id", params.id);
+    .select("user_id, created_at")
+    .eq("need_id", params.id)
+    .order("created_at", { ascending: true });
+  if (volError) {
+    console.error(`[admin/servicio] voluntarios: ${volError.code} ${volError.message}`);
+  }
+  const userIds = (volRows ?? []).map((v) => v.user_id as string);
+  const { data: profileRows } = userIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", userIds)
+    : { data: [] as Array<{ id: string; full_name: string | null; email: string | null }> };
+  const profilesById = new Map(
+    (profileRows ?? []).map((p) => [p.id as string, p])
+  );
+  const vols = (volRows ?? []).map((v) => ({
+    created_at: v.created_at as string,
+    profiles: profilesById.get(v.user_id as string) ?? null,
+  }));
 
   return (
     <>

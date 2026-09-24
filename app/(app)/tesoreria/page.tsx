@@ -110,6 +110,9 @@ export default async function TesoreriaPage() {
           <h2 className="mb-2.5 text-[14px] font-semibold text-dark">
             Cómo aportar
           </h2>
+          {/* Los medios de pago salen de la ficha vieja (`treasury`); si la
+              comunidad no la cargó, no se muestra nada en vez de un ejemplo. */}
+          {t && t.methods.length > 0 && (
           <div className="flex gap-2.5">
             {t.methods.map((m) => (
               <div
@@ -131,6 +134,7 @@ export default async function TesoreriaPage() {
               </div>
             ))}
           </div>
+          )}
 
           {/* Un giro a la cuenta no le dice al tesorero de quién es ni a qué
               fondo va. Este es el atajo para avisarle, acá donde la persona
@@ -155,6 +159,7 @@ export default async function TesoreriaPage() {
         </div>
 
         {/* Monthly report */}
+        {t && t.contributions.length > 0 && (
         <div className="mb-3.5 rounded-2xl bg-card p-4 shadow-card-soft">
           <h3 className="mb-2.5 text-[13px] font-semibold text-dark">
             Informe mensual
@@ -175,8 +180,10 @@ export default async function TesoreriaPage() {
             </div>
           ))}
         </div>
+        )}
 
         {/* Compartir reportes (imagen para WhatsApp) */}
+        {(t || (activeBudget && budgetItems.length > 0)) && (
         <section className="mb-3.5">
           <h2 className="mb-2.5 text-[14px] font-semibold text-dark">
             Compartir
@@ -185,16 +192,18 @@ export default async function TesoreriaPage() {
             <p className="text-[12px] text-muted">
               Generá una imagen del fondo para enviar al grupo.
             </p>
-            <MonthlyReportShare
-              preview={false}
-              buttonLabel="Compartir reporte mensual"
-              localityName={session.locality.name}
-              period={t.period}
-              goalAmount={t.goal_amount}
-              currentAmount={t.current_amount}
-              contributions={t.contributions}
-              methods={t.methods}
-            />
+            {t && (
+              <MonthlyReportShare
+                preview={false}
+                buttonLabel="Compartir reporte mensual"
+                localityName={session.locality.name}
+                period={t.period}
+                goalAmount={t.goal_amount}
+                currentAmount={t.current_amount}
+                contributions={t.contributions}
+                methods={t.methods}
+              />
+            )}
             {activeBudget && budgetItems.length > 0 && (
               <BudgetReportShare
                 preview={false}
@@ -206,6 +215,7 @@ export default async function TesoreriaPage() {
             )}
           </div>
         </section>
+        )}
 
         {/* Compromiso mensual del miembro logueado */}
         <CommitmentSection

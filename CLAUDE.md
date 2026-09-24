@@ -316,7 +316,45 @@ del mes para el tesorero —a quién agradecer y a quién recordar—. Ver la
 sección "Compromisos con el Fondo" más abajo. ·
 **Importar los ejercicios anteriores** (migración 062): un año entero del
 libro desde la planilla con que se llevaba antes, con vista previa y
-deshacer. Ver la sección "Importar un ejercicio" más abajo.
+deshacer. Ver la sección "Importar un ejercicio" más abajo. ·
+**Servicio que funciona** (migración 064): el creyente se ofrece y se
+retira, y la Asamblea recibe un push. Ver la sección "Servicio y datos de ejemplo" más abajo.
+
+## Servicio y datos de ejemplo (migración 064)
+
+Hasta el 2026-09-24 la pestaña Servicio era una maqueta: el botón
+"Ofrecerme como voluntario" no tenía acción, y como la comunidad no había
+cargado necesidades, lo que se veía eran las del seed ("Tutores para
+Libro 1", "Transporte para ancianos"). Del lado del panel, la lista de
+voluntarios nunca pudo mostrar a nadie: hacía un embed a `profiles` por
+una FK que apunta a `auth.users`.
+
+- **Ofrecerse** es `setVolunteerAction(needId, offer)`
+  (`app/(app)/servicio/actions.ts`): un toque para ofrecerse; retirarse
+  pide confirmación en el lugar, porque alguien ya puede estar contando
+  con esa persona. Las dos cosas avisan por push a la Asamblea de la
+  localidad (`getLocalityAdminIds`) con link a la lista de voluntarios.
+- **Quién se ofreció lo ven la persona y la Asamblea; la comunidad ve
+  solo cuántos.** La 064 cambia la lectura de `service_volunteers`, que
+  era `using (true)` (cualquiera, de cualquier localidad y sin sesión), y
+  exige en el insert que la necesidad sea visible (antes se podía anotar
+  a una de otra localidad sabiendo su id). El conteo sale por
+  `service_volunteer_counts()`, security definer y solo con números.
+  Datos en `lib/service.ts`.
+
+⚠️ **El seed es solo para el modo demo.** `lib/data.ts` caía al seed
+también cuando la consulta volvía VACÍA o fallaba, así que una comunidad
+sin contenido veía actividades, comunicados, mensajes, materiales y
+medios de pago inventados como si fueran suyos. Ahora con Supabase vacío
+es vacío (cada pantalla tiene su estado vacío) y un error se loguea con
+`dataFailure()` y se ve vacío. `getTreasury()` devuelve null y
+`/tesoreria` esconde los medios de pago y el informe mensual viejos. Si
+agregás una función de datos, el seed va solo detrás de
+`!isSupabaseConfigured()`.
+
+⚠️ Hasta que corra la 064 ofrecerse funciona igual (la policy de insert
+es del schema inicial), pero no se muestra cuántos se ofrecieron y la
+lectura sigue abierta.
 
 ## Buscador de pasajes (migración 053)
 
@@ -2275,6 +2313,9 @@ cambia nada.
 
 ## Pendientes conocidos
 
+- **Aplicar la 064 y cargar las primeras necesidades de servicio.**
+  Probar ofrecerse desde un celular y ver que llega el push a la
+  Asamblea y que el nombre aparece en `/admin/servicio/<id>/voluntarios`.
 - **Aplicar la 063 y probar los compromisos.** La migración toca la PK de
   `treasury_commitments` y borra las filas sin localidad (perfiles que
   nunca eligieron una), así que conviene mirar la tabla antes. Después:

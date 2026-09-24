@@ -4,6 +4,13 @@
  *
  * All functions are server-safe and async to make swapping to live data
  * a no-op for screens.
+ *
+ * ⚠️ El seed es SOLO para el modo demo (`!isSupabaseConfigured()`). Antes
+ * también se usaba cuando la consulta volvía vacía o fallaba, y una
+ * comunidad que todavía no había cargado nada veía necesidades de servicio,
+ * actividades y comunicados inventados como si fueran suyos. Con Supabase,
+ * vacío es vacío (cada pantalla tiene su estado vacío) y un error se loguea
+ * y se muestra como vacío.
  */
 
 import { cache } from "react";
@@ -14,22 +21,17 @@ import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
 import {
   seedActivities,
   seedCalendarEvents,
-  seedChat,
   seedEscritos,
   seedFeaturedLocalAnnouncement,
-  seedGoals,
   seedLocalAnnouncements,
   seedMessages,
-  seedNeeds,
   seedOracionesDelMes,
   seedRuhi,
-  seedStats,
   seedTreasury,
 } from "./seed-data";
 import type {
   Activity,
   CalendarEvent,
-  ChatMessage,
   ChatTopic,
   Feast,
   FeastLocation,
@@ -37,11 +39,16 @@ import type {
   FeastPrayer,
   Message,
   Profile,
-  ServiceNeed,
   StudyMaterial,
-  TeachingGoal,
   Treasury,
 } from "./types";
+
+/** Una consulta de contenido que falló: se loguea con contexto y la
+ *  pantalla la muestra vacía, nunca con datos de ejemplo. */
+function dataFailure<T>(where: string, error: { message: string; code?: string }): T[] {
+  console.error(`[data] ${where}: ${error.code ?? ""} ${error.message}`);
+  return [];
+}
 
 export async function getMessages(): Promise<Message[]> {
   if (!isSupabaseConfigured()) return seedMessages;
@@ -51,7 +58,7 @@ export async function getMessages(): Promise<Message[]> {
     .select("id, date, title, excerpt, is_new, source, pdf_url")
     .eq("source", "casa_universal")
     .order("date", { ascending: false });
-  if (error || !data?.length) return seedMessages;
+  if (error) return dataFailure("getMessages", error);
   return data as Message[];
 }
 
@@ -84,7 +91,7 @@ export async function getLocalAnnouncements(): Promise<Message[]> {
     // que es lo que significa "nacional" desde la 021.
     .in("source", ["asamblea_local", "asamblea_nacional"])
     .order("date", { ascending: false });
-  if (error || !data?.length) return seedLocalAnnouncements;
+  if (error) return dataFailure("getLocalAnnouncements", error);
   return data as Message[];
 }
 
@@ -103,7 +110,7 @@ export async function getLatestLocalAnnouncement(): Promise<Message | null> {
     .order("date", { ascending: false })
     .limit(1)
     .maybeSingle();
-  return (data as Message | null) ?? seedFeaturedLocalAnnouncement ?? null;
+  return (data as Message | null) ?? null;
 }
 
 export async function getActivities(): Promise<Activity[]> {
@@ -113,13 +120,8 @@ export async function getActivities(): Promise<Activity[]> {
     .from("activities")
     .select("id, type, title, detail, starts_at, place")
     .order("starts_at", { ascending: true });
-  if (error || !data?.length) return seedActivities;
+  if (error) return dataFailure("getActivities", error);
   return data as Activity[];
-}
-
-export async function getUpcomingActivities(limit = 2): Promise<Activity[]> {
-  const all = await getActivities();
-  return all.slice(0, limit);
 }
 
 export async function getCalendarEvents(): Promise<CalendarEvent[]> {
@@ -133,7 +135,7 @@ export async function getCalendarEvents(): Promise<CalendarEvent[]> {
     .order("year", { ascending: true })
     .order("month", { ascending: true })
     .order("day", { ascending: true });
-  if (error || !data?.length) return seedCalendarEvents;
+  if (error) return dataFailure("getCalendarEvents", error);
   return data as CalendarEvent[];
 }
 
@@ -150,17 +152,6 @@ export async function getCalendarEvent(id: string): Promise<CalendarEvent | null
   return (data as CalendarEvent | null) ?? null;
 }
 
-export async function getChatMessages(): Promise<ChatMessage[]> {
-  if (!isSupabaseConfigured()) return seedChat;
-  const supabase = createSupabaseServer();
-  const { data, error } = await supabase
-    .from("chat_messages")
-    .select("*")
-    .order("created_at", { ascending: true });
-  if (error || !data?.length) return seedChat;
-  return data as ChatMessage[];
-}
-
 export async function getRuhiBooks(): Promise<StudyMaterial[]> {
   if (!isSupabaseConfigured()) return seedRuhi;
   const supabase = createSupabaseServer();
@@ -169,7 +160,7 @@ export async function getRuhiBooks(): Promise<StudyMaterial[]> {
     .select("id, kind, number, title, subtitle, pdf_url, image_url, created_at")
     .eq("kind", "ruhi")
     .order("number", { ascending: true });
-  if (error || !data?.length) return seedRuhi;
+  if (error) return dataFailure("getRuhiBooks", error);
   return data as StudyMaterial[];
 }
 
@@ -180,7 +171,7 @@ export async function getEscritos(): Promise<StudyMaterial[]> {
     .from("study_materials")
     .select("id, kind, number, title, subtitle, pdf_url, image_url, created_at")
     .in("kind", ["escritos", "oraciones"]);
-  if (error || !data?.length) return seedEscritos;
+  if (error) return dataFailure("getEscritos", error);
   return data as StudyMaterial[];
 }
 
@@ -209,7 +200,7 @@ export async function getOracionesDelMes(): Promise<StudyMaterial[]> {
     .select("id, kind, number, title, subtitle, pdf_url, image_url, created_at")
     .eq("kind", "oracion_del_mes")
     .order("created_at", { ascending: false });
-  if (error || !data?.length) return seedOracionesDelMes;
+  if (error) return dataFailure("getOracionesDelMes", error);
   return data as StudyMaterial[];
 }
 
@@ -219,40 +210,20 @@ export async function getLatestOracionDelMes(): Promise<StudyMaterial | null> {
   return all[0] ?? null;
 }
 
-export async function getTeachingGoals(): Promise<TeachingGoal[]> {
-  if (!isSupabaseConfigured()) return seedGoals;
-  const supabase = createSupabaseServer();
-  const { data, error } = await supabase.from("teaching_goals").select("*");
-  if (error || !data?.length) return seedGoals;
-  return data as TeachingGoal[];
-}
-
-export async function getCommunityStats() {
-  // Stats are computed/cached separately; for the MVP we surface seed values.
-  return seedStats;
-}
-
-export async function getServiceNeeds(): Promise<ServiceNeed[]> {
-  if (!isSupabaseConfigured()) return seedNeeds;
-  const supabase = createSupabaseServer();
-  const { data, error } = await supabase
-    .from("service_needs")
-    .select("id, title, description, urgency")
-    .order("created_at", { ascending: false });
-  if (error || !data?.length) return seedNeeds;
-  return data as ServiceNeed[];
-}
-
-export async function getTreasury(): Promise<Treasury> {
+/** La ficha vieja de Tesorería (medios de pago, cifras a mano). Null si la
+ *  comunidad nunca la cargó: la pantalla esconde esas secciones en vez de
+ *  mostrar "Transferencia · Datos bancarios" y montos inventados. */
+export async function getTreasury(): Promise<Treasury | null> {
   if (!isSupabaseConfigured()) return seedTreasury;
   const supabase = createSupabaseServer();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("treasury")
     .select("*")
     .order("period", { ascending: false })
     .limit(1)
     .maybeSingle();
-  return (data as Treasury | null) ?? seedTreasury;
+  if (error) console.error(`[data] getTreasury: ${error.code ?? ""} ${error.message}`);
+  return (data as Treasury | null) ?? null;
 }
 
 // ─── Fiestas ────────────────────────────────────────────────────
@@ -492,17 +463,7 @@ export async function getUpcomingCalendarEvents(
     .order("day", { ascending: true })
     .limit(limit);
 
-  if (error) {
-    const todayKey = y * 10000 + m * 100 + d;
-    return seedCalendarEvents
-      .filter((e) => e.year * 10000 + e.month * 100 + e.day >= todayKey)
-      .sort(
-        (a, b) =>
-          a.year * 10000 + a.month * 100 + a.day -
-          (b.year * 10000 + b.month * 100 + b.day)
-      )
-      .slice(0, limit);
-  }
+  if (error) return dataFailure("getUpcomingCalendarEvents", error);
   return (data ?? []) as CalendarEvent[];
 }
 

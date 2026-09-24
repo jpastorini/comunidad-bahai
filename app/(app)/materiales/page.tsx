@@ -87,6 +87,8 @@ export default async function MaterialesPage() {
       <main className="scroll-area flex-1 px-4 pb-4 pt-1">
         {latestOracion && <OracionDelMesCard oracion={latestOracion} />}
 
+        {ruhi.length > 0 && (
+        <>
         <h2 className="mb-2.5 text-[13px] font-semibold text-dark">
           Instituto Ruhí
         </h2>
@@ -111,6 +113,8 @@ export default async function MaterialesPage() {
             </li>
           ))}
         </ul>
+        </>
+        )}
 
         {libros.length > 0 && (
           <>
