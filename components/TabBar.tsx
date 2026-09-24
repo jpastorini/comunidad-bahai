@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useIsoLayoutEffect } from "@/lib/use-iso-layout-effect";
 import {
   IconAEL,
   IconBiblioteca,
@@ -37,6 +39,48 @@ const TABS: Tab[] = [
 export function TabBar({ aelHasUnseen = false }: { aelHasUnseen?: boolean }) {
   const pathname = usePathname();
   const activeHref = resolveActiveHref(pathname);
+  // La pestaña recién tocada se ilumina AL TOCAR, no cuando la pantalla
+  // nueva terminó de llegar: si la red tarda, la marca ya dice "voy para
+  // allá" en vez de quedarse en la anterior como si el toque no hubiera
+  // entrado. Se descarta en cuanto cambia la ruta.
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  useEffect(() => setPendingHref(null), [pathname]);
+  const shownHref = pendingHref ?? activeHref;
+
+  // Una sola marca (barrita de arriba + píldora detrás del ícono) que se
+  // desliza a la pestaña iluminada. Se mide con offsetLeft/offsetWidth, que
+  // son px del layout como el translate: con getBoundingClientRect el zoom
+  // global de <html> (lib/ui-zoom.ts) la correría de lugar en "Grande".
+  const ulRef = useRef<HTMLUListElement>(null);
+  const pillRefs = useRef(new Map<string, HTMLSpanElement>());
+  const [mark, setMark] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  // Sin transición la primera vez: la marca aparece en su lugar, no
+  // viajando desde la izquierda.
+  const [animate, setAnimate] = useState(false);
+
+  useIsoLayoutEffect(() => {
+    function measure() {
+      const pill = pillRefs.current.get(shownHref);
+      const link = pill?.parentElement;
+      if (!pill || !link) return;
+      setMark({
+        x: link.offsetLeft + pill.offsetLeft,
+        y: link.offsetTop + pill.offsetTop,
+        w: pill.offsetWidth,
+        h: pill.offsetHeight,
+      });
+    }
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (ulRef.current) ro.observe(ulRef.current);
+    return () => ro.disconnect();
+  }, [shownHref]);
+
+  useEffect(() => {
+    if (!mark || animate) return;
+    const id = requestAnimationFrame(() => setAnimate(true));
+    return () => cancelAnimationFrame(id);
+  }, [mark, animate]);
 
   return (
     <nav
@@ -48,9 +92,25 @@ export function TabBar({ aelHasUnseen = false }: { aelHasUnseen?: boolean }) {
       // aunque el inset venga en 0, sin dejar demasiado espacio en blanco.
       style={{ paddingBottom: "max(var(--safe-bottom) + 18px, 22px)" }}
     >
-      <ul className="flex items-center justify-around pt-2.5">
+      <ul ref={ulRef} className="relative flex items-center justify-around pt-2.5">
+        {mark && (
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute left-0 top-0 rounded-full bg-terra/[0.12] ${
+              animate ? "cb-slide" : ""
+            }`}
+            style={{
+              width: mark.w,
+              height: mark.h,
+              transform: `translate(${mark.x}px, ${mark.y}px)`,
+            }}
+          >
+            {/* Acento superior que marca dónde estás */}
+            <span className="absolute -top-[7px] left-1/2 h-[3px] w-7 -translate-x-1/2 rounded-full bg-terra" />
+          </span>
+        )}
         {TABS.map((tab) => {
-          const isActive = tab.href === activeHref;
+          const isActive = tab.href === shownHref;
           // Chat y Comunicados viven dentro del hub AEL, así que su aviso
           // se muestra en la pestaña AEL (href "/comunicados").
           const showUnseen = aelHasUnseen && tab.href === "/comunicados";
@@ -67,16 +127,21 @@ export function TabBar({ aelHasUnseen = false }: { aelHasUnseen?: boolean }) {
                 // repiten mientras la entrada siga fresca (staleTimes en
                 // next.config.mjs).
                 prefetch
-                aria-current={isActive ? "page" : undefined}
+                aria-current={tab.href === activeHref ? "page" : undefined}
+                onClick={(e) => {
+                  // Abrir en otra pestaña (ctrl/cmd) no navega acá.
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                  if (tab.href !== activeHref) setPendingHref(tab.href);
+                }}
                 className="tap relative flex flex-col items-center gap-1"
               >
-                {/* Acento superior que marca dónde estás */}
-                {isActive && (
-                  <span className="absolute -top-[7px] left-1/2 h-[3px] w-7 -translate-x-1/2 rounded-full bg-terra" />
-                )}
                 <span
-                  className={`relative flex h-8 items-center justify-center rounded-full px-4 transition-colors ${
-                    isActive ? "bg-terra/[0.12] text-terra" : "text-dark/45"
+                  ref={(el) => {
+                    if (el) pillRefs.current.set(tab.href, el);
+                    else pillRefs.current.delete(tab.href);
+                  }}
+                  className={`relative flex h-8 items-center justify-center rounded-full px-4 transition-colors duration-300 ${
+                    isActive ? "text-terra" : "text-dark/45"
                   }`}
                 >
                   {showUnseen && (

@@ -14,7 +14,7 @@ export function LegalShell({ title, intro, children }: Props) {
     <div className="min-h-[calc(100dvh/var(--ui-zoom,1))] bg-bg">
       <header
         className="relative overflow-hidden bg-gold-grad px-5 pb-7"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 28px)" }}
+        style={{ paddingTop: "calc(var(--safe-top) + 28px)" }}
       >
         <div className="pointer-events-none absolute -right-6 top-5 opacity-[0.06]">
           <BahaiStar size={120} color="#fff" />

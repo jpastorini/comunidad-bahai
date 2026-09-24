@@ -39,7 +39,7 @@ export function AdminShell({
           hamburguesa queda debajo de la barra del sistema y no recibe el tap. */}
       <header
         className="sticky top-0 z-20 flex items-center justify-between border-b border-black/[0.06] bg-card px-4 pb-3 md:hidden"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
+        style={{ paddingTop: "calc(var(--safe-top) + 12px)" }}
       >
         <button
           type="button"

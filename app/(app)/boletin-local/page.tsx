@@ -25,7 +25,7 @@ export default async function BoletinLocalPage() {
             La Asamblea todavía no publicó ningún boletín.
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="cb-stagger flex flex-col gap-3">
             {bulletins.map((b, i) => {
               const counts = [
                 b.content.events.length > 0 &&

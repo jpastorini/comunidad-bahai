@@ -25,7 +25,7 @@ export default async function MensajesPage() {
             Aún no hay mensajes publicados.
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="cb-stagger flex flex-col gap-2">
             {messages.map((m) => (
               <Link
                 key={m.id}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useIsBahai, useIsNationalCommunity } from "./HeaderUser";
 
 export type SegmentItem = {
@@ -27,26 +28,69 @@ export function SegmentedNav({ items }: { items: SegmentItem[] }) {
   const visible = items.filter(
     (i) => (isBahai || !i.bahaiOnly) && !(isNational && i.aelOnly)
   );
+  const groupKey = visible.map((i) => i.href).join("|");
+  const activeIndex = visible.findIndex((item) =>
+    item.prefix ? pathname.startsWith(item.prefix) : pathname === item.href
+  );
+
+  // La píldora blanca se desliza al segmento elegido. Cada pantalla del
+  // hub monta SU PROPIO SegmentedNav, así que no hay un componente vivo que
+  // anime de un segmento al otro: la pantalla nueva arranca con la píldora
+  // donde la dejó la anterior (memoria del módulo, sobrevive a la
+  // navegación del cliente) y en el cuadro siguiente la lleva a su lugar.
+  // En la carga inicial la memoria está vacía y el primer render coincide
+  // con el del servidor.
+  const [shown, setShown] = useState(() => lastSegment.get(groupKey) ?? activeIndex);
+  const [animate, setAnimate] = useState(false);
+
+  useEffect(() => {
+    lastSegment.set(groupKey, activeIndex);
+    if (shown === activeIndex) return;
+    const id = requestAnimationFrame(() => {
+      setAnimate(true);
+      setShown(activeIndex);
+    });
+    return () => cancelAnimationFrame(id);
+    // `shown` fuera a propósito: solo importa de dónde arrancó al montar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupKey, activeIndex]);
+
+  const n = visible.length;
 
   return (
     <div className="shrink-0 px-4 pb-2 pt-3">
       <nav
-        className="flex gap-1 rounded-full bg-black/[0.04] p-1"
+        className="relative flex gap-1 rounded-full bg-black/[0.04] p-1"
         aria-label="Secciones"
       >
-        {visible.map((item) => {
-          const isActive = item.prefix
-            ? pathname.startsWith(item.prefix)
-            : pathname === item.href;
+        {shown >= 0 && n > 0 && (
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute bottom-1 left-1 top-1 rounded-full bg-card shadow-card-soft ${
+              animate ? "cb-slide" : ""
+            }`}
+            style={{
+              // Los segmentos son flex-1 con gap-1 (4 px) dentro de p-1:
+              // el ancho de uno y el salto al siguiente salen del índice,
+              // sin medir nada.
+              width: `calc((100% - 8px - ${(n - 1) * 4}px) / ${n})`,
+              transform: `translateX(calc(${shown} * (100% + 4px)))`,
+            }}
+          />
+        )}
+        {visible.map((item, index) => {
+          const isActive = index === activeIndex;
+          const lit = index === shown;
           return (
             <Link
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={`tap flex min-w-0 flex-1 items-center justify-center rounded-full px-2 py-1.5 text-center text-[11.5px] tracking-[0.1px] transition-colors ${
-                isActive
-                  ? "bg-card font-semibold text-terra shadow-card-soft"
-                  : "font-medium text-muted"
+              // Sin mover la píldora al tocar: la pantalla nueva la hace
+              // viajar desde acá, y si esta ya hubiera arrancado se vería
+              // un salto hacia atrás al montar la otra.
+              className={`tap relative flex min-w-0 flex-1 items-center justify-center rounded-full px-2 py-1.5 text-center text-[11.5px] tracking-[0.1px] transition-colors duration-300 ${
+                lit ? "font-semibold text-terra" : "font-medium text-muted"
               }`}
             >
               <span className="truncate">{item.label}</span>
@@ -57,6 +101,9 @@ export function SegmentedNav({ items }: { items: SegmentItem[] }) {
     </div>
   );
 }
+
+/** Último segmento iluminado por grupo (clave: los href del grupo). */
+const lastSegment = new Map<string, number>();
 
 /** Items del hub Biblioteca (textos para leer). Oraciones va primero: es
  *  lo que se abre todos los días, y antes solo se llegaba desde el Inicio. */

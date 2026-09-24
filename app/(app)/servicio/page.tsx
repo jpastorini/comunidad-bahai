@@ -41,7 +41,7 @@ export default async function ServicioPage() {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2.5 pb-3.5">
+          <div className="cb-stagger flex flex-col gap-2.5 pb-3.5">
             {needs.map((n) => {
               const color = URGENCY_COLOR[n.urgency];
               return (

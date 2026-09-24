@@ -330,7 +330,24 @@ arriba del todo, gesto vertical, y nunca dentro de algo `position: fixed`
 `data-no-pull`. Hace `router.refresh()` en una transición y la estrella
 gira hasta que termina (mínimo 600 ms). Se mueve por ref, sin re-render
 por toque. ⚠️ Una pantalla nueva que scrollee en otro contenedor que no
-sea `.scroll-area` queda sin el gesto.
+sea `.scroll-area` queda sin el gesto. ·
+**Transiciones de nivel 1** (sin migración, todo en `globals.css` salvo
+las dos marcas): movimiento sereno, solo transform/opacity, y todo apagado
+con `prefers-reduced-motion`. (1) Los hijos directos de cada
+`.scroll-area` de `#app-shell` entran subiendo 8 px, escalonados de a
+35 ms hasta el octavo; una lista con `cb-stagger` entra tarjeta por
+tarjeta. ⚠️ El fill-mode es `backwards` y tiene que seguir siéndolo: con
+`both` el transform final queda puesto y convierte a la tarjeta en el
+contenedor de sus hijos `position: fixed` (el visor de fotos quedaría
+encerrado adentro). Como corre al montar, `router.refresh()` no la
+repite. (2) La barra de pestañas tiene UNA marca (barrita + píldora) que
+se desliza y se mueve al TOCAR, antes de que llegue la pantalla; se mide
+con offsetLeft, no con getBoundingClientRect, por el zoom global. (3) La
+píldora de `SegmentedNav` recuerda en una variable del módulo dónde
+estaba, porque cada pantalla monta su propio control: la nueva arranca
+ahí y la lleva a su lugar. (4) Los esqueletos brillan (`cb-shimmer`) en
+vez de parpadear. De paso, todos los encabezados usan `var(--safe-top)`
+en lugar de `env()` crudo.
 
 ## Servicio y datos de ejemplo (migración 064)
 
@@ -2332,6 +2349,11 @@ cambia nada.
 
 ## Pendientes conocidos
 
+- **La barra de pestañas no entra con letra "Grande".** A zoom 1,3 en un
+  celular de 375 px el shell mide 288 px y las cinco pestañas piden 295:
+  "Institucional" se corta y las etiquetas se pegan. Es de antes de las
+  transiciones. Opciones: etiquetas más cortas, achicar el `px-4` de las
+  píldoras solo en ese caso, o que la barra no escale con el zoom.
 - **Aplicar la 064 y cargar las primeras necesidades de servicio.**
   Probar ofrecerse desde un celular y ver que llega el push a la
   Asamblea y que el nombre aparece en `/admin/servicio/<id>/voluntarios`.

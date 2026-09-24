@@ -159,7 +159,7 @@ export default async function CalendarioPage({
             No hay eventos programados para este mes.
           </div>
         ) : (
-          <div className="flex flex-col gap-2 pb-3.5">
+          <div className="cb-stagger flex flex-col gap-2 pb-3.5">
             {items.map((i) => {
               const kindMeta = getCalendarKind(i.kind);
               return (

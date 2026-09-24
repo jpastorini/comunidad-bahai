@@ -73,7 +73,7 @@ export default async function SeleccionarLocalidadPage({
     <div className="flex min-h-[calc(100dvh/var(--ui-zoom,1))] flex-col bg-bg">
       <header
         className="relative overflow-hidden bg-gold-grad px-6 pb-10"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 28px)" }}
+        style={{ paddingTop: "calc(var(--safe-top) + 28px)" }}
       >
         <div className="pointer-events-none absolute right-[-20px] top-6 opacity-[0.08]">
           <BahaiStar size={160} color="#fff" />

@@ -39,7 +39,7 @@ export default async function ActividadesPage() {
             círculos de estudio, devocionales o clases, van a aparecer acá.
           </div>
         )}
-        <div className="flex flex-col gap-2.5 pb-3.5">
+        <div className="cb-stagger flex flex-col gap-2.5 pb-3.5">
           {activities.map((a) => {
             const when = formatActivityWhen(a.starts_at);
             const color = TYPE_COLOR[a.type];

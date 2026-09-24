@@ -187,7 +187,7 @@ export function ChatScreen({
     <>
       <header
         className="relative shrink-0 overflow-hidden bg-gold-grad px-5 pb-3.5"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 28px)" }}
+        style={{ paddingTop: "calc(var(--safe-top) + 28px)" }}
       >
         <div className="pointer-events-none absolute right-[-12px] top-5 opacity-[0.05]">
           <BahaiStar size={100} color="#fff" />

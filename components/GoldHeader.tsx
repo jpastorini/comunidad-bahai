@@ -31,7 +31,7 @@ export function GoldHeader({
   return (
     <header
       className="relative shrink-0 overflow-hidden rounded-b-[20px] bg-gold-grad px-5 pb-5"
-      style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 28px)" }}
+      style={{ paddingTop: "calc(var(--safe-top) + 28px)" }}
     >
       <div
         className="pointer-events-none absolute"

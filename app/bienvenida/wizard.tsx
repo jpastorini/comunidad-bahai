@@ -99,7 +99,7 @@ export function WelcomeWizard({
       {/* Progreso */}
       <header
         className="relative px-6"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 24px)" }}
+        style={{ paddingTop: "calc(var(--safe-top) + 24px)" }}
       >
         <div className="mx-auto flex max-w-md items-center justify-between">
           <div className="flex gap-1.5">

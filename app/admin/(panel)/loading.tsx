@@ -6,7 +6,7 @@
 
 export default function AdminLoading() {
   return (
-    <div className="animate-pulse">
+    <div>
       {/* PageHeader skeleton */}
       <div className="mb-7 md:mb-10">
         <div className="h-2.5 w-16 rounded bg-gold-dark/20" />
@@ -19,7 +19,7 @@ export default function AdminLoading() {
         {[1, 2, 3, 4, 5, 6].map((i) => (
           <div
             key={i}
-            className="flex flex-col gap-4 rounded-2xl border border-black/[0.04] bg-card p-5 shadow-card"
+            className="cb-shimmer flex flex-col gap-4 rounded-2xl border border-black/[0.04] bg-card p-5 shadow-card"
           >
             <div className="flex items-start justify-between">
               <div className="h-11 w-11 rounded-xl bg-terra/8" />

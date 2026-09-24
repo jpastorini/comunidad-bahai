@@ -77,7 +77,7 @@ export default async function ComunicadosPage({
               : "Aún no hay comunicados publicados."}
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="cb-stagger flex flex-col gap-4">
             {visible.map((m, i) => {
               const read = reads.get(m.id) ?? null;
               const poll = polls.get(m.id) ?? null;
