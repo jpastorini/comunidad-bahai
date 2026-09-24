@@ -221,8 +221,21 @@ html[data-splash] #cb-splash {
 .cb-sheet-up {
   animation: cb-sheet-up 513ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
 }
+/* El fondo oscuro detrás de la hoja aparece al mismo ritmo en vez de caer
+   de golpe. Se anima el COLOR de fondo, no la opacidad: la hoja vive
+   adentro de este div y con opacity se desvanecería dos veces. Parte de
+   transparente y termina en el bg-black/50 de la clase (fill backwards). */
+.cb-backdrop-in {
+  animation: cb-backdrop-in 513ms ease-out backwards;
+}
+@keyframes cb-backdrop-in {
+  from {
+    background-color: transparent;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .cb-sheet-up {
+  .cb-sheet-up,
+  .cb-backdrop-in {
     animation: none;
   }
 }

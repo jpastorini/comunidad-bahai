@@ -190,7 +190,7 @@ export function NotificationsSheet({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
+      className="cb-backdrop-in fixed inset-0 z-50 flex items-end justify-center bg-black/50"
       role="dialog"
       aria-modal="true"
       aria-labelledby="cb-push-title"
