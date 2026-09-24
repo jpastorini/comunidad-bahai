@@ -2,7 +2,7 @@ import { IconSearch } from "@/components/Icons";
 
 /**
  * El cuadro de búsqueda de la Biblioteca, arriba de los segmentos
- * Mensajes / Materiales. Es un formulario GET a /buscar: la persona
+ * Oraciones / Mensajes / Materiales. Es un formulario GET a /buscar: la persona
  * escribe acá, da Enter y cae en los resultados (la pantalla de búsqueda
  * arranca sola con `?q=`). Sin JavaScript propio, así se puede usar
  * desde una página de servidor.

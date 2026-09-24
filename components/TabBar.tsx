@@ -19,14 +19,16 @@ type Tab = {
 // Rutas que iluminan cada hub. El primer href es el destino por defecto.
 // Oraciones es contenido de Biblioteca; las pantallas personales sueltas
 // (perfil, notificaciones, fotos, boletín) caen en Inicio como fallback.
-const BIBLIOTECA_ROUTES = ["/mensajes", "/materiales", "/oraciones", "/buscar"];
+// /citas (los Escritos de la Lectura de hoy) también es Biblioteca: se
+// llega desde Materiales y desde la tarjeta del Inicio.
+const BIBLIOTECA_ROUTES = ["/oraciones", "/mensajes", "/materiales", "/buscar", "/citas"];
 const CALENDARIO_ROUTES = ["/calendario", "/fiestas", "/dias-sagrados", "/actividades"];
 // Hub AEL: todo lo directo de la Asamblea Espiritual Local.
 const AEL_ROUTES = ["/comunicados", "/boletin-local", "/chat", "/tesoreria"];
 
 const TABS: Tab[] = [
   { href: "/", label: "Inicio", Icon: IconHome },
-  { href: "/mensajes", label: "Biblioteca", Icon: IconBiblioteca },
+  { href: "/oraciones", label: "Biblioteca", Icon: IconBiblioteca },
   { href: "/calendario", label: "Calendario", Icon: IconCalendario },
   { href: "/servicio", label: "Servicio", Icon: IconServicio },
   { href: "/comunicados", label: "Institucional", Icon: IconAEL },
@@ -109,7 +111,7 @@ export function TabBar({ aelHasUnseen = false }: { aelHasUnseen?: boolean }) {
  * nunca queda apagada y siempre indica dónde estás.
  */
 function resolveActiveHref(pathname: string): string {
-  if (BIBLIOTECA_ROUTES.some((r) => pathname.startsWith(r))) return "/mensajes";
+  if (BIBLIOTECA_ROUTES.some((r) => pathname.startsWith(r))) return "/oraciones";
   if (CALENDARIO_ROUTES.some((r) => pathname.startsWith(r))) return "/calendario";
   if (AEL_ROUTES.some((r) => pathname.startsWith(r))) return "/comunicados";
   if (pathname.startsWith("/servicio")) return "/servicio";

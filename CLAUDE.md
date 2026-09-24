@@ -422,11 +422,18 @@ gente; todavía no hay pantalla para eso.
 ⚠️ Hasta que corra la 053, buscar devuelve "falta aplicar la migración
 053" y el resto de la app no se entera. La entrada es el cuadro de
 búsqueda de la Biblioteca (`components/BibliotecaSearchBox.tsx`), ARRIBA
-de los segmentos Mensajes / Materiales en las tres pantallas del hub
-(`/mensajes`, `/materiales` y `/buscar`): un form GET a `/buscar?q=`,
-que arranca la búsqueda sola. Se probó un tercer segmento "Buscar" y el
-usuario no lo encontró; el cuadro visible en el mismo lugar siempre fue
-lo pedido.
+de los segmentos Oraciones / Mensajes / Materiales en las pantallas del
+hub (`/oraciones`, `/mensajes`, `/materiales` y `/buscar`): un form GET a
+`/buscar?q=`, que arranca la búsqueda sola. Se probó un segmento "Buscar"
+y el usuario no lo encontró; el cuadro visible en el mismo lugar siempre
+fue lo pedido.
+
+**Oraciones es la entrada de la Biblioteca** (2026-09-24): primer
+segmento y destino de la pestaña. Antes vivía en la Biblioteca solo para
+iluminar la pestaña, sin segmento, y se llegaba únicamente desde
+"Accesos rápidos" del Inicio. Arriba de las categorías lleva la Lectura
+de hoy (`/citas?volver=oraciones`), y `/citas` también ilumina la
+Biblioteca.
 
 ## Datos de la Asamblea (migración 052)
 

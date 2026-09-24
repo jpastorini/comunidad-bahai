@@ -58,8 +58,10 @@ export function SegmentedNav({ items }: { items: SegmentItem[] }) {
   );
 }
 
-/** Items del hub Biblioteca (textos para leer). */
+/** Items del hub Biblioteca (textos para leer). Oraciones va primero: es
+ *  lo que se abre todos los días, y antes solo se llegaba desde el Inicio. */
 export const BIBLIOTECA_SEGMENTS: SegmentItem[] = [
+  { href: "/oraciones", label: "Oraciones", prefix: "/oraciones" },
   { href: "/mensajes", label: "Mensajes", prefix: "/mensajes" },
   { href: "/materiales", label: "Materiales", prefix: "/materiales" },
 ];

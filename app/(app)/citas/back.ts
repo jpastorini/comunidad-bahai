@@ -9,6 +9,7 @@
  */
 const ORIGENES = {
   biblioteca: { href: "/materiales", label: "Biblioteca" },
+  oraciones: { href: "/oraciones", label: "Oraciones" },
 } as const;
 
 type OrigenKey = keyof typeof ORIGENES;
