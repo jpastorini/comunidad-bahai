@@ -2524,7 +2524,7 @@ cambia nada.
   datos de imprenta en un recibo emitido por sistema (hoy el pie dice
   "emitido por el sistema de Tesorería"), y si la cotización del balance
   va por cierre o por operación (hoy es la de cierre, declarada).
-- **Aplicar la 066 y compartir el primer estado del Fondo** desde
+- **Compartir el primer estado del Fondo** (la 066 se aplicó el 2026-09-24) desde
   Tesorería → Publicar; hasta entonces `/tesoreria` no muestra cifras.
   Probar con la próxima Fiesta: calcular "hasta el fin del mes",
   compartir, iniciar la Fiesta y ver la diapositiva.
