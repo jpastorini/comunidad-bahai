@@ -337,9 +337,12 @@ sea `.scroll-area` queda sin el gesto. ·
 **Transiciones de nivel 1** (sin migración, todo en `globals.css` salvo
 las dos marcas): movimiento sereno, solo transform/opacity, y todo apagado
 con `prefers-reduced-motion`. (1) Los hijos directos de cada
-`.scroll-area` de `#app-shell` entran subiendo 8 px, escalonados de a
-35 ms hasta el octavo; una lista con `cb-stagger` entra tarjeta por
-tarjeta. ⚠️ El fill-mode es `backwards` y tiene que seguir siéndolo: con
+`.scroll-area` de `#app-shell` entran subiendo 8 px en 405 ms,
+escalonados de a ~47 ms hasta el octavo; una lista con `cb-stagger` entra
+tarjeta por tarjeta. Las marcas se deslizan en 432 ms. Los tiempos
+arrancaron un 35 % más cortos y el usuario los pidió así, más lentos,
+porque "le dan vida a la interacción" (2026-09-24): no achicarlos sin
+preguntar. ⚠️ El fill-mode es `backwards` y tiene que seguir siéndolo: con
 `both` el transform final queda puesto y convierte a la tarjeta en el
 contenedor de sus hijos `position: fixed` (el visor de fotos quedaría
 encerrado adentro). Como corre al montar, `router.refresh()` no la

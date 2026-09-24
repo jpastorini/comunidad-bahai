@@ -140,7 +140,7 @@ export function TabBar({ aelHasUnseen = false }: { aelHasUnseen?: boolean }) {
                     if (el) pillRefs.current.set(tab.href, el);
                     else pillRefs.current.delete(tab.href);
                   }}
-                  className={`relative flex h-8 items-center justify-center rounded-full px-4 transition-colors duration-300 ${
+                  className={`relative flex h-8 items-center justify-center rounded-full px-4 transition-colors duration-[405ms] ${
                     isActive ? "text-terra" : "text-dark/45"
                   }`}
                 >

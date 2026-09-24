@@ -89,7 +89,7 @@ export function SegmentedNav({ items }: { items: SegmentItem[] }) {
               // Sin mover la píldora al tocar: la pantalla nueva la hace
               // viajar desde acá, y si esta ya hubiera arrancado se vería
               // un salto hacia atrás al montar la otra.
-              className={`tap relative flex min-w-0 flex-1 items-center justify-center rounded-full px-2 py-1.5 text-center text-[11.5px] tracking-[0.1px] transition-colors duration-300 ${
+              className={`tap relative flex min-w-0 flex-1 items-center justify-center rounded-full px-2 py-1.5 text-center text-[11.5px] tracking-[0.1px] transition-colors duration-[405ms] ${
                 lit ? "font-semibold text-terra" : "font-medium text-muted"
               }`}
             >

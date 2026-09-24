@@ -61,7 +61,7 @@ export function PullToRefresh() {
   function place(offset: number, animate: boolean) {
     const knob = knobRef.current;
     if (!knob) return;
-    knob.style.transition = animate ? "transform 260ms cubic-bezier(0.2,0.8,0.3,1), opacity 200ms ease" : "none";
+    knob.style.transition = animate ? "transform 351ms cubic-bezier(0.2,0.8,0.3,1), opacity 270ms ease" : "none";
     knob.style.transform = `translate(-50%, ${offset - 48}px)`;
     knob.style.opacity = offset > 4 ? "1" : "0";
   }
