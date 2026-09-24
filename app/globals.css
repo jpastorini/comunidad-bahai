@@ -235,3 +235,34 @@ html[data-splash] #cb-splash {
 html {
   zoom: var(--ui-zoom, 1);
 }
+
+/* Tirar para actualizar (components/PullToRefresh.tsx). La estrella es
+   dorada tenue mientras se tira y se enciende al pasar el umbral; al
+   soltar gira hasta que llegan los datos. */
+.cb-ptr-star {
+  color: #c4a235;
+}
+.cb-ptr-knob[data-armed="1"] .cb-ptr-star {
+  color: #96790e;
+}
+.cb-ptr-knob[data-armed="1"] {
+  box-shadow: 0 4px 16px rgba(150, 121, 14, 0.28);
+}
+.cb-ptr-spin {
+  animation: cb-ptr-spin 900ms linear infinite;
+}
+@keyframes cb-ptr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cb-ptr-spin {
+    animation: cb-ptr-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes cb-ptr-pulse {
+    50% {
+      opacity: 0.45;
+    }
+  }
+}

@@ -6,6 +6,7 @@ import { InstallSheet } from "@/components/InstallSheet";
 import { NotificationsSheet } from "@/components/NotificationsSheet";
 import { PhotoFab } from "@/components/PhotoFab";
 import { PresenceBeacon } from "@/components/PresenceBeacon";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { TabBar } from "@/components/TabBar";
 import { UsageBeacon } from "@/components/UsageBeacon";
 import { requireMember } from "@/lib/auth";
@@ -55,6 +56,8 @@ export default async function AppLayout({
       >
         {children}
       </HeaderUserProvider>
+      {/* Tirar para actualizar en cualquier .scroll-area de la app. */}
+      <PullToRefresh />
       <PhotoFab />
       {/* Hoja de instalación: solo en celular, sin la app instalada. */}
       <InstallSheet />

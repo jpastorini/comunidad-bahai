@@ -318,7 +318,19 @@ sección "Compromisos con el Fondo" más abajo. ·
 libro desde la planilla con que se llevaba antes, con vista previa y
 deshacer. Ver la sección "Importar un ejercicio" más abajo. ·
 **Servicio que funciona** (migración 064): el creyente se ofrece y se
-retira, y la Asamblea recibe un push. Ver la sección "Servicio y datos de ejemplo" más abajo.
+retira, y la Asamblea recibe un push. Ver la sección "Servicio y datos de ejemplo" más abajo. ·
+**Tirar para actualizar** (`components/PullToRefresh.tsx`, montado en el
+layout de `(app)`): en la PWA instalada no había cómo refrescar —no hay
+botón de recarga y `overscroll-behavior-y: contain` apaga el gesto nativo
+de Android, que además recargaría todo—. Un solo listener de toques en el
+documento actúa sobre el `.scroll-area` donde empezó el gesto, así que
+toda pantalla con ese contenedor lo tiene gratis; solo con la lista
+arriba del todo, gesto vertical, y nunca dentro de algo `position: fixed`
+(visor de fotos, hojas) ni de un campo. Para excluir una zona:
+`data-no-pull`. Hace `router.refresh()` en una transición y la estrella
+gira hasta que termina (mínimo 600 ms). Se mueve por ref, sin re-render
+por toque. ⚠️ Una pantalla nueva que scrollee en otro contenedor que no
+sea `.scroll-area` queda sin el gesto.
 
 ## Servicio y datos de ejemplo (migración 064)
 
