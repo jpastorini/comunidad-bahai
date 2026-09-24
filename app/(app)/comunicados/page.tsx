@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { ComunicadoCard } from "@/components/comunicados/ComunicadoCard";
+import { ComunicadosSearch } from "@/components/comunicados/ComunicadosSearch";
 import { ScrollToHash } from "@/components/comunicados/ScrollToHash";
 import { GoldHeader } from "@/components/GoldHeader";
-import { IconSearch } from "@/components/Icons";
 import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { requireMember } from "@/lib/auth";
 import { getLocalAnnouncements } from "@/lib/data";
@@ -58,60 +58,51 @@ export default async function ComunicadosPage({
         backHref="/"
       />
       <SegmentedNav items={AEL_SEGMENTS} />
-      <div className="shrink-0 px-4 pb-1.5 pt-0.5">
-        <div
-          className="flex items-center gap-2 rounded-xl px-3.5 py-2.5"
-          style={{ background: "#C4A23508" }}
-        >
-          <IconSearch size={15} className="text-muted" />
-          <span className="font-body text-[13px] text-muted">
-            Buscar comunicado...
-          </span>
-        </div>
-      </div>
-      <main className="scroll-area flex-1 px-4 pb-4 pt-1">
-        {visible.length === 0 ? (
-          <div className="py-12 text-center text-[13px] text-muted">
-            {showHidden
-              ? "No ocultaste ningún comunicado."
-              : "Aún no hay comunicados publicados."}
-          </div>
-        ) : (
-          <div className="cb-stagger flex flex-col gap-4">
-            {visible.map((m, i) => {
-              const read = reads.get(m.id) ?? null;
-              const poll = polls.get(m.id) ?? null;
-              return (
-                <ComunicadoCard
-                  key={m.id}
-                  message={m}
-                  read={read}
-                  isNew={isNewForReader(m, read ?? undefined)}
-                  featured={i === 0}
-                  poll={poll}
-                  myVote={poll ? myVotes.get(poll.id) ?? null : null}
-                  pollResults={poll ? results.get(poll.id) ?? null : null}
-                />
-              );
-            })}
-          </div>
-        )}
-
-        {/* La salida y la vuelta de los ocultos. Aparece solo si hay
-            alguno: si nadie ocultó nada, el link no dice nada. */}
-        {(hiddenIds.size > 0 || showHidden) && (
-          <div className="mt-6 text-center">
-            <Link
-              href={showHidden ? "/comunicados" : "/comunicados?ocultos=1"}
-              className="text-[12px] font-semibold text-muted hover:text-dark"
-            >
-              {showHidden
-                ? "← Volver a mis comunicados"
-                : `Ver ocultos (${hiddenIds.size})`}
-            </Link>
-          </div>
-        )}
-      </main>
+      {/* Buscador y lista van juntos: el filtrado es del navegador. */}
+      <ComunicadosSearch
+        emptyText={
+          showHidden
+            ? "No ocultaste ningún comunicado."
+            : "Aún no hay comunicados publicados."
+        }
+        items={visible.map((m, i) => {
+          const read = reads.get(m.id) ?? null;
+          const poll = polls.get(m.id) ?? null;
+          return {
+            id: m.id,
+            haystack: [m.title, m.subject, m.excerpt, m.full_text, poll?.question]
+              .filter(Boolean)
+              .join(" "),
+            card: (
+              <ComunicadoCard
+                message={m}
+                read={read}
+                isNew={isNewForReader(m, read ?? undefined)}
+                featured={i === 0}
+                poll={poll}
+                myVote={poll ? myVotes.get(poll.id) ?? null : null}
+                pollResults={poll ? results.get(poll.id) ?? null : null}
+              />
+            ),
+          };
+        })}
+        footer={
+          // La salida y la vuelta de los ocultos. Aparece solo si hay
+          // alguno: si nadie ocultó nada, el link no dice nada.
+          (hiddenIds.size > 0 || showHidden) && (
+            <div className="mt-6 text-center">
+              <Link
+                href={showHidden ? "/comunicados" : "/comunicados?ocultos=1"}
+                className="text-[12px] font-semibold text-muted hover:text-dark"
+              >
+                {showHidden
+                  ? "← Volver a mis comunicados"
+                  : `Ver ocultos (${hiddenIds.size})`}
+              </Link>
+            </div>
+          )
+        }
+      />
     </>
   );
 }

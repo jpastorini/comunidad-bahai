@@ -687,9 +687,18 @@ creyentes**, confirmada o no (el aviso es la invitación).
   `feasts.reminder_sent_at` frena los reintentos. Si la Fiesta todavía no
   empezó, el aviso invita a confirmar.
 
-⚠️ Hasta que corra la 065, el bloque "Voy" no aparece (la lectura detecta
-el esquema faltante), la lista del panel no se muestra, y el aviso de la
-Fiesta falla en el log sin tumbar los otros dos de la mañana.
+La 065 se aplicó el 2026-09-24. Si la tabla faltara, el bloque "Voy" no
+aparece (la lectura detecta el esquema faltante) y el aviso de la Fiesta
+falla en el log sin tumbar los otros dos de la mañana.
+
+**El buscador de Comunicados** (`ComunicadosSearch`, sin migración): el
+cuadro de `/comunicados` era un `<span>` con "Buscar comunicado…" y nada
+detrás. Ahora filtra en el navegador al escribir —título, asunto,
+extracto, texto completo y la pregunta de la encuesta—, todas las
+palabras, sin acentos ni mayúsculas. Las tarjetas que no coinciden se
+esconden con `hidden` y NO se desmontan: conservan su estado (la opción
+elegida de una encuesta sin votar) y, al no estar en pantalla, el
+"visto" de la 048 no las marca.
 
 ## Programa de la Fiesta (migración 050)
 
@@ -2388,8 +2397,8 @@ cambia nada.
   "Institucional" se corta y las etiquetas se pegan. Es de antes de las
   transiciones. Opciones: etiquetas más cortas, achicar el `px-4` de las
   píldoras solo en ese caso, o que la barra no escale con el zoom.
-- **Aplicar la 065 y probar "Voy" con la próxima Fiesta publicada.**
-  Confirmar desde un celular, ver el nombre en `/admin/fiestas/<id>`, y
+- **Probar "Voy" con la próxima Fiesta publicada** (la 065 se aplicó el
+  2026-09-24). Confirmar desde un celular, ver el nombre en `/admin/fiestas/<id>`, y
   a las 8:00 del día de la celebración mirar que llegue el aviso (y una
   sola vez). Queda abierto: un aviso solo para quienes confirmaron (hora,
   dirección), y la lista impresa para la anfitriona.
