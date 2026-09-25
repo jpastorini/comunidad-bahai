@@ -261,7 +261,10 @@ El control de lecturas (`ReadingSize`) se suma al global.
 a zoom 1.3 mide 130 % de la pantalla. Todo vh/dvh de la app va dividido
 por `var(--ui-zoom, 1)` (`calc(100dvh/var(--ui-zoom,1))`), igual que
 `--safe-top/--safe-bottom`. Si agregás una altura en vh, dividila o el
-shell desborda en "Grande" ·
+shell desborda en "Grande". La barra de pestañas es la excepción que
+NO escala del todo: el relleno de las píldoras va dividido por el zoom y
+las etiquetas se ajustan al ancho de la barra (`cqw`), porque con "Muy
+grande" en un celular de 375 px no entraban ·
 **Vida devocional**: "Lectura de hoy" (cita de los Escritos Sagrados, la
 misma para toda la comunidad cada día, determinística por fecha — sin tabla
 ni estado, ver `lib/citas.ts`; corpus de 991 citas en `public/citas.json`
@@ -2496,11 +2499,6 @@ cambia nada.
 
 ## Pendientes conocidos
 
-- **La barra de pestañas no entra con letra "Grande".** A zoom 1,3 en un
-  celular de 375 px el shell mide 288 px y las cinco pestañas piden 295:
-  "Institucional" se corta y las etiquetas se pegan. Es de antes de las
-  transiciones. Opciones: etiquetas más cortas, achicar el `px-4` de las
-  píldoras solo en ese caso, o que la barra no escale con el zoom.
 - **Probar "Voy" con la próxima Fiesta publicada** (la 065 se aplicó el
   2026-09-24). Confirmar desde un celular, ver el nombre en `/admin/fiestas/<id>`, y
   a las 8:00 del día de la celebración mirar que llegue el aviso (y una

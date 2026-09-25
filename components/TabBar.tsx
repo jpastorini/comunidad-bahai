@@ -90,7 +90,11 @@ export function TabBar({ aelHasUnseen = false }: { aelHasUnseen?: boolean }) {
       // Android suele reportarla en 0 aunque la barra exista, dejando las etiquetas
       // del menú ocultas detrás del gesto. El max() garantiza un piso de separación
       // aunque el inset venga en 0, sin dejar demasiado espacio en blanco.
-      style={{ paddingBottom: "max(var(--safe-bottom) + 18px, 22px)" }}
+      // containerType: las etiquetas se miden contra el ancho de la barra (cqw).
+      style={{
+        paddingBottom: "max(var(--safe-bottom) + 18px, 22px)",
+        containerType: "inline-size",
+      }}
     >
       <ul ref={ulRef} className="relative flex items-center justify-around pt-2.5">
         {mark && (
@@ -140,7 +144,12 @@ export function TabBar({ aelHasUnseen = false }: { aelHasUnseen?: boolean }) {
                     if (el) pillRefs.current.set(tab.href, el);
                     else pillRefs.current.delete(tab.href);
                   }}
-                  className={`relative flex h-8 items-center justify-center rounded-full px-4 transition-colors duration-[405ms] ${
+                  // El relleno de la píldora NO crece con la letra: a zoom 1,3 en un
+                  // celular de 375 px el shell mide 288 px y con px-4 las cinco
+                  // pestañas pedían 295 ("Institucional" se cortaba). Dividido
+                  // por el zoom, mide lo mismo en pantalla en los tres tamaños.
+                  style={{ paddingInline: "calc(16px / var(--ui-zoom, 1))" }}
+                  className={`relative flex h-8 items-center justify-center rounded-full transition-colors duration-[405ms] ${
                     isActive ? "text-terra" : "text-dark/45"
                   }`}
                 >
@@ -153,7 +162,14 @@ export function TabBar({ aelHasUnseen = false }: { aelHasUnseen?: boolean }) {
                   <tab.Icon size={isActive ? 24 : 22} />
                 </span>
                 <span
-                  className={`text-[10.5px] tracking-[0.1px] ${
+                  // Con letra grande las cinco etiquetas no entran: juntas piden unos
+                  // 25 px de ancho por px de letra, más los huecos. Hasta donde
+                  // entran van a 10,5 px (que el zoom agranda como a todo); en un
+                  // celular angosto con "Muy grande" se achican lo justo para
+                  // entrar; en pantalla quedan como con la letra normal o más
+                  // grandes (el peor caso, 320 px a 1,3, sale a 10,2 px).
+                  style={{ fontSize: "min(10.5px, calc((100cqw - 48px) / 25))" }}
+                  className={`whitespace-nowrap tracking-[0.1px] ${
                     isActive
                       ? "font-semibold text-terra"
                       : "font-medium text-dark/55"
