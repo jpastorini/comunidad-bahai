@@ -26,6 +26,7 @@ import {
   voidEntryAction,
 } from "./actions";
 import { EntryForm } from "./entry-form";
+import { DateInput } from "@/components/DateInput";
 
 type Props = {
   catalog: LedgerCatalog;
@@ -895,8 +896,8 @@ function FiltersPanel({
 }
 
 /** Las dos puntas del rango. Se aplican con el botón y no al tipear,
- *  porque cada cambio es una ida al servidor y un `<input type="date">`
- *  emite una fecha a medio escribir mientras se completa. */
+ *  porque cada cambio es una ida al servidor y el campo emite ""
+ *  mientras la fecha está a medio escribir. */
 function RangeInputs({
   range,
   onRange,
@@ -913,10 +914,9 @@ function RangeInputs({
         <span className="mb-1 block text-[11px] font-semibold text-muted">
           Desde
         </span>
-        <input
-          type="date"
+        <DateInput
           value={from}
-          onChange={(e) => setFrom(e.target.value)}
+          onValueChange={setFrom}
           className={controlClass}
         />
       </label>
@@ -924,10 +924,9 @@ function RangeInputs({
         <span className="mb-1 block text-[11px] font-semibold text-muted">
           Hasta
         </span>
-        <input
-          type="date"
+        <DateInput
           value={to}
-          onChange={(e) => setTo(e.target.value)}
+          onValueChange={setTo}
           className={controlClass}
         />
       </label>
@@ -1463,8 +1462,7 @@ function TransferForm({
           <span className="mb-1 block text-[10.5px] uppercase tracking-wide text-muted">
             Fecha
           </span>
-          <input
-            type="date"
+          <DateInput
             name="entry_date"
             defaultValue={today}
             required

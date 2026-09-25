@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { IconArrowRight } from "@/components/Icons";
+import { DateInput as BaseDateInput } from "@/components/DateInput";
 
 // ──────────────── Page header ────────────────
 type PageHeaderProps = {
@@ -312,4 +313,10 @@ export function LinkRow({ href, label }: { href: string; label: string }) {
       <IconArrowRight size={12} />
     </Link>
   );
+}
+
+/** El campo de fecha del panel: dd/mm/aaaa siempre, con el mismo aspecto
+ *  que TextInput. Ver components/DateInput.tsx. */
+export function DateInput(props: React.ComponentProps<typeof BaseDateInput>) {
+  return <BaseDateInput {...props} className={`${INPUT_BASE} ${props.className ?? ""}`} />;
 }

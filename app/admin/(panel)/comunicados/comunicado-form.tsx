@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   Checkbox,
+  DateInput,
   Field,
   Select,
   TextArea,
@@ -50,10 +51,9 @@ export function ComunicadoForm({
       <Card>
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Fecha de creado" name="date" required>
-            <TextInput
+            <DateInput
               id="date"
               name="date"
-              type="date"
               required
               defaultValue={comunicado?.date ?? today}
             />

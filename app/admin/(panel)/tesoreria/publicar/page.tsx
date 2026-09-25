@@ -19,6 +19,7 @@ import {
   discardPublicationDraftAction,
   sharePublicationAction,
 } from "./actions";
+import { DateInput } from "@/components/DateInput";
 
 export const dynamic = "force-dynamic";
 
@@ -84,9 +85,8 @@ export default async function PublicarPage() {
           <label className="text-[12.5px] text-muted" htmlFor="custom_date">
             Otra fecha:
           </label>
-          <input
+          <DateInput
             id="custom_date"
-            type="date"
             name="custom_date"
             max={today}
             required

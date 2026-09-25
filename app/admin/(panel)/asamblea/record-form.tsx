@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Button, Field, TextArea, TextInput } from "@/components/admin/ui";
+import { Button, DateInput, Field, TextArea, TextInput } from "@/components/admin/ui";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import {
   ASSEMBLY_DOCS_BUCKET,
@@ -127,10 +127,9 @@ export function RecordForm({
         />
       </Field>
       <Field label="Fecha de registro" name="registered_at">
-        <TextInput
+        <DateInput
           id="registered_at"
           name="registered_at"
-          type="date"
           defaultValue={record?.registered_at ?? ""}
         />
       </Field>

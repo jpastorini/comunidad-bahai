@@ -2,6 +2,7 @@ import {
   Banner,
   Button,
   Card,
+  DateInput,
   Field,
   Select,
   TextArea,
@@ -82,10 +83,9 @@ export function EventForm({ event, defaultDate }: Props) {
           <>
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Fecha" name="date" required>
-                <TextInput
+                <DateInput
                   id="date"
                   name="date"
-                  type="date"
                   required
                   defaultValue={date}
                 />

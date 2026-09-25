@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Checkbox, Field, TextInput } from "@/components/admin/ui";
+import { Checkbox, DateInput, Field, TextInput } from "@/components/admin/ui";
 import { POLL_MAX_OPTIONS, POLL_MIN_OPTIONS } from "@/lib/polls-shared";
 import type { MessagePoll } from "@/lib/types";
 
@@ -163,10 +163,9 @@ export function PollFields({ poll, participants, alwaysOn = false }: Props) {
               name="poll_closes_on"
               hint="Opcional. Hasta el final de ese día. Después nadie puede votar y se ven los resultados finales."
             >
-              <TextInput
+              <DateInput
                 id="poll_closes_on"
                 name="poll_closes_on"
-                type="date"
                 defaultValue={closesOn}
               />
             </Field>

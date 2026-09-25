@@ -12,6 +12,7 @@ import {
   usagePresets,
   type UsagePerson,
 } from "@/lib/usage";
+import { DateInput } from "@/components/DateInput";
 
 /**
  * Uso de la app por localidad (049): cuántos la tienen instalada,
@@ -63,8 +64,7 @@ export default async function UsoPage({
           <form method="get" className="flex flex-wrap items-center gap-2 text-[12px]">
             <label className="flex items-center gap-1.5">
               <span className="text-muted">Del</span>
-              <input
-                type="date"
+              <DateInput
                 name="from"
                 defaultValue={range.from}
                 max={today}
@@ -73,8 +73,7 @@ export default async function UsoPage({
             </label>
             <label className="flex items-center gap-1.5">
               <span className="text-muted">al</span>
-              <input
-                type="date"
+              <DateInput
                 name="to"
                 defaultValue={range.to}
                 max={today}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Field, Select, TextInput } from "@/components/admin/ui";
+import { DateInput, Field, Select, TextInput } from "@/components/admin/ui";
 import {
   AUDIENCE_HINT,
   AUDIENCE_LABEL,
@@ -112,28 +112,26 @@ export function PeriodPicker({
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <Field label="Desde" name="period_from" required>
-          <TextInput
+          <DateInput
             id="period_from"
             name="period_from"
-            type="date"
             required
             max={today}
             value={from}
-            onChange={(e) => {
-              setFrom(e.target.value);
+            onValueChange={(v) => {
+              setFrom(v);
               setPresetKey("custom");
             }}
           />
         </Field>
         <Field label="Hasta" name="period_to" required>
-          <TextInput
+          <DateInput
             id="period_to"
             name="period_to"
-            type="date"
             required
             value={to}
-            onChange={(e) => {
-              setTo(e.target.value);
+            onValueChange={(v) => {
+              setTo(v);
               setPresetKey("custom");
             }}
           />

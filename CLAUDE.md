@@ -164,6 +164,16 @@ consulta vale ~120 ms; con las dos puntas en São Paulo (`gru1`) valdría
   tus tags te ponía `role='member'`). Si un campo está bloqueado para
   alguien, la regla va en el action —omitir la columna del payload—, no
   solo en el markup.
+- **Fechas: dd/mm/aaaa, también en los formularios.** Un `<input
+  type="date">` lo dibuja el navegador con el idioma de SU interfaz (en
+  un Chrome en inglés sale mm/dd/aaaa) y la página no puede cambiarlo.
+  Todo campo de fecha va con `DateInput` (`components/DateInput.tsx`; en
+  el panel, el de `components/admin/ui.tsx` con el estilo de
+  `TextInput`): se escribe dd/mm/aaaa, trae el calendario del sistema
+  en el ícono y envía "yyyy-mm-dd" en un hidden con el mismo `name`, así
+  que los actions no cambian. Controlado: `value` + `onValueChange(iso)`,
+  que recibe "" mientras la fecha está a medio escribir. Los dos
+  `type="time"` todavía muestran AM/PM en un navegador en inglés.
 - Commits descriptivos enfocados en el "por qué". El `git log` es parte
   de la memoria compartida.
 

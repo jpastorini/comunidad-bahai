@@ -9,6 +9,7 @@ import type {
   LedgerCatalog,
   TreasuryEntry,
 } from "@/lib/treasury-ledger";
+import { DateInput } from "@/components/DateInput";
 import { parseMoney } from "@/lib/treasury-format";
 import { treasuryYearForDate } from "@/lib/treasury-year";
 import { saveEntryAction } from "./actions";
@@ -218,11 +219,10 @@ export function EntryForm({
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Field label="Fecha" className="col-span-1">
-          <input
-            type="date"
+          <DateInput
             name="entry_date"
             value={entryDate}
-            onChange={(e) => setEntryDate(e.target.value)}
+            onValueChange={setEntryDate}
             required
             className={inputClass}
           />

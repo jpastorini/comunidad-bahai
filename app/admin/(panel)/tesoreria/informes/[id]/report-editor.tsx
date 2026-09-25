@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   Checkbox,
+  DateInput,
   Field,
   Select,
   TextArea,
@@ -169,20 +170,18 @@ export function ReportEditor({
             />
           </Field>
           <Field label="Desde" name="period_from" required>
-            <TextInput
+            <DateInput
               id="period_from"
               name="period_from"
-              type="date"
               required
               max={today}
               defaultValue={periodFrom}
             />
           </Field>
           <Field label="Hasta" name="period_to" required>
-            <TextInput
+            <DateInput
               id="period_to"
               name="period_to"
-              type="date"
               required
               defaultValue={periodTo}
             />
@@ -470,10 +469,9 @@ export function ReportEditor({
               />
             </Field>
             <Field label="Fecha de la cotización" name="balance_rate_date">
-              <TextInput
+              <DateInput
                 id="balance_rate_date"
                 name="balance_rate_date"
-                type="date"
                 defaultValue={bal?.rateDate ?? periodTo}
               />
             </Field>

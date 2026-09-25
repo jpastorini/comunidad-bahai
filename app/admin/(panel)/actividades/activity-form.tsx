@@ -1,6 +1,7 @@
 import {
   Button,
   Card,
+  DateInput,
   Field,
   Select,
   TextArea,
@@ -76,10 +77,9 @@ export function ActivityForm({ activity }: Props) {
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <Field label="Fecha" name="date" required>
-            <TextInput
+            <DateInput
               id="date"
               name="date"
-              type="date"
               required
               defaultValue={date}
             />

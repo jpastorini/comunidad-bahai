@@ -6,6 +6,7 @@ import {
   Banner,
   Button,
   Card,
+  DateInput,
   Field,
   Select,
   TextArea,
@@ -146,7 +147,7 @@ export function ActaImporter() {
 
           <div className="mt-4">
             <Field label="Fecha de la reunión" name="meeting_date" hint="Opcional">
-              <TextInput id="meeting_date" name="meeting_date" type="date" />
+              <DateInput id="meeting_date" name="meeting_date" />
             </Field>
           </div>
 
@@ -260,11 +261,10 @@ export function ActaImporter() {
                   </Select>
                 </Field>
                 <Field label="Fecha límite" name={`due-${idx}`}>
-                  <TextInput
+                  <DateInput
                     id={`due-${idx}`}
-                    type="date"
                     value={row.due_date}
-                    onChange={(e) => updateRow(idx, { due_date: e.target.value })}
+                    onValueChange={(v) => updateRow(idx, { due_date: v })}
                   />
                 </Field>
               </div>

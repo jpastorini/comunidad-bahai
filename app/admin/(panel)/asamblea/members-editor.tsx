@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Banner, Button, Field, Select, TextArea, TextInput } from "@/components/admin/ui";
+import { Banner, Button, DateInput, Field, Select, TextArea, TextInput } from "@/components/admin/ui";
 import {
   ASSEMBLY_SIZE,
   ASSEMBLY_OFFICES,
@@ -102,7 +102,7 @@ export function MembersEditor({ year, electedOn, notes, profiles, initial, prefi
           name="elected_on"
           hint="Normalmente el primer día de Riḍván."
         >
-          <TextInput id="elected_on" name="elected_on" type="date" defaultValue={electedOn} />
+          <DateInput id="elected_on" name="elected_on" defaultValue={electedOn} />
         </Field>
         <div className="flex items-end text-[12px] text-muted">
           {filled} de {ASSEMBLY_SIZE} miembros cargados

@@ -1,4 +1,4 @@
-import { Button, Card, Field, Select, TextArea, TextInput } from "@/components/admin/ui";
+import { Button, Card, DateInput, Field, Select, TextArea, TextInput } from "@/components/admin/ui";
 import type { AssemblyTask } from "@/lib/tasks";
 import { upsertTaskAction } from "./actions";
 
@@ -61,10 +61,9 @@ export function TaskForm({ task }: { task?: AssemblyTask }) {
           </Field>
 
           <Field label="Fecha límite" name="due_date" hint="Opcional">
-            <TextInput
+            <DateInput
               id="due_date"
               name="due_date"
-              type="date"
               defaultValue={task?.due_date ?? ""}
             />
           </Field>

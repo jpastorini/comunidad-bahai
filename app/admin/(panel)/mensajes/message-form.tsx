@@ -2,6 +2,7 @@ import {
   Button,
   Card,
   Checkbox,
+  DateInput,
   Field,
   TextArea,
   TextInput,
@@ -23,10 +24,9 @@ export function MessageForm({ message }: Props) {
       <Card>
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Fecha" name="date" required>
-            <TextInput
+            <DateInput
               id="date"
               name="date"
-              type="date"
               required
               defaultValue={message?.date ?? today}
             />

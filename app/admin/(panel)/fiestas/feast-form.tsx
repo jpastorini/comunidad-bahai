@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Button,
   Card,
+  DateInput,
   Field,
   Select,
   TextArea,
@@ -232,9 +233,8 @@ function LocationRow({ location }: { location: Partial<FeastLocation> & { _new?:
       </div>
       <div className="mt-3 grid gap-3 md:grid-cols-[1fr,1fr,1.5fr]">
         <Field label="Fecha" name="location_date[]">
-          <TextInput
+          <DateInput
             name="location_date[]"
-            type="date"
             defaultValue={date}
           />
         </Field>
