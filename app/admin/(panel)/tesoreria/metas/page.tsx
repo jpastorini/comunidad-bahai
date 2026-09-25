@@ -2,6 +2,7 @@ import { Button, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/treasury-ledger";
+import { goalLinkRefs } from "@/lib/budget-links";
 import { getGoals } from "@/lib/treasury-progress";
 import { treasuryYearForDate } from "@/lib/treasury-year";
 import { saveGoalsAction } from "./actions";
@@ -18,9 +19,14 @@ export default async function MetasPage() {
 
   const [goals, funds, categories, subcategories] = await Promise.all([
     getGoals(supabase, session.locality.id),
-    supabase.from("treasury_funds").select("id, name").eq("is_active", true).order("sort_order"),
-    supabase.from("treasury_categories").select("id, name").eq("is_active", true).order("sort_order"),
-    supabase.from("treasury_subcategories").select("id, name").eq("is_active", true).order("sort_order"),
+    supabase.from("treasury_funds").select("id, name").eq("locality_id", session.locality.id).eq("is_active", true).order("sort_order"),
+    supabase.from("treasury_categories").select("id, name").eq("locality_id", session.locality.id).eq("is_active", true).order("sort_order"),
+    supabase
+      .from("treasury_subcategories")
+      .select("id, name, category_id")
+      .eq("locality_id", session.locality.id)
+      .eq("is_active", true)
+      .order("sort_order"),
   ]);
 
   const rows: GoalRowData[] = goals.map((g) => ({
@@ -34,14 +40,8 @@ export default async function MetasPage() {
     cadence: g.cadence,
     direction: g.direction,
     status: g.status,
-    // Manda el vínculo más específico, igual que en el presupuesto.
-    ledgerRef: g.ledger_subcategory_id
-      ? `sub:${g.ledger_subcategory_id}`
-      : g.ledger_category_id
-        ? `cat:${g.ledger_category_id}`
-        : g.ledger_fund_id
-          ? `fund:${g.ledger_fund_id}`
-          : "",
+    // Varios rubros por meta (068).
+    ledgerRefs: goalLinkRefs(g),
     yearScope: g.bahai_year === null ? "" : String(g.bahai_year),
   }));
 
@@ -63,7 +63,11 @@ export default async function MetasPage() {
         options={{
           funds: (funds.data ?? []) as { id: string; name: string }[],
           categories: (categories.data ?? []) as { id: string; name: string }[],
-          subcategories: (subcategories.data ?? []) as { id: string; name: string }[],
+          subcategories: (subcategories.data ?? []) as {
+            id: string;
+            name: string;
+            category_id: string;
+          }[],
         }}
         bahaiYear={bahaiYear}
         saveAction={saveGoalsAction}

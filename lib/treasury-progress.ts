@@ -1,7 +1,14 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findBudgetForYear } from "./budget-lookup";
-import { isLinked, linkedActual, type BudgetLinkRow } from "./budget-links";
+import {
+  goalActual,
+  goalLinks,
+  isLinked,
+  linkedActual,
+  type BudgetLinkRow,
+  type GoalLinkRow,
+} from "./budget-links";
 import { addMoney } from "./treasury-format";
 import {
   BUDGET_CURRENCY,
@@ -43,6 +50,9 @@ type ProgressRpc = {
   spentBySubcategory?: Agg[];
   spentByFund?: Agg[];
   receivedByFund?: Agg[];
+  /** Desde la 068: para medir una meta de ingreso por rubro. */
+  receivedByCategory?: Agg[];
+  receivedBySubcategory?: Agg[];
   balanceByFund?: Agg[];
 };
 
@@ -56,7 +66,7 @@ function indexBy(rows: Agg[] | undefined, currency: string): Map<string, number>
   return map;
 }
 
-type GoalRow = {
+type GoalRow = GoalLinkRow & {
   id: string;
   title: string;
   description: string | null;
@@ -68,9 +78,6 @@ type GoalRow = {
   target_amount: number | string | null;
   bahai_year: number | null;
   sort_order: number;
-  ledger_fund_id: string | null;
-  ledger_category_id: string | null;
-  ledger_subcategory_id: string | null;
 };
 
 type BudgetItemRow = BudgetLinkRow & {
@@ -108,9 +115,8 @@ export async function getTreasuryProgress(
     findBudgetForYear(supabase, opts.localityId, year),
     supabase
       .from("treasury_goals")
-      .select(
-        "id, title, description, badge, status, cadence, direction, currency, target_amount, bahai_year, sort_order, ledger_fund_id, ledger_category_id, ledger_subcategory_id"
-      )
+      // "*": con o sin la 068 (listas de rubros), goalLinks() lee lo que haya.
+      .select("*")
       .eq("locality_id", opts.localityId)
       .neq("status", "archivada")
       .order("sort_order"),
@@ -118,6 +124,8 @@ export async function getTreasuryProgress(
   ]);
 
   const agg = (rpc.data ?? {}) as ProgressRpc;
+  // Sin la 068 no llegan los recibidos por rubro: una meta de ingreso
+  // por categoría queda en cero, como antes.
   const fundNames = new Map(
     ((funds.data ?? []) as Array<{ id: string; name: string }>).map((f) => [
       f.id,
@@ -159,34 +167,36 @@ export async function getTreasuryProgress(
     .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 
   // ─── Presupuesto ───────────────────────────────────────────────
-  let items: BudgetItemRow[] = [];
-  // De qué categoría es cada subcategoría: una línea que vincula una
-  // categoría entera y una subcategoría suya no cuenta el gasto dos veces.
+  // De qué categoría es cada subcategoría: una línea (o una meta) que
+  // vincula una categoría entera y una subcategoría suya no cuenta el
+  // gasto dos veces.
+  const [{ data: itemsData }, { data: subs }] = await Promise.all([
+    budgetRow
+      ? supabase
+          .from("treasury_budget_items")
+          // "*" y no una lista: con o sin la 067, budgetLinks() lee lo que haya.
+          .select("*")
+          .eq("budget_id", budgetRow.id)
+          .gt("planned_amount", 0)
+          .order("position")
+      : Promise.resolve({ data: [] as BudgetItemRow[] }),
+    supabase
+      .from("treasury_subcategories")
+      .select("id, category_id")
+      .eq("locality_id", opts.localityId),
+  ]);
+  const items = (itemsData ?? []) as BudgetItemRow[];
   const subParent = new Map<string, string>();
-  if (budgetRow) {
-    const [{ data }, { data: subs }] = await Promise.all([
-      supabase
-        .from("treasury_budget_items")
-        // "*" y no una lista: con o sin la 067, budgetLinks() lee lo que haya.
-        .select("*")
-        .eq("budget_id", budgetRow.id)
-        .gt("planned_amount", 0)
-        .order("position"),
-      supabase
-        .from("treasury_subcategories")
-        .select("id, category_id")
-        .eq("locality_id", opts.localityId),
-    ]);
-    items = (data ?? []) as BudgetItemRow[];
-    for (const r of (subs ?? []) as { id: string; category_id: string }[]) {
-      subParent.set(r.id, r.category_id);
-    }
+  for (const r of (subs ?? []) as { id: string; category_id: string }[]) {
+    subParent.set(r.id, r.category_id);
   }
 
   const spentByCategory = indexBy(agg.spentByCategory, BUDGET_CURRENCY);
   const spentBySubcategory = indexBy(agg.spentBySubcategory, BUDGET_CURRENCY);
   const spentByFund = indexBy(agg.spentByFund, BUDGET_CURRENCY);
   const receivedByFund = indexBy(agg.receivedByFund, BUDGET_CURRENCY);
+  const receivedByCategory = indexBy(agg.receivedByCategory, BUDGET_CURRENCY);
+  const receivedBySubcategory = indexBy(agg.receivedBySubcategory, BUDGET_CURRENCY);
 
   const categories: ProgressCategory[] = items.map((it) => ({
     id: it.id,
@@ -252,23 +262,20 @@ export async function getTreasuryProgress(
 
   const progressGoals: ProgressGoal[] = goalRows.map((g) => {
     const target = g.target_amount === null ? null : Number(g.target_amount);
-    const linked = Boolean(
-      g.ledger_subcategory_id || g.ledger_category_id || g.ledger_fund_id
-    );
+    // Varios rubros por meta (068): por categorías y subcategorías, o si
+    // no hay ninguna, por fondos. Ver lib/budget-links.ts.
+    const linked = goalLinks(g).mode !== "ninguno";
 
-    let actual = 0;
-    if (g.currency === BUDGET_CURRENCY) {
-      const bySub = g.direction === "gasto" ? spentBySubcategory : null;
-      const byCat = g.direction === "gasto" ? spentByCategory : null;
-      const byFund = g.direction === "gasto" ? spentByFund : receivedByFund;
-      if (g.ledger_subcategory_id && bySub) {
-        actual = bySub.get(g.ledger_subcategory_id) ?? 0;
-      } else if (g.ledger_category_id && byCat) {
-        actual = byCat.get(g.ledger_category_id) ?? 0;
-      } else if (g.ledger_fund_id) {
-        actual = byFund.get(g.ledger_fund_id) ?? 0;
-      }
-    }
+    const actual =
+      g.currency === BUDGET_CURRENCY
+        ? goalActual(
+            g,
+            g.direction === "gasto"
+              ? { byFund: spentByFund, byCategory: spentByCategory, bySubcategory: spentBySubcategory }
+              : { byFund: receivedByFund, byCategory: receivedByCategory, bySubcategory: receivedBySubcategory },
+            subParent
+          )
+        : 0;
 
     // Una meta mensual se compara contra el acumulado que corresponde a
     // los meses transcurridos, no contra el objetivo de un mes suelto:
@@ -339,9 +346,7 @@ export async function getGoals(
 ): Promise<TreasuryGoal[]> {
   const { data } = await supabase
     .from("treasury_goals")
-    .select(
-      "id, title, description, badge, status, cadence, direction, currency, target_amount, bahai_year, sort_order, ledger_fund_id, ledger_category_id, ledger_subcategory_id"
-    )
+    .select("*")
     .eq("locality_id", localityId)
     .order("status")
     .order("sort_order");

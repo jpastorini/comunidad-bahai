@@ -1,5 +1,5 @@
 import { addMoney, formatMoney } from "./treasury-format";
-import { isLinked, type BudgetLinkRow } from "./budget-links";
+import { goalLinks, isLinked, type BudgetLinkRow, type GoalLinkRow } from "./budget-links";
 import {
   buildCashbook,
   monthKeyOf,
@@ -163,14 +163,11 @@ export type AuditBudget = {
   >;
 } | null;
 
-export type AuditGoal = {
+export type AuditGoal = GoalLinkRow & {
   id: string;
   title: string;
   status: string;
   target_amount: number | null;
-  ledger_fund_id: string | null;
-  ledger_category_id: string | null;
-  ledger_subcategory_id: string | null;
 };
 
 export type AuditLegal = {
@@ -1834,9 +1831,7 @@ const H: Rule[] = [
           (g) =>
             g.status === "activa" &&
             g.target_amount != null &&
-            !g.ledger_fund_id &&
-            !g.ledger_category_id &&
-            !g.ledger_subcategory_id
+            goalLinks(g).mode === "ninguno"
         )
         .map((g) => ({
           code: "META_SIN_VINCULO",

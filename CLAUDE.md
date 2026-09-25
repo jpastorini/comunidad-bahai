@@ -1488,8 +1488,20 @@ Tres cosas que sostienen el diseño:
 
 **Metas** (`treasury_goals`): dejaron de ser texto del informe. Una meta
 declara **cómo se mide** — `direction` ('gasto' para financiar algo,
-'ingreso' para juntar algo) más el vínculo al libro (fondo, categoría o
-subcategoría; manda el más específico). `target_amount` puede ser NULL:
+'ingreso' para juntar algo) más el vínculo al libro, que desde la 068
+son **varios rubros** (`ledger_fund_ids`, `ledger_category_ids`,
+`ledger_subcategory_ids`): se mide por FONDOS o por CATEGORÍAS y
+SUBCATEGORÍAS, nunca mezclados, porque un gasto que está en el fondo y en
+la categoría se contaría dos veces y con los agregados no hay cómo
+saberlo (`goalLinks()` / `goalActual()` en `lib/budget-links.ts`; el
+selector `components/admin/LedgerLinksPicker.tsx`, el mismo del
+presupuesto, deja de ofrecer un grupo cuando se eligió del otro). Una meta
+de **ingreso** por categoría daba siempre cero, porque la función solo
+devolvía lo recibido por fondo: la 068 suma `receivedByCategory` y
+`receivedBySubcategory` a `treasury_progress()`. La misma migración
+repuso en esa función el guard de Amigos de la Fe de la 047, que la 054
+había perdido al reescribirla — si se vuelve a reescribir, copiar la
+versión de la 068 entera. `target_amount` puede ser NULL:
 "conseguir un POS propio" es una meta real sin cifra y se informa por su
 etiqueta de estado. Una meta `mensual` se compara contra el acumulado de
 los meses transcurridos, no contra un mes suelto.

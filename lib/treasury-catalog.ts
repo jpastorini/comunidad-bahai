@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { budgetLinks, type BudgetLinkRow } from "./budget-links";
+import { budgetLinks, goalLinks, type BudgetLinkRow, type GoalLinkRow } from "./budget-links";
 import type {
   TreasuryAccount,
   TreasuryCategory,
@@ -160,7 +160,8 @@ export async function getCatalogUsage(
       .select("*"),
     supabase
       .from("treasury_goals")
-      .select("ledger_fund_id, ledger_category_id, ledger_subcategory_id")
+      // "*": con o sin la 068 (listas de rubros), goalLinks() lee lo que haya.
+      .select("*")
       .eq("locality_id", localityId),
   ]);
 
@@ -178,14 +179,11 @@ export async function getCatalogUsage(
     for (const id of links.subcategories) bump(usage, id, "budget");
   }
   if (goals.error) console.warn("[getCatalogUsage] goals", goals.error.message);
-  for (const g of (goals.data ?? []) as {
-    ledger_fund_id: string | null;
-    ledger_category_id: string | null;
-    ledger_subcategory_id: string | null;
-  }[]) {
-    bump(usage, g.ledger_fund_id, "goals");
-    bump(usage, g.ledger_category_id, "goals");
-    bump(usage, g.ledger_subcategory_id, "goals");
+  for (const g of (goals.data ?? []) as GoalLinkRow[]) {
+    const links = goalLinks(g);
+    for (const id of [...links.funds, ...links.categories, ...links.subcategories]) {
+      bump(usage, id, "goals");
+    }
   }
 
   return usage;

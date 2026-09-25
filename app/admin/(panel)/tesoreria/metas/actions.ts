@@ -20,14 +20,35 @@ const CADENCES = ["mensual", "anual", "unica"];
 const DIRECTIONS = ["gasto", "ingreso"];
 const STATUSES = ["activa", "lograda", "archivada"];
 
-/** "sub:<uuid>" → las tres columnas de vínculo con el libro. */
-function parseLedgerRef(raw: string) {
-  const [kind, id] = (raw ?? "").split(":");
-  const valid = UUID.test(id ?? "");
-  return {
-    ledger_fund_id: valid && kind === "fund" ? id : null,
-    ledger_category_id: valid && kind === "cat" ? id : null,
-    ledger_subcategory_id: valid && kind === "sub" ? id : null,
+/**
+ * Los rubros de cada meta (068): "<índice de la fila>|fund:<uuid>" (o cat:
+ * / sub:). Por fondos O por rubros, nunca mezclados: si llegan las dos
+ * cosas (el editor no lo permite), mandan los rubros, igual que al medir.
+ */
+function parseGoalLinks(raw: string[]) {
+  const byRow = new Map<number, { funds: string[]; cats: string[]; subs: string[] }>();
+  for (const v of raw) {
+    const [idx, ref = ""] = v.split("|");
+    const [kind, id] = ref.split(":");
+    const i = Number(idx);
+    if (!Number.isInteger(i) || !UUID.test(id ?? "")) continue;
+    const cur = byRow.get(i) ?? { funds: [], cats: [], subs: [] };
+    const list = kind === "fund" ? cur.funds : kind === "cat" ? cur.cats : kind === "sub" ? cur.subs : null;
+    if (list && !list.includes(id)) list.push(id);
+    byRow.set(i, cur);
+  }
+  return (i: number) => {
+    const l = byRow.get(i) ?? { funds: [], cats: [], subs: [] };
+    const rubros = l.cats.length + l.subs.length > 0;
+    return {
+      ledger_fund_ids: rubros ? [] : l.funds,
+      ledger_category_ids: l.cats,
+      ledger_subcategory_ids: l.subs,
+      // Las columnas de un solo vínculo (042) ya no se usan.
+      ledger_fund_id: null,
+      ledger_category_id: null,
+      ledger_subcategory_id: null,
+    };
   };
 }
 
@@ -45,7 +66,7 @@ export async function saveGoalsAction(formData: FormData) {
   const cadences = formData.getAll("goal_cadence").map(String);
   const directions = formData.getAll("goal_direction").map(String);
   const statuses = formData.getAll("goal_status").map(String);
-  const ledgers = formData.getAll("goal_ledger").map(String);
+  const linksFor = parseGoalLinks(formData.getAll("goal_link[]").map(String));
   const years = formData.getAll("goal_year").map(String);
 
   const deleted = ((formData.get("deleted") as string) ?? "")
@@ -54,6 +75,7 @@ export async function saveGoalsAction(formData: FormData) {
     .filter((s) => UUID.test(s));
 
   let errors = 0;
+  let schemaMissing = false;
 
   for (const id of deleted) {
     const { error } = await supabase
@@ -86,7 +108,7 @@ export async function saveGoalsAction(formData: FormData) {
       status: STATUSES.includes(statuses[i] ?? "") ? statuses[i] : "activa",
       sort_order: i,
       bahai_year: year !== null && Number.isFinite(year) ? year : null,
-      ...parseLedgerRef(ledgers[i] ?? ""),
+      ...linksFor(i),
       updated_at: new Date().toISOString(),
     };
 
@@ -97,19 +119,31 @@ export async function saveGoalsAction(formData: FormData) {
         .update(row)
         .eq("id", id)
         .eq("locality_id", session.locality.id);
-      if (error) errors += 1;
+      if (error) {
+        errors += 1;
+        if (error.code === "PGRST204" || error.code === "42703") schemaMissing = true;
+      }
     } else {
       const { error } = await supabase.from("treasury_goals").insert({
         ...row,
         locality_id: session.locality.id,
         created_by: session.user.id,
       });
-      if (error) errors += 1;
+      if (error) {
+        errors += 1;
+        if (error.code === "PGRST204" || error.code === "42703") schemaMissing = true;
+      }
     }
   }
 
   setFlashToast(
-    errors > 0
+    schemaMissing
+      ? {
+          tone: "error",
+          message:
+            "No se guardaron las metas: falta aplicar la migración 068 (varios rubros por meta) en Supabase.",
+        }
+      : errors > 0
       ? {
           tone: "error",
           message: `${errors} ${errors === 1 ? "meta no se pudo" : "metas no se pudieron"} guardar.`,

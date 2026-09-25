@@ -116,9 +116,8 @@ export async function loadAuditInput(
       ),
     supabase
       .from("treasury_goals")
-      .select(
-        "id, title, status, target_amount, ledger_fund_id, ledger_category_id, ledger_subcategory_id"
-      ),
+      // "*": con o sin la 068, goalLinks() lee lo que haya.
+      .select("*"),
     supabase
       .from("assembly_records")
       .select("registered_name, rut, fiscal_address, statutes_path")

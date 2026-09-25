@@ -18,6 +18,10 @@ import {
   type GoalDirection,
   type GoalStatus,
 } from "@/lib/treasury-progress-content";
+import {
+  LedgerLinksPicker,
+  type LedgerPickerOptions,
+} from "@/components/admin/LedgerLinksPicker";
 
 /**
  * Editor de las metas de la Asamblea.
@@ -32,19 +36,16 @@ import {
  *  · "Se mide por" — 'gasto' es para financiar algo (avanza cuando la
  *    Asamblea aplica plata a ese rubro) e 'ingreso' es para juntar algo
  *    (avanza cuando entra plata a ese fondo).
- *  · "Rubro del libro" — contra qué se mide. Sin esto, una meta con
- *    cifra no tiene con qué compararse y el tablero lo dice en vez de
- *    mostrar cero.
+ *  · "Rubros del libro" — contra qué se mide, uno o varios (068): por
+ *    fondos o por categorías y subcategorías, nunca mezclados. Sin esto,
+ *    una meta con cifra no tiene con qué compararse y el tablero lo dice
+ *    en vez de mostrar cero.
  *
  * Una meta sin monto es válida: "conseguir un POS propio" es una gestión
  * real y se informa por su etiqueta de estado.
  */
 
-export type LedgerPickerOptions = {
-  funds: { id: string; name: string }[];
-  categories: { id: string; name: string }[];
-  subcategories: { id: string; name: string }[];
-};
+export type { LedgerPickerOptions };
 
 export type GoalRowData = {
   uid: string;
@@ -57,7 +58,8 @@ export type GoalRowData = {
   cadence: GoalCadence;
   direction: GoalDirection;
   status: GoalStatus;
-  ledgerRef: string;
+  /** "fund:" / "cat:" / "sub:", varios (068). */
+  ledgerRefs: string[];
   yearScope: string;
 };
 
@@ -93,7 +95,7 @@ export function GoalsEditor({
         cadence: "anual",
         direction: "gasto",
         status: "activa",
-        ledgerRef: "",
+        ledgerRefs: [],
         yearScope: bahaiYear ? String(bahaiYear) : "",
       },
     ]);
@@ -134,7 +136,7 @@ export function GoalsEditor({
       )}
 
       <div className="flex flex-col gap-3">
-        {rows.map((row) => (
+        {rows.map((row, index) => (
           <Card key={row.uid}>
             <input type="hidden" name="goal_id" value={row.id} />
 
@@ -259,41 +261,22 @@ export function GoalsEditor({
               </p>
             )}
 
-            <div className="mt-4 grid gap-4 md:grid-cols-[1fr,180px,160px]">
-              <Field
-                label="Rubro del libro"
-                name={`ledger_${row.uid}`}
-                hint="contra qué se mide"
-              >
-                <Select
-                  name="goal_ledger"
-                  value={row.ledgerRef}
-                  onChange={(e) => update(row.uid, { ledgerRef: e.target.value })}
-                >
-                  <option value="">Sin vincular</option>
-                  <optgroup label="Fondos">
-                    {options.funds.map((f) => (
-                      <option key={f.id} value={`fund:${f.id}`}>
-                        {f.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Categorías">
-                    {options.categories.map((c) => (
-                      <option key={c.id} value={`cat:${c.id}`}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Subcategorías (más específico)">
-                    {options.subcategories.map((s) => (
-                      <option key={s.id} value={`sub:${s.id}`}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                </Select>
-              </Field>
+            <div className="mt-4 border-t border-black/[0.06] pt-3">
+              {/* El índice de la fila ata cada rubro a su meta: los demás
+                  campos viajan como arrays paralelos y una meta nueva
+                  todavía no tiene id. */}
+              <LedgerLinksPicker
+                refs={row.ledgerRefs}
+                onChange={(refs) => update(row.uid, { ledgerRefs: refs })}
+                options={options}
+                name="goal_link[]"
+                prefix={String(index)}
+                label="Rubros del libro"
+                hint="contra qué se mide · uno o varios"
+              />
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-[1fr,160px]">
               <Field
                 label="Etiqueta"
                 name={`badge_${row.uid}`}
@@ -317,7 +300,7 @@ export function GoalsEditor({
               </Field>
             </div>
 
-            {row.target && !row.ledgerRef && (
+            {row.target && row.ledgerRefs.length === 0 && (
               <p className="mt-3 text-[11.5px] italic text-muted">
                 Esta meta tiene monto pero no rubro del libro: el tablero la va
                 a mostrar como «falta indicar con qué se mide» en vez de

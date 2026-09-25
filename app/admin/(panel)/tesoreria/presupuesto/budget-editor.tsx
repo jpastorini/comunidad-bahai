@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { Banner, Button, Card, Field, Select, TextArea, TextInput } from "@/components/admin/ui";
+import { LedgerLinksPicker } from "@/components/admin/LedgerLinksPicker";
 import { categoryMeta, fmtUYU } from "@/lib/budget";
 
 export type EditorItem = {
@@ -333,134 +334,16 @@ function BudgetItemRow({
           del informe. Varios rubros por línea (067); cada uno viaja como
           "<item>|cat:<id>" en ledger_link[]. */}
       <div className="mt-3 border-t border-black/[0.06] pt-3">
-        <LedgerLinks
-          item={item}
-          ledgerOptions={ledgerOptions}
+        <LedgerLinksPicker
+          refs={item.ledgerRefs}
           onChange={(refs) => onUpdateRefs(item.id, refs)}
+          options={ledgerOptions}
+          name="ledger_link[]"
+          prefix={item.id}
+          emptyNote="Sin vincular, el tablero y el informe no pueden calcular cuánto se ejecutó de esta categoría."
         />
       </div>
     </div>
   );
 }
 
-/**
- * Los rubros de una línea como chapitas que se sacan con ×, y un
- * desplegable que AGREGA (y vuelve a "Agregar un rubro…"). Un <select
- * multiple> nativo es inusable en el celular, y un desplegable que
- * reemplaza su valor cambia de rubro con la rueda del mouse sin que nadie
- * lo note, que es justo como se desvincularon las líneas del 183.
- */
-function LedgerLinks({
-  item,
-  ledgerOptions,
-  onChange,
-}: {
-  item: EditorItem;
-  ledgerOptions: LedgerOptions;
-  onChange: (refs: string[]) => void;
-}) {
-  const catName = new Map(ledgerOptions.categories.map((c) => [c.id, c.name]));
-  const subs = new Map(ledgerOptions.subcategories.map((s) => [s.id, s]));
-  const chosen = new Set(item.ledgerRefs);
-  const chosenCats = new Set(
-    item.ledgerRefs.filter((r) => r.startsWith("cat:")).map((r) => r.slice(4))
-  );
-
-  const label = (ref: string) => {
-    const id = ref.slice(4);
-    if (ref.startsWith("cat:")) return { name: catName.get(id) ?? "Rubro ya no disponible", note: "categoría entera" };
-    const sub = subs.get(id);
-    return {
-      name: sub?.name ?? "Rubro ya no disponible",
-      note: sub ? catName.get(sub.category_id) ?? "" : "",
-    };
-  };
-
-  return (
-    <div>
-      <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <span className="text-[12px] font-semibold text-dark">Se ejecuta con</span>
-        <span className="text-[10.5px] text-muted">movimientos del libro · uno o varios</span>
-      </div>
-
-      {item.ledgerRefs.map((ref) => (
-        <input key={ref} type="hidden" name="ledger_link[]" value={`${item.id}|${ref}`} />
-      ))}
-
-      {item.ledgerRefs.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-1.5">
-          {item.ledgerRefs.map((ref) => {
-            const l = label(ref);
-            const sub = ref.startsWith("sub:") ? subs.get(ref.slice(4)) : undefined;
-            // Una subcategoría de una categoría ya elegida no suma nada:
-            // sus gastos ya están en la categoría (no se cuentan dos veces).
-            const redundant = Boolean(sub && chosenCats.has(sub.category_id));
-            return (
-              <span
-                key={ref}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] ${
-                  redundant ? "border-amber-300 bg-amber-50 text-amber-800" : "border-terra/20 bg-terra/[0.06] text-dark"
-                }`}
-                title={redundant ? "Ya está incluida en la categoría elegida" : undefined}
-              >
-                <span className="font-medium">{l.name}</span>
-                {l.note && <span className="text-[10.5px] text-muted">{l.note}</span>}
-                <button
-                  type="button"
-                  aria-label={`Quitar ${l.name}`}
-                  className="ml-0.5 text-[14px] leading-none text-muted hover:text-rose-700"
-                  onClick={() => onChange(item.ledgerRefs.filter((r) => r !== ref))}
-                >
-                  ×
-                </button>
-              </span>
-            );
-          })}
-        </div>
-      )}
-
-      <Select
-        value=""
-        onChange={(e) => {
-          const v = e.target.value;
-          if (v && !chosen.has(v)) onChange([...item.ledgerRefs, v]);
-        }}
-      >
-        <option value="">
-          {item.ledgerRefs.length > 0 ? "+ Agregar otro rubro…" : "+ Agregar un rubro…"}
-        </option>
-        <optgroup label="Categorías enteras">
-          {ledgerOptions.categories
-            .filter((c) => !chosen.has(`cat:${c.id}`))
-            .map((c) => (
-              <option key={c.id} value={`cat:${c.id}`}>
-                {c.name}
-              </option>
-            ))}
-        </optgroup>
-        {ledgerOptions.categories.map((c) => {
-          const children = ledgerOptions.subcategories.filter(
-            (s) => s.category_id === c.id && !chosen.has(`sub:${s.id}`)
-          );
-          if (children.length === 0) return null;
-          return (
-            <optgroup key={c.id} label={c.name}>
-              {children.map((s) => (
-                <option key={s.id} value={`sub:${s.id}`}>
-                  {s.name}
-                </option>
-              ))}
-            </optgroup>
-          );
-        })}
-      </Select>
-
-      {item.ledgerRefs.length === 0 && (
-        <p className="mt-1 text-[11px] italic text-muted">
-          Sin vincular, el tablero y el informe no pueden calcular cuánto se
-          ejecutó de esta categoría.
-        </p>
-      )}
-    </div>
-  );
-}
