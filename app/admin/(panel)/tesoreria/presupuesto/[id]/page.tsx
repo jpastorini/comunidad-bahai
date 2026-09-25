@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { linkRefs, type BudgetLinkRow } from "@/lib/budget-links";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -18,15 +19,13 @@ type BudgetRow = {
   notes: string | null;
 };
 
-type ItemRow = {
+type ItemRow = BudgetLinkRow & {
   id: string;
   category: string;
   icon: string;
   planned_amount: number;
   spent_amount: number;
   position: number;
-  ledger_category_id: string | null;
-  ledger_subcategory_id: string | null;
 };
 
 export default async function PresupuestoEditorPage({
@@ -57,19 +56,20 @@ export default async function PresupuestoEditorPage({
   const [itemsRes, categoriesRes, subcategoriesRes] = await Promise.all([
     supabase
       .from("treasury_budget_items")
-      .select(
-        "id, category, icon, planned_amount, spent_amount, position, ledger_category_id, ledger_subcategory_id"
-      )
+      // "*": con o sin la 067, linkRefs() lee lo que haya.
+      .select("*")
       .eq("budget_id", budget.id)
       .order("position", { ascending: true }),
     supabase
       .from("treasury_categories")
       .select("id, name")
+      .eq("locality_id", session.locality.id)
       .eq("is_active", true)
       .order("sort_order"),
     supabase
       .from("treasury_subcategories")
-      .select("id, name")
+      .select("id, name, category_id")
+      .eq("locality_id", session.locality.id)
       .eq("is_active", true)
       .order("sort_order"),
   ]);
@@ -81,17 +81,17 @@ export default async function PresupuestoEditorPage({
     planned: Number(it.planned_amount),
     spent: Number(it.spent_amount),
     position: it.position,
-    // La subcategoría manda si están las dos: es el vínculo más específico.
-    ledgerRef: it.ledger_subcategory_id
-      ? `sub:${it.ledger_subcategory_id}`
-      : it.ledger_category_id
-        ? `cat:${it.ledger_category_id}`
-        : "",
+    // Varios rubros por línea (067).
+    ledgerRefs: linkRefs(it),
   }));
 
   const ledgerOptions = {
     categories: (categoriesRes.data ?? []) as { id: string; name: string }[],
-    subcategories: (subcategoriesRes.data ?? []) as { id: string; name: string }[],
+    subcategories: (subcategoriesRes.data ?? []) as {
+      id: string;
+      name: string;
+      category_id: string;
+    }[],
   };
 
   return (

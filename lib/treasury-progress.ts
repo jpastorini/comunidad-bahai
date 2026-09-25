@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findBudgetForYear } from "./budget-lookup";
+import { isLinked, linkedActual, type BudgetLinkRow } from "./budget-links";
 import { addMoney } from "./treasury-format";
 import {
   BUDGET_CURRENCY,
@@ -72,14 +73,12 @@ type GoalRow = {
   ledger_subcategory_id: string | null;
 };
 
-type BudgetItemRow = {
+type BudgetItemRow = BudgetLinkRow & {
   id: string;
   category: string;
   icon: string;
   planned_amount: number | string;
   position: number;
-  ledger_category_id: string | null;
-  ledger_subcategory_id: string | null;
 };
 
 export async function getTreasuryProgress(
@@ -161,16 +160,27 @@ export async function getTreasuryProgress(
 
   // ─── Presupuesto ───────────────────────────────────────────────
   let items: BudgetItemRow[] = [];
+  // De qué categoría es cada subcategoría: una línea que vincula una
+  // categoría entera y una subcategoría suya no cuenta el gasto dos veces.
+  const subParent = new Map<string, string>();
   if (budgetRow) {
-    const { data } = await supabase
-      .from("treasury_budget_items")
-      .select(
-        "id, category, icon, planned_amount, position, ledger_category_id, ledger_subcategory_id"
-      )
-      .eq("budget_id", budgetRow.id)
-      .gt("planned_amount", 0)
-      .order("position");
+    const [{ data }, { data: subs }] = await Promise.all([
+      supabase
+        .from("treasury_budget_items")
+        // "*" y no una lista: con o sin la 067, budgetLinks() lee lo que haya.
+        .select("*")
+        .eq("budget_id", budgetRow.id)
+        .gt("planned_amount", 0)
+        .order("position"),
+      supabase
+        .from("treasury_subcategories")
+        .select("id, category_id")
+        .eq("locality_id", opts.localityId),
+    ]);
     items = (data ?? []) as BudgetItemRow[];
+    for (const r of (subs ?? []) as { id: string; category_id: string }[]) {
+      subParent.set(r.id, r.category_id);
+    }
   }
 
   const spentByCategory = indexBy(agg.spentByCategory, BUDGET_CURRENCY);
@@ -183,13 +193,9 @@ export async function getTreasuryProgress(
     category: it.category,
     icon: it.icon || "default",
     planned: Number(it.planned_amount),
-    // La subcategoría manda: es el vínculo más específico.
-    actual: it.ledger_subcategory_id
-      ? (spentBySubcategory.get(it.ledger_subcategory_id) ?? 0)
-      : it.ledger_category_id
-        ? (spentByCategory.get(it.ledger_category_id) ?? 0)
-        : 0,
-    linked: Boolean(it.ledger_subcategory_id || it.ledger_category_id),
+    // Varios rubros por línea (067), sin contar dos veces un gasto.
+    actual: linkedActual(it, spentByCategory, spentBySubcategory, subParent),
+    linked: isLinked(it),
   }));
 
   const totalPlanned = categories.reduce((sum, c) => sum + c.planned, 0);

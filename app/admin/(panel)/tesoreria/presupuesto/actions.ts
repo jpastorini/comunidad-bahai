@@ -111,8 +111,20 @@ export async function saveBudgetItemsAction(formData: FormData) {
   const ids = formData.getAll("item_id[]") as string[];
   const plannedAmounts = formData.getAll("planned_amount[]") as string[];
   const spentAmounts = formData.getAll("spent_amount[]") as string[];
-  // "cat:<uuid>" | "sub:<uuid>" | "" — el desplegable "Se ejecuta con".
-  const ledgerRefs = formData.getAll("ledger_ref[]") as string[];
+  // "Se ejecuta con" (067): varios rubros por línea, cada uno como
+  // "<item_id>|cat:<uuid>" o "<item_id>|sub:<uuid>". Una línea sin
+  // ninguno queda sin vincular.
+  const UUID = /^[0-9a-f-]{36}$/i;
+  const linksByItem = new Map<string, { cats: string[]; subs: string[] }>();
+  for (const raw of formData.getAll("ledger_link[]") as string[]) {
+    const [itemId, ref = ""] = raw.split("|");
+    const [kind, refId] = ref.split(":");
+    if (!UUID.test(refId ?? "") || (kind !== "cat" && kind !== "sub")) continue;
+    const cur = linksByItem.get(itemId) ?? { cats: [], subs: [] };
+    const list = kind === "cat" ? cur.cats : cur.subs;
+    if (!list.includes(refId)) list.push(refId);
+    linksByItem.set(itemId, cur);
+  }
 
   const supabase = createSupabaseServer();
 
@@ -133,38 +145,48 @@ export async function saveBudgetItemsAction(formData: FormData) {
   }
 
   // Actualizar cada línea
-  const UUID = /^[0-9a-f-]{36}$/i;
   const updates = ids.map((id, i) => {
-    const ref = ledgerRefs[i] ?? "";
-    const [kind, refId] = ref.split(":");
-    const valid = UUID.test(refId ?? "");
+    const links = linksByItem.get(id) ?? { cats: [], subs: [] };
     return {
       id,
       planned_amount: parseFloat(plannedAmounts[i] || "0"),
       spent_amount: parseFloat(spentAmounts[i] || "0"),
-      // Una línea apunta a una categoría O a una subcategoría, nunca a
-      // las dos: elegir una limpia la otra.
-      ledger_category_id: valid && kind === "cat" ? refId : null,
-      ledger_subcategory_id: valid && kind === "sub" ? refId : null,
+      ledger_category_ids: links.cats,
+      ledger_subcategory_ids: links.subs,
     };
   });
 
   let hasError = false;
+  let schemaMissing = false;
   for (const upd of updates) {
     const { error } = await supabase
       .from("treasury_budget_items")
       .update({
         planned_amount: upd.planned_amount,
         spent_amount: upd.spent_amount,
-        ledger_category_id: upd.ledger_category_id,
-        ledger_subcategory_id: upd.ledger_subcategory_id,
+        ledger_category_ids: upd.ledger_category_ids,
+        ledger_subcategory_ids: upd.ledger_subcategory_ids,
+        // Las columnas de un solo rubro (042) dejan de usarse: budgetLinks()
+        // las suma a las listas, así que si quedaran puestas no se podría
+        // quitar ese rubro desde el editor.
+        ledger_category_id: null,
+        ledger_subcategory_id: null,
       })
       .eq("id", upd.id);
-    if (error) hasError = true;
+    if (error) {
+      hasError = true;
+      if (error.code === "PGRST204" || error.code === "42703") schemaMissing = true;
+    }
   }
 
   setFlashToast(
-    hasError
+    schemaMissing
+      ? {
+          tone: "error",
+          message:
+            "No se guardaron las líneas: falta aplicar la migración 067 (varios rubros por línea) en Supabase.",
+        }
+      : hasError
       ? { tone: "error", message: "Algunos ítems no se pudieron guardar." }
       : { tone: "success", message: "Presupuesto actualizado." }
   );

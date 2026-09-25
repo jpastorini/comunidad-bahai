@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { budgetLinks, type BudgetLinkRow } from "./budget-links";
 import type {
   TreasuryAccount,
   TreasuryCategory,
@@ -155,8 +156,8 @@ export async function getCatalogUsage(
       .eq("locality_id", localityId),
     supabase
       .from("treasury_budget_items")
-      .select("ledger_category_id, ledger_subcategory_id")
-      .or("ledger_category_id.not.is.null,ledger_subcategory_id.not.is.null"),
+      // "*": con o sin la 067 (listas de rubros), budgetLinks() lee lo que haya.
+      .select("*"),
     supabase
       .from("treasury_goals")
       .select("ledger_fund_id, ledger_category_id, ledger_subcategory_id")
@@ -171,12 +172,10 @@ export async function getCatalogUsage(
   // error acá solo deja el conteo en cero y la FK `set null` no frena
   // nada, así que se loguea y se sigue.
   if (budget.error) console.warn("[getCatalogUsage] budget", budget.error.message);
-  for (const b of (budget.data ?? []) as {
-    ledger_category_id: string | null;
-    ledger_subcategory_id: string | null;
-  }[]) {
-    bump(usage, b.ledger_category_id, "budget");
-    bump(usage, b.ledger_subcategory_id, "budget");
+  for (const b of (budget.data ?? []) as BudgetLinkRow[]) {
+    const links = budgetLinks(b);
+    for (const id of links.categories) bump(usage, id, "budget");
+    for (const id of links.subcategories) bump(usage, id, "budget");
   }
   if (goals.error) console.warn("[getCatalogUsage] goals", goals.error.message);
   for (const g of (goals.data ?? []) as {

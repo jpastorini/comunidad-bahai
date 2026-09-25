@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseAdmin } from "./supabase/admin";
 import { findBudgetForYear } from "./budget-lookup";
+import { isLinked, linkedActual, type BudgetLinkRow } from "./budget-links";
 import { addMoney } from "./treasury-format";
 import {
   EMPTY_EDITORIAL,
@@ -705,31 +706,30 @@ async function budgetComparison(
 
   const { data: itemsRaw } = await supabase
     .from("treasury_budget_items")
-    .select(
-      "category, icon, planned_amount, position, ledger_category_id, ledger_subcategory_id"
-    )
+    // "*": con o sin la 067, budgetLinks() lee lo que haya.
+    .select("*")
     .eq("budget_id", budget.id)
     .gt("planned_amount", 0)
     .order("position", { ascending: true });
 
-  const items = (itemsRaw ?? []) as Array<{
-    category: string;
-    icon: string;
-    planned_amount: number;
-    ledger_category_id: string | null;
-    ledger_subcategory_id: string | null;
-  }>;
+  const items = (itemsRaw ?? []) as Array<
+    BudgetLinkRow & { category: string; icon: string; planned_amount: number }
+  >;
   if (items.length === 0) return null;
 
   // Ejecutado del año por categoría y por subcategoría del libro. Solo
   // gastos en pesos: el presupuesto se arma en pesos.
   const byCategory = new Map<string, number>();
   const bySubcategory = new Map<string, number>();
+  // De qué categoría es cada subcategoría, sacado de los propios asientos
+  // (todo asiento trae las dos): alcanza para no contar dos veces.
+  const subParent = new Map<string, string>();
   for (const e of all) {
     if (e.entry_date < yearStart || e.entry_date > to) continue;
     if (e.is_opening_balance || e.transfer_group_id) continue;
     if (e.amount >= 0 || e.currency !== "UYU") continue;
     const spent = -e.amount;
+    subParent.set(e.subcategory_id, e.category_id);
     byCategory.set(
       e.category_id,
       addMoney(byCategory.get(e.category_id) ?? 0, spent)
@@ -741,18 +741,14 @@ async function budgetComparison(
   }
 
   const lines: ReportBudgetLine[] = items.map((it) => {
-    // La subcategoría manda: es el vínculo más específico.
-    const actual = it.ledger_subcategory_id
-      ? bySubcategory.get(it.ledger_subcategory_id) ?? 0
-      : it.ledger_category_id
-        ? byCategory.get(it.ledger_category_id) ?? 0
-        : 0;
+    // Varios rubros por línea (067), sin contar dos veces un gasto.
+    const actual = linkedActual(it, byCategory, bySubcategory, subParent);
     return {
       category: it.category,
       icon: it.icon || "default",
       planned: Number(it.planned_amount),
       actual,
-      linked: Boolean(it.ledger_subcategory_id || it.ledger_category_id),
+      linked: isLinked(it),
     };
   });
 

@@ -1497,11 +1497,24 @@ los meses transcurridos, no contra un mes suelto.
 **Presupuesto vs. ejecutado:** los nombres de las categorías del
 presupuesto (024) y del libro (040) no coinciden y no hay forma de
 adivinar el par, así que el tesorero lo declara con el desplegable "Se
-ejecuta con" en el editor del presupuesto. Son dos columnas
-(`ledger_category_id` y `ledger_subcategory_id`) porque la granularidad
-cambia según la línea: "Enseñanza" es una categoría entera, "Aporte al
-Fondo Nacional" es una subcategoría dentro de "Gastos Operativos". Una
-línea sin vincular se informa como tal, nunca como cero.
+ejecuta con" en el editor del presupuesto. Una línea vincula **uno o
+varios rubros** (067, pedido el 2026-09-25: "Mantenimiento" se gasta en
+"Centro Bahá'í - Mantenimiento" y en "Centro Bahá'í - Gastos Fijos"), y
+cada rubro puede ser una categoría entera o una subcategoría, porque la
+granularidad cambia según la línea. Son dos listas en la misma fila,
+`ledger_category_ids` y `ledger_subcategory_ids`; las columnas de un solo
+rubro (042) se copiaron a las listas y el editor las pone en NULL al
+guardar. **Leer el vínculo y sumar lo ejecutado pasa SIEMPRE por
+`lib/budget-links.ts`** (`budgetLinks`, `isLinked`, `linkedActual`), que
+usan el tablero, el informe, la auditoría y el catálogo: suma las
+categorías y las subcategorías **sin contar dos veces** la subcategoría de
+una categoría ya elegida (el editor la marca en ámbar). Los que leen el
+presupuesto piden `select("*")` para andar con y sin la 067. En el editor
+los rubros son chapitas con × y un desplegable que solo AGREGA: el
+desplegable viejo cambiaba de rubro con la rueda del mouse, y así
+quedaron las líneas del 183 vinculadas a "Contribucion creyentes" y
+"Saldo anterior", que no tienen gastos. Una línea sin vincular se informa
+como tal, nunca como cero.
 
 ⚠️ **Qué presupuesto es "el del ejercicio" lo decide un solo lugar:**
 `findBudgetForYear()` en `lib/budget-lookup.ts`, usado por el progreso y

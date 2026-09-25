@@ -169,9 +169,8 @@ export async function loadAuditInput(
   if (header) {
     const { data: items } = await supabase
       .from("treasury_budget_items")
-      .select(
-        "id, category, planned_amount, spent_amount, ledger_category_id, ledger_subcategory_id"
-      )
+      // "*": con o sin la 067, budgetLinks() lee lo que haya.
+      .select("*")
       .eq("budget_id", header.id);
     budget = {
       id: header.id,

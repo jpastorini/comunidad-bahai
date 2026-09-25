@@ -1,4 +1,5 @@
 import { addMoney, formatMoney } from "./treasury-format";
+import { isLinked, type BudgetLinkRow } from "./budget-links";
 import {
   buildCashbook,
   monthKeyOf,
@@ -152,14 +153,14 @@ export type AuditReport = {
 export type AuditBudget = {
   id: string;
   period: string;
-  items: Array<{
-    id: string;
-    category: string;
-    planned_amount: number;
-    spent_amount: number;
-    ledger_category_id: string | null;
-    ledger_subcategory_id: string | null;
-  }>;
+  items: Array<
+    BudgetLinkRow & {
+      id: string;
+      category: string;
+      planned_amount: number;
+      spent_amount: number;
+    }
+  >;
 } | null;
 
 export type AuditGoal = {
@@ -1786,7 +1787,7 @@ const H: Rule[] = [
       if (!ctx.budget) return [];
       return ctx.budget.items
         .filter(
-          (i) => i.planned_amount > 0 && !i.ledger_category_id && !i.ledger_subcategory_id
+          (i) => i.planned_amount > 0 && !isLinked(i)
         )
         .map((i) => ({
           code: "LINEA_SIN_VINCULAR",
@@ -1808,7 +1809,7 @@ const H: Rule[] = [
       if (!ctx.budget) return [];
       return ctx.budget.items
         .filter(
-          (i) => i.spent_amount > 0 && (i.ledger_category_id || i.ledger_subcategory_id)
+          (i) => i.spent_amount > 0 && isLinked(i)
         )
         .map((i) => ({
           code: "EJECUTADO_A_MANO",
