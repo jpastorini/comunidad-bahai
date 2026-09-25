@@ -553,7 +553,7 @@ export type CalendarEvent = {
   month: number;
   year: number;
   title: string;
-  time: string;           // texto visible (ej. "7:00 PM")
+  time: string;           // texto visible (ej. "19:00")
   color: string;
   /**
    * Categoría visual del evento. Ver lib/calendar-kinds.ts.

@@ -112,7 +112,7 @@ export default async function FeastDetailPage({
                       {dt.toLocaleString("es-MX", {
                         hour: "numeric",
                         minute: "2-digit",
-                        hour12: true,
+                        hour12: false,
                       })}
                     </div>
                     <div className="mt-1 font-display text-[16px] font-semibold text-dark">

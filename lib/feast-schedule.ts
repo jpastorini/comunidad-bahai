@@ -20,7 +20,7 @@ const TZ = process.env.APP_TIMEZONE || "America/Montevideo";
 export type FeastCelebration = {
   /** Fecha civil de la celebración, ISO YYYY-MM-DD. */
   date: string;
-  /** Etiqueta de hora: "7:00 p.m." o "Al atardecer" si no hay lugar. */
+  /** Etiqueta de hora: "19:00" o "Al atardecer" si no hay lugar. */
   time: string;
   /** true si sale de un lugar cargado por la Asamblea. */
   scheduled: boolean;
@@ -70,6 +70,6 @@ function civilTime(at: Date): string {
     timeZone: TZ,
     hour: "numeric",
     minute: "2-digit",
-    hour12: true,
+    hour12: false,
   }).format(at);
 }

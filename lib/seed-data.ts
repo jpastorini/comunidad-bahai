@@ -76,9 +76,9 @@ export const seedLocalAnnouncements: Message[] = [
     title: "Convocatoria a la próxima Fiesta de 19 días",
     subject: "Fiesta del mes de Núr — Asamblea Local",
     excerpt:
-      "Queridos amigos — La Asamblea Espiritual Local les convoca a la próxima Fiesta de 19 días el domingo, en casa de la familia García a las 7:00 PM.",
+      "Queridos amigos — La Asamblea Espiritual Local les convoca a la próxima Fiesta de 19 días el domingo, en casa de la familia García a las 19:00.",
     full_text:
-      "Queridos amigos — La Asamblea Espiritual Local les convoca a la próxima Fiesta de 19 días el domingo, en casa de la familia García a las 7:00 PM.\n\nHabrá porción devocional con oraciones seleccionadas, parte administrativa con informe del tesorero y los planes del ciclo actual, y parte social con compartir comunitario.\n\nLes pedimos confirmar asistencia por chat para coordinar el refrigerio.",
+      "Queridos amigos — La Asamblea Espiritual Local les convoca a la próxima Fiesta de 19 días el domingo, en casa de la familia García a las 19:00.\n\nHabrá porción devocional con oraciones seleccionadas, parte administrativa con informe del tesorero y los planes del ciclo actual, y parte social con compartir comunitario.\n\nLes pedimos confirmar asistencia por chat para coordinar el refrigerio.",
     is_new: true,
     source: "asamblea_local",
     pdf_url: null,
@@ -115,7 +115,7 @@ export const seedChat: ChatMessage[] = [
     id: "c3",
     member_id: "me",
     from_user_id: "sec",
-    text: "Tenemos un círculo de estudio del Libro 7 este viernes a las 7 PM y una reunión devocional el domingo.",
+    text: "Tenemos un círculo de estudio del Libro 7 este viernes a las 19:00 y una reunión devocional el domingo.",
     created_at: "2026-05-17T09:17:00Z",
     read: true,
     is_admin_reply: true,
@@ -262,7 +262,7 @@ export const seedCalendarEvents: CalendarEvent[] = [
   {
     id: "ce1",
     day: 22, month: 5, year: 2026,
-    title: "Círculo de Estudio", time: "7:00 PM", color: colors.terra,
+    title: "Círculo de Estudio", time: "19:00", color: colors.terra,
     description: "Estudio del Libro 7, Unidad 2 — Caminando juntos en un sendero de servicio. Empezaremos puntualmente con oraciones.",
     location: "Casa Rodríguez",
     duration_minutes: 90,
@@ -271,7 +271,7 @@ export const seedCalendarEvents: CalendarEvent[] = [
   {
     id: "ce2",
     day: 23, month: 5, year: 2026,
-    title: "Clase de Niños", time: "4:00 PM", color: colors.green,
+    title: "Clase de Niños", time: "16:00", color: colors.green,
     description: "Grado 2, Lección 5. Trae tu cuaderno y crayones.",
     location: "Centro Comunitario",
     duration_minutes: 60,
@@ -289,7 +289,7 @@ export const seedCalendarEvents: CalendarEvent[] = [
   {
     id: "ce4",
     day: 27, month: 5, year: 2026,
-    title: "Grupo de Prejuniors", time: "5:30 PM", color: colors.gold,
+    title: "Grupo de Prejuniors", time: "17:30", color: colors.gold,
     description: "Encuentro del grupo de prejuniors — actividades, conversación y servicio.",
     location: "Casa López",
     duration_minutes: 90,

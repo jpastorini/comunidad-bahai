@@ -9,6 +9,7 @@ import {
   Select,
   TextArea,
   TextInput,
+  TimeInput,
 } from "@/components/admin/ui";
 import { BAHAI_MONTHS, approximateBahaiYear } from "@/lib/bahai-calendar";
 import { NEWS_SCOPE_LABELS, NEWS_SCOPE_ORDER } from "@/lib/feast-program";
@@ -239,9 +240,8 @@ function LocationRow({ location }: { location: Partial<FeastLocation> & { _new?:
           />
         </Field>
         <Field label="Hora" name="location_time[]">
-          <TextInput
+          <TimeInput
             name="location_time[]"
-            type="time"
             defaultValue={time}
           />
         </Field>

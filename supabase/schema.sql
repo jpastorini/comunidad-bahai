@@ -188,7 +188,7 @@ create table if not exists public.calendar_events (
   month int not null check (month between 1 and 12),
   year int not null,
   title text not null,
-  time text not null,         -- texto visible ("7:00 PM")
+  time text not null,         -- texto visible ("19:00")
   color text not null,
   -- Categoría visual del evento. Ver lib/calendar-kinds.ts y la
   -- migración 013_calendar_event_kind.sql para el enum completo.

@@ -25,10 +25,10 @@ insert into public.activities (type, title, detail, starts_at, place) values
   ('jovenes',    'Grupo de Prejuniors',    'Caminando el sendero', '2026-05-27 17:30', 'Casa López');
 
 insert into public.calendar_events (day, month, year, title, time, color) values
-  (22, 5, 2026, 'Círculo de Estudio',   '7:00 PM', '#2A3F8F'),
-  (23, 5, 2026, 'Clase de Niños',       '4:00 PM', '#6A8B5F'),
+  (22, 5, 2026, 'Círculo de Estudio',   '19:00'  , '#2A3F8F'),
+  (23, 5, 2026, 'Clase de Niños',       '16:00'  , '#6A8B5F'),
   (24, 5, 2026, 'Reunión Devocional',   '10:00 AM','#7E44B8'),
-  (27, 5, 2026, 'Grupo de Prejuniors',  '5:30 PM', '#C4A235');
+  (27, 5, 2026, 'Grupo de Prejuniors',  '17:30'  , '#C4A235');
 
 insert into public.study_materials (kind, number, title, completed, current) values
   ('ruhi', 1, 'Reflexiones sobre la vida del espíritu',  true,  false),

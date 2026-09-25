@@ -172,8 +172,15 @@ consulta vale ~120 ms; con las dos puntas en São Paulo (`gru1`) valdría
   `TextInput`): se escribe dd/mm/aaaa, trae el calendario del sistema
   en el ícono y envía "yyyy-mm-dd" en un hidden con el mismo `name`, así
   que los actions no cambian. Controlado: `value` + `onValueChange(iso)`,
-  que recibe "" mientras la fecha está a medio escribir. Los dos
-  `type="time"` todavía muestran AM/PM en un navegador en inglés.
+  que recibe "" mientras la fecha está a medio escribir.
+- **Horas: 24 horas, siempre.** Mismo problema con `<input type="time">`
+  (pide AM/PM en un navegador en inglés): va `TimeInput`
+  (`components/TimeInput.tsx`, o el de `ui.tsx`), sin selector del
+  sistema, que envía "HH:MM". Al mostrar una hora con `Intl` o
+  `toLocale*String` en "es-MX", poner `hour12: false`: es-MX sale en
+  12 horas por defecto. `calendar_events.time` es texto libre con filas
+  viejas en "7:00 PM": se leen por `to24h()` (`lib/format.ts`) y la 069
+  las corrige en la base.
 - Commits descriptivos enfocados en el "por qué". El `git log` es parte
   de la memoria compartida.
 

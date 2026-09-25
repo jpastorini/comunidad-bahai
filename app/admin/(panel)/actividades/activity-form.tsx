@@ -6,6 +6,7 @@ import {
   Select,
   TextArea,
   TextInput,
+  TimeInput,
 } from "@/components/admin/ui";
 import { upsertActivityAction } from "./actions";
 import type { Activity } from "@/lib/types";
@@ -85,7 +86,7 @@ export function ActivityForm({ activity }: Props) {
             />
           </Field>
           <Field label="Hora" name="time">
-            <TextInput id="time" name="time" type="time" defaultValue={time} />
+            <TimeInput id="time" name="time" defaultValue={time} />
           </Field>
         </div>
       </Card>

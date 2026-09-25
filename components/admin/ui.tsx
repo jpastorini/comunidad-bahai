@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { IconArrowRight } from "@/components/Icons";
 import { DateInput as BaseDateInput } from "@/components/DateInput";
+import { TimeInput as BaseTimeInput } from "@/components/TimeInput";
 
 // ──────────────── Page header ────────────────
 type PageHeaderProps = {
@@ -319,4 +320,9 @@ export function LinkRow({ href, label }: { href: string; label: string }) {
  *  que TextInput. Ver components/DateInput.tsx. */
 export function DateInput(props: React.ComponentProps<typeof BaseDateInput>) {
   return <BaseDateInput {...props} className={`${INPUT_BASE} ${props.className ?? ""}`} />;
+}
+
+/** El campo de hora del panel: 24 horas siempre. Ver components/TimeInput.tsx. */
+export function TimeInput(props: React.ComponentProps<typeof BaseTimeInput>) {
+  return <BaseTimeInput {...props} className={`${INPUT_BASE} ${props.className ?? ""}`} />;
 }

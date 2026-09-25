@@ -131,7 +131,7 @@ export function formatActivityWhen(starts_at: string): {
   dayLabel: string; // "22"
   weekdayLabel: string; // "VIE"
   fullLabel: string; // "Vie 22/05/2026"
-  time: string; // "7:00 PM"
+  time: string; // "19:00"
 } {
   const { day, hour, minute, weekday } = getParts(starts_at);
   const weekdayName = WEEKDAYS_ES_SHORT[weekday];
@@ -151,4 +151,19 @@ export function formatActivityWhen(starts_at: string): {
 export function formatChatTime(iso: string): string {
   const { hour, minute } = getParts(iso);
   return `${hour}:${pad2(minute)}`;
+}
+
+/** Las horas se muestran en 24 horas. `calendar_events.time` es texto
+ *  libre y hay filas cargadas como "7:00 PM" (el formulario lo sugería
+ *  antes): esto las pasa a "19:00" al leerlas. Cualquier otro texto ("Al
+ *  atardecer", "3:00 de la madrugada") queda igual. */
+export function to24h(text: string): string;
+export function to24h(text: string | null): string | null;
+export function to24h(text: string | null): string | null {
+  if (!text) return text;
+  const m = /^s*(d{1,2})(?::(d{2}))?s*([ap]).?s*m.?s*$/i.exec(text);
+  if (!m) return text;
+  let hour = Number(m[1]) % 12;
+  if (m[3].toLowerCase() === "p") hour += 12;
+  return `${hour}:${m[2] ?? "00"}`;
 }

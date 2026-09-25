@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
+import { to24h } from "@/lib/format";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 
@@ -66,7 +67,7 @@ export async function upsertEventAction(formData: FormData) {
 
   // Build payload — los campos protegidos vienen del registro existente.
   const payload: Record<string, unknown> = {
-    time: formData.get("time") as string,
+    time: to24h(formData.get("time") as string),
     description: (formData.get("description") as string) || null,
     location: (formData.get("location") as string) || null,
     duration_minutes: durationMinutes,

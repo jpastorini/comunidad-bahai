@@ -105,6 +105,7 @@ export default async function FeastQuickSuggestionsPage({
                     {new Date(s.created_at).toLocaleTimeString("es-MX", {
                       hour: "2-digit",
                       minute: "2-digit",
+                      hour12: false,
                     })}
                   </div>
                 </div>

@@ -90,12 +90,12 @@ export function EventForm({ event, defaultDate }: Props) {
                   defaultValue={date}
                 />
               </Field>
-              <Field label="Hora" name="time" hint='Texto libre (ej. "7:00 PM")'>
+              <Field label="Hora" name="time" hint='En 24 horas (ej. "19:00")'>
                 <TextInput
                   id="time"
                   name="time"
-                  defaultValue={event?.time ?? "7:00 PM"}
-                  placeholder="7:00 PM"
+                  defaultValue={event?.time ?? "19:00"}
+                  placeholder="19:00"
                 />
               </Field>
             </div>
@@ -132,7 +132,7 @@ export function EventForm({ event, defaultDate }: Props) {
         )}
 
         {isProtected && (
-          <Field label="Hora" name="time" hint='Texto libre (ej. "7:00 PM" o "Al atardecer")'>
+          <Field label="Hora" name="time" hint='Texto libre (ej. "19:00" o "Al atardecer")'>
             <TextInput
               id="time"
               name="time"

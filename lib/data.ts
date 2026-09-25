@@ -17,6 +17,7 @@ import { cache } from "react";
 import { chatFailure } from "./chat-errors";
 import { CALENDAR_KINDS, effectiveEventColor } from "./calendar-kinds";
 import { feastCelebration } from "./feast-schedule";
+import { to24h } from "./format";
 import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
 import {
   seedActivities,
