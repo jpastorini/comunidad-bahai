@@ -9,7 +9,7 @@ import {
 import { requireAdmin } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { getOrCreateLocalityInvite } from "@/lib/invites";
-import { getLocalityMembers } from "@/lib/memberships";
+import { getLocalityMembers, type LocalityMember } from "@/lib/memberships";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import {
   CONDITION_LABELS,
@@ -25,8 +25,17 @@ import {
 } from "./actions";
 import { ConfirmSubmit } from "./confirm-submit";
 import { InviteCard } from "./invite-card";
+import { MembersList } from "./members-list";
+import { ScrollToHash } from "@/components/comunicados/ScrollToHash";
 
-export default async function AdminMiembrosPage() {
+/** Cuántos días lleva la chapita "Nuevo" (mismo corte que el filtro). */
+const NEW_DAYS = 30;
+
+export default async function AdminMiembrosPage({
+  searchParams,
+}: {
+  searchParams: { filtro?: string };
+}) {
   const session = await requireAdmin();
   const supabase = createSupabaseServer();
 
@@ -46,18 +55,11 @@ export default async function AdminMiembrosPage() {
     getOrCreateLocalityInvite(session.locality.id),
   ]);
 
-  // Mismo orden que antes lo hacía Postgres. El desempate por id no es
-  // decorativo: sin él, dos filas con igual rol y created_at pueden
-  // volver en distinto orden tras un UPDATE y descoordinar los inputs no
-  // controlados (el nombre) del resto de la lista.
-  const profiles = [...roster]
-    .sort(
-      (a, b) =>
-        b.role.localeCompare(a.role) ||
-        a.created_at.localeCompare(b.created_at) ||
-        a.id.localeCompare(b.id)
-    )
-    .slice(0, 100)
+  // El orden, la búsqueda y los filtros los hace `MembersList` en el
+  // navegador. Antes había un tope de 100: con un buscador, alguien que
+  // quedara afuera del tope sería imposible de encontrar.
+  const now = Date.now();
+  const profiles = roster
     .map((m) => ({
       ...m,
       locality_id: session.locality.id,
@@ -148,18 +150,39 @@ export default async function AdminMiembrosPage() {
         </div>
       )}
 
-      <div className="grid gap-3">
-        {activeProfiles.map((p) => (
-          <MemberCard
-            // La key incluye los campos editables: si el server devuelve datos
-            // nuevos tras guardar, la tarjeta se remonta y los inputs no
-            // controlados (nombre, rol, checkboxes) reflejan el valor real.
-            key={`${p.id}:${p.full_name}:${p.role}:${p.is_bahai}:${p.can_respond_chat}:${p.can_manage_treasury}:${p.can_manage_bulletin}`}
-            profile={p}
-            isMe={p.id === session.user.id}
-          />
-        ))}
-      </div>
+      <ScrollToHash />
+      <MembersList
+        initialFilter={searchParams.filtro}
+        items={activeProfiles.map((p) => {
+          const m = p as unknown as LocalityMember;
+          return {
+            id: p.id,
+            name: p.full_name ?? "",
+            email: p.email ?? "",
+            isAdmin: p.role === "admin",
+            isBahai: p.is_bahai,
+            chat: p.can_respond_chat,
+            treasury: p.can_manage_treasury,
+            bulletin: p.can_manage_bulletin,
+            createdAt: m.created_at,
+            lastSeenAt: m.last_seen_at,
+            card: (
+              <MemberCard
+                // La key incluye los campos editables: si el server devuelve
+                // datos nuevos tras guardar, la tarjeta se remonta y los
+                // inputs no controlados (nombre, rol, checkboxes) reflejan
+                // el valor real.
+                key={`${p.id}:${p.full_name}:${p.role}:${p.is_bahai}:${p.can_respond_chat}:${p.can_manage_treasury}:${p.can_manage_bulletin}`}
+                profile={p}
+                joinedAt={m.created_at}
+                lastSeenAt={m.last_seen_at}
+                isNew={now - new Date(m.created_at).getTime() <= NEW_DAYS * 864e5}
+                isMe={p.id === session.user.id}
+              />
+            ),
+          };
+        })}
+      />
 
       {disabledProfiles.length > 0 && (
         <div className="mt-8">
@@ -233,9 +256,35 @@ function RequestCard({
   );
 }
 
-function MemberCard({ profile, isMe }: { profile: Profile; isMe: boolean }) {
+function MemberCard({
+  profile,
+  isMe,
+  joinedAt,
+  lastSeenAt,
+  isNew,
+}: {
+  profile: Profile;
+  isMe: boolean;
+  joinedAt: string;
+  lastSeenAt: string | null;
+  isNew: boolean;
+}) {
   return (
     <Card>
+      <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-muted">
+        {isNew && (
+          <span className="rounded-full bg-terra/15 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-terra">
+            Nuevo
+          </span>
+        )}
+        <span>Se registró el {formatDate(joinedAt)}</span>
+        <span aria-hidden>·</span>
+        <span>
+          {lastSeenAt
+            ? `Última vez en la app: ${formatDate(lastSeenAt)}`
+            : "Sin visitas registradas"}
+        </span>
+      </div>
       <form action={updateMemberAction}>
         <input type="hidden" name="id" value={profile.id} />
         <div className="grid gap-4 md:grid-cols-[1fr,200px,auto] md:items-end">

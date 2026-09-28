@@ -358,6 +358,19 @@ arriba del todo, gesto vertical, y nunca dentro de algo `position: fixed`
 gira hasta que termina (mínimo 600 ms). Se mueve por ref, sin re-render
 por toque. ⚠️ Una pantalla nueva que scrollee en otro contenedor que no
 sea `.scroll-area` queda sin el gesto. ·
+**Aviso de alguien nuevo y lista de Creyentes con buscador** (sin
+migración, 2026-09-28): cuando alguien entra por primera vez a una
+localidad —eligiéndola de la lista o por link de invitación— o pide
+mudarse a ella, la Asamblea de ESA localidad (rol admin en la membresía)
+recibe un push con el nombre y la condición, que abre
+`/admin/miembros?filtro=nuevos#m-<id>`. Todo pasa por `notifyNewMember()`
+(`lib/new-member-alert.ts`); si se agrega otra puerta de ingreso, que la
+llame. La lista (`members-list.tsx`) busca por nombre/correo, filtra
+(nuevos 30 días, Asamblea, bahá'ís, amigos, tags, "no entran hace un
+mes") y ordena en el navegador; las fichas filtradas se esconden con
+`hidden`, no se desmontan, para no perder lo que se estaba editando. Se
+sacó el tope de 100. "Se registró" es `profiles.created_at`, no la fecha
+de la membresía (`locality_members()` no la devuelve) ·
 **Transiciones de nivel 1** (sin migración, todo en `globals.css` salvo
 las dos marcas): movimiento sereno, solo transform/opacity, y todo apagado
 con `prefers-reduced-motion`. (1) Los hijos directos de cada

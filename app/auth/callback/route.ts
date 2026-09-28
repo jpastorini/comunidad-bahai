@@ -1,7 +1,8 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { INVITE_COOKIE, applyInviteToken } from "@/lib/invites";
+import { INVITE_COOKIE, applyInviteToken, resolveInviteToken } from "@/lib/invites";
+import { notifyNewMember } from "@/lib/new-member-alert";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 /**
@@ -42,6 +43,10 @@ export async function GET(request: Request) {
           if (inviteToken) {
             const result = await applyInviteToken(user.id, inviteToken);
             if (result === "applied") {
+              const invite = await resolveInviteToken(inviteToken);
+              if (invite) {
+                await notifyNewMember(invite.localityId, user.id, "invited");
+              }
               revalidatePath("/", "layout");
               const response = NextResponse.redirect(
                 new URL("/bienvenida", url.origin)

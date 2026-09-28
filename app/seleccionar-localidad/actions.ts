@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { notifyNewMember } from "@/lib/new-member-alert";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 
@@ -59,6 +60,10 @@ export async function selectLocalityAction(formData: FormData) {
       redirect("/seleccionar-localidad");
     }
 
+    // La Asamblea se entera enseguida para revisar la ficha: quien entra
+    // sin invitación queda como creyente por default (047).
+    await notifyNewMember(locality_id, user.id, "joined");
+
     setFlashToast({
       tone: "success",
       message: `Localidad seleccionada: ${locality.name}.`,
@@ -105,6 +110,15 @@ export async function selectLocalityAction(formData: FormData) {
     });
     redirect("/perfil");
   }
+
+  const { data: fromLocality } = await supabase
+    .from("localities")
+    .select("name")
+    .eq("id", currentLocalityId)
+    .maybeSingle();
+  await notifyNewMember(locality_id, user.id, "requested", {
+    fromLocalityName: (fromLocality as { name: string } | null)?.name,
+  });
 
   setFlashToast({
     tone: "success",
