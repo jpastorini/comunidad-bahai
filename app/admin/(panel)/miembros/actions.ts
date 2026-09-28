@@ -66,6 +66,23 @@ export async function updateMemberAction(formData: FormData) {
   // la persona tiene puesta. Escribir `profiles` directo, como antes,
   // le cambiaría los permisos de la comunidad equivocada a quien anda
   // con dos sombreros.
+  //
+  // ⚠️ El ORDEN de las dos escrituras depende de hacia dónde cambia la
+  // condición. Un Amigo/a de la Fe no puede tener cargos (trigger de la
+  // 055), así que al habilitar a alguien como creyente Y darle un permiso
+  // en el mismo guardado, primero tiene que ser creyente; al pasarlo a
+  // Amigo/a, primero se le sacan los cargos. Desde la 070 todos entran
+  // como Amigo/a, así que el primer caso es el de todos los días.
+  const writeProfile = () =>
+    supabase
+      .from("profiles")
+      .update({
+        full_name: payload.full_name,
+        ...(payload.is_bahai === undefined ? {} : { is_bahai: payload.is_bahai }),
+      })
+      .eq("id", id);
+  const early = payload.is_bahai === true ? await writeProfile() : null;
+
   const { error: membershipError } = await supabase
     .from("profile_localities")
     .upsert(
@@ -82,13 +99,7 @@ export async function updateMemberAction(formData: FormData) {
     );
 
   // Lo que es de la persona y no de la comunidad sigue en `profiles`.
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .update({
-      full_name: payload.full_name,
-      ...(payload.is_bahai === undefined ? {} : { is_bahai: payload.is_bahai }),
-    })
-    .eq("id", id);
+  const { error: profileError } = early ?? (await writeProfile());
 
   const error = membershipError ?? profileError;
 

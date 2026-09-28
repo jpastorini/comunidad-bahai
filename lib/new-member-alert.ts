@@ -57,11 +57,16 @@ export async function notifyNewMember(
       return;
     }
 
-    const condition = p?.is_bahai === false ? "Amigo/a de la Fe" : "creyente";
+    // Desde la 070 quien entra sin invitación es Amigo/a de la Fe hasta
+    // que la Asamblea lo habilita: el aviso dice qué hacer.
     const via = kind === "invited" ? " con el link de invitación" : "";
+    const body =
+      p?.is_bahai === false
+        ? `${who} se registró en ${where}${via} como Amigo/a de la Fe. Si es bahá'í, habilitalo como creyente desde su ficha.`
+        : `${who} se registró en ${where}${via} como creyente. Revisá su ficha.`;
     await sendPushToUsers(recipients, {
       title: "Alguien nuevo en la app",
-      body: `${who} se registró en ${where}${via} como ${condition}. Revisá su ficha.`,
+      body,
       url: `/admin/miembros?filtro=nuevos#m-${userId}`,
       tag: `nuevo-${userId}`,
     });

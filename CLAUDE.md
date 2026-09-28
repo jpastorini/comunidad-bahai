@@ -1087,7 +1087,7 @@ Cuatro cosas que sostienen el diseño:
   que el rol) o desde el **segundo link de invitación** por localidad
   (`locality_invites.friends_token`). Por eso `applyInviteToken()` pasó
   a escribir con service-role: el cliente del usuario ya no puede tocar
-  `is_bahai`. Quien entra sin invitación es creyente por default.
+  `is_bahai`. Quien entra sin invitación es **Amigo/a de la Fe** por default desde la 070 (antes, creyente): la Asamblea recibe el aviso y lo habilita como creyente. `updateMemberAction` escribe `profiles` ANTES que la membresía cuando habilita, porque el trigger de la 055 rechaza cargos para un amigo.
 - **Cada comunicado declara su audiencia** (`messages.audience`:
   `'todos'` | `'creyentes'`). El default de la **columna** es `'todos'`
   (los mensajes de la Casa Universal se insertan sin decir nada y son

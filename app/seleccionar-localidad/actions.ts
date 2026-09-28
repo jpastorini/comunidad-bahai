@@ -60,8 +60,8 @@ export async function selectLocalityAction(formData: FormData) {
       redirect("/seleccionar-localidad");
     }
 
-    // La Asamblea se entera enseguida para revisar la ficha: quien entra
-    // sin invitación queda como creyente por default (047).
+    // La Asamblea se entera enseguida: quien entra sin invitación queda
+    // como Amigo/a de la Fe (default de la 070) hasta que lo habilite.
     await notifyNewMember(locality_id, user.id, "joined");
 
     setFlashToast({
