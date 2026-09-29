@@ -1,0 +1,431 @@
+import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { findingsOf, getDispositions } from "./treasury-audit-server";
+import {
+  monthKeyOf,
+  monthKeysBetween,
+  monthLabel,
+  monthRange,
+  previousMonthKey,
+} from "./treasury-cashbook";
+import {
+  closedMonthKeys,
+  getClosings,
+  getFirstEntryMonth,
+  nextMonthToClose,
+} from "./treasury-closings";
+import { todayISO } from "./treasury-ledger";
+import { getCurrentPublication } from "./treasury-publications";
+import {
+  getImports,
+  getMatches,
+  getStoredLines,
+  monthReconciliation,
+} from "./treasury-statements";
+import { formatDate } from "./format";
+
+/**
+ * Lo que pide atención de la Tesorería, para el Inicio del panel.
+ *
+ * Cada tarjeta responde a una pregunta que el tesorero se hace al abrir
+ * el panel —¿qué mes falta cerrar?, ¿qué dijo la última auditoría?, ¿el
+ * extracto está conciliado?, ¿la comunidad vio el estado del Fondo?— y
+ * sale de tablas que YA existen: nada acá se guarda. Cada fuente se
+ * calcula por separado y falla a "nada que mostrar": el Inicio no puede
+ * romperse porque una migración no corrió todavía.
+ *
+ * La CLAVE de cada tarjeta lleva el período o el objeto adentro
+ * ("cierre:2026-08", "auditoria:<id>"). Es lo que hace que ocultar sea
+ * seguro: la tarjeta oculta de agosto no oculta la de setiembre, y una
+ * auditoría nueva vuelve a mostrar la suya. Los hallazgos de auditoría no
+ * se "ocultan" en el sentido de la 059 (eso es despacharlos, con motivo);
+ * acá se oculta la TARJETA, que reaparece con la próxima corrida.
+ */
+
+export type AttentionTone = "warn" | "alert";
+
+export type TreasuryAttentionItem = {
+  key: string;
+  tone: AttentionTone;
+  title: string;
+  detail: string;
+  href: string;
+  cta: string;
+};
+
+export type TreasuryAttention = {
+  items: TreasuryAttentionItem[];
+  hidden: TreasuryAttentionItem[];
+  /** false hasta que corra la 072: se muestran todas y no se puede ocultar. */
+  canHide: boolean;
+};
+
+const CIERRES = "/admin/tesoreria/libro/cierres";
+const AUDITORIA = "/admin/tesoreria/auditoria";
+const CONCILIACION = "/admin/tesoreria/conciliacion";
+const PUBLICAR = "/admin/tesoreria/publicar";
+const LIBRO = "/admin/tesoreria/libro";
+const COMPROMISOS = "/admin/tesoreria/compromisos";
+
+/** Días de una fecha ISO a otra (positivo si `to` es después). */
+function daysBetween(fromIso: string, toIso: string): number {
+  const a = Date.UTC(+fromIso.slice(0, 4), +fromIso.slice(5, 7) - 1, +fromIso.slice(8, 10));
+  const b = Date.UTC(+toIso.slice(0, 4), +toIso.slice(5, 7) - 1, +toIso.slice(8, 10));
+  return Math.round((b - a) / 86_400_000);
+}
+
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+// ─── Fuentes ─────────────────────────────────────────────────────
+
+/** El mes (o los meses) que ya terminaron y siguen abiertos (054). */
+async function closingItem(
+  supabase: SupabaseClient,
+  today: string
+): Promise<TreasuryAttentionItem | null> {
+  const [closings, firstMonth] = await Promise.all([
+    getClosings(supabase),
+    getFirstEntryMonth(supabase),
+  ]);
+  const next = nextMonthToClose(closings, firstMonth, today);
+  if (!next) return null;
+  const lastComplete = previousMonthKey(monthKeyOf(today));
+  const pending = monthKeysBetween(next, lastComplete).length;
+  const sinceEnd = daysBetween(monthRange(next).to, today);
+  const late = pending > 1 || sinceEnd > 20;
+  return {
+    key: `cierre:${next}`,
+    tone: late ? "alert" : "warn",
+    title:
+      pending === 1
+        ? `Falta cerrar ${monthLabel(next)}`
+        : `Faltan cerrar ${plural(pending, "mes", "meses")}`,
+    detail:
+      pending === 1
+        ? `El mes terminó hace ${plural(sinceEnd, "día", "días")}. Antes de cerrar: todo cargado, el extracto conciliado y el Libro de Caja impreso para archivar.`
+        : `Desde ${monthLabel(next)}. Se cierran en orden, del más viejo al más nuevo; cada cierre congela su mes.`,
+    href: CIERRES,
+    cta: "Cerrar el mes",
+  };
+}
+
+type AuditRow = {
+  id: string;
+  run_at: string;
+  findings: unknown;
+};
+
+/** Lo que quedó sin resolver de la última auditoría (059). */
+async function auditItem(
+  supabase: SupabaseClient,
+  today: string
+): Promise<TreasuryAttentionItem | null> {
+  const { data, error } = await supabase
+    .from("treasury_audits")
+    .select("id, run_at, findings")
+    .order("run_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    // Antes de la 059 la tabla no existe: no hay auditoría de la que hablar.
+    return null;
+  }
+  const last = data as AuditRow | null;
+  if (!last) {
+    return {
+      key: "auditoria:none",
+      tone: "warn",
+      title: "La auditoría nunca se corrió",
+      detail:
+        "Son reglas sobre el libro: huecos en la serie de recibos, meses sin cerrar, transferencias sin su otra pata, gastos sin comprobante. Corre al instante y no cambia nada.",
+      href: AUDITORIA,
+      cta: "Correr la auditoría",
+    };
+  }
+  const dispositions = await getDispositions(supabase);
+  const settled = new Set(
+    dispositions.filter((d) => d.status !== "pendiente").map((d) => d.finding_key)
+  );
+  const pending = findingsOf(last.findings).filter((f) => !settled.has(f.key));
+  const high = pending.filter((f) => f.severity === "alta").length;
+  const medium = pending.filter((f) => f.severity === "media").length;
+  const ageDays = daysBetween(last.run_at.slice(0, 10), today);
+  const ran = `Corrida el ${formatDate(last.run_at)}.`;
+
+  if (high > 0) {
+    return {
+      key: `auditoria:${last.id}`,
+      tone: "alert",
+      title: `${plural(high, "hallazgo grave", "hallazgos graves")} sin resolver`,
+      detail: `${ran} ${
+        medium > 0 ? `Además, ${plural(medium, "hallazgo medio", "hallazgos medios")}. ` : ""
+      }Cada uno dice qué está mal, contra qué norma, y cómo se arregla en la app.`,
+      href: AUDITORIA,
+      cta: "Ver los hallazgos",
+    };
+  }
+  if (medium > 0) {
+    return {
+      key: `auditoria:${last.id}`,
+      tone: "warn",
+      title: `${plural(medium, "hallazgo", "hallazgos")} por revisar`,
+      detail: `${ran} Nada grave: son cosas para dejar prolijas antes del cierre o para despachar con un motivo.`,
+      href: AUDITORIA,
+      cta: "Ver los hallazgos",
+    };
+  }
+  if (ageDays > 45) {
+    return {
+      key: `auditoria:${last.id}:vieja`,
+      tone: "warn",
+      title: `La última auditoría es de hace ${plural(ageDays, "día", "días")}`,
+      detail: `${ran} Conviene correrla de nuevo antes de cerrar el mes: encuentra lo que se cargó desde entonces.`,
+      href: AUDITORIA,
+      cta: "Correr la auditoría",
+    };
+  }
+  return null;
+}
+
+type EntryLite = {
+  id: string;
+  account_id: string;
+  entry_date: string;
+  voided_at: string | null;
+  is_opening_balance: boolean;
+};
+
+/** El extracto del mes pasado contra el libro, cuenta por cuenta (061). */
+async function reconciliationItem(
+  supabase: SupabaseClient,
+  today: string
+): Promise<TreasuryAttentionItem | null> {
+  const month = previousMonthKey(monthKeyOf(today));
+  const imports = await getImports(supabase);
+  if (imports.missing || imports.rows.length === 0) return null;
+  const accountsWithImports = new Set(imports.rows.map((i) => i.account_id));
+
+  // Un mes cerrado está congelado: lo que quedó suelto ahí ya no es tarea
+  // de este mes.
+  const closings = await getClosings(supabase);
+  if (closedMonthKeys(closings).includes(month)) return null;
+
+  const range = monthRange(month);
+  const [lines, matches, entriesRes, accountsRes] = await Promise.all([
+    getStoredLines(supabase),
+    getMatches(supabase),
+    supabase
+      .from("treasury_entries")
+      .select("id, account_id, entry_date, voided_at, is_opening_balance")
+      .gte("entry_date", range.from)
+      .lte("entry_date", range.to),
+    supabase.from("treasury_accounts").select("id, name"),
+  ]);
+  const names = new Map(
+    ((accountsRes.data ?? []) as { id: string; name: string }[]).map((a) => [a.id, a.name])
+  );
+  const statuses = monthReconciliation(
+    month,
+    lines,
+    matches,
+    (entriesRes.data ?? []) as EntryLite[],
+    names,
+    accountsWithImports
+  ).filter((s) => s.status !== "conciliado");
+  if (statuses.length === 0) return null;
+
+  const parts = statuses.map((s) => {
+    if (s.status === "sin-extracto") return `${s.accountName}: sin extracto importado`;
+    const bits: string[] = [];
+    if (s.pendingLines > 0)
+      bits.push(plural(s.pendingLines, "línea del extracto sin movimiento", "líneas del extracto sin movimiento"));
+    if (s.pendingEntries > 0)
+      bits.push(plural(s.pendingEntries, "movimiento sin par en el extracto", "movimientos sin par en el extracto"));
+    return `${s.accountName}: ${bits.join(" y ")}`;
+  });
+  const first = statuses[0];
+  return {
+    key: `conciliacion:${month}`,
+    tone: "warn",
+    title: `Conciliación pendiente de ${monthLabel(month).toLowerCase()}`,
+    detail: `${parts.join(" · ")}. El extracto es la única verificación externa del libro; conviene dejarlo cerrado antes del cierre del mes.`,
+    href: `${CONCILIACION}?cuenta=${first.accountId}`,
+    cta: "Ir a Conciliación",
+  };
+}
+
+type FeastLite = { id: string; bahai_month_name: string; gregorian_date: string | null };
+
+/** El estado del Fondo que la comunidad ve (066): ¿está al día? */
+async function publicationItem(
+  supabase: SupabaseClient,
+  localityId: string,
+  localityKind: string,
+  today: string
+): Promise<TreasuryAttentionItem | null> {
+  const current = await getCurrentPublication(supabase, localityId);
+
+  // En una Asamblea Local la referencia es la Fiesta: el estado del Fondo
+  // se presenta ahí, así que lo publicado tiene que ser posterior a la
+  // última celebrada. La Comunidad Nacional no tiene Fiesta (056): ahí la
+  // regla es "no más de un mes bahá'í y pico sin compartir".
+  let lastFeast: FeastLite | null = null;
+  if (localityKind !== "nacional") {
+    const { data } = await supabase
+      .from("feasts")
+      .select("id, bahai_month_name, gregorian_date")
+      .not("gregorian_date", "is", null)
+      .lte("gregorian_date", today)
+      .order("gregorian_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    lastFeast = (data as FeastLite | null) ?? null;
+  }
+
+  if (!current) {
+    return {
+      key: "publicar:none",
+      tone: "warn",
+      title: "El estado del Fondo nunca se compartió",
+      detail:
+        "La comunidad ve en Tesorería solo lo que el tesorero calcula y comparte desde Publicar: hasta entonces, la pantalla dice que todavía no hay cifras.",
+      href: PUBLICAR,
+      cta: "Calcular y compartir",
+    };
+  }
+  const publishedDay = (current.published_at ?? current.calculated_at ?? "").slice(0, 10);
+  if (lastFeast?.gregorian_date && publishedDay < lastFeast.gregorian_date) {
+    return {
+      key: `publicar:${lastFeast.id}`,
+      tone: "warn",
+      title: "Falta compartir el estado del Fondo",
+      detail: `Lo último que vio la comunidad es del ${formatDate(publishedDay)}; la Fiesta de ${lastFeast.bahai_month_name} fue el ${formatDate(lastFeast.gregorian_date)}. Calculá hasta el fin del último mes bahá'í y compartí.`,
+      href: PUBLICAR,
+      cta: "Calcular y compartir",
+    };
+  }
+  if (!lastFeast && daysBetween(publishedDay, today) > 35) {
+    return {
+      key: `publicar:${monthKeyOf(today)}`,
+      tone: "warn",
+      title: "Falta compartir el estado del Fondo",
+      detail: `Lo último que vio la comunidad es del ${formatDate(publishedDay)}, hace más de un mes.`,
+      href: PUBLICAR,
+      cta: "Calcular y compartir",
+    };
+  }
+  return null;
+}
+
+/** Aportes con número de recibo cuyo papel nunca se marcó emitido. */
+async function receiptsItem(supabase: SupabaseClient): Promise<TreasuryAttentionItem | null> {
+  const { count, error } = await supabase
+    .from("treasury_entries")
+    .select("id", { count: "exact", head: true })
+    .not("receipt_number", "is", null)
+    .eq("receipt_issued", false)
+    .is("voided_at", null)
+    .gt("amount", 0);
+  if (error || !count) return null;
+  return {
+    key: `recibos:${count}`,
+    tone: "warn",
+    title: `${plural(count, "recibo sin emitir", "recibos sin emitir")}`,
+    detail:
+      "Aportes que ya tienen número pero cuyo recibo no se marcó como emitido. Abrilo desde el Libro, compartilo con quien aportó y marcalo: así queda registrado quién lo emitió.",
+    href: LIBRO,
+    cta: "Ir al Libro",
+  };
+}
+
+/** Pasado el 10, el informe de compromisos del mes: agradecer y recordar (063). */
+async function commitmentsItem(
+  supabase: SupabaseClient,
+  localityId: string,
+  today: string
+): Promise<TreasuryAttentionItem | null> {
+  const day = parseInt(today.slice(8, 10), 10);
+  if (day < 11) return null;
+  const { count, error } = await supabase
+    .from("treasury_commitments")
+    .select("user_id", { count: "exact", head: true })
+    .eq("locality_id", localityId);
+  if (error || !count) return null;
+  const month = monthKeyOf(today);
+  return {
+    key: `compromisos:${month}`,
+    tone: "warn",
+    title: `Compromisos de ${monthLabel(month).toLowerCase()}`,
+    detail: `${plural(count, "persona declaró", "personas declararon")} un compromiso mensual. El informe dice a quién agradecer y a quién recordar; el aviso del 10 ya salió solo. Ocultá esta tarjeta cuando lo hayas mirado.`,
+    href: COMPROMISOS,
+    cta: "Ver el informe del mes",
+  };
+}
+
+// ─── Ocultas ─────────────────────────────────────────────────────
+
+async function getDismissedKeys(
+  supabase: SupabaseClient,
+  userId: string,
+  localityId: string
+): Promise<{ keys: Set<string>; ready: boolean }> {
+  const { data, error } = await supabase
+    .from("admin_attention_dismissals")
+    .select("item_key")
+    .eq("user_id", userId)
+    .eq("locality_id", localityId);
+  if (error) {
+    // Hasta la 072 la tabla no existe: se muestran todas y no se ocultan.
+    if (error.code !== "42P01" && error.code !== "PGRST205") {
+      console.warn("[treasury-attention] dismissals:", error.message);
+    }
+    return { keys: new Set(), ready: false };
+  }
+  return {
+    keys: new Set(((data ?? []) as { item_key: string }[]).map((r) => r.item_key)),
+    ready: true,
+  };
+}
+
+// ─── Todo junto ──────────────────────────────────────────────────
+
+async function safe<T>(label: string, p: Promise<T | null>): Promise<T | null> {
+  try {
+    return await p;
+  } catch (e) {
+    console.warn(`[treasury-attention] ${label}:`, e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+export async function getTreasuryAttention(
+  supabase: SupabaseClient,
+  opts: { userId: string; localityId: string; localityKind: string; today?: string }
+): Promise<TreasuryAttention> {
+  const today = opts.today ?? todayISO();
+  const [closing, audit, reconciliation, publication, receipts, commitments, dismissed] =
+    await Promise.all([
+      safe("cierre", closingItem(supabase, today)),
+      safe("auditoria", auditItem(supabase, today)),
+      safe("conciliacion", reconciliationItem(supabase, today)),
+      safe("publicar", publicationItem(supabase, opts.localityId, opts.localityKind, today)),
+      safe("recibos", receiptsItem(supabase)),
+      safe("compromisos", commitmentsItem(supabase, opts.localityId, today)),
+      getDismissedKeys(supabase, opts.userId, opts.localityId),
+    ]);
+
+  // Orden: lo grave primero; a igual tono, el orden del ciclo del mes.
+  const all = [closing, audit, reconciliation, publication, receipts, commitments].filter(
+    (x): x is TreasuryAttentionItem => x !== null
+  );
+  const rank = (t: AttentionTone) => (t === "alert" ? 0 : 1);
+  all.sort((a, b) => rank(a.tone) - rank(b.tone));
+
+  return {
+    items: all.filter((i) => !dismissed.keys.has(i.key)),
+    hidden: all.filter((i) => dismissed.keys.has(i.key)),
+    canHide: dismissed.ready,
+  };
+}

@@ -22,6 +22,9 @@ import { getAvailabilityFillStats } from "@/lib/availability-data";
 import { getChatDuty } from "@/lib/data";
 import { formatDate, formatMessageDate } from "@/lib/format";
 import { getLocalityPushReach } from "@/lib/push";
+import { createSupabaseServer } from "@/lib/supabase/server";
+import { getTreasuryAttention } from "@/lib/treasury-attention";
+import { TreasuryAttentionBoard } from "@/components/admin/TreasuryAttention";
 import type { ChatTopic, FeastStatus } from "@/lib/types";
 
 /**
@@ -57,12 +60,13 @@ const CHAT_HREF: Record<ChatTopic, string> = {
 export default async function AdminHomePage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: { error?: string; ocultas?: string };
 }) {
   const session = await requireAdmin();
   const localityId = session.locality.id;
+  const isTreasurer = !!session.profile.can_manage_treasury;
 
-  const [tasks, chatDuty, comunicado, feast, week, availability, push] =
+  const [tasks, chatDuty, comunicado, feast, week, availability, push, treasury] =
     await Promise.all([
       getTasksSummary(),
       getChatDuty(session.profile),
@@ -71,6 +75,15 @@ export default async function AdminHomePage({
       getWeekAhead(7),
       getAvailabilityFillStats(localityId),
       getLocalityPushReach(localityId),
+      // Solo para quien tiene el tag: la RLS del libro no le devolvería
+      // nada a otro, pero tampoco hay por qué hacer las consultas.
+      isTreasurer
+        ? getTreasuryAttention(createSupabaseServer(), {
+            userId: session.user.id,
+            localityId,
+            localityKind: session.locality.kind ?? "ael",
+          })
+        : Promise.resolve(null),
     ]);
 
   const tagError = searchParams.error;
@@ -108,6 +121,13 @@ export default async function AdminHomePage({
             que lo active en tu ficha, en Creyentes.
           </Banner>
         </div>
+      )}
+
+      {/* Fila 0: la Tesorería, arriba de todo y en grande, para quien la
+          lleva. Son tareas del ciclo del mes (cerrar, auditar, conciliar,
+          compartir) y se pueden ocultar por persona (072). */}
+      {treasury && (
+        <TreasuryAttentionBoard attention={treasury} showHidden={searchParams.ocultas === "1"} />
       )}
 
       {/* Fila 1: lo urgente. Tareas, chats que atiende, la próxima Fiesta. */}
