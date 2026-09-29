@@ -39,6 +39,13 @@ const nextConfig = {
         "./node_modules/pdfkit/js/standard-fonts/**",
         "./node_modules/pdfkit/js/data/**",
       ],
+      // El Libro de Caja en PDF (legajo del auditor) usa Helvetica, la
+      // fuente estándar de pdfkit: sin este include la función falla en
+      // Vercel con "Cannot find module …/Helvetica.cjs".
+      "/admin/libro-caja/[month]/pdf": [
+        "./node_modules/pdfkit/js/standard-fonts/**",
+        "./node_modules/pdfkit/js/data/**",
+      ],
     },
 
     // Cuánto vive en MEMORIA del navegador una pantalla ya visitada, antes

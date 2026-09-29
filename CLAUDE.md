@@ -390,7 +390,84 @@ píldora de `SegmentedNav` recuerda en una variable del módulo dónde
 estaba, porque cada pantalla monta su propio control: la nueva arranca
 ahí y la lleva a su lugar. (4) Los esqueletos brillan (`cb-shimmer`) en
 vez de parpadear. De paso, todos los encabezados usan `var(--safe-top)`
-en lugar de `env()` crudo.
+en lugar de `env()` crudo. ·
+**Tesorería para el tesorero que entra** (2026-09-29, migraciones 072 y
+073): menú en cuatro bloques · tarjetas de atención de Tesorería arriba
+del Inicio del panel, ocultables por persona (072) · cambios de cargo a
+mitad de ejercicio con vigencia, para que el recibo siga firmado por quien
+lo emitió (073) · Guía del mes con el estado de cada paso y el traspaso ·
+Legajo para el auditor (ZIP armado en el navegador, Libro de Caja en PDF)
+· aviso al creyente cuando se registra su aporte · "Registrar en el libro"
+prellenado desde el chat. Ver la sección "Tesorería para el tesorero que
+entra" más abajo.
+
+## Tesorería para el tesorero que entra (072 y 073)
+
+Pedido el 2026-09-29: el usuario deja de ser tesorero en un mes y medio y
+quiere que la Tesorería quede terminada y simple para quien sigue. Seis
+piezas, todas leyendo tablas que ya existían:
+
+- **El tablero** (`lib/treasury-attention.ts`, `components/admin/TreasuryAttention.tsx`):
+  para quien tiene el tag, el Inicio del panel arranca con tarjetas
+  grandes que responden las preguntas del ciclo del mes: qué mes falta
+  cerrar y hace cuánto (054), qué quedó sin resolver de la última
+  auditoría (059; la tarjeta reaparece con cada corrida nueva), si el
+  extracto del mes pasado está conciliado por cuenta (061), si el estado
+  del Fondo es posterior a la última Fiesta (066; en la Nacional, más de
+  35 días), recibos con número y sin emitir, y pasado el 10 el informe de
+  compromisos (063). Cada fuente falla a "nada que mostrar". **Ocultar**
+  es por persona en `admin_attention_dismissals` (072), con la clave
+  llevando el período o el objeto adentro (`cierre:2026-08`,
+  `auditoria:<id>`): ocultar agosto no oculta setiembre. Las ocultas
+  vuelven desde "N tarjetas ocultas · mostrar" (`?ocultas=1`). Hasta la
+  072 se ven todas y no se ocultan.
+- **Vigencia en la composición** (073): `assembly_members.since/until`.
+  El nombre del recibo (060) elegía al Tesorero/a del ejercicio, y había
+  uno solo por ejercicio: cargar al nuevo en noviembre reimprimía con su
+  nombre los recibos de abril. Ahora `receipt_signer_name` toma al
+  Tesorero/a cuyo tramo contiene la fecha del asiento; los índices únicos
+  (posición, cargo) acotan solo las filas en funciones (`until is null`).
+  En el editor, **"Reemplazar"** pide la fecha: quien se va queda en
+  "Cambios durante el ejercicio" con su "hasta" (filas `former_*` del
+  form), la fila queda para el nuevo con `since` y el mismo cargo.
+  `officerOf()`, la precarga del ejercicio siguiente y la auditoría usan
+  `currentMembers()`. El editor avisa si quien dejó de ser Tesorero/a
+  conserva el tag.
+- **Guía del mes** (`/admin/tesoreria/guia`, `lib/treasury-guide.ts`):
+  nueve pasos del ciclo para el mes ANTERIOR al de hoy (cargar, recibos,
+  conciliar, auditar, cerrar, Libro de Caja, publicar, informe interno,
+  compromisos), con por qué, cómo, link y estado derivado ("hecho" solo
+  cuando la base lo prueba; lo que la app no puede verificar es "a tu
+  criterio"). Abajo, los cinco pasos del traspaso (`HANDOVER_STEPS`).
+- **Legajo para el auditor** (`/admin/tesoreria/legajo`,
+  `lib/treasury-dossier.ts`): un ZIP con 00-LEEME (totales, saldos,
+  avisos) · 01-libro (movimientos.csv CON nombres, catálogo, saldos) ·
+  02-libro-de-caja (un PDF por mes + cierres.csv) · 03-recibos (la serie,
+  anulados, huecos en avisos) · 04-comprobantes (archivos del bucket por
+  mes y movimiento + índice + gastos sin comprobante) · 05-extractos
+  (originales + importaciones + conciliación por mes) · 06-auditoria
+  (hallazgos con su despacho) · 07-informes · 08-asamblea (ficha,
+  composición con vigencias, estatutos). ⚠️ **El servidor no arma el
+  ZIP**: devuelve un manifiesto (`/legajo/manifest?from=&to=`, JSON con
+  los CSV ya hechos y URL firmadas de una hora para lo que vive en
+  buckets) y el navegador baja de a cuatro y comprime con **jszip**; una
+  función de Vercel no puede devolver más de 4,5 MB y los comprobantes lo
+  pasan. Lo que no baja queda en ERRORES.txt dentro del ZIP. El Libro de
+  Caja en PDF es `components/treasury/CashBookPdf.tsx` (react-pdf,
+  Helvetica, mismo `buildCashbook` que la hoja) servido por
+  `/admin/libro-caja/[month]/pdf`; ese route está en
+  `outputFileTracingIncludes` por las fuentes estándar de pdfkit. Tope de
+  tres años por legajo.
+- **Aviso al creyente**: al dar de alta un aporte cuyo contribuyente tiene
+  `profile_id`, push "Se registró tu aporte · monto · Recibo N.º" que
+  abre su copia del recibo. Solo alta, nunca al propio tesorero, y un push
+  que falla no toca el asiento (`notifyContributionRegistered` en
+  `libro/actions.ts`).
+- **Alta prellenada desde el chat**: "Registrar en el libro" abre
+  `/admin/tesoreria/libro?creyente=<id>` (también `detalle` y `monto`);
+  el Libro pasa `prefill` a `EntryForm` con el creyente como perfil
+  (usa o crea su contribuyente vinculado) y en el teléfono abre el
+  formulario. El vínculo mensaje↔asiento sigue pendiente.
 
 ## El estado del Fondo: calcular y compartir (migración 066)
 
@@ -695,10 +772,17 @@ solo mecanismo. Grupos: Inicio (ítem suelto) · Asamblea (Tareas,
 Reuniones, Informes de Tesorería, Datos de la Asamblea) · Comunicación (Comunicados, Encuestas, Boletín,
 Chat de Secretaría) · Vida comunitaria (Calendario, Fiestas, Sugerencias,
 Actividades, Servicio, Materiales, Fotos) · Creyentes (Creyentes, Uso de
-la app) · Tesorería (Libro, Recibo, Catálogo, Importar, Cierres, Conciliación,
-Auditoría, Informes, Progreso, Publicar, Compromisos, Presupuesto, Metas, Mensajes,
-Cómo aportar) ·
-Admin Nacional.
+la app) · Tesorería, en cuatro bloques por frecuencia de uso (2026-09-29):
+Empezar (Guía del mes) · Todos los días (Libro, Mensajes, Conciliación) ·
+Cada mes (Cierres, Auditoría, Publicar, Compromisos) · El ejercicio
+(Presupuesto y metas, Progreso, Informes, Legajo para el auditor) · Ajustes
+(Catálogo, Recibo y medios de pago, Importar) · Admin Nacional. El bloque
+es `section` en la hoja: el Sidebar dibuja el título cuando cambia; no
+se pliega ni tiene ruta. "Presupuesto y metas" es un ítem con dos
+pantallas (/metas es subpantalla, prende por `match`); "Recibo y medios
+de pago" absorbió a "Cómo aportar" (/aportar redirige) y con eso de la
+tabla `treasury` vieja solo queda `methods`. El "Registro de informes"
+del grupo Asamblea se llamaba "Informes de Tesorería".
 
 Tres reglas de comportamiento (`components/admin/Sidebar.tsx`):
 
@@ -2611,11 +2695,22 @@ cambia nada.
   Tesorería → Publicar; hasta entonces `/tesoreria` no muestra cifras.
   Probar con la próxima Fiesta: calcular "hasta el fin del mes",
   compartir, iniciar la Fiesta y ver la diapositiva.
-- **Jubilar la tabla `treasury` vieja.** Desde la 066 la comunidad solo
-  lee de ahí los medios de pago ("Cómo aportar"). Quedan en el panel el
-  formulario de `/admin/tesoreria/aportar` (con `MonthlyReportShare`) y
-  el `BudgetReportShare` del presupuesto, que leen cifras a mano: pasar
-  los medios de pago a otro lado y borrar el resto.
+- **Aplicar la 072 y la 073** (2026-09-29). Sin la 072 el tablero de
+  Tesorería se ve entero y no se puede ocultar nada; sin la 073 guardar la
+  composición de la Asamblea falla (`since`/`until` no existen) y el
+  recibo sigue firmando con el tesorero del ejercicio, sin vigencia.
+  Después: registrar el cambio de tesorero con "Reemplazar", probar que un
+  recibo viejo reimpreso conserve la firma, y armar el primer legajo del
+  183 para ver qué le falta al auditor.
+- **Jubilar del todo la tabla `treasury` vieja.** Solo queda `methods`
+  (medios de pago, editados en Recibo y medios de pago); las columnas de
+  cifras a mano ya no las escribe nadie. Falta una migración que las tire
+  o mueva `methods` a `treasury_receipt_settings`, y jubilar
+  `BudgetReportShare` del presupuesto.
+- **Cajas chicas / fondos chicos.** El usuario tiene un problema con las
+  cajas chicas que quedó para charlar (2026-09-29): hay que entender el
+  caso antes de codear (¿varias cajas en manos de distintas personas?,
+  ¿arqueo contra la plata real?, ¿eliminarlas?).
 - **Las metas viven en dos lados.** `treasury_goals` (042) es el dato,
   pero el editor del informe (041) todavía tiene sus propios campos de
   texto para "Meta de la Asamblea" y "Destino de los Fondos". Conviene
@@ -2633,21 +2728,13 @@ cambia nada.
   tesorero en el editor. Si se quiere que la Asamblea marque "aprobado"
   ella misma, eso es una columna propia (`approved_at`, `approved_by`)
   con su RLS, no un campo del editorial.
-- **El aviso de aporte no se convierte en asiento.** El creyente le dice
-  al tesorero por el chat de Tesorería que hizo el giro, y el tesorero lo
-  carga a mano en el libro (la conversación tiene el botón "Registrar en
-  el libro", que solo abre `/admin/tesoreria/libro`). Lo natural sería
-  prellenar el formulario del movimiento con el contribuyente y lo que
-  dice el mensaje, y dejar el vínculo mensaje↔asiento para no cargar dos
-  veces el mismo aporte. Con la 046 el formulario ya acepta un creyente
-  por `contributor_profile_id`, así que el prellenado es solo pasarle el
-  `member_id` de la conversación.
-- **Aviso al creyente cuando se registra su aporte.** Con la 046 el
-  aporte ya aparece en `/perfil/aportes`, pero nadie le avisa; un push
-  "Se registró tu aporte, recibo N.° X" ahorraría el WhatsApp del
-  tesorero. También falta una pantalla de contribuyentes para el tesorero
-  (fusionar duplicados, desvincular); hoy solo se vincula desde el
-  formulario.
+- **El vínculo mensaje↔asiento del chat de Tesorería.** "Registrar en el
+  libro" ya abre el alta prellenada con el creyente (2026-09-29); falta
+  guardar qué mensaje originó qué asiento para no cargar dos veces el
+  mismo aporte, y prellenar el monto leyéndolo del mensaje.
+- **Pantalla de contribuyentes para el tesorero** (fusionar duplicados,
+  desvincular); hoy solo se vincula desde el formulario. El aviso al
+  creyente al registrar su aporte ya está (2026-09-29).
 - **Lectura de comunicados: el informe no sabe quién se sumó a la
   localidad DESPUÉS del comunicado**: cuenta como "no vio" (y como "no
   votó") a alguien que nunca fue destinatario. El deep link del push ya
