@@ -10,31 +10,11 @@ import {
   CHAT_SEGMENTS,
   SegmentedNav,
 } from "@/components/SegmentedNav";
+import { confirmSent, mergeIncoming } from "@/lib/chat-merge";
 import { formatChatTime } from "@/lib/format";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { CHAT_TOPIC_LABELS, type ChatMessage, type ChatTopic } from "@/lib/types";
 import { sendMemberMessageAction } from "./actions";
-
-/** Replace optimistic placeholder with realtime payload (matched by sender+text+~10s). */
-function mergeIncoming(prev: ChatMessage[], incoming: ChatMessage): ChatMessage[] {
-  if (prev.some((x) => x.id === incoming.id)) return prev;
-  const optimisticIdx = prev.findIndex(
-    (x) =>
-      x.id.startsWith("local-") &&
-      x.from_user_id === incoming.from_user_id &&
-      x.text === incoming.text &&
-      Math.abs(
-        new Date(x.created_at).getTime() - new Date(incoming.created_at).getTime()
-      ) < 10_000
-  );
-  const tagged: ChatMessage = { ...incoming, mine: !incoming.is_admin_reply };
-  if (optimisticIdx >= 0) {
-    const next = prev.slice();
-    next[optimisticIdx] = tagged;
-    return next;
-  }
-  return [...prev, tagged];
-}
 
 /** Copy propio de cada canal. */
 const TOPIC_COPY: Record<
@@ -119,7 +99,9 @@ export function ChatScreen({
           (payload) => {
             const m = payload.new as ChatMessage;
             if ((m.topic ?? "secretaria") !== topic) return;
-            setMessages((prev) => mergeIncoming(prev, m));
+            setMessages((prev) =>
+              mergeIncoming(prev, { ...m, mine: !m.is_admin_reply })
+            );
           }
         )
         .subscribe((status, err) => {
@@ -176,7 +158,8 @@ export function ChatScreen({
     startTransition(async () => {
       try {
         const result = await sendMemberMessageAction(fd);
-        if (result && !result.ok) fail(result.message);
+        if (!result.ok) fail(result.message);
+        else setMessages((prev) => confirmSent(prev, optimisticId, result));
       } catch {
         fail("No pudimos enviar el mensaje. Revisá tu conexión y probá de nuevo.");
       }

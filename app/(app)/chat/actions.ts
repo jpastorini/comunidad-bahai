@@ -12,7 +12,11 @@ import {
 } from "@/lib/types";
 
 /** Resultado de enviar: la pantalla necesita saber si el mensaje quedó. */
-export type SendResult = { ok: true } | { ok: false; message: string };
+/** Con el id y la hora de la fila guardada: la pantalla los usa para
+ *  convertir la burbuja optimista en la real (lib/chat-merge.ts). */
+export type SendResult =
+  | { ok: true; id: string; created_at: string }
+  | { ok: false; message: string };
 
 function parseTopic(value: unknown): ChatTopic {
   return value === "tesoreria" ? "tesoreria" : "secretaria";
@@ -52,19 +56,24 @@ export async function sendMemberMessageAction(
   // El error del insert se mira SIEMPRE: si no, el action termina bien, la
   // burbuja optimista se queda en pantalla y la persona cree que mandó un
   // mensaje que nunca se guardó.
-  const { error } = await supabase.from("chat_messages").insert({
-    member_id: session.user.id,
-    from_user_id: session.user.id,
-    text,
-    is_admin_reply: false,
-    topic,
-  });
+  const { data: saved, error } = await supabase
+    .from("chat_messages")
+    .insert({
+      member_id: session.user.id,
+      from_user_id: session.user.id,
+      text,
+      is_admin_reply: false,
+      topic,
+    })
+    .select("id, created_at")
+    .single();
   const failure = chatFailure(
     `insert(${topic})`,
     error,
     "No pudimos enviar el mensaje. Probá de nuevo en un momento."
   );
   if (failure) return { ok: false, message: failure };
+  if (!saved) return { ok: false, message: "No pudimos enviar el mensaje. Probá de nuevo en un momento." };
 
   // Push a quien atiende el canal: la Secretaría (tag de chat) o el
   // tesorero (tag de tesorería), siempre de la misma localidad. Si el push
@@ -86,5 +95,5 @@ export async function sendMemberMessageAction(
   });
 
   revalidatePath(path);
-  return { ok: true };
+  return { ok: true, id: saved.id, created_at: saved.created_at };
 }

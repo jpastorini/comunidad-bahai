@@ -18,8 +18,11 @@ import {
   type ChatTopic,
 } from "@/lib/types";
 
-/** Resultado de responder: la pantalla necesita saber si quedó guardado. */
-export type ReplyResult = { ok: true } | { ok: false; message: string };
+/** Resultado de responder, con el id de la fila guardada para que la
+ *  burbuja optimista se convierta en la real (lib/chat-merge.ts). */
+export type ReplyResult =
+  | { ok: true; id: string; created_at: string }
+  | { ok: false; message: string };
 
 function parseTopic(value: unknown): ChatTopic {
   return value === "tesoreria" ? "tesoreria" : "secretaria";
@@ -76,27 +79,32 @@ export async function sendChatReplyAction(
 
   // Igual que del lado del creyente: si el error no se mira, el action
   // termina bien y la respuesta queda solo en pantalla.
-  const { error } = await supabase.from("chat_messages").insert({
-    member_id: memberId,
-    from_user_id: session.user.id,
-    text,
-    is_admin_reply: true,
-    topic,
-    // El creyente tiene derecho a saber quién le contesta. Se guarda el
-    // nombre acá (y no se resuelve al leer) porque el payload de Realtime
-    // llega con la fila y nada más, y porque un creyente no lee el perfil
-    // de quien atiende. Ver migración 045.
-    from_name: session.profile.full_name,
-    // Las respuestas se consideran "leídas" de inmediato: el flag `read`
-    // solo aplica a mensajes entrantes que esperan respuesta.
-    read: true,
-  });
+  const { data: saved, error } = await supabase
+    .from("chat_messages")
+    .insert({
+      member_id: memberId,
+      from_user_id: session.user.id,
+      text,
+      is_admin_reply: true,
+      topic,
+      // El creyente tiene derecho a saber quién le contesta. Se guarda el
+      // nombre acá (y no se resuelve al leer) porque el payload de Realtime
+      // llega con la fila y nada más, y porque un creyente no lee el perfil
+      // de quien atiende. Ver migración 045.
+      from_name: session.profile.full_name,
+      // Las respuestas se consideran "leídas" de inmediato: el flag `read`
+      // solo aplica a mensajes entrantes que esperan respuesta.
+      read: true,
+    })
+    .select("id, created_at")
+    .single();
   const failure = chatFailure(
     `reply(${topic})`,
     error,
     "No pudimos enviar la respuesta. Probá de nuevo en un momento."
   );
   if (failure) return { ok: false, message: failure };
+  if (!saved) return { ok: false, message: "No pudimos enviar la respuesta. Probá de nuevo en un momento." };
 
   // Push al creyente (a menos que sea uno mismo en pruebas).
   if (memberId !== session.user.id) {
@@ -118,7 +126,7 @@ export async function sendChatReplyAction(
   revalidatePath(basePath);
   revalidatePath("/admin");
   revalidatePath("/");
-  return { ok: true };
+  return { ok: true, id: saved.id, created_at: saved.created_at };
 }
 
 /**

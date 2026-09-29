@@ -2,34 +2,10 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { sendChatReplyAction } from "@/app/admin/(panel)/chat/actions";
+import { confirmSent, mergeIncoming } from "@/lib/chat-merge";
 import { formatChatTime } from "@/lib/format";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import type { ChatMessage, ChatTopic } from "@/lib/types";
-
-/**
- * Merge an incoming realtime message into the local list, replacing the
- * matching optimistic placeholder (if any). Optimistic messages have
- * synthetic ids starting with "local-"; we match them by sender + text
- * sent within the last 10 seconds.
- */
-function mergeIncoming(prev: ChatMessage[], incoming: ChatMessage): ChatMessage[] {
-  if (prev.some((x) => x.id === incoming.id)) return prev;
-  const optimisticIdx = prev.findIndex(
-    (x) =>
-      x.id.startsWith("local-") &&
-      x.from_user_id === incoming.from_user_id &&
-      x.text === incoming.text &&
-      Math.abs(
-        new Date(x.created_at).getTime() - new Date(incoming.created_at).getTime()
-      ) < 10_000
-  );
-  if (optimisticIdx >= 0) {
-    const next = prev.slice();
-    next[optimisticIdx] = incoming;
-    return next;
-  }
-  return [...prev, incoming];
-}
 
 type Props = {
   memberId: string;
@@ -144,7 +120,8 @@ export function Conversation({
     startTransition(async () => {
       try {
         const result = await sendChatReplyAction(fd);
-        if (result && !result.ok) fail(result.message);
+        if (!result.ok) fail(result.message);
+        else setMessages((prev) => confirmSent(prev, optimisticId, result));
       } catch {
         fail(
           "No pudimos enviar la respuesta. Revisá tu conexión y probá de nuevo."
