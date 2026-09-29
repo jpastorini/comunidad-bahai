@@ -48,7 +48,8 @@ export default async function MetasPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Tesorería"
+        back={{ href: "/admin/tesoreria/presupuesto", label: "Presupuesto y metas" }}
+        eyebrow="Tesorería · Presupuesto y metas"
         title="Metas de la Asamblea"
         description="Lo que la Asamblea se propuso, con el rubro del libro que lo mide. De acá salen las barras de progreso del tablero."
         actions={

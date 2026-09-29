@@ -13,6 +13,7 @@ import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { treasuryYearForDate } from "@/lib/treasury-year";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { fmtUYU } from "@/lib/budget";
+import { getGoals } from "@/lib/treasury-progress";
 import { createBudgetAction } from "./actions";
 
 export const revalidate = 60;
@@ -55,6 +56,11 @@ export default async function PresupuestoListPage() {
     .order("created_at", { ascending: false });
 
   const budgets = (budgetsRaw ?? []) as BudgetRow[];
+  // Las metas son la otra mitad de este ítem del menú: se editan en su
+  // subpantalla, acá se ven de un vistazo.
+  const goals = await getGoals(supabase, session.locality.id);
+  const activeGoals = goals.filter((g) => g.status === "activa");
+  const achievedGoals = goals.filter((g) => g.status === "lograda");
 
   // Totales por presupuesto (solo categorías con meta > 0) en una query.
   const totalsByBudget = new Map<string, { planned: number; spent: number }>();
@@ -85,9 +91,50 @@ export default async function PresupuestoListPage() {
     <>
       <PageHeader
         eyebrow="Tesorería"
-        title="Plan de Presupuesto"
-        description="Definí metas de gasto por categoría para cada período. Las categorías en $0 no se cuentan en las metas del año."
+        title="Presupuesto y metas"
+        description="Lo que la Asamblea planea gastar en el ejercicio, por categoría, y lo que se propuso lograr. Las categorías en $0 no se cuentan en las metas del año."
       />
+
+      <Card className="mb-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <h2 className="font-display text-[20px] font-semibold text-dark">
+              Metas de la Asamblea
+            </h2>
+            <p className="mt-1 text-[12px] text-muted">
+              Lo que la Asamblea se propuso, con el rubro del libro que lo mide.
+              De acá salen las barras de progreso del tablero y del informe.
+            </p>
+            {goals.length === 0 ? (
+              <p className="mt-3 text-[13px] text-muted">Todavía no hay metas cargadas.</p>
+            ) : (
+              <ul className="mt-3 flex flex-col gap-1.5">
+                {activeGoals.map((g) => (
+                  <li key={g.id} className="flex items-center gap-2 text-[13px] text-dark">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-gold" />
+                    <span className="truncate">{g.title}</span>
+                    {g.badge && (
+                      <span className="shrink-0 rounded bg-bg px-1.5 py-0.5 text-[10px] font-semibold text-muted">
+                        {g.badge}
+                      </span>
+                    )}
+                  </li>
+                ))}
+                {achievedGoals.length > 0 && (
+                  <li className="text-[12px] text-muted">
+                    {achievedGoals.length === 1
+                      ? "1 meta lograda"
+                      : `${achievedGoals.length} metas logradas`}
+                  </li>
+                )}
+              </ul>
+            )}
+          </div>
+          <Button href="/admin/tesoreria/metas">
+            {goals.length === 0 ? "Cargar metas" : "Editar metas"}
+          </Button>
+        </div>
+      </Card>
 
       <Card className="mb-5">
         <h2 className="mb-1 font-display text-[20px] font-semibold text-dark">

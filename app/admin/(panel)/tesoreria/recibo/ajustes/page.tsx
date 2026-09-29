@@ -1,4 +1,4 @@
-import { Banner, Card, PageHeader } from "@/components/admin/ui";
+import { Banner, Button, Card, PageHeader, TextInput } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
 import { receiptAssets } from "@/lib/receipt-assets";
@@ -6,6 +6,8 @@ import { getReceiptSettings } from "@/lib/receipt-settings";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { receiptLocalityName } from "@/lib/treasury-format";
 import { getReceiptLegal } from "@/lib/treasury-ledger";
+import type { Treasury } from "@/lib/types";
+import { savePaymentMethodsAction } from "./actions";
 import { ReceiptSettingsForm } from "./settings-form";
 
 export const dynamic = "force-dynamic";
@@ -26,9 +28,21 @@ export default async function AjustesReciboPage() {
   const supabase = createSupabaseServer();
   const localityId = session.locality.id;
 
-  const [data, legal] = await Promise.all([
+  const [data, legal, treasuryRow] = await Promise.all([
     getReceiptSettings(supabase, localityId),
     getReceiptLegal(supabase, localityId),
+    // Los medios de pago viven en la tabla `treasury` vieja, una fila por
+    // localidad; es lo único que la comunidad sigue leyendo de ahí.
+    supabase
+      .from("treasury")
+      .select("methods")
+      .eq("locality_id", localityId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  const methods = ((treasuryRow.data as Pick<Treasury, "methods"> | null)?.methods ?? []).concat([
+    { type: "", description: "", letter: "" },
   ]);
   const { hasLogo, hasSignature: hasLegacySignature } = receiptAssets();
 
@@ -36,8 +50,8 @@ export default async function AjustesReciboPage() {
     <>
       <PageHeader
         eyebrow="Tesorería"
-        title="Recibo"
-        description="Quién firma, con qué firma y de qué color sale el comprobante de contribución."
+        title="Recibo y medios de pago"
+        description="Quién firma, con qué firma y de qué color sale el comprobante de contribución; y cómo se aporta, que es lo que la comunidad ve en Tesorería."
       />
 
       {!data.ready && (
@@ -59,6 +73,46 @@ export default async function AjustesReciboPage() {
           </Banner>
         </div>
       )}
+
+      <div id="medios-de-pago" />
+      <Card className="mb-5">
+        <h2 className="font-display text-[20px] font-semibold text-dark">Cómo aportar</h2>
+        <p className="mb-4 mt-1 text-[12px] text-muted">
+          Las tarjetas con los medios de pago que ve la comunidad en la
+          pantalla Tesorería de la app. Una fila por medio: el nombre, los
+          datos (cuenta, alias, a nombre de quién) y una letra para el ícono.
+          Las filas vacías se ignoran; para agregar más, guardá y volvé a
+          abrir.
+        </p>
+        <form action={savePaymentMethodsAction} className="flex flex-col gap-3">
+          {methods.map((m, i) => (
+            <div key={i} className="grid gap-3 md:grid-cols-[180px,1fr,72px]">
+              <TextInput
+                name="method_type[]"
+                defaultValue={m.type}
+                placeholder="Transferencia"
+                aria-label="Medio"
+              />
+              <TextInput
+                name="method_description[]"
+                defaultValue={m.description}
+                placeholder="BROU caja de ahorro 001-123456 · Asamblea Espiritual Local"
+                aria-label="Datos"
+              />
+              <TextInput
+                name="method_letter[]"
+                defaultValue={m.letter}
+                maxLength={1}
+                placeholder="T"
+                aria-label="Letra"
+              />
+            </div>
+          ))}
+          <div className="flex justify-end">
+            <Button type="submit">Guardar medios de pago</Button>
+          </div>
+        </form>
+      </Card>
 
       <Card>
         <ReceiptSettingsForm

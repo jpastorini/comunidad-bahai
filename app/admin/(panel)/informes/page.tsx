@@ -35,7 +35,7 @@ export default async function RegistroInformesPage() {
     <>
       <PageHeader
         eyebrow="Asamblea"
-        title="Informes de Tesorería"
+        title="Registro de informes"
         description="Registro de los informes emitidos por la Tesorería. Solo consulta: se editan desde la sección Tesorería."
         actions={
           esTesorero ? (

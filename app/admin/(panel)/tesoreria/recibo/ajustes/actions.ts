@@ -122,3 +122,57 @@ export async function saveReceiptSettingsAction(formData: FormData) {
   await removeSignatureFile(supabase, toDelete);
   done("Listo. El recibo sale con estos datos.");
 }
+
+/**
+ * Los medios de pago que la comunidad ve en "Cómo aportar" (/tesoreria).
+ * Es lo ÚNICO que sobrevive de la tabla `treasury` vieja: las cifras a
+ * mano se jubilaron con la 066 (el estado del Fondo se calcula y se
+ * comparte desde Publicar). La fila se conserva —una por localidad— y
+ * acá solo se reescribe `methods`; el resto de columnas queda como
+ * está hasta que una migración las tire.
+ */
+export async function savePaymentMethodsAction(formData: FormData) {
+  const session = await requireAdmin();
+  ensureTreasuryTag(session.profile);
+  const supabase = createSupabaseServer();
+
+  const methods: { type: string; description: string; letter: string }[] = [];
+  const types = formData.getAll("method_type[]") as string[];
+  const descs = formData.getAll("method_description[]") as string[];
+  const letters = formData.getAll("method_letter[]") as string[];
+  for (let i = 0; i < types.length; i++) {
+    const type = (types[i] || "").trim();
+    if (!type) continue;
+    methods.push({
+      type: type.slice(0, 60),
+      description: (descs[i] || "").trim().slice(0, 300),
+      letter: ((letters[i] || "").trim() || type[0]).slice(0, 1).toUpperCase(),
+    });
+  }
+
+  const { data: row } = await supabase
+    .from("treasury")
+    .select("id")
+    .eq("locality_id", session.locality.id)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const id = (row as { id: string } | null)?.id ?? null;
+  const now = new Date().toISOString();
+  const { error } = id
+    ? await supabase.from("treasury").update({ methods, updated_at: now }).eq("id", id)
+    : await supabase.from("treasury").insert({
+        period: "—",
+        goal_amount: 0,
+        current_amount: 0,
+        contributions: [],
+        methods,
+        updated_at: now,
+      });
+  if (error) {
+    console.error("[savePaymentMethodsAction]", error);
+    fail("No se pudieron guardar los medios de pago.");
+  }
+  revalidatePath("/tesoreria");
+  done("Listo. La comunidad ve estos medios de pago en Cómo aportar.");
+}

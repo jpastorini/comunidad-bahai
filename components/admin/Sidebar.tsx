@@ -259,10 +259,23 @@ function GroupRow({
       </button>
       {isOpen && (
         <ul className="mb-1 ml-[21px] flex flex-col gap-0.5 border-l border-black/[0.08] pl-3">
-          {group.children.map((leaf) => {
+          {group.children.map((leaf, i) => {
             const on = leaf.href === activeHref;
+            // Título del bloque: solo cuando cambia respecto de la hoja
+            // anterior. No es un nivel más: no se pliega ni navega.
+            const prev = i > 0 ? group.children![i - 1].section : undefined;
+            const heading = leaf.section && leaf.section !== prev ? leaf.section : null;
             return (
               <li key={leaf.href}>
+                {heading && (
+                  <div
+                    className={`px-3 pb-1 text-[9.5px] font-semibold uppercase tracking-[1.5px] text-muted ${
+                      i > 0 ? "pt-3" : "pt-1"
+                    }`}
+                  >
+                    {heading}
+                  </div>
+                )}
                 <Link
                   href={leaf.href}
                   onClick={onNavigate}

@@ -25,6 +25,14 @@ export type NavLeaf = {
   exact?: boolean;
   /** Solo en una Asamblea Local: la Comunidad Nacional no lo tiene (056). */
   aelOnly?: boolean;
+  /**
+   * Título del bloque dentro del grupo. Tesorería tiene demasiadas
+   * pantallas para una lista plana: se parten en bloques por FRECUENCIA
+   * de uso (todos los días, cada mes, el ejercicio, ajustes), y el
+   * Sidebar dibuja el título cuando cambia respecto de la hoja anterior.
+   * No es un nivel más de navegación: no se pliega ni tiene ruta.
+   */
+  section?: string;
 };
 
 export type NavGroup = {
@@ -48,7 +56,10 @@ export const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/disponibilidad", label: "Reuniones" },
       // Registro de solo lectura de los informes emitidos: lo aprueba la
       // Asamblea, así que va acá y no dentro de Tesorería.
-      { href: "/admin/informes", label: "Informes de Tesorería" },
+      // Se llama "Registro" y no "Informes de Tesorería" porque el grupo
+      // Tesorería tiene su propio ítem "Informes" (el taller del tesorero)
+      // y dos ítems con casi el mismo nombre confundían.
+      { href: "/admin/informes", label: "Registro de informes" },
       // La ficha legal (RUT, BPS, estatutos) y quiénes la integran, por
       // ejercicio (052). Informativa: los permisos siguen en los tags.
       { href: "/admin/asamblea", label: "Datos de la Asamblea" },
@@ -91,45 +102,65 @@ export const ADMIN_NAV: NavGroup[] = [
     key: "tesoreria",
     label: "Tesorería",
     requires: "treasury",
+    // Cuatro bloques por frecuencia de uso, pensados para un tesorero que
+    // recién agarra el cargo: lo de todos los días arriba, lo que se
+    // configura una vez abajo. Un ítem por pantalla principal; las
+    // subpantallas (metas, recibo concreto) prenden su ítem por `match`.
     children: [
+      // ── Todos los días ──
       // El recibo se abre desde el libro: prende "Libro".
-      { href: "/admin/tesoreria/libro", label: "Libro", match: ["/admin/tesoreria/recibo"] },
-      // Quién firma, con qué firma y de qué color sale el recibo (060).
+      {
+        href: "/admin/tesoreria/libro",
+        label: "Libro",
+        match: ["/admin/tesoreria/recibo"],
+        section: "Todos los días",
+      },
+      { href: "/admin/tesoreria/chat", label: "Mensajes", section: "Todos los días" },
+      // El extracto de la plataforma contra el libro de esa cuenta (061).
+      {
+        href: "/admin/tesoreria/conciliacion",
+        label: "Conciliación",
+        section: "Todos los días",
+      },
+      // ── Cada mes ──
+      // El cierre mensual y el Libro de Caja imprimible (054).
+      { href: "/admin/tesoreria/libro/cierres", label: "Cierres", section: "Cada mes" },
+      // Las reglas deterministas sobre el libro (059): lo que se mira
+      // ANTES de cerrar un mes.
+      { href: "/admin/tesoreria/auditoria", label: "Auditoría", section: "Cada mes" },
+      // Calcular y compartir el estado del Fondo (066): lo ÚNICO que la
+      // comunidad ve de la Tesorería, en la app y en la Fiesta.
+      { href: "/admin/tesoreria/publicar", label: "Publicar", section: "Cada mes" },
+      // Quién declaró un compromiso mensual y cómo viene el mes (063).
+      { href: "/admin/tesoreria/compromisos", label: "Compromisos", section: "Cada mes" },
+      // ── El ejercicio ──
+      // Presupuesto y metas son un solo ítem: las metas se editan en una
+      // subpantalla del presupuesto (/metas prende este ítem).
+      {
+        href: "/admin/tesoreria/presupuesto",
+        label: "Presupuesto y metas",
+        match: ["/admin/tesoreria/metas"],
+        section: "El ejercicio",
+      },
+      { href: "/admin/tesoreria/progreso", label: "Progreso", section: "El ejercicio" },
+      { href: "/admin/tesoreria/informes", label: "Informes", section: "El ejercicio" },
+      // ── Ajustes ──
+      // Cuentas, fondos, categorías y subcategorías con que se carga el libro.
+      { href: "/admin/tesoreria/catalogo", label: "Catálogo", section: "Ajustes" },
+      // Quién firma, con qué firma y de qué color sale el recibo (060), y
+      // los medios de pago que ve la comunidad en "Cómo aportar".
       // ⚠️ El href es más largo que el `match` de "Libro" de arriba, así
       // que la coincidencia de prefijo más larga lo prende a él: un
       // recibo concreto (/recibo/<uuid>) sigue prendiendo "Libro".
-      { href: "/admin/tesoreria/recibo/ajustes", label: "Recibo" },
-      // Cuentas, fondos, categorías y subcategorías con que se carga el
-      // libro: agregar, renombrar, ordenar, dar de baja.
-      { href: "/admin/tesoreria/catalogo", label: "Catálogo" },
+      {
+        href: "/admin/tesoreria/recibo/ajustes",
+        label: "Recibo y medios de pago",
+        match: ["/admin/tesoreria/aportar"],
+        section: "Ajustes",
+      },
       // Cargar un ejercicio entero desde la planilla con que se llevaba
-      // antes (062). Va acá y no al final porque es de la misma familia
-      // que Catálogo: lo que se hace para que el libro exista.
-      { href: "/admin/tesoreria/libro/importar", label: "Importar" },
-      // El cierre mensual y el Libro de Caja imprimible (054).
-      { href: "/admin/tesoreria/libro/cierres", label: "Cierres" },
-      // El extracto de la plataforma (Prex por ahora) contra el libro de
-      // esa cuenta: lo que falta de cada lado. Antes de cerrar el mes.
-      { href: "/admin/tesoreria/conciliacion", label: "Conciliación" },
-      // Las 53 reglas deterministas sobre el libro, los cierres y los
-      // informes (059). Va después de Cierres porque es lo que se mira
-      // ANTES de cerrar un mes.
-      { href: "/admin/tesoreria/auditoria", label: "Auditoría" },
-      { href: "/admin/tesoreria/informes", label: "Informes" },
-      { href: "/admin/tesoreria/progreso", label: "Progreso" },
-      // Calcular y compartir el estado del Fondo (066): lo ÚNICO que la
-      // comunidad ve de la Tesorería, en la app y en la Fiesta.
-      { href: "/admin/tesoreria/publicar", label: "Publicar" },
-      // Quién declaró un compromiso mensual y cómo viene el mes (063):
-      // a quién llamar para agradecer y a quién para recordar.
-      { href: "/admin/tesoreria/compromisos", label: "Compromisos" },
-      { href: "/admin/tesoreria/presupuesto", label: "Presupuesto" },
-      { href: "/admin/tesoreria/metas", label: "Metas" },
-      { href: "/admin/tesoreria/chat", label: "Mensajes" },
-      // El formulario viejo de la tabla `treasury`: lo único que la app de
-      // la comunidad sigue leyendo de ahí es "Cómo aportar". Pendiente de
-      // jubilar (ver CLAUDE.md).
-      { href: "/admin/tesoreria/aportar", label: "Cómo aportar" },
+      // antes (062).
+      { href: "/admin/tesoreria/libro/importar", label: "Importar", section: "Ajustes" },
     ],
   },
   {
