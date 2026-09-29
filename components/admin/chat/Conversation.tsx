@@ -2,10 +2,30 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { sendChatReplyAction } from "@/app/admin/(panel)/chat/actions";
-import { confirmSent, mergeIncoming } from "@/lib/chat-merge";
+import { MessageTicks } from "@/components/MessageTicks";
+import { applyUpdate, confirmSent, mergeIncoming } from "@/lib/chat-merge";
 import { formatChatTime } from "@/lib/format";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import type { ChatMessage, ChatTopic } from "@/lib/types";
+
+/** Lo entrante de esta conversación queda leído (el doble check verde del
+ *  creyente). La RLS de update (045) ya deja a quien atiende el canal. */
+function markInboundRead(
+  supabase: ReturnType<typeof createSupabaseBrowser>,
+  memberId: string,
+  topic: ChatTopic
+) {
+  void supabase
+    .from("chat_messages")
+    .update({ read: true })
+    .eq("member_id", memberId)
+    .eq("topic", topic)
+    .eq("is_admin_reply", false)
+    .eq("read", false)
+    .then(({ error }) => {
+      if (error) console.error("[chat:admin] mark read:", error.message);
+    });
+}
 
 type Props = {
   memberId: string;
@@ -69,6 +89,25 @@ export function Conversation({
             const m = payload.new as ChatMessage;
             if ((m.topic ?? "secretaria") !== topic) return;
             setMessages((prev) => mergeIncoming(prev, m));
+            // Con la conversación delante, lo que entra ya está leído.
+            if (!m.is_admin_reply && document.visibilityState === "visible") {
+              markInboundRead(supabase, memberId, topic);
+            }
+          }
+        )
+        // Los checks (071): llegó o lo leyeron del otro lado.
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "chat_messages",
+            filter: `member_id=eq.${memberId}`,
+          },
+          (payload) => {
+            const m = payload.new as ChatMessage;
+            if ((m.topic ?? "secretaria") !== topic) return;
+            setMessages((prev) => applyUpdate(prev, m));
           }
         )
         .subscribe((status, err) => {
@@ -80,6 +119,18 @@ export function Conversation({
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
+  }, [memberId, topic]);
+
+  // Si entró un mensaje con la pestaña en segundo plano, se lee al volver.
+  useEffect(() => {
+    const supabase = createSupabaseBrowser();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        markInboundRead(supabase, memberId, topic);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [memberId, topic]);
 
   function handleSend(e: React.FormEvent) {
@@ -182,6 +233,7 @@ export function Conversation({
                 }`}
               >
                 {formatChatTime(m.created_at)}
+                {mine && <MessageTicks message={m} />}
               </div>
             </div>
           );

@@ -10,7 +10,8 @@ import {
   CHAT_SEGMENTS,
   SegmentedNav,
 } from "@/components/SegmentedNav";
-import { confirmSent, mergeIncoming } from "@/lib/chat-merge";
+import { MessageTicks } from "@/components/MessageTicks";
+import { applyUpdate, confirmSent, mergeIncoming } from "@/lib/chat-merge";
 import { formatChatTime } from "@/lib/format";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { CHAT_TOPIC_LABELS, type ChatMessage, type ChatTopic } from "@/lib/types";
@@ -102,6 +103,26 @@ export function ChatScreen({
             setMessages((prev) =>
               mergeIncoming(prev, { ...m, mine: !m.is_admin_reply })
             );
+            // La persona tiene la conversación delante: la respuesta ya
+            // está leída (el doble check verde de quien la mandó).
+            if (m.is_admin_reply && document.visibilityState === "visible") {
+              void supabase.rpc("mark_chat_seen", { p_topic: topic });
+            }
+          }
+        )
+        // Los checks (071): llegó o lo leyeron del otro lado.
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "chat_messages",
+            filter: `member_id=eq.${memberId}`,
+          },
+          (payload) => {
+            const m = payload.new as ChatMessage;
+            if ((m.topic ?? "secretaria") !== topic) return;
+            setMessages((prev) => applyUpdate(prev, m));
           }
         )
         .subscribe((status, err) => {
@@ -114,6 +135,19 @@ export function ChatScreen({
       if (channel) supabase.removeChannel(channel);
     };
   }, [mode, memberId, topic]);
+
+  // Si llegó una respuesta con la app en segundo plano, se lee al volver
+  // al frente con la conversación abierta.
+  useEffect(() => {
+    if (mode !== "live") return;
+    const supabase = createSupabaseBrowser();
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      void supabase.rpc("mark_chat_seen", { p_topic: topic });
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [mode, topic]);
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -266,6 +300,7 @@ export function ChatScreen({
                 }`}
               >
                 {formatChatTime(m.created_at)}
+                {mine && mode === "live" && <MessageTicks message={m} />}
               </div>
             </div>
           );

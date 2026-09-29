@@ -119,6 +119,7 @@ export async function sendChatReplyAction(
       body: text.slice(0, 120),
       url: CHAT_TOPIC_PATHS[topic],
       tag: `chat-${topic}-${memberId}`,
+      chatDelivery: { topic, memberId },
     });
   }
 

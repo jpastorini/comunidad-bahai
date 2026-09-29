@@ -1215,6 +1215,22 @@ gente de todo el país). Arriba de la conversación, `ContactReachNote` dice
 si el mensaje va a llegar: sin push, queda esperando hasta que la persona
 abra la app. El push del primer mensaje dice quién escribe.
 
+**Los checks de WhatsApp** (migración 071, 2026-09-29): debajo de cada
+mensaje propio, en las dos pantallas, `MessageTicks`
+(`components/MessageTicks.tsx`) dibuja reloj (guardándose) · ✓ enviado ·
+✓✓ recibido · ✓✓ verde leído. "Leído" ya existía: `read` para lo que manda
+el creyente y `read_by_member` para las respuestas (que se insertan con
+`read = true`, así que ahí `read` no dice nada). "Recibido" es
+`delivered_at`, que escribe solo la RPC `mark_chat_delivered()` por tres
+caminos: el service worker al recibir el push (`chatDelivery` en el
+payload → `/api/chat/delivered`), `ChatNotifier` cuando el mensaje llega
+con la app abierta, y `ChatNotifier` al abrir la app o volver al frente.
+El lado de quien atiende va por MEMBRESÍA (056), igual que a quién se le
+manda el push. Con la conversación delante y la pantalla visible, lo que
+entra se marca leído al instante (antes solo al cargar la página), y las
+dos pantallas escuchan UPDATE por Realtime para mover los checks en vivo.
+Sin la 071 se ven solo ✓ y ✓✓ verde.
+
 Puntos de entrada: pestañas Secretaría / Tesorería dentro de `/chat`
 (`CHAT_SEGMENTS`), un atajo en la sección "Cómo aportar" de `/tesoreria`
 —donde la persona se acuerda del giro que hizo— y, para quien atiende,

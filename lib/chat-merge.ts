@@ -45,3 +45,19 @@ export function confirmSent<T extends ChatMessage>(
     x.id === optimisticId ? { ...x, id: saved.id, created_at: saved.created_at } : x
   );
 }
+
+/** Realtime avisó un UPDATE (llegó, o lo leyeron): se actualizan los
+ *  checks de esa fila sin perder lo que es solo de la pantalla (`mine`). */
+export function applyUpdate<T extends ChatMessage>(prev: T[], updated: ChatMessage): T[] {
+  if (!prev.some((x) => x.id === updated.id)) return prev;
+  return prev.map((x) =>
+    x.id === updated.id
+      ? {
+          ...x,
+          read: updated.read,
+          read_by_member: updated.read_by_member,
+          delivered_at: updated.delivered_at,
+        }
+      : x
+  );
+}

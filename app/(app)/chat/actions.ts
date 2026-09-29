@@ -92,6 +92,7 @@ export async function sendMemberMessageAction(
     body: text.slice(0, 120),
     url: `${CHAT_TOPIC_ADMIN_PATHS[topic]}/${session.user.id}`,
     tag: `chat-${topic}-${session.user.id}`,
+    chatDelivery: { topic, memberId: session.user.id },
   });
 
   revalidatePath(path);

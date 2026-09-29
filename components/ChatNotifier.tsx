@@ -31,7 +31,9 @@ type Props = {
  *   - reproduce un sonido,
  *   - refresca los badges del servidor (router.refresh),
  *   - si la app está en segundo plano y hay permiso, muestra una
- *     notificación del sistema (Capa 2).
+ *     notificación del sistema (Capa 2),
+ *   - anota "recibido" (el doble check, 071): lo que llega mientras la app
+ *     está abierta, y todo lo pendiente al abrirla o volver al frente.
  * No renderiza nada.
  */
 export function ChatNotifier({ userId, side, topics }: Props) {
@@ -44,6 +46,21 @@ export function ChatNotifier({ userId, side, topics }: Props) {
     const allowed = topicKey ? (topicKey.split(",") as ChatTopic[]) : [];
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
+
+    // "Recibido" = llegó a este dispositivo. Una sola RPC cubre los dos
+    // papeles (creyente y quien atiende); sin la 071 falla y no pasa nada.
+    const markDelivered = () => {
+      void supabase.rpc("mark_chat_delivered").then(({ error }) => {
+        if (error && error.code !== "PGRST202") {
+          console.warn("[chat] mark_chat_delivered:", error.message);
+        }
+      });
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") markDelivered();
+    };
+    markDelivered();
+    document.addEventListener("visibilitychange", onVisible);
 
     (async () => {
       const { data } = await supabase.auth.getSession();
@@ -89,6 +106,7 @@ export function ChatNotifier({ userId, side, topics }: Props) {
     })();
 
     function handleIncoming(m: ChatMessage, topic: ChatTopic) {
+      markDelivered();
       playChime();
       // Refresca los badges del servidor (tab AEL / chat sin leer).
       router.refresh();
@@ -134,6 +152,7 @@ export function ChatNotifier({ userId, side, topics }: Props) {
 
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
       if (channel) supabase.removeChannel(channel);
     };
   }, [router, userId, side, topicKey]);

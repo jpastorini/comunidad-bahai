@@ -22,6 +22,9 @@ export type PushPayload = {
   body: string;
   url: string;
   tag?: string;
+  /** Aviso de chat: el service worker, al recibirlo, anota "recibido"
+   *  (doble check, 071) en esa conversación vía /api/chat/delivered. */
+  chatDelivery?: { topic: ChatTopic; memberId: string };
 };
 
 /**

@@ -63,7 +63,22 @@ self.addEventListener("push", (event) => {
     data: { url: data.url || "/" },
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  // Aviso de chat: llegó a este teléfono, o sea "recibido" (doble check,
+  // migración 071). Las cookies de sesión viajan solas en same-origin; si
+  // falla, la app lo anota igual al abrirse (ChatNotifier).
+  const delivery = data.chatDelivery;
+  const confirmDelivery =
+    delivery && delivery.topic && delivery.memberId
+      ? fetch("/api/chat/delivered", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(delivery),
+        }).catch((e) => console.error("[sw] chat delivered:", e))
+      : Promise.resolve();
+
+  event.waitUntil(
+    Promise.all([self.registration.showNotification(title, options), confirmDelivery])
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {

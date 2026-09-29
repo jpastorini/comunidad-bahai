@@ -111,6 +111,10 @@ export type ChatMessage = {
    * migración cuyo autor ya no tenía nombre cargado.
    */
   from_name: string | null;
+  /** El creyente vio esta respuesta (010). Solo significa algo en respuestas. */
+  read_by_member?: boolean;
+  /** Llegó al dispositivo de quien lo recibe (071). Undefined sin la migración. */
+  delivered_at?: string | null;
   // For UI rendering only
   mine?: boolean;
 };
