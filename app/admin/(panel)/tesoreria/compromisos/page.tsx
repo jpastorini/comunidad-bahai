@@ -1,3 +1,4 @@
+import { ContactButtons } from "@/components/admin/chat/ContactButtons";
 import { Banner, Card, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -153,6 +154,7 @@ export default async function CompromisosPage({
         rows={pendientes}
         tone="warning"
         month={month}
+        viewerId={session.user.id}
       />
 
       <Group
@@ -161,6 +163,7 @@ export default async function CompromisosPage({
         rows={cumplidos}
         tone="ok"
         month={month}
+        viewerId={session.user.id}
       />
 
       <Group
@@ -169,6 +172,7 @@ export default async function CompromisosPage({
         rows={sinVinculo}
         tone="neutral"
         month={month}
+        viewerId={session.user.id}
       />
 
       {report.others.length > 0 && (
@@ -206,12 +210,14 @@ function Group({
   rows,
   tone,
   month,
+  viewerId,
 }: {
   title: string;
   hint: string;
   rows: CommitmentRow[];
   tone: "ok" | "warning" | "neutral";
   month: string;
+  viewerId: string;
 }) {
   if (rows.length === 0) return null;
   const dot =
@@ -284,6 +290,18 @@ function Group({
                 <span>Sin aportes registrados en {monthLabel(month)}</span>
               )}
             </div>
+            {/* Recordar o agradecer por el chat de Tesorería, sin esperar
+                a que la persona escriba (lib/chat-contact.ts). */}
+            {r.user_id !== viewerId && (
+              <div className="mt-2">
+                <ContactButtons
+                  memberId={r.user_id}
+                  topics={["tesoreria"]}
+                  size="sm"
+                  labels={{ tesoreria: "Escribirle" }}
+                />
+              </div>
+            )}
           </li>
         ))}
       </ul>

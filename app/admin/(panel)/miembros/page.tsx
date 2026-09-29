@@ -6,6 +6,10 @@ import {
   Select,
   TextInput,
 } from "@/components/admin/ui";
+import {
+  ContactButtons,
+  contactTopics,
+} from "@/components/admin/chat/ContactButtons";
 import { requireAdmin } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { getOrCreateLocalityInvite } from "@/lib/invites";
@@ -155,6 +159,7 @@ export default async function AdminMiembrosPage({
         initialFilter={searchParams.filtro}
         items={activeProfiles.map((p) => {
           const m = p as unknown as LocalityMember;
+          const isNew = now - new Date(m.created_at).getTime() <= NEW_DAYS * 864e5;
           return {
             id: p.id,
             name: p.full_name ?? "",
@@ -176,8 +181,22 @@ export default async function AdminMiembrosPage({
                 profile={p}
                 joinedAt={m.created_at}
                 lastSeenAt={m.last_seen_at}
-                isNew={now - new Date(m.created_at).getTime() <= NEW_DAYS * 864e5}
+                isNew={isNew}
                 isMe={p.id === session.user.id}
+                contact={
+                  <ContactButtons
+                    memberId={p.id}
+                    topics={contactTopics(session.profile, p, session.user.id)}
+                    size="sm"
+                    // A alguien que recién llegó, el primer mensaje de la
+                    // Secretaría es la bienvenida (el aviso de alguien nuevo
+                    // abre esta ficha con ?filtro=nuevos).
+                    labels={
+                      isNew ? { secretaria: "Darle la bienvenida" }
+                        : undefined
+                    }
+                  />
+                }
               />
             ),
           };
@@ -262,9 +281,11 @@ function MemberCard({
   joinedAt,
   lastSeenAt,
   isNew,
+  contact,
 }: {
   profile: Profile;
   isMe: boolean;
+  contact: React.ReactNode;
   joinedAt: string;
   lastSeenAt: string | null;
   isNew: boolean;
@@ -284,6 +305,7 @@ function MemberCard({
             ? `Última vez en la app: ${formatDate(lastSeenAt)}`
             : "Sin visitas registradas"}
         </span>
+        <span className="ml-auto">{contact}</span>
       </div>
       <form action={updateMemberAction}>
         <input type="hidden" name="id" value={profile.id} />

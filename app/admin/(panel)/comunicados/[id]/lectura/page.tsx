@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
+import {
+  ContactButtons,
+  contactTopics,
+} from "@/components/admin/chat/ContactButtons";
 import { PollReportSection } from "@/components/admin/comunicados/PollReportSection";
 import { ReadReportRefresher } from "@/components/admin/comunicados/ReadReportRefresher";
 import { Banner, Button, Card, PageHeader } from "@/components/admin/ui";
@@ -11,6 +15,7 @@ import {
   getReadReport,
   type ReadReportPerson,
 } from "@/lib/message-reads";
+import { getLocalityMembers } from "@/lib/memberships";
 import { getPollForMessage, getPollReport } from "@/lib/polls";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { Message } from "@/lib/types";
@@ -44,10 +49,32 @@ export default async function ComunicadoLecturaPage({
   // abra una Asamblea Local.
   const audienceLocality = m.source === "asamblea_nacional" ? null : session.locality.id;
 
-  const [report, poll] = await Promise.all([
+  const [report, poll, localMembers] = await Promise.all([
     getReadReport(m, audienceLocality),
     getPollForMessage(m.id),
+    getLocalityMembers(supabase, session.locality.id),
   ]);
+  // "Escribirle" solo a quien es de ESTA comunidad: en un comunicado
+  // nacional la lista trae gente de todo el país, y esa conversación le
+  // toca a su propia Asamblea (lib/chat-contact.ts).
+  const localBahai = new Map(localMembers.map((x) => [x.id, x.is_bahai]));
+  const contactFor = (id: string) => {
+    const isBahai = localBahai.get(id);
+    if (isBahai === undefined) return null;
+    return (
+      <ContactButtons
+        memberId={id}
+        topics={contactTopics(
+          session.profile,
+          { id, is_bahai: isBahai },
+          session.user.id
+        )}
+        size="sm"
+        // La lista va en media columna: el ícono de chat y el canal alcanzan.
+        labels={{ secretaria: "Secretaría", tesoreria: "Tesorería" }}
+      />
+    );
+  };
   // La encuesta (051), si el comunicado tiene una: totales, participación
   // y, si no es anónima, quién votó qué.
   const pollReport = poll ? await getPollReport(m, poll, session.locality.id) : null;
@@ -116,6 +143,7 @@ export default async function ComunicadoLecturaPage({
                 hint="A quién hacerle llegar la información por otro medio. Primero quien hace más tiempo no entra a la app."
                 people={report.pending}
                 empty="Todas las personas de la audiencia ya lo vieron."
+                action={contactFor}
                 render={(p) => (
                   <span
                     className={
@@ -209,6 +237,7 @@ function PeopleList({
   people,
   empty,
   render,
+  action,
   highlight = false,
 }: {
   title: string;
@@ -216,6 +245,8 @@ function PeopleList({
   people: ReadReportPerson[];
   empty: string;
   render: (p: ReadReportPerson) => React.ReactNode;
+  /** Un botón a la derecha de cada persona (p. ej. escribirle). */
+  action?: (id: string) => React.ReactNode;
   highlight?: boolean;
 }) {
   return (
@@ -238,6 +269,7 @@ function PeopleList({
                 </div>
                 {render(p)}
               </div>
+              {action && <div className="shrink-0">{action(p.id)}</div>}
             </li>
           ))}
         </ul>

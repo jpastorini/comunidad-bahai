@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { Conversation } from "@/components/admin/chat/Conversation";
+import { ContactReachNote } from "@/components/admin/chat/ContactReachNote";
 import { Banner, PageHeader } from "@/components/admin/ui";
 import { ensureChatTag, requireAdmin } from "@/lib/auth";
+import { contactBlockedReason, getContactReach } from "@/lib/chat-contact";
 import { chatFailure } from "@/lib/chat-errors";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { ChatMessage } from "@/lib/types";
@@ -45,6 +47,22 @@ export default async function ConversationPage({
   // Best-effort: mark inbound messages as read.
   await markConversationReadAction(params.memberId, "secretaria");
 
+  // La conversación puede abrirse vacía: la inicia la Asamblea desde
+  // Creyentes, el informe de lectura o Compromisos (lib/chat-contact.ts).
+  const isEmpty = !loadError && (messages ?? []).length === 0;
+  const [reach, blockedReason] = member
+    ? await Promise.all([
+        getContactReach(params.memberId),
+        contactBlockedReason(
+          supabase,
+          params.memberId,
+          session.locality.id,
+          "secretaria",
+          !isEmpty
+        ),
+      ])
+    : [null, null];
+
   return (
     <>
       <PageHeader back={{ href: "/admin/chat", label: "Chat de Secretaría" }}
@@ -57,12 +75,20 @@ export default async function ConversationPage({
           <Banner tone="danger">{memberFailure ?? loadError}</Banner>
         </div>
       )}
+      {member && !blockedReason && (
+        <ContactReachNote
+          reach={reach}
+          name={member.full_name ?? ""}
+          isEmpty={isEmpty}
+        />
+      )}
       <Conversation
         memberId={params.memberId}
         adminId={session.user.id}
         adminName={session.profile.full_name}
         topic="secretaria"
         initialMessages={(messages ?? []) as ChatMessage[]}
+        blockedReason={blockedReason}
       />
     </>
   );

@@ -7,11 +7,13 @@ import {
   requireAdmin,
   type AdminSession,
 } from "@/lib/auth";
+import { contactBlockedReason } from "@/lib/chat-contact";
 import { chatFailure } from "@/lib/chat-errors";
 import { sendPushToUsers } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import {
   CHAT_TOPIC_ADMIN_PATHS,
+  CHAT_TOPIC_LABELS,
   CHAT_TOPIC_PATHS,
   type ChatTopic,
 } from "@/lib/types";
@@ -52,6 +54,26 @@ export async function sendChatReplyAction(
   }
 
   const supabase = createSupabaseServer();
+
+  // La Asamblea también puede INICIAR la conversación (desde Creyentes, el
+  // informe de lectura o Compromisos), y eso tiene reglas que responder no
+  // tiene: ver `contactBlockedReason`. La RLS de select acota el conteo a
+  // esta localidad y a este canal.
+  const { count: priorCount } = await supabase
+    .from("chat_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("member_id", memberId)
+    .eq("topic", topic);
+  const isFirstContact = (priorCount ?? 0) === 0;
+  const blocked = await contactBlockedReason(
+    supabase,
+    memberId,
+    session.locality.id,
+    topic,
+    !isFirstContact
+  );
+  if (blocked) return { ok: false, message: blocked };
+
   // Igual que del lado del creyente: si el error no se mira, el action
   // termina bien y la respuesta queda solo en pantalla.
   const { error } = await supabase.from("chat_messages").insert({
@@ -78,8 +100,14 @@ export async function sendChatReplyAction(
 
   // Push al creyente (a menos que sea uno mismo en pruebas).
   if (memberId !== session.user.id) {
+    // Un mensaje que nadie pidió sorprende más que una respuesta: el
+    // primero dice quién escribe.
+    const firstName = session.profile.full_name?.split(" ")[0];
     await sendPushToUsers([memberId], {
-      title: topic === "tesoreria" ? "Tesorería" : "Secretaría Local",
+      title:
+        isFirstContact && firstName
+          ? `${CHAT_TOPIC_LABELS[topic]} · ${firstName} te escribió`
+          : CHAT_TOPIC_LABELS[topic],
       body: text.slice(0, 120),
       url: CHAT_TOPIC_PATHS[topic],
       tag: `chat-${topic}-${memberId}`,

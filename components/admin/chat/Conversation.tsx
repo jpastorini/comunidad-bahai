@@ -37,6 +37,9 @@ type Props = {
   adminName: string | null;
   topic: ChatTopic;
   initialMessages: ChatMessage[];
+  /** Si no se puede escribir (iniciar con alguien de otra comunidad, o
+   *  Tesorería con un Amigo/a de la Fe): se dice por qué y no hay recuadro. */
+  blockedReason?: string | null;
 };
 
 export function Conversation({
@@ -45,6 +48,7 @@ export function Conversation({
   adminName,
   topic,
   initialMessages,
+  blockedReason = null,
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [draft, setDraft] = useState("");
@@ -159,7 +163,7 @@ export function Conversation({
       >
         {messages.length === 0 && (
           <div className="py-10 text-center text-[13px] text-muted">
-            Sin mensajes en esta conversación.
+            Todavía no hay mensajes. Podés escribir el primero.
           </div>
         )}
         {messages.map((m, i) => {
@@ -216,6 +220,11 @@ export function Conversation({
         </div>
       )}
 
+      {blockedReason ? (
+        <div className="mt-4 rounded-xl border border-black/[0.08] bg-card px-4 py-3 text-[13px] text-muted">
+          {blockedReason}
+        </div>
+      ) : (
       <form onSubmit={handleSend} className="mt-4">
         <div className="flex items-end gap-3 rounded-2xl border border-black/[0.06] bg-card p-3 shadow-card-soft">
           <textarea
@@ -242,6 +251,7 @@ export function Conversation({
           </button>
         </div>
       </form>
+      )}
       <p className="mt-2 px-1 text-[11.5px] text-muted">
         El creyente ve tu nombre sobre la respuesta, así sabe con quién está
         hablando.

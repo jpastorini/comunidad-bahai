@@ -1201,6 +1201,20 @@ historial y era un 400. Los códigos de esquema (42703, 42883, PGRST202,
 PGRST204) tienen mensaje propio: "falta una actualización de la base".
 Si agregás una consulta al chat, mirá el `error`.
 
+**La Asamblea también inicia** (sin migración, 2026-09-29): el botón
+"Escribir desde Secretaría / Tesorería" (`ContactButtons`,
+`components/admin/chat/`) abre la conversación aunque esté vacía. Está en
+cada ficha de Creyentes ("Darle la bienvenida" si es nuevo), en "No lo
+vieron todavía" del informe de lectura y en los grupos de Compromisos.
+Cada canal exige su tag (`contactTopics()`) y Tesorería no se ofrece a un
+Amigo/a de la Fe. Iniciar tiene reglas que responder no tiene, en
+`contactBlockedReason()` (`lib/chat-contact.ts`), que chequean el action y
+la pantalla: solo con alguien de ESTA comunidad por membresía (la RLS de
+insert no mira a quién se escribe, y en un informe nacional la lista trae
+gente de todo el país). Arriba de la conversación, `ContactReachNote` dice
+si el mensaje va a llegar: sin push, queda esperando hasta que la persona
+abra la app. El push del primer mensaje dice quién escribe.
+
 Puntos de entrada: pestañas Secretaría / Tesorería dentro de `/chat`
 (`CHAT_SEGMENTS`), un atajo en la sección "Cómo aportar" de `/tesoreria`
 —donde la persona se acuerda del giro que hizo— y, para quien atiende,
