@@ -291,6 +291,10 @@ export type AssemblyMember = {
   profile_id: string | null;
   display_name: string;
   office: AssemblyOffice | null;
+  /** Vigencia (073): desde cuándo ocupa la fila (null = desde la elección)
+   *  y hasta cuándo (null = sigue en funciones). */
+  since: string | null;
+  until: string | null;
   created_at: string;
 };
 

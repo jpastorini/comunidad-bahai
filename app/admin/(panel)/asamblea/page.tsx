@@ -8,7 +8,7 @@ import {
   TextArea,
   TextInput,
 } from "@/components/admin/ui";
-import { currentAssemblyYear, getAssemblyData } from "@/lib/assembly";
+import { currentAssemblyYear, getAssemblyData, currentMembers, formerMembers } from "@/lib/assembly";
 import { requireAdmin } from "@/lib/auth";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { activeMembers, getLocalityMembers } from "@/lib/memberships";
@@ -16,7 +16,12 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { ASSEMBLY_SIZE, ASSEMBLY_OFFICE_LABELS } from "@/lib/types";
 import { removeStatutesAction } from "./actions";
 import { ConfirmSubmit } from "../miembros/confirm-submit";
-import { MembersEditor, type EditorRow, type PickableProfile } from "./members-editor";
+import {
+  MembersEditor,
+  type EditorRow,
+  type FormerRow,
+  type PickableProfile,
+} from "./members-editor";
 import { RecordForm } from "./record-form";
 
 type ProfileRow = {
@@ -67,28 +72,55 @@ export default async function AdminAsambleaPage({
   // ejercicio anterior (la Asamblea suele repetirse en buena parte); y
   // si tampoco, quienes hoy tienen rol de Asamblea en la app.
   let initial: EditorRow[] = [];
+  let initialFormer: FormerRow[] = [];
   let prefillNote: string | null = null;
-  const toRows = (members: { profile_id: string | null; display_name: string; office: string | null }[]) =>
+  const toRows = (
+    members: {
+      profile_id: string | null;
+      display_name: string;
+      office: string | null;
+      since?: string | null;
+    }[]
+  ): EditorRow[] =>
     members.map((m) => ({
       profile: m.profile_id && profileIds.has(m.profile_id) ? m.profile_id : "otro",
       name: m.profile_id && profileIds.has(m.profile_id) ? "" : m.display_name,
       office: (m.office ?? "") as EditorRow["office"],
+      since: m.since ?? "",
     }));
 
   if (data.term && data.term.members.length > 0) {
-    // Respetar la posición guardada.
-    initial = Array.from({ length: ASSEMBLY_SIZE }, () => ({ profile: "", name: "", office: "" }));
-    for (const m of data.term.members) {
+    // Respetar la posición guardada. Quien dejó la fila durante el
+    // ejercicio (073) va aparte, con su "hasta".
+    initial = Array.from({ length: ASSEMBLY_SIZE }, () => ({
+      profile: "",
+      name: "",
+      office: "",
+      since: "",
+    }));
+    for (const m of currentMembers(data.term)) {
       initial[m.position - 1] = toRows([m])[0];
     }
+    initialFormer = formerMembers(data.term).map((m) => ({
+      position: m.position,
+      profile: m.profile_id && profileIds.has(m.profile_id) ? m.profile_id : "otro",
+      name: m.display_name,
+      office: (m.office ?? "") as FormerRow["office"],
+      since: m.since ?? "",
+      until: m.until ?? "",
+    }));
   } else if (data.previousTerm && data.previousTerm.members.length > 0) {
-    initial = toRows(data.previousTerm.members);
+    // Del ejercicio anterior se hereda quien TERMINÓ en funciones, sin
+    // fechas: el ejercicio nuevo arranca limpio.
+    initial = toRows(
+      currentMembers(data.previousTerm).map((m) => ({ ...m, since: null }))
+    );
     prefillNote = `Pre-cargada con la composición del ejercicio ${data.previousTerm.bahai_year}.`;
   } else {
     initial = profiles
       .filter((p) => p.role === "admin")
       .slice(0, ASSEMBLY_SIZE)
-      .map((p) => ({ profile: p.id, name: "", office: "" }));
+      .map((p) => ({ profile: p.id, name: "", office: "", since: "" }));
     if (initial.length > 0) {
       prefillNote = "Pre-cargada con quienes hoy tienen rol de Asamblea en la app.";
     }
@@ -96,7 +128,7 @@ export default async function AdminAsambleaPage({
 
   const yearOptions = Array.from(new Set([current, ...data.years, year])).sort((a, b) => b - a);
   const record = data.record;
-  const officers = data.term?.members.filter((m) => m.office) ?? [];
+  const officers = currentMembers(data.term).filter((m) => m.office);
 
   return (
     <>
@@ -232,6 +264,7 @@ export default async function AdminAsambleaPage({
               year={year}
               electedOn={data.term?.elected_on ?? ""}
               notes={data.term?.notes ?? ""}
+              initialFormer={initialFormer}
               profiles={profiles}
               initial={initial}
               prefillNote={data.ready ? prefillNote : null}

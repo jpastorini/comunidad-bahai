@@ -185,10 +185,18 @@ export async function saveAssemblyTermAction(formData: FormData) {
     profile_id: string | null;
     display_name: string;
     office: AssemblyOffice | null;
+    since: string | null;
+    until: string | null;
   };
   const rows: Row[] = [];
   const seenOffices = new Set<string>();
   const seenProfiles = new Set<string>();
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const dateOrNull = (raw: string, what: string): string | null => {
+    if (!raw) return null;
+    if (!DATE_RE.test(raw)) fail(`La fecha "${what}" no es válida.`, year);
+    return raw;
+  };
 
   for (let i = 1; i <= ASSEMBLY_SIZE; i++) {
     const profileId = str(formData, `member_${i}_profile`);
@@ -197,6 +205,7 @@ export async function saveAssemblyTermAction(formData: FormData) {
     const office = (ASSEMBLY_OFFICES as string[]).includes(officeRaw)
       ? (officeRaw as AssemblyOffice)
       : null;
+    const since = dateOrNull(str(formData, `member_${i}_since`), `desde, fila ${i}`);
 
     let displayName = "";
     let linked: string | null = null;
@@ -221,7 +230,40 @@ export async function saveAssemblyTermAction(formData: FormData) {
       if (seenOffices.has(office)) fail("Hay dos personas con el mismo cargo.", year);
       seenOffices.add(office);
     }
-    rows.push({ position: i, profile_id: linked, display_name: displayName, office });
+    rows.push({
+      position: i,
+      profile_id: linked,
+      display_name: displayName,
+      office,
+      since,
+      until: null,
+    });
+  }
+
+  // Quienes dejaron una fila durante el ejercicio (073): quedan en la
+  // tabla con su "hasta", para que los documentos de antes sigan con su
+  // nombre. Se validan poco a propósito —son historia, no permisos—, salvo
+  // lo que rompería el modelo: posición, cargo y fecha de salida.
+  const formerCount = Math.min(parseInt(str(formData, "former_count") || "0", 10) || 0, 60);
+  for (let k = 0; k < formerCount; k++) {
+    const position = parseInt(str(formData, `former_${k}_position`), 10);
+    if (!Number.isInteger(position) || position < 1 || position > ASSEMBLY_SIZE) continue;
+    const profileId = str(formData, `former_${k}_profile`);
+    const linked = profileId && profileId !== "otro" && nameById.has(profileId) ? profileId : null;
+    const displayName =
+      (linked ? nameById.get(linked) : null) ?? str(formData, `former_${k}_name`).slice(0, 120);
+    if (!displayName) continue;
+    const officeRaw = str(formData, `former_${k}_office`);
+    const office = (ASSEMBLY_OFFICES as string[]).includes(officeRaw)
+      ? (officeRaw as AssemblyOffice)
+      : null;
+    const since = dateOrNull(str(formData, `former_${k}_since`), `desde, cambio ${k + 1}`);
+    const until = dateOrNull(str(formData, `former_${k}_until`), `hasta, cambio ${k + 1}`);
+    if (!until) fail(`El cambio de ${displayName} no tiene fecha de salida.`, year);
+    if (since && until && until <= since) {
+      fail(`${displayName}: la fecha de salida tiene que ser posterior a la de entrada.`, year);
+    }
+    rows.push({ position, profile_id: linked, display_name: displayName, office, since, until });
   }
 
   const { data: term, error: termError } = await supabase

@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getAssemblyData } from "./assembly";
+import { currentMembers, getAssemblyData } from "./assembly";
 import { findBudgetForYear } from "./budget-lookup";
 import { activeMembers, getLocalityMembers } from "./memberships";
 import { todayISO } from "./treasury-ledger";
@@ -207,7 +207,9 @@ export async function loadAuditInput(
   const assembly = assemblyData.term
     ? {
         bahaiYear,
-        members: assemblyData.term.members.map((m) => ({
+        // Solo quienes están en funciones: quien dejó el cargo (073) ya no
+        // tiene por qué tener el permiso.
+        members: currentMembers(assemblyData.term).map((m) => ({
           position: m.position,
           display_name: m.display_name,
           profile_id: m.profile_id,

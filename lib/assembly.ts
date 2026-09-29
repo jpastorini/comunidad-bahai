@@ -67,7 +67,8 @@ async function getTermWithMembers(
     .from("assembly_members")
     .select("*")
     .eq("term_id", term.id)
-    .order("position", { ascending: true });
+    .order("position", { ascending: true })
+    .order("since", { ascending: true, nullsFirst: true });
 
   return { ...(term as AssemblyTerm), members: (members ?? []) as AssemblyMember[] };
 }
@@ -120,10 +121,23 @@ export async function getAssemblyData(
   return { ready: true, record: rec, statutesUrl, years, term, previousTerm };
 }
 
-/** Quién ocupa un cargo en un ejercicio, si alguien. */
+/** Las filas en funciones de un ejercicio: quien dejó la Asamblea o el
+ *  cargo a mitad de camino (073) tiene `until` y no cuenta. */
+export function currentMembers(term: AssemblyTermWithMembers | null): AssemblyMember[] {
+  return (term?.members ?? []).filter((m) => !m.until);
+}
+
+/** Quien dejó una fila durante el ejercicio (073), con su "hasta". */
+export function formerMembers(term: AssemblyTermWithMembers | null): AssemblyMember[] {
+  return (term?.members ?? []).filter((m) => !!m.until);
+}
+
+/** Quién ocupa un cargo HOY en un ejercicio, si alguien. Para la fecha de
+ *  un documento concreto (un recibo del 183) manda `receipt_signer_name`
+ *  en la base, que mira la vigencia. */
 export function officerOf(
   term: AssemblyTermWithMembers | null,
   office: AssemblyOffice
 ): AssemblyMember | null {
-  return term?.members.find((m) => m.office === office) ?? null;
+  return currentMembers(term).find((m) => m.office === office) ?? null;
 }
