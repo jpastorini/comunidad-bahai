@@ -107,6 +107,11 @@ export const ADMIN_NAV: NavGroup[] = [
     // configura una vez abajo. Un ítem por pantalla principal; las
     // subpantallas (metas, recibo concreto) prenden su ítem por `match`.
     children: [
+      // ── Empezar ──
+      // El ciclo del mes paso a paso, con el estado de cada paso y el
+      // traspaso del cargo. Primero de todo: es por donde arranca quien
+      // recién agarra la Tesorería.
+      { href: "/admin/tesoreria/guia", label: "Guía del mes", section: "Empezar" },
       // ── Todos los días ──
       // El recibo se abre desde el libro: prende "Libro".
       {
@@ -144,6 +149,9 @@ export const ADMIN_NAV: NavGroup[] = [
       },
       { href: "/admin/tesoreria/progreso", label: "Progreso", section: "El ejercicio" },
       { href: "/admin/tesoreria/informes", label: "Informes", section: "El ejercicio" },
+      // Todo lo que el auditor pide, en un ZIP: libro, Libro de Caja por
+      // mes, recibos, comprobantes, extractos, auditoría, informes, ficha.
+      { href: "/admin/tesoreria/legajo", label: "Legajo para el auditor", section: "El ejercicio" },
       // ── Ajustes ──
       // Cuentas, fondos, categorías y subcategorías con que se carga el libro.
       { href: "/admin/tesoreria/catalogo", label: "Catálogo", section: "Ajustes" },
