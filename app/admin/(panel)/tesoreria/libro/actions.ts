@@ -6,7 +6,8 @@ import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { RECEIPTS_BUCKET } from "@/lib/treasury-attachments";
 import { monthKeyOf, monthLabel } from "@/lib/treasury-cashbook";
-import { formatReceiptDate, parseMoney } from "@/lib/treasury-format";
+import { sendPushToUsers } from "@/lib/push";
+import { formatMoney, formatReceiptDate, parseMoney } from "@/lib/treasury-format";
 import { todayISO } from "@/lib/treasury-ledger";
 
 type Result = { ok: boolean; error: string | null };
@@ -389,9 +390,61 @@ export async function saveEntryAction(formData: FormData): Promise<SaveResult> {
 
   if (error) return failSave(friendlyDbError(error.message));
 
+  const savedId = (saved as { id: string } | null)?.id ?? id ?? null;
+
+  // Aviso al creyente: su aporte ya está en "Mis aportes" con el recibo.
+  // Solo en el ALTA de un aporte con contribuyente vinculado a la app; la
+  // edición no avisa (sería ruido) y la canasta de la Fiesta no tiene a
+  // quién avisarle. Nunca al propio tesorero por lo que cargó a su nombre.
+  if (!id && isContribution && contributorId && savedId) {
+    await notifyContributionRegistered(supabase, {
+      contributorId,
+      entryId: savedId,
+      receiptNumber,
+      amount: amountRaw,
+      currency,
+      localityName: session.locality.name,
+      skipUserId: session.user.id,
+    });
+  }
+
   revalidatePath("/admin/tesoreria/libro");
   revalidatePath("/admin/tesoreria");
-  return { ok: true, error: null, id: (saved as { id: string } | null)?.id ?? id ?? null };
+  return { ok: true, error: null, id: savedId };
+}
+
+async function notifyContributionRegistered(
+  supabase: ReturnType<typeof createSupabaseServer>,
+  args: {
+    contributorId: string;
+    entryId: string;
+    receiptNumber: number | null;
+    amount: number;
+    currency: string;
+    localityName: string;
+    skipUserId: string;
+  }
+) {
+  try {
+    const { data } = await supabase
+      .from("treasury_contributors")
+      .select("profile_id")
+      .eq("id", args.contributorId)
+      .maybeSingle();
+    const profileId = (data as { profile_id: string | null } | null)?.profile_id ?? null;
+    if (!profileId || profileId === args.skipUserId) return;
+    await sendPushToUsers([profileId], {
+      title: "Se registró tu aporte",
+      body: `${formatMoney(args.amount, args.currency)} al Fondo · ${args.localityName}${
+        args.receiptNumber ? ` · Recibo N.º ${args.receiptNumber}` : ""
+      }. Gracias.`,
+      url: `/perfil/aportes/recibo/${args.entryId}`,
+      tag: `aporte-${args.entryId}`,
+    });
+  } catch (err) {
+    // Un aviso que no sale no puede tumbar un asiento que ya se guardó.
+    console.error("[notifyContributionRegistered]", err);
+  }
 }
 
 /**

@@ -30,8 +30,18 @@ type Props = {
   /** Último seudónimo usado por contribuyente ("Familia Pérez"), para
    *  proponerlo al elegirlo de nuevo. Lo arma el libro desde los asientos. */
   lastReceiptNames?: Record<string, string>;
+  /** Valores iniciales para un alta que llega desde otra pantalla (el
+   *  chat de Tesorería: "Registrar en el libro" trae al creyente y lo que
+   *  escribió). Solo en el alta; se ignora al editar. */
+  prefill?: EntryPrefill | null;
   onSaved: () => void;
   onCancel?: () => void;
+};
+
+export type EntryPrefill = {
+  contributor?: ContributorSelection | null;
+  description?: string;
+  amount?: string;
 };
 
 /**
@@ -50,6 +60,7 @@ export function EntryForm({
   entry,
   attachmentCount = 0,
   lastReceiptNames = {},
+  prefill = null,
   onSaved,
   onCancel,
 }: Props) {
@@ -75,9 +86,8 @@ export function EntryForm({
       const c = entry?.contributor_id
         ? catalog.contributors.find((x) => x.id === entry.contributor_id)
         : null;
-      return c
-        ? { kind: "contributor", id: c.id, name: c.name, profileId: c.profile_id }
-        : null;
+      if (c) return { kind: "contributor", id: c.id, name: c.name, profileId: c.profile_id };
+      return !entry && prefill?.contributor ? prefill.contributor : null;
     }
   );
   // El seudónimo del aporte ("Familia Pérez"). Al elegir un contribuyente
@@ -102,7 +112,7 @@ export function EntryForm({
   // El monto se sigue en estado además del input: lo necesita el panel
   // de comprobantes para avisar si las facturas no cuadran.
   const [amountText, setAmountText] = useState(
-    entry ? Math.abs(entry.amount).toFixed(2) : ""
+    entry ? Math.abs(entry.amount).toFixed(2) : (prefill?.amount ?? "")
   );
 
   const amountValue = amountText.trim() ? parseMoney(amountText) : NaN;
@@ -322,7 +332,7 @@ export function EntryForm({
           type="text"
           name="description"
           data-clear-on-save
-          defaultValue={entry?.description ?? ""}
+          defaultValue={entry?.description ?? (prefill?.description || "")}
           placeholder="Para qué fue"
           className={inputClass}
         />

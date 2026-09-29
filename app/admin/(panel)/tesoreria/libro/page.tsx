@@ -29,7 +29,16 @@ export const dynamic = "force-dynamic";
 export default async function LibroTesoreriaPage({
   searchParams,
 }: {
-  searchParams: { year?: string; from?: string; to?: string; ids?: string };
+  searchParams: {
+    year?: string;
+    from?: string;
+    to?: string;
+    ids?: string;
+    /** Alta prellenada desde el chat de Tesorería: el creyente y lo que dijo. */
+    creyente?: string;
+    detalle?: string;
+    monto?: string;
+  };
 }) {
   const session = await requireAdmin();
   ensureTreasuryTag(session.profile);
@@ -84,6 +93,24 @@ export default async function LibroTesoreriaPage({
   const totals = periodTotals(entries);
 
   const nextReceipt = Number(receiptResult.data) || 1;
+
+  // "Registrar en el libro" desde el chat de Tesorería: el creyente ya
+  // elegido en el formulario (como perfil, así usa o crea su contribuyente
+  // vinculado y el aporte le aparece en Mis aportes), y lo que escribió
+  // como detalle. Solo si la persona está en el padrón que ve el libro.
+  const prefillMember = searchParams.creyente
+    ? catalog.members.find((m) => m.id === searchParams.creyente) ?? null
+    : null;
+  const prefill =
+    prefillMember || searchParams.detalle || searchParams.monto
+      ? {
+          contributor: prefillMember
+            ? { kind: "profile" as const, id: prefillMember.id, name: prefillMember.full_name ?? "Creyente" }
+            : null,
+          description: (searchParams.detalle ?? "").slice(0, 300),
+          amount: /^[\d.,]{1,14}$/.test(searchParams.monto ?? "") ? searchParams.monto : "",
+        }
+      : null;
   const catalogEmpty = catalog.accounts.length === 0;
 
   // Con un rango, las tarjetas de arriba NO son saldos: son la variación
@@ -283,6 +310,7 @@ export default async function LibroTesoreriaPage({
             range={range}
             scopeLabel={scopeLabel}
             focusIds={focusIds}
+            prefill={prefill}
           />
         </>
       )}

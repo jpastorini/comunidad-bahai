@@ -71,8 +71,11 @@ export default async function TreasuryConversationPage({
         title={member?.full_name ?? "Creyente"}
         description="Conversación privada con el tesorero. Tus respuestas salen firmadas con tu nombre."
         actions={
+          // El alta sale prellenada con este creyente: usa o crea su
+          // contribuyente vinculado, así el aporte le aparece en Mis aportes
+          // y le llega el aviso con el recibo.
           <Link
-            href="/admin/tesoreria/libro"
+            href={`/admin/tesoreria/libro?creyente=${encodeURIComponent(params.memberId)}`}
             className="rounded-xl bg-terra px-4 py-2 text-[13px] font-semibold text-white shadow-card-soft"
           >
             Registrar en el libro

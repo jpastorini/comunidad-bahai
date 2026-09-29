@@ -25,7 +25,7 @@ import {
   saveTransferAction,
   voidEntryAction,
 } from "./actions";
-import { EntryForm } from "./entry-form";
+import { EntryForm, type EntryPrefill } from "./entry-form";
 import { DateInput } from "@/components/DateInput";
 
 type Props = {
@@ -53,6 +53,9 @@ type Props = {
    *  Auditoría). La lista ya viene filtrada a estos: acá sirven para
    *  avisarlo y para abrir la ficha cuando es uno solo. */
   focusIds?: string[];
+  /** Alta que llega prellenada desde otra pantalla (el chat de Tesorería).
+   *  En el teléfono abre el formulario, que si no queda escondido. */
+  prefill?: EntryPrefill | null;
 };
 
 /**
@@ -79,13 +82,14 @@ export function LedgerClient({
   range,
   scopeLabel,
   focusIds = [],
+  prefill = null,
 }: Props) {
   const router = useRouter();
   const closed = useMemo(() => new Set(closedMonths), [closedMonths]);
   const reconciled = useMemo(() => new Set(reconciledIds), [reconciledIds]);
   /** El mes del movimiento ya se cerró: solo se puede revertir. */
   const isLocked = (e: TreasuryEntry) => closed.has(monthKeyOf(e.entry_date));
-  const [openForm, setOpenForm] = useState(false);
+  const [openForm, setOpenForm] = useState(Boolean(prefill));
   const [editing, setEditing] = useState<TreasuryEntry | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
   // Los filtros trabajan sobre lo cargado y por eso son estado, no URL.
@@ -358,6 +362,7 @@ export function LedgerClient({
           today={today}
           nextReceipt={nextReceipt}
           lastReceiptNames={lastReceiptNames}
+          prefill={prefill}
           onSaved={refresh}
         />
       </div>
