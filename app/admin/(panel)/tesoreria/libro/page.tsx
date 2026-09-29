@@ -38,6 +38,10 @@ export default async function LibroTesoreriaPage({
     creyente?: string;
     detalle?: string;
     monto?: string;
+    /** El ajuste de un arqueo de caja chica (074): cuenta, moneda y tipo. */
+    cuenta?: string;
+    moneda?: string;
+    tipo?: string;
   };
 }) {
   const session = await requireAdmin();
@@ -101,14 +105,23 @@ export default async function LibroTesoreriaPage({
   const prefillMember = searchParams.creyente
     ? catalog.members.find((m) => m.id === searchParams.creyente) ?? null
     : null;
+  const prefillAccount = searchParams.cuenta
+    ? catalog.accounts.find((a) => a.id === searchParams.cuenta)?.id
+    : undefined;
   const prefill =
-    prefillMember || searchParams.detalle || searchParams.monto
+    prefillMember || searchParams.detalle || searchParams.monto || prefillAccount
       ? {
           contributor: prefillMember
             ? { kind: "profile" as const, id: prefillMember.id, name: prefillMember.full_name ?? "Creyente" }
             : null,
           description: (searchParams.detalle ?? "").slice(0, 300),
           amount: /^[\d.,]{1,14}$/.test(searchParams.monto ?? "") ? searchParams.monto : "",
+          accountId: prefillAccount,
+          currency: searchParams.moneda === "USD" || searchParams.moneda === "UYU" ? searchParams.moneda : undefined,
+          direction:
+            searchParams.tipo === "gasto" || searchParams.tipo === "ingreso"
+              ? (searchParams.tipo as "gasto" | "ingreso")
+              : undefined,
         }
       : null;
   const catalogEmpty = catalog.accounts.length === 0;

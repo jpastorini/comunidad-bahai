@@ -234,6 +234,21 @@ export type AuditInput = {
   /** Comprobantes cuyo archivo ya no está en el bucket. Lo averigua el
    *  cargador, que sí sale a Storage. */
   missingAttachmentPaths?: string[];
+
+  /** Las cajas chicas (074), con su último arqueo y sus rendiciones sin
+   *  revisar. Opcional: antes de la 074 el cargador no lo trae. */
+  cashBoxes?: AuditCashBox[];
+};
+
+export type AuditCashBox = {
+  id: string;
+  accountId: string;
+  name: string;
+  fixedUyu: number;
+  fixedUsd: number;
+  lastCountOn: string | null;
+  lastCountOk: boolean | null;
+  pendingReports: Array<{ id: string; submittedAt: string }>;
 };
 
 export type AuditResult = {
@@ -1946,9 +1961,132 @@ const H: Rule[] = [
   },
 ];
 
+// ═══ I · Cajas chicas (074) ═════════════════════════════════════════
+//
+// El efectivo con fondo fijo, responsable y rendición. Cuatro reglas, las
+// que un auditor mira primero cuando hay cajas: que se cuenten, que no
+// tengan más que su fondo fijo, que las rendiciones no duerman, y que no
+// se paguen gastos con lo recaudado ("no compensar").
+
+const dmy = (iso: string) => iso.slice(0, 10).split("-").reverse().join("/");
+const daysDiff = (a: string, b: string) =>
+  Math.round(
+    (Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10)) -
+      Date.UTC(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10))) /
+      86_400_000
+  );
+
+const I: Rule[] = [
+  {
+    code: "CAJA_SIN_ARQUEO",
+    label: "Caja chica sin arqueo reciente",
+    severity: "media",
+    basis: "INTERNO",
+    run(ctx) {
+      return (ctx.cashBoxes ?? [])
+        .filter((b) => !b.lastCountOn || daysDiff(b.lastCountOn, ctx.today) > 35)
+        .map((b) => ({
+          code: "CAJA_SIN_ARQUEO",
+          key: `CAJA_SIN_ARQUEO:${b.id}:${ctx.today.slice(0, 7)}`,
+          severity: "media" as const,
+          basis: "INTERNO" as const,
+          title: `${b.name}: ${b.lastCountOn ? `sin arqueo desde el ${dmy(b.lastCountOn)}` : "nunca se hizo un arqueo"}`,
+          detail:
+            "El arqueo es contar el efectivo y compararlo con lo que dice el libro, con fecha. Sin arqueo, el saldo de la caja es un número que nadie verificó. Conviene uno por mes, antes del cierre.",
+          entryIds: [],
+        }));
+    },
+  },
+  {
+    code: "CAJA_SOBRE_FONDO_FIJO",
+    label: "Caja chica con más que su fondo fijo",
+    severity: "baja",
+    basis: "INTERNO",
+    run(ctx) {
+      const out: Finding[] = [];
+      for (const b of ctx.cashBoxes ?? []) {
+        const fixed: Record<string, number> = { UYU: b.fixedUyu, USD: b.fixedUsd };
+        const bal = new Map<string, number>();
+        for (const e of ctx.entries) {
+          if (e.account_id !== b.accountId || e.voided_at || e.entry_date > ctx.to) continue;
+          bal.set(e.currency, (bal.get(e.currency) ?? 0) + e.amount);
+        }
+        for (const [currency, amount] of bal) {
+          const f = fixed[currency] ?? 0;
+          if (f <= 0 || amount <= f + EPS) continue;
+          out.push({
+            code: "CAJA_SOBRE_FONDO_FIJO",
+            key: `CAJA_SOBRE_FONDO_FIJO:${b.id}:${currency}`,
+            severity: "baja",
+            basis: "INTERNO",
+            title: `${b.name} tiene más que su fondo fijo en ${currency}`,
+            detail: `Saldo ${amount.toFixed(2)} contra un fondo fijo de ${f.toFixed(2)}. Una caja con fondo fijo vuelve a ese monto en cada reposición; si tiene de más, casi siempre es porque entraron aportes en efectivo que había que depositar íntegros.`,
+            entryIds: [],
+            figures: { saldo: amount, fondoFijo: f },
+          });
+        }
+      }
+      return out;
+    },
+  },
+  {
+    code: "RENDICION_SIN_REVISAR",
+    label: "Rendición de caja chica esperando revisión",
+    severity: "media",
+    basis: "INTERNO",
+    run(ctx) {
+      const out: Finding[] = [];
+      for (const b of ctx.cashBoxes ?? []) {
+        for (const r of b.pendingReports) {
+          const days = daysDiff(r.submittedAt.slice(0, 10), ctx.today);
+          if (days < 7) continue;
+          out.push({
+            code: "RENDICION_SIN_REVISAR",
+            key: `RENDICION_SIN_REVISAR:${r.id}`,
+            severity: "media",
+            basis: "INTERNO",
+            title: `${b.name}: una rendición espera hace ${days} días`,
+            detail:
+              "Mientras la rendición no se apruebe, sus gastos no están en el libro y la caja no se repone. El responsable está esperando.",
+            entryIds: [],
+          });
+        }
+      }
+      return out;
+    },
+  },
+  {
+    code: "CAJA_RECAUDA_Y_GASTA",
+    label: "Aportes en efectivo gastados desde la caja chica",
+    severity: "baja",
+    basis: "INTERNO",
+    run(ctx) {
+      const out: Finding[] = [];
+      for (const b of ctx.cashBoxes ?? []) {
+        const inRange = ctx.entries.filter(
+          (e) => e.account_id === b.accountId && !e.voided_at && e.entry_date >= ctx.from && e.entry_date <= ctx.to
+        );
+        const receipts = inRange.filter((e) => e.amount > 0 && e.receipt_number);
+        const expenses = inRange.filter((e) => e.amount < 0 && !e.transfer_group_id && !e.is_opening_balance);
+        if (receipts.length === 0 || expenses.length === 0) continue;
+        out.push({
+          code: "CAJA_RECAUDA_Y_GASTA",
+          key: `CAJA_RECAUDA_Y_GASTA:${b.id}:${ctx.bahaiYear}`,
+          severity: "baja",
+          basis: "INTERNO",
+          title: `${b.name} recibe aportes y paga gastos`,
+          detail: `En el período entraron ${receipts.length} aportes con recibo y salieron ${expenses.length} gastos de la misma caja. La buena práctica es depositar lo recaudado íntegro y pagar los gastos desde la caja chica repuesta ("no compensar"): así cada peso que entra se ve entero en la cuenta.`,
+          entryIds: [...receipts, ...expenses].map((e) => e.id).slice(0, 40),
+        });
+      }
+      return out;
+    },
+  },
+];
+
 // ═══ El motor ═══════════════════════════════════════════════════════
 
-export const RULES: Rule[] = [...A, ...B, ...C, ...D, ...E, ...F, ...G, ...H];
+export const RULES: Rule[] = [...A, ...B, ...C, ...D, ...E, ...F, ...G, ...H, ...I];
 
 /** ¿Corre esta regla en esta clase de comunidad? */
 export function ruleApplies(rule: Rule, kind: "ael" | "nacional"): boolean {

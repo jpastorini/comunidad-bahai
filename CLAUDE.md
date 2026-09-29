@@ -399,7 +399,76 @@ lo emitió (073) · Guía del mes con el estado de cada paso y el traspaso ·
 Legajo para el auditor (ZIP armado en el navegador, Libro de Caja en PDF)
 · aviso al creyente cuando se registra su aporte · "Registrar en el libro"
 prellenado desde el chat. Ver la sección "Tesorería para el tesorero que
-entra" más abajo.
+entra" más abajo. ·
+**Cajas chicas** (migración 074, 2026-09-29): fondo fijo con responsable,
+rendición que el tesorero aprueba y arqueo, con "Mi caja chica" en la app
+del creyente. Ver la sección "Cajas chicas" más abajo.
+
+## Cajas chicas (migración 074)
+
+Pedido el 2026-09-29: la Secretaría y los coordinadores de instituto van
+a manejar efectivo, y hasta acá la caja chica era una cuenta más del
+catálogo que solo podía tocar quien tiene el tag de Tesorería. Decidido
+con el usuario: **fondo fijo** ("imprest", lo que un auditor espera),
+**los gastos del responsable entran al libro recién al aprobar la
+rendición** (el libro lo sigue escribiendo solo el tesorero), **rendición
+mensual y además cuando haga falta**, y la regla de **"no compensar"**:
+los aportes en efectivo se depositan íntegros y la caja gasta solo lo que
+se le repone (la app la recomienda con una regla de auditoría, no la
+bloquea; el usuario pidió que se le explique, ver el HelpTip de la
+pantalla).
+
+- **Modelo** (`lib/treasury-cash.ts`, server-only): `treasury_cash_boxes`
+  cuelga de una cuenta del catálogo (el saldo sigue saliendo del libro
+  como el de cualquier cuenta) y suma responsable, fondo fijo por moneda
+  (`fixed_uyu`/`fixed_usd`), cuenta de origen y fondo por defecto.
+  `treasury_cash_reports` es la rendición (`borrador → enviada →
+  aprobada`, o `devuelta`; una sola abierta por caja, índice parcial),
+  con el arqueo declarado al enviar (`counted_*`) contra lo esperado
+  (`expected_*` = saldo del libro − gastos de la rendición, congelado al
+  enviar). `treasury_cash_lines` son los gastos, con el comprobante en
+  el bucket `treasury-receipts` bajo `<locality>/caja/<box>/` (policies
+  nuevas para el responsable sobre esa carpeta). `treasury_cash_counts`
+  son los arqueos del tesorero. `cash_box_balance(box)` (definer) le da
+  al responsable el saldo de SU cuenta sin abrirle `treasury_entries`.
+- **El responsable no tiene el tag.** La RLS le deja leer su caja, sus
+  rendiciones y escribir líneas mientras la rendición esté en borrador o
+  devuelta (`is_cash_box_holder()`). "Mi caja chica" (`/caja`, entrada
+  desde `/perfil` solo si es responsable) compara lo que "debería haber"
+  y deja cargar gastos con foto (comprimida en el cliente, `line-form.tsx`)
+  y rendir. Al asignarlo le llega un push; al enviar, les llega a quienes
+  atienden Tesorería en la comunidad de la caja.
+- **Aprobar** (`reviewCashReportAction`, `cajas/actions.ts`) convierte
+  cada línea en un asiento en la cuenta de la caja (gasto, rubro de la
+  línea, fondo del rubro o de la caja) + una fila de `treasury_attachments`
+  apuntando al MISMO archivo, y carga la reposición como transferencia
+  (dos patas por moneda) desde la cuenta de origen con el rubro elegido.
+  ⚠️ No hay transacción: el orden es asientos → adjuntos → `entry_id` en
+  la línea → reposición → cerrar la rendición, y un reintento saltea las
+  líneas que ya tienen `entry_id`. Un gasto fechado en un mes cerrado
+  entra con la fecha de hoy y la original en el detalle (054). Devolver
+  exige nota.
+- **Arqueo** (`saveCashCountAction`): lo contado contra lo esperado (que
+  descuenta los gastos de rendiciones abiertas, para no gritar un
+  faltante que no es). Si no cuadra, la pantalla ofrece "Registrar el
+  ajuste" que abre el Libro prellenado (`?cuenta=&moneda=&tipo=&monto=&detalle=`,
+  el `prefill` de `EntryForm` ganó cuenta, moneda y tipo).
+- **Dónde se ve**: Tesorería → Cajas chicas (bloque Cada mes) · tablero
+  del Inicio (rendiciones por revisar, cajas sin arqueo en 35 días) ·
+  Guía del mes (paso antes de cerrar) · auditoría, grupo I:
+  `CAJA_SIN_ARQUEO`, `CAJA_SOBRE_FONDO_FIJO`, `RENDICION_SIN_REVISAR`,
+  `CAJA_RECAUDA_Y_GASTA` (esta última es la de "no compensar", baja) ·
+  la publicación (066) suma `snapshot.cashBoxes` y `PublishedTreasury`
+  muestra a la comunidad cada caja con su fondo fijo y si el último arqueo
+  cuadró, sin nombres.
+- **Ayuda en el lugar**: `components/HelpTip.tsx`, un "?" que abre una
+  explicación corta (toque, no hover). Pedido para el próximo tesorero;
+  está en todas las pantallas nuevas y conviene sumarlo al resto del
+  panel.
+
+⚠️ Hasta que corra la 074, la pantalla avisa y no crea cajas; el tablero,
+la guía, la auditoría y la publicación la ignoran (todas detectan el
+esquema faltante); `/caja` dice que falta la migración.
 
 ## Tesorería para el tesorero que entra (072 y 073)
 
@@ -774,7 +843,7 @@ Chat de Secretaría) · Vida comunitaria (Calendario, Fiestas, Sugerencias,
 Actividades, Servicio, Materiales, Fotos) · Creyentes (Creyentes, Uso de
 la app) · Tesorería, en cuatro bloques por frecuencia de uso (2026-09-29):
 Empezar (Guía del mes) · Todos los días (Libro, Mensajes, Conciliación) ·
-Cada mes (Cierres, Auditoría, Publicar, Compromisos) · El ejercicio
+Cada mes (Cajas chicas, Cierres, Auditoría, Publicar, Compromisos) · El ejercicio
 (Presupuesto y metas, Progreso, Informes, Legajo para el auditor) · Ajustes
 (Catálogo, Recibo y medios de pago, Importar) · Admin Nacional. El bloque
 es `section` en la hoja: el Sidebar dibuja el título cuando cambia; no
@@ -2707,10 +2776,13 @@ cambia nada.
   cifras a mano ya no las escribe nadie. Falta una migración que las tire
   o mueva `methods` a `treasury_receipt_settings`, y jubilar
   `BudgetReportShare` del presupuesto.
-- **Cajas chicas / fondos chicos.** El usuario tiene un problema con las
-  cajas chicas que quedó para charlar (2026-09-29): hay que entender el
-  caso antes de codear (¿varias cajas en manos de distintas personas?,
-  ¿arqueo contra la plata real?, ¿eliminarlas?).
+- **Aplicar la 074 y estrenar las cajas chicas** (2026-09-29): crear la
+  caja del tesorero con su fondo fijo y hacerle el primer arqueo; crear la
+  de la Secretaría con responsable y probar el ciclo entero desde un
+  celular ajeno (cargar un gasto con foto → rendir → aprobar con
+  reposición → ver los asientos y el comprobante en el Libro). Después,
+  compartir el estado del Fondo para que la comunidad vea el bloque de
+  cajas. Pendiente de producto: HelpTips en el resto del panel.
 - **Las metas viven en dos lados.** `treasury_goals` (042) es el dato,
   pero el editor del informe (041) todavía tiene sus propios campos de
   texto para "Meta de la Asamblea" y "Destino de los Fondos". Conviene

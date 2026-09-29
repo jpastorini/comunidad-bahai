@@ -26,6 +26,15 @@ export type PublicationMonth = {
   contributions: number;
 };
 
+/** Una caja chica tal como la ve la comunidad (074): sin nombres de
+ *  personas, solo el fondo fijo y si el último arqueo cuadró. */
+export type PublicationCashBox = {
+  name: string;
+  fixed: ProgressMoney[];
+  lastCountOn: string | null;
+  lastCountOk: boolean | null;
+};
+
 export type PublicationSnapshot = {
   /** Versión del molde, por si algún día cambia la forma de la foto. */
   v: 1;
@@ -33,6 +42,8 @@ export type PublicationSnapshot = {
   month: PublicationMonth | null;
   /** El tablero del ejercicio (pauta, meses, categorías, metas, saldos). */
   progress: ProgressData | null;
+  /** Las cajas chicas activas (074). Ausente en fotos anteriores. */
+  cashBoxes?: PublicationCashBox[];
 };
 
 export type TreasuryPublication = {

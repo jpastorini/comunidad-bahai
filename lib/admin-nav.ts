@@ -128,6 +128,8 @@ export const ADMIN_NAV: NavGroup[] = [
         section: "Todos los días",
       },
       // ── Cada mes ──
+      // El efectivo: cajas con responsable, fondo fijo, rendición y arqueo (074).
+      { href: "/admin/tesoreria/cajas", label: "Cajas chicas", section: "Cada mes" },
       // El cierre mensual y el Libro de Caja imprimible (054).
       { href: "/admin/tesoreria/libro/cierres", label: "Cierres", section: "Cada mes" },
       // Las reglas deterministas sobre el libro (059): lo que se mira

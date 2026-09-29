@@ -23,6 +23,7 @@ import {
   monthReconciliation,
 } from "./treasury-statements";
 import { formatDate } from "./format";
+import { getCashBoxes, getCashReports, getLastCounts } from "./treasury-cash";
 
 /**
  * Lo que pide atención de la Tesorería, para el Inicio del panel.
@@ -364,6 +365,64 @@ async function commitmentsItem(
   };
 }
 
+/** Cajas chicas (074): rendiciones por revisar y cajas sin arqueo. */
+async function cashItems(supabase: SupabaseClient, today: string): Promise<TreasuryAttentionItem[]> {
+  const { boxes, missing } = await getCashBoxes(supabase);
+  if (missing || boxes.length === 0) return [];
+  const [pending, lastCounts, accountsRes] = await Promise.all([
+    getCashReports(supabase, { statuses: ["enviada"] }),
+    getLastCounts(supabase),
+    supabase.from("treasury_accounts").select("id, name"),
+  ]);
+  const names = new Map(
+    ((accountsRes.data ?? []) as { id: string; name: string }[]).map((a) => [a.id, a.name])
+  );
+  const nameOf = (boxId: string) => {
+    const b = boxes.find((x) => x.id === boxId);
+    return (b && names.get(b.account_id)) || "Caja chica";
+  };
+  const items: TreasuryAttentionItem[] = [];
+
+  if (pending.length > 0) {
+    const oldest = [...pending].sort((a, b) => (a.submitted_at ?? "").localeCompare(b.submitted_at ?? ""))[0];
+    const days = oldest.submitted_at ? daysBetween(oldest.submitted_at.slice(0, 10), today) : 0;
+    items.push({
+      key: `rendiciones:${pending.length}:${oldest.id}`,
+      tone: days > 7 ? "alert" : "warn",
+      title:
+        pending.length === 1
+          ? "Una rendición de caja chica por revisar"
+          : `${pending.length} rendiciones de caja chica por revisar`,
+      detail: `${nameOf(oldest.box_id)} la envió hace ${plural(days, "día", "días")}. Mientras no se apruebe, sus gastos no están en el libro y la caja no se repone.`,
+      href:
+        pending.length === 1
+          ? `/admin/tesoreria/cajas/${oldest.box_id}/rendicion/${oldest.id}`
+          : "/admin/tesoreria/cajas",
+      cta: "Revisar",
+    });
+  }
+
+  const stale = boxes.filter((b) => {
+    const c = lastCounts.get(b.id);
+    return !c || daysBetween(c.counted_on, today) > 35;
+  });
+  if (stale.length > 0) {
+    items.push({
+      key: `arqueo:${monthKeyOf(today)}`,
+      tone: "warn",
+      title:
+        stale.length === 1
+          ? `${nameOf(stale[0].id)}: sin arqueo este mes`
+          : `${stale.length} cajas chicas sin arqueo este mes`,
+      detail:
+        "Contar el efectivo y compararlo con el libro, con fecha. Es lo que da confianza sobre las cajas; conviene hacerlo antes del cierre del mes.",
+      href: stale.length === 1 ? `/admin/tesoreria/cajas/${stale[0].id}` : "/admin/tesoreria/cajas",
+      cta: "Hacer el arqueo",
+    });
+  }
+  return items;
+}
+
 // ─── Ocultas ─────────────────────────────────────────────────────
 
 async function getDismissedKeys(
@@ -405,7 +464,7 @@ export async function getTreasuryAttention(
   opts: { userId: string; localityId: string; localityKind: string; today?: string }
 ): Promise<TreasuryAttention> {
   const today = opts.today ?? todayISO();
-  const [closing, audit, reconciliation, publication, receipts, commitments, dismissed] =
+  const [closing, audit, reconciliation, publication, receipts, commitments, cash, dismissed] =
     await Promise.all([
       safe("cierre", closingItem(supabase, today)),
       safe("auditoria", auditItem(supabase, today)),
@@ -413,11 +472,12 @@ export async function getTreasuryAttention(
       safe("publicar", publicationItem(supabase, opts.localityId, opts.localityKind, today)),
       safe("recibos", receiptsItem(supabase)),
       safe("compromisos", commitmentsItem(supabase, opts.localityId, today)),
+      safe("cajas", cashItems(supabase, today)),
       getDismissedKeys(supabase, opts.userId, opts.localityId),
     ]);
 
   // Orden: lo grave primero; a igual tono, el orden del ciclo del mes.
-  const all = [closing, audit, reconciliation, publication, receipts, commitments].filter(
+  const all = [closing, audit, ...(cash ?? []), reconciliation, publication, receipts, commitments].filter(
     (x): x is TreasuryAttentionItem => x !== null
   );
   const rank = (t: AttentionTone) => (t === "alert" ? 0 : 1);

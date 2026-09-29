@@ -18,6 +18,7 @@ import { cookies } from "next/headers";
 import { PushToggle } from "@/components/PushToggle";
 import { DevotionalToggle } from "@/components/DevotionalToggle";
 import { getMyMemberships } from "@/lib/memberships";
+import { getCashBoxes } from "@/lib/treasury-cash";
 import { switchLocalityAction } from "./actions";
 import { AvatarEditor } from "./avatar-editor";
 import { MyPhotosSection } from "./my-photos";
@@ -28,6 +29,10 @@ export const revalidate = 60;
 export default async function ProfilePage() {
   const session = await requireMember("/perfil");
   const supabase = createSupabaseServer();
+  // Cajas chicas a cargo de esta persona (074): la RLS devuelve solo las suyas.
+  const myCashBoxes = (await getCashBoxes(supabase)).boxes.filter(
+    (b) => b.holder_profile_id === session.user.id
+  );
 
   // Comunidades a las que pertenece (055). Con una sola —el caso de
   // todo el mundo hoy— la tarjeta de abajo no cambia en nada.
@@ -212,6 +217,27 @@ export default async function ProfilePage() {
                 <div className="text-[13.5px] font-semibold text-dark">Mis aportes</div>
                 <div className="mt-0.5 font-body text-[11px] text-muted">
                   Tus contribuciones al Fondo y sus recibos
+                </div>
+              </div>
+            </div>
+            <IconChevronRight size={14} className="text-gold-dark" />
+          </Link>
+        )}
+
+        {/* Mi caja chica (074): solo para quien es responsable de una. */}
+        {myCashBoxes.length > 0 && (
+          <Link
+            href="/caja"
+            className="tap mb-5 flex items-center justify-between rounded-2xl bg-card px-4 py-3.5 shadow-card"
+          >
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gold/15 text-gold-dark">
+                <IconTesoreria size={18} />
+              </span>
+              <div>
+                <div className="text-[13.5px] font-semibold text-dark">Mi caja chica</div>
+                <div className="mt-0.5 font-body text-[11px] text-muted">
+                  Cargar gastos con su comprobante y rendir
                 </div>
               </div>
             </div>

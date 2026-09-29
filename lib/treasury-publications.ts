@@ -1,9 +1,11 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addMoney } from "./treasury-format";
+import { fixedOf, getCashBoxes, getLastCounts } from "./treasury-cash";
 import { getTreasuryProgress } from "./treasury-progress";
 import type { ProgressMoney } from "./treasury-progress-content";
 import type {
+  PublicationCashBox,
   PublicationMonth,
   PublicationSnapshot,
   TreasuryPublication,
@@ -93,7 +95,36 @@ export async function computePublicationSnapshot(
     console.error("[tesoreria/publicar] mes:", monthRpc.error.message);
   }
 
-  return { v: 1, asOf, month, progress };
+  // Las cajas chicas (074): fondo fijo y si el último arqueo cuadró. Es
+  // lo que le da confianza a la comunidad sobre el efectivo; sin nombres.
+  let cashBoxes: PublicationCashBox[] | undefined;
+  try {
+    const { boxes, missing } = await getCashBoxes(supabase);
+    if (!missing && boxes.length > 0) {
+      const [lastCounts, accountsRes] = await Promise.all([
+        getLastCounts(supabase),
+        supabase.from("treasury_accounts").select("id, name"),
+      ]);
+      const names = new Map(
+        ((accountsRes.data ?? []) as { id: string; name: string }[]).map((a) => [a.id, a.name])
+      );
+      cashBoxes = boxes.map((b) => {
+        const c = lastCounts.get(b.id) ?? null;
+        return {
+          name: names.get(b.account_id) ?? "Caja chica",
+          fixed: fixedOf(b),
+          lastCountOn: c?.counted_on ?? null,
+          lastCountOk: c
+            ? Math.abs(c.counted_uyu - c.expected_uyu) < 0.005 && Math.abs(c.counted_usd - c.expected_usd) < 0.005
+            : null,
+        };
+      });
+    }
+  } catch (e) {
+    console.warn("[tesoreria/publicar] cajas:", e instanceof Error ? e.message : e);
+  }
+
+  return { v: 1, asOf, month, progress, cashBoxes };
 }
 
 export function isPublicationsSchemaMissing(

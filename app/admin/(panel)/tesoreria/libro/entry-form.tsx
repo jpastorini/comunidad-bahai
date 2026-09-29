@@ -42,6 +42,11 @@ export type EntryPrefill = {
   contributor?: ContributorSelection | null;
   description?: string;
   amount?: string;
+  /** Para el ajuste de un arqueo de caja chica (074): la cuenta de la
+   *  caja, la moneda y si sobra (ingreso) o falta (gasto). */
+  accountId?: string;
+  currency?: string;
+  direction?: "ingreso" | "gasto";
 };
 
 /**
@@ -76,11 +81,11 @@ export function EntryForm({
   // mirando el siguiente.
   const [entryDate, setEntryDate] = useState(entry?.entry_date ?? today);
   const [direction, setDirection] = useState<"ingreso" | "gasto">(
-    entry ? (entry.amount < 0 ? "gasto" : "ingreso") : "ingreso"
+    entry ? (entry.amount < 0 ? "gasto" : "ingreso") : (prefill?.direction ?? "ingreso")
   );
   const [subcategoryId, setSubcategoryId] = useState(entry?.subcategory_id ?? "");
   const [fundId, setFundId] = useState(entry?.fund_id ?? "");
-  const [currency, setCurrency] = useState(entry?.currency ?? "UYU");
+  const [currency, setCurrency] = useState(entry?.currency ?? prefill?.currency ?? "UYU");
   const [contributor, setContributor] = useState<ContributorSelection | null>(
     () => {
       const c = entry?.contributor_id
@@ -266,7 +271,7 @@ export function EntryForm({
         <Field label="Cuenta" className="col-span-2 sm:col-span-1">
           <select
             name="account_id"
-            defaultValue={entry?.account_id ?? ""}
+            defaultValue={entry?.account_id ?? prefill?.accountId ?? ""}
             required
             className={inputClass}
           >

@@ -17,6 +17,7 @@ import {
 import { todayISO } from "./treasury-ledger";
 import { getCurrentPublication } from "./treasury-publications";
 import { getAdminReports } from "./treasury-reports";
+import { getCashBoxes, getCashReports, getLastCounts } from "./treasury-cash";
 import {
   getImports,
   getMatches,
@@ -337,6 +338,47 @@ export async function getTreasuryGuide(
     cta: "Ir a Compromisos",
     status: "manual",
     note: null,
+  });
+
+  // Cajas chicas (074): rendiciones aprobadas y arqueo hecho, antes de cerrar.
+  const cash = await safe("cajas", getCashBoxes(supabase), { boxes: [], missing: true });
+  if (!cash.missing) {
+    const [pending, lastCounts] = await Promise.all([
+      safe("rendiciones", getCashReports(supabase, { statuses: ["enviada"] }), []),
+      safe("arqueos", getLastCounts(supabase), new Map()),
+    ]);
+    const boxes = cash.boxes;
+    const uncounted = boxes.filter((b) => {
+      const c = lastCounts.get(b.id);
+      return !c || c.counted_on < range.from;
+    });
+    const status: StepStatus =
+      boxes.length === 0 ? "manual" : pending.length > 0 || uncounted.length > 0 ? "pendiente" : "hecho";
+    steps.splice(4, 0, {
+      key: "cajas",
+      order: 0,
+      title: "Aprobar las rendiciones y hacer el arqueo de las cajas chicas",
+      why: "Cada caja tiene un fondo fijo y un responsable. Sus gastos entran al libro cuando aprobás la rendición; el arqueo (contar la plata y compararla con el libro) es lo que prueba que el efectivo está. Los aportes en efectivo se depositan íntegros: la caja solo gasta lo que se le repone.",
+      how: [
+        "En Cajas chicas, revisar cada rendición enviada: comprobantes, montos y el arqueo que declaró el responsable. Aprobar carga los gastos y la reposición; devolver pide la corrección.",
+        "Hacer el arqueo de cada caja (también la tuya) y registrarlo. Si no cuadra, el ajuste va al libro con su motivo.",
+      ],
+      href: "/admin/tesoreria/cajas",
+      cta: "Ir a Cajas chicas",
+      status,
+      note:
+        boxes.length === 0
+          ? "No hay cajas chicas cargadas. Si manejás efectivo, conviene registrar al menos la del tesorero con su fondo fijo."
+          : [
+              pending.length > 0 ? plural(pending.length, "rendición por revisar", "rendiciones por revisar") : null,
+              uncounted.length > 0 ? plural(uncounted.length, "caja sin arqueo este mes", "cajas sin arqueo este mes") : null,
+            ]
+              .filter(Boolean)
+              .join(" · ") || `${plural(boxes.length, "caja al día", "cajas al día")}.`,
+    });
+  }
+  steps.forEach((st, i) => {
+    st.order = i + 1;
   });
 
   return { month, monthLabel: label, steps };

@@ -52,8 +52,26 @@ const CONCILIACION = {
   label: "Ir a Conciliación",
 };
 const CREYENTES = { href: "/admin/miembros", label: "Ir a Creyentes" };
+const CAJAS = { href: "/admin/tesoreria/cajas", label: "Ir a Cajas chicas" };
 
 export const AUDIT_REMEDIES: Record<string, Remedy> = {
+  // ── I · Cajas chicas ─────────────────────────────────────────────
+  CAJA_SIN_ARQUEO: {
+    fix: "Abrí la caja en Cajas chicas, contá el efectivo (por moneda) y registrá el arqueo con la fecha. Si cuadra, listo; si no, registrá el ajuste en el libro con el motivo desde el mismo lugar.",
+    where: CAJAS,
+  },
+  CAJA_SOBRE_FONDO_FIJO: {
+    fix: "Depositá el excedente en la cuenta (Prex o BROU) y cargalo como transferencia desde la caja. Si entraron aportes en efectivo a la caja, de ahora en más depositalos íntegros: la caja chica solo gasta lo que se le repone.",
+    where: CAJAS,
+  },
+  RENDICION_SIN_REVISAR: {
+    fix: "Abrí la rendición desde Cajas chicas, revisá los gastos y sus comprobantes, y aprobala (entra todo al libro con la reposición) o devolvela con una nota que diga qué corregir.",
+    where: CAJAS,
+  },
+  CAJA_RECAUDA_Y_GASTA: {
+    fix: "No hay nada que corregir en el libro. Para adelante: los aportes en efectivo se depositan íntegros en la cuenta, y los gastos se pagan desde la caja chica repuesta. Si esta caja es la de recaudación de la Fiesta, despachá el hallazgo con ese motivo.",
+    where: CAJAS,
+  },
   // ── A · Cierres e inmutabilidad ──────────────────────────────────
   MES_SIN_CERRAR: {
     fix: "Revisá que el mes esté completo —todos los movimientos cargados y el extracto conciliado—, imprimí el Libro de Caja para archivarlo y cerralo. Los meses se cierran en orden: si hay varios pendientes, empezá por el más viejo.",

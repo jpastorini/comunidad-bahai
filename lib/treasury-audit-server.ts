@@ -3,11 +3,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { currentMembers, getAssemblyData } from "./assembly";
 import { findBudgetForYear } from "./budget-lookup";
 import { activeMembers, getLocalityMembers } from "./memberships";
+import { getCashBoxes, getCashReports, getLastCounts } from "./treasury-cash";
 import { todayISO } from "./treasury-ledger";
 import { treasuryYearEnd, treasuryYearForDate, treasuryYearStart } from "./treasury-year";
 import type {
   AuditAttachment,
   AuditBudget,
+  AuditCashBox,
   AuditCatalog,
   AuditClosing,
   AuditEntry,
@@ -218,6 +220,39 @@ export async function loadAuditInput(
       }
     : null;
 
+  // Las cajas chicas (074): antes de la migración no hay nada que auditar.
+  let cashBoxes: AuditCashBox[] | undefined;
+  try {
+    const { boxes, missing } = await getCashBoxes(supabase);
+    if (!missing) {
+      const [lastCounts, pending] = await Promise.all([
+        getLastCounts(supabase),
+        getCashReports(supabase, { statuses: ["enviada"] }),
+      ]);
+      const accName = new Map(catalog.accounts.map((a) => [a.id, a.name]));
+      cashBoxes = boxes.map((b) => {
+        const c = lastCounts.get(b.id) ?? null;
+        const ok = c
+          ? Math.abs(c.counted_uyu - c.expected_uyu) < 0.005 && Math.abs(c.counted_usd - c.expected_usd) < 0.005
+          : null;
+        return {
+          id: b.id,
+          accountId: b.account_id,
+          name: accName.get(b.account_id) ?? "Caja chica",
+          fixedUyu: b.fixed_uyu,
+          fixedUsd: b.fixed_usd,
+          lastCountOn: c?.counted_on ?? null,
+          lastCountOk: ok,
+          pendingReports: pending
+            .filter((r) => r.box_id === b.id && r.submitted_at)
+            .map((r) => ({ id: r.id, submittedAt: r.submitted_at! })),
+        };
+      });
+    }
+  } catch (e) {
+    console.warn("[loadAuditInput] cajas:", e instanceof Error ? e.message : e);
+  }
+
   const missingAttachmentPaths = options.checkStorage
     ? await findMissingAttachments(supabase, locality.id, attachments)
     : undefined;
@@ -241,6 +276,7 @@ export async function loadAuditInput(
       roster,
       treasuryTagHolders,
       missingAttachmentPaths,
+      cashBoxes,
     },
     years: years.length > 0 ? years : [bahaiYear],
     ready: true,

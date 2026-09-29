@@ -4,6 +4,7 @@ import { formatReceiptDate } from "@/lib/treasury-format";
 import {
   fmtAmounts,
   publicationLabel,
+  type PublicationCashBox,
   type PublicationMonth,
   type TreasuryPublication,
 } from "@/lib/treasury-publication-content";
@@ -26,7 +27,7 @@ export function PublishedTreasury({
   publication: TreasuryPublication;
   variant?: "full" | "month";
 }) {
-  const { month, progress } = publication.snapshot;
+  const { month, progress, cashBoxes } = publication.snapshot;
   return (
     <div className="flex flex-col gap-4">
       <p className="px-1 text-[11.5px] font-medium text-muted">
@@ -39,8 +40,43 @@ export function PublishedTreasury({
           eyebrow={`Al ${formatReceiptDate(publication.as_of)}`}
         />
       )}
+      {cashBoxes && cashBoxes.length > 0 && <CashBoxesCard boxes={cashBoxes} />}
       {variant === "full" && progress && <ProgressBoard data={progress} compact />}
     </div>
+  );
+}
+
+/** Las cajas chicas (074): que existen, cuánto tienen asignado y si el
+ *  último arqueo cuadró. Sin nombres: la confianza es sobre el sistema. */
+function CashBoxesCard({ boxes }: { boxes: PublicationCashBox[] }) {
+  return (
+    <section className="rounded-[20px] border border-black/[0.05] bg-card p-4 shadow-card sm:p-5">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-gold-dark">
+        <BahaiStar size={10} color="#C4A235" />
+        Cajas chicas
+      </div>
+      <ul className="mt-2 divide-y divide-black/[0.05]">
+        {boxes.map((b) => (
+          <li key={b.name} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-2 text-[13px]">
+            <span className="font-semibold text-dark">{b.name}</span>
+            <span className="text-[12px] text-muted">
+              {b.fixed.length > 0 ? `Fondo fijo ${fmtAmounts(b.fixed)}` : "Sin fondo fijo"} ·{" "}
+              {b.lastCountOn ? (
+                <span className={b.lastCountOk ? "font-semibold text-green" : "font-semibold text-amber"}>
+                  arqueo del {formatReceiptDate(b.lastCountOn)}: {b.lastCountOk ? "cuadró" : "con ajuste"}
+                </span>
+              ) : (
+                "sin arqueo todavía"
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-[11.5px] text-muted">
+        Cada caja tiene un monto asignado y una persona responsable; sus gastos entran al libro con
+        comprobante y la caja se cuenta (arqueo) contra lo que dice el libro.
+      </p>
+    </section>
   );
 }
 
