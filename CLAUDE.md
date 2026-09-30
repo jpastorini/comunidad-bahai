@@ -57,6 +57,24 @@ Para evitarlo:
    manualmente en el SQL Editor de Supabase. Al terminar una migración,
    recordale aplicarla y pasale el link de GitHub al archivo.
 
+7. **"Application error… Digest: NNN" en producción se reproduce en
+   local sin login.** Las pantallas del panel exigen la sesión de Google,
+   pero la capa `lib/*` corre sola contra la base real con service-role
+   (salta la RLS, alcanza para encontrar la excepción). Molde en
+   `scripts/repro-server-lib.ts`; se corre así, con `tsx` instalado sin
+   guardar (`npm i --no-save tsx`), un stub de `server-only` y
+   `React.cache` parcheado (el `react` de node_modules es el estable y
+   no lo trae; Next usa su propia copia):
+   ```
+   mkdir -p node_modules/server-only && echo 'module.exports={}' > node_modules/server-only/index.js
+   echo 'const R=require("react"); if(!R.cache) R.cache=(fn)=>fn;' > _patch.cjs
+   node --import tsx -r ./_patch.cjs --env-file=.env.local scripts/repro-server-lib.ts
+   ```
+   Así se encontró el RangeError de la Guía del mes (2026-09-30): un
+   `formatDate()` sobre un texto libre. Regla derivada: **`formatDate`
+   solo recibe ISO**; lo que tipeó una persona (la fecha de la reunión del
+   acta, por ejemplo) se muestra tal cual o se valida antes.
+
 ---
 
 ## Arquitectura esencial

@@ -530,7 +530,12 @@ export async function buildDossierManifest(
         r.period_to,
         r.status === "published" ? "emitido" : "borrador",
         r.published_at ? formatDateTime(r.published_at) : "",
-        r.editorial.approval?.meetingDate ? formatDate(r.editorial.approval.meetingDate) : "",
+        // Texto libre del editor: se formatea solo si es ISO (ver la Guía).
+        r.editorial.approval?.meetingDate
+          ? /^d{4}-d{2}-d{2}/.test(r.editorial.approval.meetingDate)
+            ? formatDate(r.editorial.approval.meetingDate.slice(0, 10))
+            : r.editorial.approval.meetingDate
+          : "",
         r.editorial.approval?.actaNumber ?? "",
       ]),
     ]),

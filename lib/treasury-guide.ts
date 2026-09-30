@@ -63,6 +63,14 @@ export type TreasuryGuide = {
   steps: GuideStep[];
 };
 
+/** La fecha de la reunión del acta es texto libre del editor del informe
+ *  ("15/09/2026", "reunión del 15"): se formatea solo si es una fecha ISO,
+ *  si no se muestra tal cual. Un texto libre en formatDate() tira RangeError
+ *  y tumba la pantalla entera. */
+function looseDate(raw: string): string {
+  return /^d{4}-d{2}-d{2}/.test(raw) ? formatDate(raw.slice(0, 10)) : raw;
+}
+
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
 }
@@ -319,7 +327,7 @@ export async function getTreasuryGuide(
     status: internal ? "hecho" : "pendiente",
     note: internal
       ? internal.editorial.approval?.meetingDate
-        ? `Emitido y aprobado en la reunión del ${formatDate(internal.editorial.approval.meetingDate)}.`
+        ? `Emitido y aprobado en la reunión del ${looseDate(internal.editorial.approval.meetingDate)}.`
         : "Emitido; falta anotar la reunión que lo aprobó."
       : null,
   });
