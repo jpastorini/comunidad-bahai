@@ -107,10 +107,16 @@ export default async function ManualPage() {
       {/* 3 · Cómo se mueve la plata */}
       <Section id="plata" n={3} title="Cómo se mueve la plata">
         <p className="text-[14px] leading-relaxed text-dark/85">
-          Hay dos maneras de que entre un aporte y dos de que salga un gasto. La regla que lo ordena todo: lo que se
-          recauda en efectivo <strong>se deposita íntegro</strong> en la cuenta, y los gastos chicos se pagan desde la{" "}
-          <strong>caja chica</strong>, que la cuenta repone con lo rendido. Así cada peso que entra se ve entero en el
-          extracto, y cada gasto tiene su comprobante.
+          Hay dos maneras de que entre un aporte y dos de que salga un gasto. Los giros entran a la{" "}
+          <strong>cuenta</strong>; el efectivo de la Fiesta entra a la <strong>caja chica del tesorero</strong> y desde
+          ahí se pagan los gastos chicos, cada uno con su comprobante. Las cajas con responsable (Secretaría, un
+          coordinador) se reponen desde la cuenta con lo que rinden.
+        </p>
+        <p className="mt-2 text-[14px] leading-relaxed text-dark/85">
+          <strong>Un consejo, no una regla:</strong> lo que entra y sale en efectivo no lo verifica ningún extracto, solo
+          tu arqueo. Cuando puedas, depositá el efectivo en Prex y pagá desde la cuenta: cada aporte queda verificado por
+          el banco y la conciliación cierra sola. La auditoría te lo recuerda como hallazgo leve; si preferís seguir con
+          la caja, despachalo con ese motivo.
         </p>
         <FigureMoneyFlow />
       </Section>

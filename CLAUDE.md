@@ -506,9 +506,12 @@ con el usuario: **fondo fijo** ("imprest", lo que un auditor espera),
 rendición** (el libro lo sigue escribiendo solo el tesorero), **rendición
 mensual y además cuando haga falta**, y la regla de **"no compensar"**:
 los aportes en efectivo se depositan íntegros y la caja gasta solo lo que
-se le repone (la app la recomienda con una regla de auditoría, no la
-bloquea; el usuario pidió que se le explique, ver el HelpTip de la
-pantalla).
+se le repone. ⚠️ Es un CONSEJO, no una regla (2026-09-30): el flujo
+real es que el efectivo de la Fiesta entra a la caja del tesorero y se
+gasta desde ahí, que es más sencillo aunque ningún extracto lo verifique;
+la app lo recomienda con una regla de auditoría leve (CAJA_RECAUDA_Y_GASTA)
+y lo explica en la pantalla y en el manual, sin bloquear nada. El dibujo
+del manual muestra ese flujo real con el paso por Prex punteado en dorado.
 
 - **Modelo** (`lib/treasury-cash.ts`, server-only): `treasury_cash_boxes`
   cuelga de una cuenta del catálogo (el saldo sigue saliendo del libro

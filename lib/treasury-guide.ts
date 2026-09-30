@@ -366,7 +366,7 @@ export async function getTreasuryGuide(
       key: "cajas",
       order: 0,
       title: "Aprobar las rendiciones y hacer el arqueo de las cajas chicas",
-      why: "Cada caja tiene un fondo fijo y un responsable. Sus gastos entran al libro cuando aprobás la rendición; el arqueo (contar la plata y compararla con el libro) es lo que prueba que el efectivo está. Los aportes en efectivo se depositan íntegros: la caja solo gasta lo que se le repone.",
+      why: "Cada caja tiene un fondo fijo y un responsable. Sus gastos entran al libro cuando aprobás la rendición; el arqueo (contar la plata y compararla con el libro) es lo que prueba que el efectivo está. Consejo: cuando puedas, depositá el efectivo en Prex y pagá desde la cuenta, así el extracto verifica cada aporte.",
       how: [
         "En Cajas chicas, revisar cada rendición enviada: comprobantes, montos y el arqueo que declaró el responsable. Aprobar carga los gastos y la reposición; devolver pide la corrección.",
         "Hacer el arqueo de cada caja (también la tuya) y registrarlo. Si no cuadra, el ajuste va al libro con su motivo.",

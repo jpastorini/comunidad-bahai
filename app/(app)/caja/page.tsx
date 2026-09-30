@@ -225,8 +225,8 @@ export default async function MiCajaPage() {
         )}
 
         <p className="mt-2 px-1 text-[11.5px] text-muted">
-          La caja chica gasta solo lo que se le repone: la plata que recibís como aporte se entrega al
-          tesorero íntegra, no se usa para pagar gastos.{" "}
+          Tu caja gasta solo lo que se le repone. Si alguien te da un aporte en mano, entregáselo al
+          tesorero íntegro para que le haga el recibo; no se usa para pagar gastos.{" "}
           <Link href="/tesoreria" className="font-semibold text-terra">
             Ver la Tesorería
           </Link>

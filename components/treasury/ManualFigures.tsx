@@ -123,25 +123,30 @@ export function FigureMonthCycle() {
 export function FigureMoneyFlow() {
   return (
     <figure className="my-4 text-dark">
-      <svg viewBox="0 0 780 305" role="img" aria-label="Los aportes en efectivo se depositan íntegros en la cuenta; los gastos se pagan desde la cuenta o desde la caja chica, que la cuenta repone; no se pagan gastos con lo recaudado." style={{ maxWidth: "100%", height: "auto" }}>
+      <svg viewBox="0 0 780 300" role="img" aria-label="Los aportes por giro entran a la cuenta; los aportes en efectivo entran a la caja chica del tesorero y desde ahí se pagan los gastos chicos; la cuenta paga los gastos grandes y repone las cajas. Consejo: depositar el efectivo en Prex para que el extracto lo verifique." style={{ maxWidth: "100%", height: "auto" }}>
         <Arrow id="a2" />
+        <defs>
+          <marker id="a2-gold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill={GOLD} />
+          </marker>
+        </defs>
         {/* Aportes */}
-        <Box x={10} y={40} w={150} h={50} title="Aporte en efectivo" sub="Fiesta, en mano" />
-        <Box x={10} y={200} w={150} h={50} title="Aporte por giro" sub="Prex, BROU, POS" />
+        <Box x={10} y={40} w={150} h={50} title="Aporte por giro" sub="Prex, BROU, POS" />
+        <Box x={10} y={205} w={150} h={50} title="Aporte en efectivo" sub="Fiesta, en mano" />
         {/* Cuenta */}
-        <Box x={315} y={70} w={170} h={64} title="Cuenta" sub="Prex · BROU" accent />
+        <Box x={315} y={70} w={170} h={64} title="Cuenta" sub="Prex · BROU · Mercado Pago" accent />
         {/* Caja chica */}
-        <Box x={315} y={205} w={170} h={50} title="Caja chica" sub="fondo fijo, con responsable" />
+        <Box x={315} y={205} w={170} h={50} title="Caja chica" sub="del tesorero, o con responsable" />
         {/* Gastos */}
         <Box x={620} y={70} w={150} h={50} title="Gasto" sub="pago desde la cuenta" />
         <Box x={620} y={205} w={150} h={50} title="Gasto chico" sub="con comprobante" />
 
-        {/* efectivo → cuenta */}
-        <path d="M 160 65 C 240 65, 240 95, 313 95" fill="none" stroke="currentColor" strokeWidth="1.3" markerEnd="url(#a2)" />
-        <text x="232" y="64" textAnchor="middle" fontSize="10.5" fill="currentColor">se deposita íntegro</text>
         {/* giro → cuenta */}
-        <path d="M 160 225 C 240 225, 240 112, 313 112" fill="none" stroke="currentColor" strokeWidth="1.3" markerEnd="url(#a2)" />
-        <text x="232" y="180" textAnchor="middle" fontSize="10.5" fill="currentColor">entra directo</text>
+        <path d="M 160 65 C 240 65, 240 95, 313 95" fill="none" stroke="currentColor" strokeWidth="1.3" markerEnd="url(#a2)" />
+        <text x="232" y="64" textAnchor="middle" fontSize="10.5" fill="currentColor">entra directo</text>
+        {/* efectivo → caja */}
+        <line x1="160" y1="230" x2="313" y2="230" stroke="currentColor" strokeWidth="1.3" markerEnd="url(#a2)" />
+        <text x="236" y="223" textAnchor="middle" fontSize="10.5" fill="currentColor">entra directo</text>
         {/* cuenta → gasto */}
         <line x1="486" y1="95" x2="618" y2="95" stroke="currentColor" strokeWidth="1.3" markerEnd="url(#a2)" />
         <text x="552" y="88" textAnchor="middle" fontSize="10.5" fill="currentColor">paga</text>
@@ -151,17 +156,18 @@ export function FigureMoneyFlow() {
         {/* caja → gasto chico */}
         <line x1="486" y1="230" x2="618" y2="230" stroke="currentColor" strokeWidth="1.3" markerEnd="url(#a2)" />
         <text x="552" y="223" textAnchor="middle" fontSize="10.5" fill="currentColor">paga</text>
-        {/* prohibido: efectivo → gasto chico */}
-        <path d="M 40 92 L 40 285 L 695 285 L 695 258" fill="none" stroke={RED} strokeWidth="1.3" strokeDasharray="5 4" markerEnd="url(#a2-red)" />
-        <g transform="translate(390 285)">
-          <circle r="9" fill="#fff" stroke={RED} strokeWidth="1.3" />
-          <path d="M -4 -4 L 4 4 M 4 -4 L -4 4" stroke={RED} strokeWidth="1.6" />
-        </g>
-        <text x="410" y="277" fontSize="10.5" fill={RED}>no: gastar lo recaudado sin pasar por la cuenta</text>
+        {/* consejo: efectivo → cuenta */}
+        <path d="M 85 205 C 85 150, 200 118, 313 112" fill="none" stroke={GOLD} strokeWidth="1.3" strokeDasharray="5 4" markerEnd="url(#a2-gold)" />
+        <text x="172" y="186" fontSize="10.5" fontWeight="700" fill={GOLD}>consejo: depositarlo en Prex</text>
+        <text x="172" y="199" fontSize="10" fill={GOLD}>así el extracto verifica cada aporte</text>
+        <text x="390" y="288" textAnchor="middle" fontSize="10.5" fill="currentColor" opacity="0.7">
+          Lo que entra y sale en efectivo no lo verifica ningún extracto: solo el arqueo de la caja.
+        </text>
       </svg>
       <figcaption className="mt-1 text-[12px] text-muted">
-        Cómo se mueve la plata. El camino punteado en rojo es el que un auditor mira primero: pagar la merienda de la
-        Fiesta con la misma colecta esconde lo recaudado. Se deposita todo y se paga desde la caja chica, que se repone.
+        Cómo se mueve la plata hoy. El efectivo de la Fiesta entra a la caja chica del tesorero y desde ahí se pagan los
+        gastos chicos; es lo más sencillo. El camino punteado dorado es el consejo: cuando puedas, depositalo en Prex y
+        pagá desde la cuenta, porque un extracto bancario es la única verificación externa del libro.
       </figcaption>
     </figure>
   );

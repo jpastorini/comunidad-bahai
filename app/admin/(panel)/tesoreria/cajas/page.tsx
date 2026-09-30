@@ -107,12 +107,13 @@ export default async function CajasPage() {
           <li className="flex gap-2">
             <span className="font-display font-bold text-gold-dark">4</span>
             <span>
-              <strong>Los aportes en efectivo se depositan íntegros.</strong> La caja chica gasta
-              solo lo que se le repone: no se paga un gasto con la colecta de la Fiesta. Es la
-              regla de «no compensar» ingresos con gastos, lo primero que mira un auditor.{" "}
+              <strong>Consejo: depositar el efectivo en Prex.</strong> Hoy la colecta de la Fiesta
+              entra a la caja del tesorero y se gasta desde ahí, que es lo más sencillo. Pero lo que
+              entra y sale en efectivo no lo verifica ningún extracto, solo el arqueo. Cuando puedas,
+              depositalo y pagá desde la cuenta.{" "}
               <HelpTip
-                title="No compensar"
-                text="Si la Fiesta recauda $ 4.000 y se paga la merienda de $ 1.500 con esa misma plata, el libro dice que entraron $ 4.000 y salieron $ 1.500, pero el depósito es de $ 2.500 y el auditor no puede seguir el rastro. Depositando los $ 4.000 y pagando los $ 1.500 desde la caja chica (que después se repone), cada peso que entra se ve entero en la cuenta."
+                title="Por qué conviene"
+                text="Si la Fiesta recauda $ 4.000 y se paga la merienda de $ 1.500 con esa misma plata, el libro dice que entraron $ 4.000 y salieron $ 1.500, pero ningún extracto lo confirma: el auditor tiene que creerle al libro. Depositando los $ 4.000 en Prex y pagando los $ 1.500 desde la cuenta (o desde una caja que se repone), cada peso queda verificado por el banco. La auditoría lo marca como hallazgo leve, no como error."
               />
             </span>
           </li>
