@@ -53,6 +53,7 @@ const CONCILIACION = {
 };
 const CREYENTES = { href: "/admin/miembros", label: "Ir a Creyentes" };
 const CAJAS = { href: "/admin/tesoreria/cajas", label: "Ir a Cajas chicas" };
+const CONTRIBUYENTES = { href: "/admin/tesoreria/contribuyentes", label: "Ir a Contribuyentes" };
 
 export const AUDIT_REMEDIES: Record<string, Remedy> = {
   // ── I · Cajas chicas ─────────────────────────────────────────────
@@ -291,12 +292,12 @@ export const AUDIT_REMEDIES: Record<string, Remedy> = {
 
   // ── H · Contribuyentes ───────────────────────────────────────────
   CONTRIBUYENTE_DUPLICADO: {
-    fix: "La misma persona en dos fichas parte su historial en dos. Mientras no haya pantalla para fusionarlas, dejá una sola vinculada al creyente y, desde el Libro, reasigná a ella los movimientos de la otra; después desactivá la que quedó vacía. Si son dos personas distintas con nombres parecidos, despachalo con «No aplica».",
-    where: LIBRO,
+    fix: "En Contribuyentes, filtrá «Posibles dobles», abrí una de las dos fichas y tocá Fusionar eligiendo la que queda. Los aportes pasan a esa ficha y la otra se elimina; los recibos ya emitidos no cambian.",
+    where: CONTRIBUYENTES,
   },
   CONTRIBUYENTE_SIN_PERFIL: {
-    fix: "Abrí un movimiento de esa persona y usá «¿Es un creyente de la app? Vincular…» para apuntar la ficha a su perfil. Recién con el vínculo puede ver sus aportes y bajar sus recibos desde el teléfono.",
-    where: LIBRO,
+    fix: "En Contribuyentes, filtrá «Sin vincular» y tocá Vincular en cada ficha: la app sugiere el creyente cuando el nombre coincide. Desde ese momento la persona ve sus aportes en Mis aportes y Compromisos la reconoce.",
+    where: CONTRIBUYENTES,
   },
 };
 

@@ -422,6 +422,36 @@ entra" más abajo. ·
 rendición que el tesorero aprueba y arqueo, con "Mi caja chica" en la app
 del creyente. Ver la sección "Cajas chicas" más abajo.
 
+## Contribuyentes (migración 075)
+
+Tesorería → Contribuyentes (`/admin/tesoreria/contribuyentes`, bloque
+Ajustes). El padrón de quienes aportan se llenó por tres caminos que no se
+hablaban (planilla importada, buscador del libro, a mano) y quedó con
+dobles ("Carlos Cardona", "Sr Carlos Cardona", "Sr. Carlos Cardona") y con
+fichas sin `profile_id`, que es lo que deja aportes invisibles en "Mis
+aportes" y personas en "no se puede saber" de Compromisos. La pantalla
+(`lib/treasury-contributors.ts`) lista cada ficha con sus aportes, a qué
+creyente apunta, y dos sugerencias calculadas —un creyente de la app cuyo
+nombre se parece (solo si es uno solo y no está vinculado a otra ficha) y
+otras fichas que parecen la misma persona (`namesLookAlike`: mismo nombre
+normalizado, o dos palabras en común)—. Filtros: Activos · Sin vincular ·
+Posibles dobles · Inactivos. Acciones: Vincular/desvincular, Fusionar,
+Editar (nombre y tipo), Eliminar si nunca se usó / Desactivar si sí.
+
+⚠️ **Fusionar mueve asientos de meses cerrados y con recibo emitido**, y
+eso está bien: no cambia el hecho contable (fecha, monto, cuenta, fondo,
+recibo), solo a qué ficha del padrón apunta, y las dos fichas son la
+misma persona. Va por la RPC `merge_contributors(source, target)`
+(security definer), que pone la GUC `app.merge_contributor` con la ficha
+origen; el guardián de la 054 (reescrito en la 075) deja pasar un UPDATE
+solo si lo único que cambió es `contributor_id` desde esa ficha. Todo lo
+demás sigue congelado. La que queda hereda el perfil si no tenía; dos
+fichas apuntando a creyentes distintos no se fusionan hasta desvincular
+una. No se puede deshacer.
+
+⚠️ Hasta que corra la 075, todo funciona menos Fusionar ("falta aplicar
+la migración 075").
+
 ## Cajas chicas (migración 074)
 
 Pedido el 2026-09-29: la Secretaría y los coordinadores de instituto van
@@ -868,7 +898,7 @@ la app) · Tesorería, en cuatro bloques por frecuencia de uso (2026-09-29):
 Empezar (Guía del mes) · Todos los días (Libro, Mensajes, Conciliación) ·
 Cada mes (Cajas chicas, Cierres, Auditoría, Publicar, Compromisos) · El ejercicio
 (Presupuesto y metas, Progreso, Informes, Legajo para el auditor) · Ajustes
-(Catálogo, Recibo y medios de pago, Importar) · Admin Nacional. El bloque
+(Catálogo, Contribuyentes, Recibo y medios de pago, Importar) · Admin Nacional. El bloque
 es `section` en la hoja: el Sidebar dibuja el título cuando cambia; no
 se pliega ni tiene ruta. "Presupuesto y metas" es un ítem con dos
 pantallas (/metas es subpantalla, prende por `match`); "Recibo y medios
@@ -2827,9 +2857,11 @@ cambia nada.
   libro" ya abre el alta prellenada con el creyente (2026-09-29); falta
   guardar qué mensaje originó qué asiento para no cargar dos veces el
   mismo aporte, y prellenar el monto leyéndolo del mensaje.
-- **Pantalla de contribuyentes para el tesorero** (fusionar duplicados,
-  desvincular); hoy solo se vincula desde el formulario. El aviso al
-  creyente al registrar su aporte ya está (2026-09-29).
+- **Aplicar la 075 y ordenar el padrón de contribuyentes** (2026-09-30):
+  en Tesorería → Contribuyentes, fusionar los tres "Carlos Cardona" y los
+  dos "Fabián Beramendi", vincular "Sr. Larry Gates" (la app lo sugiere),
+  y vincular el resto de las 17 fichas sueltas a su creyente. Después
+  Compromisos deja de decir "no se puede saber".
 - **Lectura de comunicados: el informe no sabe quién se sumó a la
   localidad DESPUÉS del comunicado**: cuenta como "no vio" (y como "no
   votó") a alguien que nunca fue destinatario. El deep link del push ya

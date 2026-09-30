@@ -157,6 +157,8 @@ export const ADMIN_NAV: NavGroup[] = [
       // ── Ajustes ──
       // Cuentas, fondos, categorías y subcategorías con que se carga el libro.
       { href: "/admin/tesoreria/catalogo", label: "Catálogo", section: "Ajustes" },
+      // El padrón de quienes aportan: vincular, fusionar dobles, desactivar (075).
+      { href: "/admin/tesoreria/contribuyentes", label: "Contribuyentes", section: "Ajustes" },
       // Quién firma, con qué firma y de qué color sale el recibo (060), y
       // los medios de pago que ve la comunidad en "Cómo aportar".
       // ⚠️ El href es más largo que el `match` de "Libro" de arriba, así

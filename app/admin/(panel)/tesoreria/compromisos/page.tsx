@@ -170,7 +170,7 @@ export default async function CompromisosPage({
 
       <Group
         title="No se puede saber"
-        hint="Nadie en el libro apunta a su perfil, así que sus aportes no se pueden reconocer. Se vincula desde el Libro, en el buscador de contribuyentes del movimiento."
+        hint="Nadie en el libro apunta a su perfil, así que sus aportes no se pueden reconocer. Se vincula en Tesorería → Contribuyentes (filtro «Sin vincular»)."
         rows={sinVinculo}
         tone="neutral"
         month={month}

@@ -46,6 +46,8 @@ export const TREASURY_HELP = {
       "Elegí a quién va y el período. Los atajos son los meses bahá'ís (el corte natural de la Fiesta) y el ejercicio estatutario del 18 de abril al 17 de abril para el balance. Después se completan los textos y se emite.",
     legajo:
       "Todo lo que un auditor pide, de un período, en una carpeta comprimida: el libro, el Libro de Caja de cada mes, recibos, comprobantes, extractos, auditoría, informes y la ficha de la Asamblea. Se arma en tu navegador y se descarga solo. Es confidencial: lleva nombres.",
+    contribuyentes:
+      "Quiénes aportan, según el libro. Cada ficha debería apuntar a su creyente de la app: es lo que hace que la persona vea sus aportes en «Mis aportes» y que Compromisos pueda decir quién aportó. Si dos fichas son la misma persona, se fusionan: los aportes pasan a una y la otra desaparece.",
     catalogo:
       "Las cuentas (dónde está la plata), los fondos (de quién es), las categorías y los rubros (en qué se usa) con que se carga el libro. Quitar elimina lo que nunca se usó y desactiva lo que sí: el historial no se pierde.",
     recibo:
@@ -93,6 +95,10 @@ export const TREASURY_HELP = {
       "Dejalo vacío: el nombre sale solo del Tesorero/a declarado en Datos de la Asamblea, con vigencia, así un recibo viejo reimpreso conserva a quien lo firmó. Escribilo acá solo si querés forzar otro.",
     firma:
       "La firma escaneada, ideal en PNG con fondo transparente. Es de esta comunidad: la Nacional tiene la suya. Sin firma, el renglón queda en blanco para firmar a mano.",
+    vincularContribuyente:
+      "El creyente de la app al que pertenece esta ficha. Desde ese momento ve estos aportes en «Mis aportes», le llega el aviso de cada aporte nuevo con su recibo, y Compromisos lo reconoce. Una persona puede tener más de una ficha (a título personal y por su negocio) apuntando al mismo creyente.",
+    fusionarContribuyente:
+      "Mueve todos los aportes de esta ficha a la que elijas y elimina esta. Sirve para los dobles («Carlos Cardona» y «Sr. Carlos Cardona»). Los aportes de meses cerrados también se mueven: no cambia el hecho contable, solo a qué ficha apunta. No se puede deshacer.",
     calcular:
       "Arma la foto del Fondo hasta la fecha de corte y la guarda como borrador que solo vos ves. Calcular de nuevo la reemplaza. Para la Fiesta, el atajo es «hasta el fin del último mes bahá'í».",
     compartir:
