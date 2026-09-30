@@ -2941,8 +2941,8 @@ cambia nada.
   libro" ya abre el alta prellenada con el creyente (2026-09-29); falta
   guardar qué mensaje originó qué asiento para no cargar dos veces el
   mismo aporte, y prellenar el monto leyéndolo del mensaje.
-- **Aplicar la 077 y pasar la lista manual de compromisos a la app**
-  (2026-09-30): registrar cada uno en Tesorería → Compromisos con su
+- **Pasar la lista manual de compromisos a la app** (la 077 se aplicó
+  el 2026-09-30): registrar cada uno en Tesorería → Compromisos con su
   teléfono, y el 10 probar "Recordar por WhatsApp".
 - **Aplicar la 075 y ordenar el padrón de contribuyentes** (2026-09-30):
   en Tesorería → Contribuyentes, fusionar los tres "Carlos Cardona" y los
