@@ -35,7 +35,7 @@ export const TREASURY_HELP = {
     publicar:
       "Lo ÚNICO que la comunidad ve de la Tesorería, en la app y en la Fiesta. Calcular arma un borrador que solo vos ves; Compartir lo publica tal cual. No se recalcula solo: es una cifra oficial, con fecha, dicha por el tesorero.",
     compromisos:
-      "Quién declaró un compromiso mensual con el Fondo y cómo viene el mes: a quién agradecer, a quién recordar, y de quién no se puede saber porque su contribuyente no está vinculado a la app. El aviso del 10 sale solo a quien lo pidió.",
+      "Quién tiene un compromiso mensual con el Fondo y cómo viene el mes: a quién agradecer, a quién recordar, y de quién no se puede saber porque su contribuyente no está vinculado a la app. Los compromisos que te dicen de palabra se registran acá con «Registrar un compromiso». A quien usa la app el aviso del 10 le llega solo si lo pidió; a quien no, lo recordás vos, por WhatsApp si cargaste su teléfono.",
     presupuesto:
       "Lo que la Asamblea planea gastar en el ejercicio, por categoría; la suma es lo que tiene que entrar al Fondo. Cada línea se vincula a los rubros del libro con «Se ejecuta con», y así el tablero compara presupuesto contra ejecutado. Las metas son lo que la Asamblea se propuso lograr.",
     presupuestoDetalle:

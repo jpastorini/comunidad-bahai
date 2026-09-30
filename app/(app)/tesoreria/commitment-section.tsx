@@ -91,9 +91,12 @@ function ExistingCommitment({
   const fmt = (n: number) =>
     n.toLocaleString("es-UY", {
       style: "currency",
-      currency: "UYU",
+      currency: commitment.currency ?? "UYU",
       maximumFractionDigits: 0,
     });
+  // Lo anotó el tesorero porque la persona se lo pidió (077).
+  const byTreasurer =
+    !!commitment.created_by && commitment.created_by !== commitment.user_id;
 
   return (
     <div className="mt-3 rounded-xl bg-amber/[0.06] p-3.5">
@@ -109,6 +112,11 @@ function ExistingCommitment({
           <div className="mt-1 text-[12px] text-dark">
             {commitment.display_name}
           </div>
+          {byTreasurer && (
+            <div className="mt-1 text-[11px] text-muted">
+              Registrado por Tesorería. Si algo no es así, corregilo acá.
+            </div>
+          )}
           {commitment.want_reminder && (
             <div className="mt-2 inline-flex items-center gap-1.5 rounded bg-amber/15 px-2 py-0.5 text-[10px] font-semibold text-amber">
               ✓ Recibís el recordatorio del 10 de cada mes

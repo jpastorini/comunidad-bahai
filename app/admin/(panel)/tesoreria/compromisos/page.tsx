@@ -14,7 +14,11 @@ import {
   previousMonthKey,
 } from "@/lib/treasury-cashbook";
 import { formatMoney } from "@/lib/treasury-format";
-import { todayISO } from "@/lib/treasury-ledger";
+import { getLedgerCatalog, todayISO } from "@/lib/treasury-ledger";
+import { isNationalLocality } from "@/lib/types";
+import { commitmentQuoteOfMonth } from "@/lib/reminders";
+import { reminderText, thanksText, whatsappLink } from "@/lib/commitment-whatsapp";
+import { CommitmentRowActions, NewCommitment } from "./commitment-editor";
 
 export const dynamic = "force-dynamic";
 
@@ -41,11 +45,17 @@ export default async function CompromisosPage({
       : thisMonth;
 
   const supabase = createSupabaseServer();
-  const report = await getCommitmentMonthReport(
-    supabase,
-    session.locality.id,
-    month
-  );
+  const [report, catalog, probe] = await Promise.all([
+    getCommitmentMonthReport(supabase, session.locality.id, month),
+    getLedgerCatalog(supabase, session.locality.id, {
+      nationwide: isNationalLocality(session.locality),
+    }),
+    // ¿Corrió la 077? Sin ella no hay columna id ni se puede registrar.
+    supabase.from("treasury_commitments").select("id").limit(1),
+  ]);
+  const canRegister = !report.schemaMissing && !probe.error;
+  // La misma cita que el push del 10 de ESTE mes.
+  const quote = commitmentQuoteOfMonth();
 
   // Los últimos 12 meses para elegir, del más nuevo al más viejo.
   const options: string[] = [];
@@ -141,22 +151,44 @@ export default async function CompromisosPage({
         </div>
       )}
 
+      {!report.schemaMissing && !canRegister && (
+        <div className="mb-4">
+          <Banner tone="warning">
+            Falta aplicar la migración <strong>077</strong> en Supabase para
+            registrar compromisos desde acá.
+          </Banner>
+        </div>
+      )}
+
+      {canRegister && (
+        <Card className="mb-5">
+          <NewCommitment contributors={catalog.contributors} members={catalog.members} />
+          <p className="mt-2 max-w-[70ch] text-[11.5px] leading-snug text-muted">
+            Para quien te lo pidió de palabra. Si la persona usa la app, el
+            compromiso es suyo igual que si lo hubiera declarado ella; si no, lo
+            ves acá cada mes y le recordás vos.
+          </p>
+        </Card>
+      )}
+
       {report.rows.length === 0 && !report.schemaMissing && (
         <Card className="mb-5">
           <p className="text-[13.5px] text-muted">
-            Todavía nadie declaró un compromiso mensual en esta comunidad. Se
-            declara desde Tesorería, en la app de la comunidad.
+            Todavía no hay compromisos mensuales en esta comunidad. Los
+            creyentes los declaran desde Tesorería, en la app, y vos podés
+            registrar los que te dicen de palabra.
           </p>
         </Card>
       )}
 
       <Group
         title="Para llamar y recordar"
-        hint="Todavía no figura su aporte del mes en el libro. Si lo cargaste y no aparece acá, fijate que el contribuyente esté vinculado a su perfil."
+        hint="Todavía no figura su aporte del mes en el libro. Si lo cargaste y no aparece acá, fijate que el aporte esté a nombre de la misma ficha."
         rows={pendientes}
         tone="warning"
         month={month}
         viewerId={session.user.id}
+        quote={quote}
       />
 
       <Group
@@ -166,15 +198,17 @@ export default async function CompromisosPage({
         tone="ok"
         month={month}
         viewerId={session.user.id}
+        quote={quote}
       />
 
       <Group
         title="No se puede saber"
-        hint="Nadie en el libro apunta a su perfil, así que sus aportes no se pueden reconocer. Se vincula en Tesorería → Contribuyentes (filtro «Sin vincular»)."
+        hint="Lo declararon desde la app y nadie en el libro apunta a su perfil, así que sus aportes no se pueden reconocer. Se vincula en Tesorería → Contribuyentes (filtro «Sin vincular»)."
         rows={sinVinculo}
         tone="neutral"
         month={month}
         viewerId={session.user.id}
+        quote={quote}
       />
 
       {report.others.length > 0 && (
@@ -213,6 +247,7 @@ function Group({
   tone,
   month,
   viewerId,
+  quote,
 }: {
   title: string;
   hint: string;
@@ -220,6 +255,7 @@ function Group({
   tone: "ok" | "warning" | "neutral";
   month: string;
   viewerId: string;
+  quote: string;
 }) {
   if (rows.length === 0) return null;
   const dot =
@@ -240,7 +276,7 @@ function Group({
 
       <ul className="divide-y divide-black/5">
         {rows.map((r) => (
-          <li key={r.user_id} className="py-3">
+          <li key={r.key} className="py-3">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <div className="min-w-0">
                 <span className="text-[14.5px] font-semibold text-dark">
@@ -256,6 +292,16 @@ function Group({
                     acepta que lo contacten
                   </span>
                 )}
+                {!r.user_id && (
+                  <span className="ml-2 rounded bg-black/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-muted">
+                    no está en la app
+                  </span>
+                )}
+                {r.by_treasurer && (
+                  <span className="ml-2 text-[10.5px] text-muted">
+                    registrado por Tesorería
+                  </span>
+                )}
               </div>
               <div className="text-[13.5px] text-dark">
                 <strong>{formatMoney(r.paid, r.currency)}</strong>
@@ -268,6 +314,7 @@ function Group({
 
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-[11.5px] text-muted">
               {r.email && <span>{r.email}</span>}
+              {r.phone && <span>{r.phone}</span>}
               {r.lastPaymentDate && (
                 <span>Último aporte: {r.lastPaymentDate}</span>
               )}
@@ -294,19 +341,67 @@ function Group({
             </div>
             {/* Recordar o agradecer por el chat de Tesorería, sin esperar
                 a que la persona escriba (lib/chat-contact.ts). */}
-            {r.user_id !== viewerId && (
-              <div className="mt-2">
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+              {r.user_id && r.user_id !== viewerId && (
                 <ContactButtons
                   memberId={r.user_id}
                   topics={["tesoreria"]}
                   size="sm"
                   labels={{ tesoreria: "Escribirle" }}
                 />
-              </div>
-            )}
+              )}
+              <WhatsAppButton row={r} month={month} quote={quote} />
+              {r.id && (
+                <CommitmentRowActions
+                  initial={{
+                    id: r.id,
+                    display_name: r.display_name,
+                    amount: String(r.amount).replace(".", ","),
+                    currency: r.currency === "USD" ? "USD" : "UYU",
+                    phone: r.phone ?? "",
+                    want_reminder: r.want_reminder,
+                  }}
+                />
+              )}
+            </div>
           </li>
         ))}
       </ul>
     </Card>
+  );
+}
+
+/**
+ * Recordar o agradecer por WhatsApp con el mensaje escrito (077). Recordar
+ * solo a quien pidió que se le recuerde —es el mismo permiso que el push
+ * del 10—; agradecer, a todos. Sin teléfono no se ofrece.
+ */
+function WhatsAppButton({
+  row,
+  month,
+  quote,
+}: {
+  row: CommitmentRow;
+  month: string;
+  quote: string;
+}) {
+  const remind = row.status === "pendiente" || row.status === "parcial";
+  const thank = row.status === "cumplido";
+  if (!remind && !thank) return null;
+  if (remind && !row.want_reminder) return null;
+  const href = whatsappLink(
+    row.phone,
+    remind ? reminderText(row.display_name, quote) : thanksText(row.display_name, monthLabel(month))
+  );
+  if (!href) return null;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366]/15 px-2.5 py-1 text-[12px] font-semibold text-[#128C7E] hover:bg-[#25D366]/25"
+    >
+      {remind ? "Recordar por WhatsApp" : "Agradecer por WhatsApp"}
+    </a>
   );
 }

@@ -32,13 +32,23 @@ export async function upsertCommitmentAction(formData: FormData) {
     redirect("/tesoreria");
   }
 
+  // Si lo registró el tesorero en dólares (077), corregir el monto no lo
+  // pasa a pesos: el formulario de la app no pregunta la moneda.
+  const { data: existing } = await supabase
+    .from("treasury_commitments")
+    .select("currency")
+    .eq("user_id", session.user.id)
+    .eq("locality_id", session.locality.id)
+    .maybeSingle();
+  const currency = (existing as { currency?: string } | null)?.currency ?? "UYU";
+
   const { error } = await supabase.from("treasury_commitments").upsert(
     {
       user_id: session.user.id,
       locality_id: session.locality.id,
       display_name,
       amount,
-      currency: "UYU",
+      currency,
       want_reminder,
     },
     { onConflict: "user_id,locality_id" }

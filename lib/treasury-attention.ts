@@ -351,7 +351,7 @@ async function commitmentsItem(
   if (day < 11) return null;
   const { count, error } = await supabase
     .from("treasury_commitments")
-    .select("user_id", { count: "exact", head: true })
+    .select("locality_id", { count: "exact", head: true })
     .eq("locality_id", localityId);
   if (error || !count) return null;
   const month = monthKeyOf(today);
@@ -359,7 +359,7 @@ async function commitmentsItem(
     key: `compromisos:${month}`,
     tone: "warn",
     title: `Compromisos de ${monthLabel(month).toLowerCase()}`,
-    detail: `${plural(count, "persona declaró", "personas declararon")} un compromiso mensual. El informe dice a quién agradecer y a quién recordar; el aviso del 10 ya salió solo. Ocultá esta tarjeta cuando lo hayas mirado.`,
+    detail: `${plural(count, "persona tiene", "personas tienen")} un compromiso mensual. El informe dice a quién agradecer y a quién recordar; a quien usa la app el aviso del 10 ya le llegó, a los demás les recordás desde ahí. Ocultá esta tarjeta cuando lo hayas mirado.`,
     href: COMPROMISOS,
     cta: "Ver el informe del mes",
   };

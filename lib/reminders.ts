@@ -276,11 +276,27 @@ const COMMITMENT_REMINDER_DAY = 10;
  *  más de dos años. */
 const COMMITMENT_TOPICS = ["sacrificio", "desprendimiento", "generosidad"];
 
+/** La cita del mes del recordatorio, entre comillas. La usan el push del
+ *  10 y el "Recordar por WhatsApp" del informe (077): las dos personas
+ *  —la que tiene la app y la que no— reciben el mismo texto. */
+export function commitmentQuoteOfMonth(now: Date = new Date()): string {
+  const pick = getCitaDelMes(COMMITMENT_TOPICS, now);
+  return pick ? `«${excerpt(pick.cita.text, 130)}»` : "";
+}
+
 type CommitmentReminderRow = {
-  user_id: string;
+  /** Desde la 077. */
+  id?: string;
+  /** NULL: registrado por el tesorero para alguien sin la app (077). A
+   *  esa persona el push no le llega; la recuerda el tesorero por
+   *  WhatsApp desde el informe. */
+  user_id: string | null;
+  contributor_id?: string | null;
   locality_id: string;
   last_reminder_sent_at: string | null;
 };
+
+type AppCommitment = CommitmentReminderRow & { user_id: string };
 
 /**
  * Recordatorio del compromiso con el Fondo: el 10 de cada mes, a quienes
@@ -318,8 +334,10 @@ export async function sendCommitmentReminders(
 
   const { data, error } = await supabase
     .from("treasury_commitments")
-    .select("user_id, locality_id, last_reminder_sent_at")
-    .eq("want_reminder", true);
+    .select("*")
+    .eq("want_reminder", true)
+    // Sin perfil no hay a quién mandarle el push (077).
+    .not("user_id", "is", null);
 
   if (error) {
     // Hasta que corra la 063 no existe `locality_id`: el aviso no sale y
@@ -330,7 +348,9 @@ export async function sendCommitmentReminders(
 
   // Ya avisados este mes (un reintento del cron, por ejemplo).
   const pending = ((data ?? []) as CommitmentReminderRow[]).filter(
-    (c) => !c.last_reminder_sent_at || c.last_reminder_sent_at < monthStart
+    (c): c is AppCommitment =>
+      !!c.user_id &&
+      (!c.last_reminder_sent_at || c.last_reminder_sent_at < monthStart)
   );
   if (pending.length === 0) return { recipients: 0 };
 
@@ -350,19 +370,16 @@ export async function sendCommitmentReminders(
   const candidates = pending.filter((c) => eligible.has(c.user_id));
   if (candidates.length === 0) return { recipients: 0 };
 
-  const alreadyGave = await profilesWithContributionThisMonth(
+  const alreadyGave = await commitmentsWithContributionThisMonth(
     supabase,
-    candidates.map((c) => c.user_id),
+    candidates,
     monthKey
   );
 
-  const targets = candidates.filter(
-    (c) => !alreadyGave.has(`${c.user_id}:${c.locality_id}`)
-  );
+  const targets = candidates.filter((c) => !alreadyGave.has(c));
   if (targets.length === 0) return { recipients: 0 };
 
-  const pick = getCitaDelMes(COMMITMENT_TOPICS, now);
-  const quote = pick ? `«${excerpt(pick.cita.text, 130)}»` : "";
+  const quote = commitmentQuoteOfMonth(now);
 
   await sendPushToUsers(
     targets.map((c) => c.user_id),
@@ -375,58 +392,77 @@ export async function sendCommitmentReminders(
     }
   );
 
-  await supabase
-    .from("treasury_commitments")
-    .update({ last_reminder_sent_at: now.toISOString() })
-    .in("user_id", targets.map((c) => c.user_id));
+  // Por id (077): el mismo creyente puede tener compromiso con dos Fondos
+  // y haber aportado a uno solo. Antes de la 077 no hay id.
+  const ids = targets.flatMap((c) => (c.id ? [c.id] : []));
+  const stamp = { last_reminder_sent_at: now.toISOString() };
+  if (ids.length === targets.length) {
+    await supabase.from("treasury_commitments").update(stamp).in("id", ids);
+  } else {
+    await supabase
+      .from("treasury_commitments")
+      .update(stamp)
+      .in("user_id", targets.map((c) => c.user_id));
+  }
 
   return { recipients: targets.length };
 }
 
 /**
- * De los perfiles dados, cuáles ya tienen un aporte cargado en el mes,
- * como claves "<perfil>:<localidad>". El par lleva la localidad porque
- * quien pertenece a su AEL y a la Comunidad Nacional (055) puede sostener
- * un compromiso con cada Fondo: haber aportado a uno no exime del otro.
+ * De los compromisos dados, cuáles ya tienen un aporte cargado en el mes.
+ * Las fichas de cada uno son las vinculadas a su perfil EN SU COMUNIDAD
+ * más la del propio compromiso (077). La comunidad importa porque quien
+ * pertenece a su AEL y a la Comunidad Nacional (055) puede sostener un
+ * compromiso con cada Fondo: haber aportado a uno no exime del otro.
  *
  * Corre con service-role, así que filtra a mano lo que la RLS del libro
  * filtraría: apertura, transferencia y anulado no son aportes.
  */
-async function profilesWithContributionThisMonth(
+async function commitmentsWithContributionThisMonth(
   supabase: ReturnType<typeof createSupabaseAdmin>,
-  userIds: string[],
+  commitments: AppCommitment[],
   monthKey: string
-): Promise<Set<string>> {
-  const gave = new Set<string>();
-  if (!supabase || userIds.length === 0) return gave;
+): Promise<Set<AppCommitment>> {
+  const gave = new Set<AppCommitment>();
+  if (!supabase || commitments.length === 0) return gave;
 
   const { data: contributors } = await supabase
     .from("treasury_contributors")
     .select("id, profile_id, locality_id")
-    .in("profile_id", userIds);
+    .in("profile_id", commitments.map((c) => c.user_id));
 
-  const rows = (contributors ?? []) as Array<{
+  // ficha → compromisos que la cuentan como propia.
+  const owners = new Map<string, AppCommitment[]>();
+  const own = (contributorId: string, c: AppCommitment) => {
+    const list = owners.get(contributorId) ?? [];
+    if (!list.includes(c)) list.push(c);
+    owners.set(contributorId, list);
+  };
+  for (const r of (contributors ?? []) as Array<{
     id: string;
     profile_id: string;
     locality_id: string;
-  }>;
-  if (rows.length === 0) return gave;
-
-  const byId = new Map(rows.map((r) => [r.id, r]));
+  }>) {
+    for (const c of commitments) {
+      if (c.user_id === r.profile_id && c.locality_id === r.locality_id) own(r.id, c);
+    }
+  }
+  for (const c of commitments) if (c.contributor_id) own(c.contributor_id, c);
+  if (owners.size === 0) return gave;
   const [y, m] = monthKey.split("-").map(Number);
   const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
 
   const { data: entries, error } = await supabase
     .from("treasury_entries")
     .select("contributor_id, amount, is_opening_balance, transfer_group_id, voided_at")
-    .in("contributor_id", rows.map((r) => r.id))
+    .in("contributor_id", [...owners.keys()])
     .gte("entry_date", `${monthKey}-01`)
     .lte("entry_date", `${monthKey}-${String(lastDay).padStart(2, "0")}`);
 
   if (error) {
     // Sin saber quién aportó, el aviso sale para todos: un recordatorio
     // amable de más es mucho menos malo que ninguno.
-    console.error("[profilesWithContributionThisMonth]", error);
+    console.error("[commitmentsWithContributionThisMonth]", error);
     return gave;
   }
 
@@ -439,8 +475,7 @@ async function profilesWithContributionThisMonth(
   }>) {
     if (Number(e.amount) <= 0) continue;
     if (e.is_opening_balance || e.transfer_group_id || e.voided_at) continue;
-    const c = byId.get(e.contributor_id);
-    if (c) gave.add(`${c.profile_id}:${c.locality_id}`);
+    for (const c of owners.get(e.contributor_id) ?? []) gave.add(c);
   }
   return gave;
 }

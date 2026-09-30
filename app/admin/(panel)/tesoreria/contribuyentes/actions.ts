@@ -92,6 +92,14 @@ export async function deleteContributorAction(formData: FormData): Promise<Resul
     .select("id", { count: "exact", head: true })
     .eq("contributor_id", id);
   if (count && count > 0) return fail("Esta ficha tiene aportes: fusionala o desactivala, no se puede eliminar.");
+  // Un compromiso registrado por el tesorero cuelga de la ficha (077).
+  const { count: commitments } = await supabase
+    .from("treasury_commitments")
+    .select("locality_id", { count: "exact", head: true })
+    .eq("contributor_id", id);
+  if (commitments && commitments > 0) {
+    return fail("Esta ficha tiene un compromiso mensual: quitalo antes desde Tesorería → Compromisos.");
+  }
   const { error } = await supabase.from("treasury_contributors").delete().eq("id", id);
   if (error) return fail(friendly(error.message));
   return done("Ficha eliminada.");

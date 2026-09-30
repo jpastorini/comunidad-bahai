@@ -1304,6 +1304,43 @@ de los últimos doce y totales por moneda arriba.
 De paso, la lista vieja de compromisos salió de "Cómo aportar" (la
 pantalla que está para jubilarse) y quedó un link a la nueva.
 
+### El tesorero también registra compromisos (migración 077)
+
+Pedido el 2026-09-30: mucha gente no usa la app (o no esa pantalla) y le
+dice el compromiso al tesorero de palabra, que tenía que llevar una
+segunda lista a mano. Ahora "Registrar un compromiso" en
+`/admin/tesoreria/compromisos` (`commitment-editor.tsx`, actions en
+`compromisos/actions.ts`):
+
+- **El compromiso cuelga de un perfil, de una ficha del padrón, o de las
+  dos.** La 077 le da `id` como PK, `user_id` opcional, `contributor_id`
+  (único), `phone` y `created_by`; `(user_id, locality_id)` sigue único
+  como CONSTRAINT (no índice parcial) porque el upsert del creyente la usa
+  como `onConflict`. La persona se elige con el `ContributorPicker` del
+  Libro y se resuelve con `resolveContributor()`, que salió de
+  `libro/actions.ts` a `lib/treasury-contributor-resolve.ts` para que las
+  dos altas no creen fichas distintas para la misma persona. Un
+  compromiso con ficha siempre se mide: el informe compara contra los
+  aportes de las fichas del perfil MÁS la del compromiso.
+- **Si la persona está en la app, es suyo**: lo ve en `/tesoreria` con
+  "Registrado por Tesorería", lo corrige o lo quita (el upsert conserva la
+  moneda que puso el tesorero), le llega un push al registrarlo o al
+  cambiar el monto, y el aviso del 10 si lo pidió. Si la ficha se vincula
+  después a un creyente, el trigger `treasury_contributor_link_commitment`
+  le pasa el compromiso (salvo que ya tuviera uno propio).
+  `merge_contributors()` (075, reescrita en la 077) mueve el compromiso a
+  la ficha que queda; una ficha con compromiso no se elimina.
+- **Si no está en la app**, el push del 10 no existe (el cron filtra
+  `user_id` no nulo). En el informe aparece con "Recordar por WhatsApp"
+  (solo si pidió el recordatorio) o "Agradecer por WhatsApp" cuando
+  cumplió: un `wa.me` con el mensaje ya escrito y la MISMA cita del mes
+  que el push (`commitmentQuoteOfMonth()` en `lib/reminders.ts`). El
+  número se normaliza a formato uruguayo en `lib/commitment-whatsapp.ts`
+  ("099 123 456" → 59899123456).
+
+⚠️ Hasta que corra la 077, la pantalla avisa y no muestra el botón de
+registrar; todo lo demás anda como antes.
+
 ⚠️ Hasta que corra la 063, la pantalla avisa y sale vacía, el aviso del 10
 no sale (se loguea el error y el cron de la oración sigue andando), y
 guardar un compromiso desde la app falla porque `locality_id` no existe.
@@ -2904,6 +2941,9 @@ cambia nada.
   libro" ya abre el alta prellenada con el creyente (2026-09-29); falta
   guardar qué mensaje originó qué asiento para no cargar dos veces el
   mismo aporte, y prellenar el monto leyéndolo del mensaje.
+- **Aplicar la 077 y pasar la lista manual de compromisos a la app**
+  (2026-09-30): registrar cada uno en Tesorería → Compromisos con su
+  teléfono, y el 10 probar "Recordar por WhatsApp".
 - **Aplicar la 075 y ordenar el padrón de contribuyentes** (2026-09-30):
   en Tesorería → Contribuyentes, fusionar los tres "Carlos Cardona" y los
   dos "Fabián Beramendi", vincular "Sr. Larry Gates" (la app lo sugiere),

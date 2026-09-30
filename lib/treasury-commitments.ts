@@ -46,7 +46,17 @@ export type CommitmentStatus =
   | "sin_vinculo";
 
 export type CommitmentRow = {
-  user_id: string;
+  /** El id del compromiso (077); antes de la 077, el user_id. */
+  key: string;
+  id: string | null;
+  /** NULL: alguien que no está en la app, registrado por el tesorero. */
+  user_id: string | null;
+  contributor_id: string | null;
+  /** El nombre de la ficha del padrón, si la tiene. */
+  contributor_name: string | null;
+  phone: string | null;
+  /** Lo registró el tesorero, no la persona. */
+  by_treasurer: boolean;
   display_name: string;
   /** El nombre del perfil, cuando difiere del declarado ("Familia García"). */
   profile_name: string | null;
@@ -191,7 +201,7 @@ export async function getCommitmentMonthReport(
       .select("id, full_name, email")
       .in(
         "id",
-        commitments.map((c) => c.user_id)
+        commitments.flatMap((c) => (c.user_id ? [c.user_id] : []))
       );
     for (const p of (profiles ?? []) as Array<{
       id: string;
@@ -206,7 +216,14 @@ export async function getCommitmentMonthReport(
   const claimed = new Set<string>();
 
   const rows: CommitmentRow[] = commitments.map((c) => {
-    const contributorIds = contributorsByProfile.get(c.user_id) ?? [];
+    // Sus fichas: las vinculadas a su perfil más la del propio compromiso
+    // (077), que es la que tiene quien no está en la app.
+    const contributorIds = [
+      ...new Set([
+        ...(c.user_id ? (contributorsByProfile.get(c.user_id) ?? []) : []),
+        ...(c.contributor_id ? [c.contributor_id] : []),
+      ]),
+    ];
     const mine = contributions.filter((e) =>
       contributorIds.includes(e.contributor_id as string)
     );
@@ -247,9 +264,17 @@ export async function getCommitmentMonthReport(
           ? "parcial"
           : "pendiente";
 
-    const profile = profileById.get(c.user_id);
+    const profile = c.user_id ? profileById.get(c.user_id) : undefined;
     return {
+      key: c.id ?? c.user_id ?? c.contributor_id ?? c.display_name,
+      id: c.id ?? null,
       user_id: c.user_id,
+      contributor_id: c.contributor_id ?? null,
+      contributor_name: c.contributor_id
+        ? (contributorById.get(c.contributor_id)?.name ?? null)
+        : null,
+      phone: c.phone ?? null,
+      by_treasurer: !!c.created_by && c.created_by !== c.user_id,
       display_name: c.display_name,
       profile_name: profile?.full_name ?? null,
       email: profile?.email ?? null,

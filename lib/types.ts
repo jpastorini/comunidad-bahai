@@ -376,9 +376,20 @@ export type Treasury = {
   methods: { type: string; description: string; letter: string }[];
 };
 
-/** Compromiso mensual de aporte declarado por un miembro al Fondo Local. */
+/** Compromiso mensual de aporte con el Fondo de una comunidad. */
 export type TreasuryCommitment = {
-  user_id: string;
+  /** Desde la 077; antes la clave era (user_id, locality_id). */
+  id?: string;
+  /** El creyente de la app. NULL cuando el tesorero lo registró para
+   *  alguien que no está en la app (077): entonces manda `contributor_id`. */
+  user_id: string | null;
+  /** La ficha del padrón de contribuyentes (077). Con ficha, el informe
+   *  compara directo contra sus aportes, esté o no vinculada a un perfil. */
+  contributor_id?: string | null;
+  /** Para el "Recordar por WhatsApp" de quien no usa la app (077). */
+  phone?: string | null;
+  /** Quién lo registró: el propio creyente o el tesorero (077). */
+  created_by?: string | null;
   /** La comunidad de cuyo Fondo es el compromiso (063). Antes no existía
    *  y el tesorero de cualquier localidad los leía todos. */
   locality_id: string;
