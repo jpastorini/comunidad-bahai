@@ -310,7 +310,7 @@ const AGENDA: Array<{ when: string; what: string; how: string; href?: string }> 
   {
     when: "Cada mes",
     what: "El ciclo: cargar, conciliar, rendir y arquear, auditar y cerrar, compartir, compromisos.",
-    how: "La Guía del mes lo tilda. El día 5 llega el aviso si el mes anterior sigue abierto; el 10 sale solo el recordatorio a quien declaró un compromiso.",
+    how: "La Guía del mes lo tilda. Avisos al celular: el día 5 si el mes anterior sigue abierto; el 10, a quien declaró un compromiso; y cuando un responsable de caja chica envía una rendición.",
     href: "/admin/tesoreria/guia",
   },
   {
@@ -322,7 +322,7 @@ const AGENDA: Array<{ when: string; what: string; how: string; href?: string }> 
   {
     when: "Marzo y octubre",
     what: "La carta semestral a la comunidad: el estado del Fondo, las necesidades del ejercicio, y el agradecimiento por las contribuciones y los sacrificios.",
-    how: "Se escribe como comunicado (Comunicación → Comunicados), con las cifras de la última publicación y, si sirve, una cita de los Escritos sobre la generosidad. El tablero lo recuerda esos dos meses.",
+    how: "Se escribe como comunicado (Comunicación → Comunicados), con las cifras de la última publicación y, si sirve, una cita de los Escritos sobre la generosidad. El 1.º de marzo y el 1.º de octubre llega un aviso al celular de quien lleva la Tesorería; durante el mes lo recuerdan el tablero del Inicio y la Guía.",
     href: "/admin/comunicados/nuevo",
   },
   {
