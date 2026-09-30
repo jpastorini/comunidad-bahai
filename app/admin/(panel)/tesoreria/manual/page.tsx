@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { PrintButton } from "@/components/admin/PrintButton";
 import { Card, PageHeader } from "@/components/admin/ui";
+import {
+  FigureClosedMonth,
+  FigureMoneyFlow,
+  FigureMonthCycle,
+  FigureReportStates,
+} from "@/components/treasury/ManualFigures";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -12,10 +18,12 @@ export const dynamic = "force-dynamic";
 
 /**
  * El manual del tesorero: los mismos textos de ayuda que están repartidos
- * por el panel (lib/treasury-help.ts), juntos y en el orden del menú, más
- * el ciclo del mes y los pasos del traspaso. Para imprimir o guardar en
- * PDF el primer día. No se escribe dos veces: si un "?" cambia, cambia
- * acá.
+ * por el panel (lib/treasury-help.ts), juntos y en el orden del menú, con
+ * cuatro dibujos de lo que en prosa cuesta armar (el ciclo, cómo se
+ * mueve la plata, la rendición, el mes cerrado), el glosario de cinco
+ * palabras, quién ve qué, y los pasos del traspaso. Para leer en
+ * pantalla o imprimir el primer día. No se escribe dos veces: si un "?"
+ * cambia, cambia acá.
  */
 export default async function ManualPage() {
   const session = await requireAdmin();
@@ -32,6 +40,7 @@ export default async function ManualPage() {
     if (!text) continue;
     fieldsByScreen.set(screen, [...(fieldsByScreen.get(screen) ?? []), { key, text }]);
   }
+  const sections = Array.from(new Set(SCREEN_INDEX.map((s) => s.section)));
 
   return (
     <div className="cb-manual">
@@ -40,88 +49,256 @@ export default async function ManualPage() {
         eyebrow="Tesorería"
         help={TREASURY_HELP.screens.manual}
         title="Manual del tesorero"
-        description={`Cómo se lleva la Tesorería de ${session.locality.name} en la app: qué es cada pantalla, el ciclo del mes y el traspaso. Impreso el ${formatDate(todayISO())}.`}
+        description={`Cómo se lleva la Tesorería de ${session.locality.name} en la app, contado para quien recién agarra el cargo. Versión del ${formatDate(todayISO())}.`}
         actions={<PrintButton />}
       />
 
-      <Card className="mb-4">
-        <h2 className="font-display text-[18px] font-semibold text-dark">Cómo empezar</h2>
-        <ol className="mt-2 list-decimal space-y-1 pl-5 text-[13px] text-dark/85">
-          <li>Instalá la app en el celular y activá los avisos: los recordatorios del cierre y las rendiciones llegan por ahí.</li>
-          <li>Abrí <strong>Tesorería → Guía del mes</strong>: es la lista de lo que hay que hacer, con el estado de cada paso.</li>
-          <li>Cada pantalla tiene un «?» al lado del título y en los campos difíciles: es este mismo texto, en el lugar.</li>
-          <li>Cuando algo no cierre, corré la <strong>Auditoría</strong>: dice qué está mal y cómo se arregla.</li>
+      {/* Índice */}
+      <nav className="cb-noprint mb-6 rounded-2xl border border-gold/25 bg-gold/[0.06] p-4">
+        <div className="text-[10px] font-semibold uppercase tracking-[2px] text-gold-dark">En este manual</div>
+        <ol className="mt-2 grid gap-1 text-[13px] sm:grid-cols-2">
+          {TOC.map((t, i) => (
+            <li key={t.id}>
+              <a href={`#${t.id}`} className="font-semibold text-terra hover:underline">
+                {i + 1}. {t.label}
+              </a>
+            </li>
+          ))}
         </ol>
-      </Card>
+      </nav>
 
-      {/* El ciclo del mes */}
-      <h2 className="mt-6 font-display text-[22px] font-semibold text-dark">El ciclo del mes</h2>
-      <p className="mt-1 text-[13px] text-muted">
-        Los pasos, en orden. En la app (Guía del mes) cada uno aparece tildado según lo que ya está hecho.
-      </p>
-      <ol className="mt-3 flex flex-col gap-3">
-        {guide.steps.map((s) => (
-          <li key={s.key} className="cb-block">
-            <Card>
-              <h3 className="font-display text-[17px] font-semibold text-dark">
-                {s.order}. {s.title}
-              </h3>
-              <p className="mt-1 text-[13px] text-dark/80">{s.why}</p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] text-dark/85">
-                {s.how.map((h) => (
-                  <li key={h}>{h}</li>
+      {/* 1 · Bienvenida */}
+      <Section id="bienvenida" n={1} title="Antes de empezar">
+        <p className="text-[14px] leading-relaxed text-dark/85">
+          La Tesorería en la app es un <strong>libro</strong>: cada aporte y cada gasto es una línea, y todo lo demás
+          —saldos, recibos, informes, el balance anual— se calcula solo a partir de esas líneas. Tu trabajo es que las
+          líneas estén completas y a tiempo; la app se encarga de que no se te olvide nada y de que un auditor encuentre
+          todo en orden.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <Tip title="Empezá por la Guía del mes">
+            Es la lista de lo que hay que hacer, tildada según lo que ya está hecho. Si dudás, abrila.
+          </Tip>
+          <Tip title="Los «?» son este manual">
+            Cada pantalla y cada campo difícil tiene un «?» con el mismo texto que leés acá, en el lugar.
+          </Tip>
+          <Tip title="Cuando algo no cierra, auditá">
+            La Auditoría dice qué está mal, contra qué norma, y cómo se arregla en la app. No cambia nada.
+          </Tip>
+        </div>
+        <p className="mt-4 text-[13px] text-dark/80">
+          Instalá la app en el celular y activá los avisos: los recordatorios del cierre (el día 5), las rendiciones
+          de las cajas chicas y los mensajes de la gente llegan por ahí.
+        </p>
+      </Section>
+
+      {/* 2 · Glosario */}
+      <Section id="glosario" n={2} title="Cinco palabras">
+        <dl className="grid gap-3 sm:grid-cols-2">
+          {GLOSSARY.map((g) => (
+            <div key={g.term} className="rounded-xl bg-bg/60 px-4 py-3">
+              <dt className="font-display text-[16px] font-semibold text-dark">{g.term}</dt>
+              <dd className="mt-0.5 text-[13px] text-dark/80">{g.text}</dd>
+            </div>
+          ))}
+        </dl>
+      </Section>
+
+      {/* 3 · Cómo se mueve la plata */}
+      <Section id="plata" n={3} title="Cómo se mueve la plata">
+        <p className="text-[14px] leading-relaxed text-dark/85">
+          Hay dos maneras de que entre un aporte y dos de que salga un gasto. La regla que lo ordena todo: lo que se
+          recauda en efectivo <strong>se deposita íntegro</strong> en la cuenta, y los gastos chicos se pagan desde la{" "}
+          <strong>caja chica</strong>, que la cuenta repone con lo rendido. Así cada peso que entra se ve entero en el
+          extracto, y cada gasto tiene su comprobante.
+        </p>
+        <FigureMoneyFlow />
+      </Section>
+
+      {/* 4 · El ciclo del mes */}
+      <Section id="ciclo" n={4} title="El ciclo del mes">
+        <p className="text-[14px] leading-relaxed text-dark/85">
+          Todo el trabajo se ordena en un ciclo que se repite cada mes. En la app (Guía del mes) cada paso aparece
+          tildado según lo que ya está hecho.
+        </p>
+        <FigureMonthCycle />
+        <ol className="mt-3 flex flex-col gap-3">
+          {guide.steps.map((s) => (
+            <li key={s.key} className="cb-block flex gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gold/15 font-display text-[15px] font-bold text-gold-dark">
+                {s.order}
+              </span>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-[15px] font-semibold text-dark">{s.title}</h3>
+                <p className="mt-0.5 text-[13px] text-dark/80">{s.why}</p>
+                <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-[13px] text-dark/85">
+                  {s.how.map((h) => (
+                    <li key={h}>{h}</li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-[11.5px] text-muted">
+                  En la app: <Link href={s.href} className="font-semibold text-terra">{s.cta}</Link>
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <FigureClosedMonth />
+      </Section>
+
+      {/* 5 · Cajas chicas */}
+      <Section id="cajas" n={5} title="Las cajas chicas">
+        <p className="text-[14px] leading-relaxed text-dark/85">
+          El efectivo que manejan la Secretaría o un coordinador tiene un <strong>fondo fijo</strong> y una persona{" "}
+          <strong>responsable</strong>, que carga sus gastos con la foto del comprobante desde su celular y rinde cuando
+          corresponde. Vos revisás y aprobás; al aprobar, los gastos entran al libro y la caja se repone.
+        </p>
+        <FigureReportStates />
+        <p className="text-[13px] text-dark/80">
+          El <strong>arqueo</strong> es contar la plata y compararla con lo que dice el libro, con fecha. Conviene uno
+          por mes, en cada caja, también la tuya. Si no cuadra, el ajuste va al libro con su motivo.
+        </p>
+      </Section>
+
+      {/* 6 · Quién ve qué */}
+      <Section id="quien" n={6} title="Quién ve qué">
+        <div className="grid gap-3 sm:grid-cols-3">
+          {WHO_SEES.map((w) => (
+            <div key={w.who} className="rounded-xl border border-black/[0.06] p-4">
+              <h3 className="font-display text-[16px] font-semibold text-dark">{w.who}</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-[12.5px] text-dark/85">
+                {w.items.map((it) => (
+                  <li key={it}>{it}</li>
                 ))}
               </ul>
-              <p className="mt-2 text-[11.5px] text-muted">
-                En la app: <Link href={s.href} className="font-semibold text-terra">{s.cta}</Link>
-              </p>
-            </Card>
-          </li>
-        ))}
-      </ol>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-[12.5px] text-muted">
+          Los nombres de quienes aportan los ve solo quien tiene el permiso de Tesorería. Ningún informe ni la
+          publicación del estado del Fondo los lleva.
+        </p>
+      </Section>
 
-      {/* Las pantallas */}
-      <h2 className="mt-8 font-display text-[22px] font-semibold text-dark">Las pantallas, en el orden del menú</h2>
-      <div className="mt-3 flex flex-col gap-3">
-        {SCREEN_INDEX.map((sc) => {
-          const fields = fieldsByScreen.get(sc.key) ?? [];
-          return (
-            <Card key={sc.key} className="cb-block">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h3 className="font-display text-[17px] font-semibold text-dark">{sc.label}</h3>
-                <span className="text-[11px] text-muted">{sc.section}</span>
+      {/* 7 · Las pantallas */}
+      <Section id="pantallas" n={7} title="Las pantallas, una por una">
+        <p className="mb-3 text-[13px] text-muted">En el orden del menú. Debajo de cada una, los campos que tienen ayuda.</p>
+        {sections.map((sec) => (
+          <div key={sec} className="mb-5">
+            <div className="mb-2 text-[10px] font-semibold uppercase tracking-[2px] text-gold-dark">{sec}</div>
+            <div className="flex flex-col gap-3">
+              {SCREEN_INDEX.filter((s) => s.section === sec).map((sc) => {
+                const fields = fieldsByScreen.get(sc.key) ?? [];
+                return (
+                  <Card key={sc.key} className="cb-block">
+                    <h3 className="font-display text-[17px] font-semibold text-dark">{sc.label}</h3>
+                    <p className="mt-1 text-[13px] text-dark/85">{TREASURY_HELP.screens[sc.key]}</p>
+                    {fields.length > 0 && (
+                      <dl className="mt-3 grid gap-x-6 gap-y-2 border-t border-black/[0.06] pt-3 text-[12.5px] sm:grid-cols-[160px_1fr]">
+                        {fields.map((f) => (
+                          <FieldRow key={f.key} label={FIELD_LABEL[f.key] ?? f.key} text={f.text} />
+                        ))}
+                      </dl>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </Section>
+
+      {/* 8 · Traspaso */}
+      <Section id="traspaso" n={8} title="Cuando cambie el tesorero">
+        <ol className="flex flex-col gap-2">
+          {HANDOVER_STEPS.map((step, i) => (
+            <li key={step.title} className="cb-block flex gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gold/15 font-display text-[15px] font-bold text-gold-dark">
+                {i + 1}
+              </span>
+              <div>
+                <h3 className="text-[15px] font-semibold text-dark">{step.title}</h3>
+                <p className="mt-0.5 text-[12.5px] text-dark/80">{step.detail}</p>
               </div>
-              <p className="mt-1 text-[13px] text-dark/85">{TREASURY_HELP.screens[sc.key]}</p>
-              {fields.length > 0 && (
-                <dl className="mt-3 grid gap-x-6 gap-y-2 border-t border-black/[0.06] pt-3 text-[12.5px] sm:grid-cols-[150px_1fr]">
-                  {fields.map((f) => (
-                    <FieldRow key={f.key} label={FIELD_LABEL[f.key] ?? f.key} text={f.text} />
-                  ))}
-                </dl>
-              )}
-            </Card>
-          );
-        })}
-      </div>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-4 text-[12.5px] text-muted">
+          El acta de traspaso (Tesorería → Traspaso) imprime la foto del libro del día del cambio para que la firmen quien
+          entrega y quien recibe, con un testigo.
+        </p>
+      </Section>
+    </div>
+  );
+}
 
-      {/* Traspaso */}
-      <h2 className="mt-8 font-display text-[22px] font-semibold text-dark">Cuando cambia el tesorero</h2>
-      <ol className="mt-3 flex flex-col gap-2">
-        {HANDOVER_STEPS.map((step, i) => (
-          <li key={step.title} className="cb-block">
-            <Card>
-              <h3 className="text-[15px] font-semibold text-dark">
-                {i + 1}. {step.title}
-              </h3>
-              <p className="mt-0.5 text-[12.5px] text-dark/80">{step.detail}</p>
-            </Card>
-          </li>
-        ))}
-      </ol>
-      <p className="mt-4 text-[12px] text-muted">
-        El acta de traspaso (Tesorería → Traspaso) imprime la foto del libro del día del cambio para que la firmen quien
-        entrega y quien recibe.
-      </p>
+// ─── Piezas ──────────────────────────────────────────────────────
+
+const TOC = [
+  { id: "bienvenida", label: "Antes de empezar" },
+  { id: "glosario", label: "Cinco palabras" },
+  { id: "plata", label: "Cómo se mueve la plata" },
+  { id: "ciclo", label: "El ciclo del mes" },
+  { id: "cajas", label: "Las cajas chicas" },
+  { id: "quien", label: "Quién ve qué" },
+  { id: "pantallas", label: "Las pantallas, una por una" },
+  { id: "traspaso", label: "Cuando cambie el tesorero" },
+];
+
+const GLOSSARY = [
+  { term: "Libro", text: "La lista de todos los movimientos. Es la fuente de verdad: el saldo, el recibo y los informes salen de ahí." },
+  { term: "Cuenta", text: "Dónde está la plata: Prex, BROU, una caja chica. Cada cuenta puede tener pesos y dólares; nunca se suman entre sí." },
+  { term: "Fondo", text: "De quién es la plata: Local, Enseñanza, Ayuda Social… Es un «color» que acompaña al movimiento, no un lugar." },
+  { term: "Rubro", text: "En qué se usa o de dónde viene: la subcategoría del movimiento. Agrupa los informes y sugiere el fondo." },
+  { term: "Recibo", text: "El comprobante de cada aporte, con número correlativo que pone la app. Un recibo emitido no se edita: se anula." },
+];
+
+const WHO_SEES = [
+  {
+    who: "La comunidad",
+    items: [
+      "El estado del Fondo que compartiste desde Publicar",
+      "Los informes emitidos y el balance anual",
+      "Cada persona, sus propios aportes con su recibo",
+      "El responsable de una caja chica, su caja",
+    ],
+  },
+  {
+    who: "La Asamblea",
+    items: [
+      "La hoja interna del informe, para aprobar en reunión",
+      "El registro de informes emitidos",
+      "Datos de la Asamblea y la composición",
+    ],
+  },
+  {
+    who: "El tesorero",
+    items: [
+      "El libro completo, con nombres",
+      "Contribuyentes, cierres, conciliación, auditoría",
+      "Las cajas chicas y sus rendiciones",
+      "El legajo para el auditor",
+    ],
+  },
+];
+
+function Section({ id, n, title, children }: { id: string; n: number; title: string; children: React.ReactNode }) {
+  return (
+    <section id={id} className="cb-section mb-8 scroll-mt-4">
+      <div className="mb-3 flex items-baseline gap-3">
+        <span className="font-display text-[26px] font-bold text-gold-dark/70">{n}</span>
+        <h2 className="font-display text-[22px] font-semibold text-dark">{title}</h2>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Tip({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-gold/25 bg-gold/[0.06] px-4 py-3">
+      <div className="text-[13px] font-semibold text-dark">{title}</div>
+      <div className="mt-0.5 text-[12.5px] text-dark/80">{children}</div>
     </div>
   );
 }
@@ -167,7 +344,9 @@ const MANUAL_CSS = `
   .cb-manual, .cb-manual * { visibility: visible; }
   .cb-manual { position: absolute; left: 0; top: 0; width: 100%; }
   .cb-manual .cb-noprint { display: none !important; }
-  .cb-manual .cb-block { break-inside: avoid; }
+  .cb-manual .cb-block, .cb-manual figure { break-inside: avoid; }
+  .cb-manual .cb-section { break-before: auto; }
   .cb-manual a { color: inherit; text-decoration: none; }
+  .cb-manual svg { max-height: 70mm; }
 }
 `;

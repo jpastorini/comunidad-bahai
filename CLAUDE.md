@@ -446,13 +446,19 @@ cargo:
   meses están cerrados. La pantalla muestra la misma foto antes de
   generar y avisa si hay meses abiertos, cajas sin arqueo o hallazgos
   graves. El route está en `outputFileTracingIncludes` (pdfkit).
-- **Manual del tesorero** (`/admin/tesoreria/manual`): los textos de
-  `lib/treasury-help.ts` juntos en el orden del menú (`SCREEN_INDEX`,
-  con los campos agrupados por pantalla vía `FIELD_SCREEN`), más el ciclo
-  del mes de la Guía y los pasos del traspaso; botón de imprimir
-  (`components/admin/PrintButton.tsx`) con CSS que oculta el shell. Si se
-  agrega una pantalla o un campo con ayuda, hay que sumarlo a esos dos
-  índices o el manual no lo lista.
+- **Manual del tesorero** (`/admin/tesoreria/manual`): ocho secciones
+  con índice —antes de empezar, cinco palabras (glosario), cómo se mueve
+  la plata, el ciclo del mes, las cajas chicas, quién ve qué, las
+  pantallas una por una, el traspaso—. Los textos salen de
+  `lib/treasury-help.ts` (`SCREEN_INDEX` con los campos agrupados por
+  pantalla vía `FIELD_SCREEN`); si se agrega una pantalla o un campo con
+  ayuda hay que sumarlo a esos dos índices o el manual no lo lista. Los
+  cuatro dibujos son SVG inline en `components/treasury/ManualFigures.tsx`
+  (`currentColor`, sin librerías; el rojo es el único color con
+  significado: el camino prohibido de "no compensar"). Se revisaron a ojo
+  renderizándolos a HTML estático con `renderToStaticMarkup` y sirviéndolos
+  en localhost, porque el panel exige sesión. Botón de imprimir
+  (`components/admin/PrintButton.tsx`) con CSS que oculta el shell.
 - **Aviso mensual de cierre** (`sendMonthCloseReminders`,
   `lib/reminders.ts`, colgado de `/api/cron/manana`): el día 5, a quien
   tiene el tag de Tesorería en cada comunidad con libro, si el mes
