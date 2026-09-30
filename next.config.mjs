@@ -46,6 +46,10 @@ const nextConfig = {
         "./node_modules/pdfkit/js/standard-fonts/**",
         "./node_modules/pdfkit/js/data/**",
       ],
+      "/admin/tesoreria/traspaso/pdf": [
+        "./node_modules/pdfkit/js/standard-fonts/**",
+        "./node_modules/pdfkit/js/data/**",
+      ],
     },
 
     // Cuánto vive en MEMORIA del navegador una pantalla ya visitada, antes

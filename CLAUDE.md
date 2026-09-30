@@ -426,6 +426,40 @@ entra" más abajo. ·
 rendición que el tesorero aprueba y arqueo, con "Mi caja chica" en la app
 del creyente. Ver la sección "Cajas chicas" más abajo.
 
+## Traspaso, Manual y aviso mensual de cierre (sin migración, 2026-09-30)
+
+Tres piezas para el tesorero que entra, pedidas cuando el usuario dejó el
+cargo:
+
+- **Acta de traspaso** (`/admin/tesoreria/traspaso`, PDF en
+  `/admin/tesoreria/traspaso/pdf?fecha=&entrega=&recibe=&testigo=&notas=`,
+  `components/treasury/HandoverActPdf.tsx`, datos en
+  `lib/treasury-handover.ts`): la foto del libro AL DÍA del acta —saldos
+  por cuenta y moneda sin anulados, efectivo de las cajas con su último
+  arqueo, hasta qué mes está cerrado y cuáles quedan abiertos, serie de
+  recibos, auditoría pendiente, conciliación del mes anterior, última
+  publicación—, una lista de lo que se entrega con casilleros para tildar
+  a mano (legajo, libro de tapas duras, comprobantes, accesos al BROU /
+  Prex / Mercado Pago / DGI / BPS, firma, permisos), observaciones y tres
+  firmas (entrega, recibe, testigo). Nada se guarda: el papel firmado es
+  el documento y la app lo regenera igual para la misma fecha si los
+  meses están cerrados. La pantalla muestra la misma foto antes de
+  generar y avisa si hay meses abiertos, cajas sin arqueo o hallazgos
+  graves. El route está en `outputFileTracingIncludes` (pdfkit).
+- **Manual del tesorero** (`/admin/tesoreria/manual`): los textos de
+  `lib/treasury-help.ts` juntos en el orden del menú (`SCREEN_INDEX`,
+  con los campos agrupados por pantalla vía `FIELD_SCREEN`), más el ciclo
+  del mes de la Guía y los pasos del traspaso; botón de imprimir
+  (`components/admin/PrintButton.tsx`) con CSS que oculta el shell. Si se
+  agrega una pantalla o un campo con ayuda, hay que sumarlo a esos dos
+  índices o el manual no lo lista.
+- **Aviso mensual de cierre** (`sendMonthCloseReminders`,
+  `lib/reminders.ts`, colgado de `/api/cron/manana`): el día 5, a quien
+  tiene el tag de Tesorería en cada comunidad con libro, si el mes
+  anterior no está cerrado. Solo ese día (el cron es diario, sin marca de
+  enviado): si el cron falla el 5, no hay reintento, que es aceptable
+  porque el tablero lo dice igual al abrir.
+
 ## Contribuyentes (migración 075)
 
 Tesorería → Contribuyentes (`/admin/tesoreria/contribuyentes`, bloque
@@ -899,7 +933,7 @@ Reuniones, Informes de Tesorería, Datos de la Asamblea) · Comunicación (Comun
 Chat de Secretaría) · Vida comunitaria (Calendario, Fiestas, Sugerencias,
 Actividades, Servicio, Materiales, Fotos) · Creyentes (Creyentes, Uso de
 la app) · Tesorería, en cuatro bloques por frecuencia de uso (2026-09-29):
-Empezar (Guía del mes) · Todos los días (Libro, Mensajes, Conciliación) ·
+Empezar (Guía del mes, Manual, Traspaso) · Todos los días (Libro, Mensajes, Conciliación) ·
 Cada mes (Cajas chicas, Cierres, Auditoría, Publicar, Compromisos) · El ejercicio
 (Presupuesto y metas, Progreso, Informes, Legajo para el auditor) · Ajustes
 (Catálogo, Contribuyentes, Recibo y medios de pago, Importar) · Admin Nacional. El bloque

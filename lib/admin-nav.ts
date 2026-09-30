@@ -112,6 +112,10 @@ export const ADMIN_NAV: NavGroup[] = [
       // traspaso del cargo. Primero de todo: es por donde arranca quien
       // recién agarra la Tesorería.
       { href: "/admin/tesoreria/guia", label: "Guía del mes", section: "Empezar" },
+      // Toda la ayuda junta, para imprimir el primer día.
+      { href: "/admin/tesoreria/manual", label: "Manual", section: "Empezar" },
+      // El acta que firman quien entrega y quien recibe, y los pasos del cambio.
+      { href: "/admin/tesoreria/traspaso", label: "Traspaso", section: "Empezar" },
       // ── Todos los días ──
       // El recibo se abre desde el libro: prende "Libro".
       {

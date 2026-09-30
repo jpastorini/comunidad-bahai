@@ -1,4 +1,6 @@
 import "server-only";
+import { monthLabel, monthRange } from "./treasury-cashbook";
+import { getLocalityMembers } from "./memberships";
 import { createSupabaseAdmin } from "./supabase/admin";
 import { feastCelebration } from "./feast-schedule";
 import {
@@ -441,4 +443,56 @@ async function profilesWithContributionThisMonth(
     if (c) gave.add(`${c.profile_id}:${c.locality_id}`);
   }
   return gave;
+}
+
+/**
+ * El día 5 de cada mes, a quien tiene el tag de Tesorería en cada
+ * comunidad: el mes anterior sigue abierto. El tablero del Inicio ya lo
+ * dice, pero un tesorero nuevo puede no abrir el panel en semanas; el
+ * push llega igual. Solo el día 5 (el cron corre a diario), solo si el
+ * libro de esa comunidad tiene movimientos hasta ese mes, y solo si el
+ * mes no está cerrado.
+ */
+export async function sendMonthCloseReminders(): Promise<{ sent: number; error?: string }> {
+  const supabase = createSupabaseAdmin();
+  if (!supabase) return { sent: 0, error: "no-admin-client" };
+  const today = civilDateISO();
+  if (today.slice(8, 10) !== "05") return { sent: 0 };
+
+  const [y, m] = today.split("-").map(Number);
+  const prev = new Date(Date.UTC(y, m - 2, 1));
+  const prevKey = `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}`;
+  const { to } = monthRange(prevKey);
+
+  const { data: locs, error } = await supabase.from("localities").select("id, name");
+  if (error) return { sent: 0, error: error.message };
+
+  let sent = 0;
+  for (const loc of (locs ?? []) as Array<{ id: string; name: string }>) {
+    const { count } = await supabase
+      .from("treasury_entries")
+      .select("id", { count: "exact", head: true })
+      .eq("locality_id", loc.id)
+      .lte("entry_date", to);
+    if (!count) continue;
+    const { data: closed } = await supabase
+      .from("treasury_closings")
+      .select("id")
+      .eq("locality_id", loc.id)
+      .eq("period_month", `${prevKey}-01`)
+      .eq("status", "closed")
+      .limit(1);
+    if ((closed ?? []).length > 0) continue;
+    const members = await getLocalityMembers(supabase, loc.id);
+    const ids = members.filter((mm) => mm.can_manage_treasury).map((mm) => mm.id);
+    if (ids.length === 0) continue;
+    await sendPushToUsers(ids, {
+      title: `Falta cerrar ${monthLabel(prevKey).toLowerCase()}`,
+      body: `El mes terminó y sigue abierto en ${loc.name}. Antes de cerrar: todo cargado, el extracto conciliado y la auditoría corrida. La Guía del mes te lleva paso a paso.`,
+      url: "/admin/tesoreria/libro/cierres",
+      tag: `cierre-${prevKey}`,
+    });
+    sent += ids.length;
+  }
+  return { sent };
 }

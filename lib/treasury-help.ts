@@ -16,6 +16,10 @@ export const TREASURY_HELP = {
   screens: {
     guia:
       "Los pasos del ciclo de la Tesorería, en orden, para el mes que se está cerrando. Lo que la app puede comprobar aparece tildado; lo demás queda a tu criterio. Si recién agarrás el cargo, empezá por acá y seguí los links.",
+    manual:
+      "Este mismo texto de ayuda, todo junto y en el orden del menú, para imprimir o guardar en PDF el primer día. Si un «?» del panel cambia, cambia acá.",
+    traspaso:
+      "El acta que firman quien entrega y quien recibe cuando cambia el tesorero: los saldos del libro ese día, el efectivo de las cajas con su arqueo, hasta qué mes está cerrado, la serie de recibos, y la lista de lo que se entrega. Se firma en papel con un testigo y se archiva con el legajo.",
     libro:
       "El libro es la fuente de verdad: cada aporte y cada gasto es una línea, y el saldo se calcula solo. Los aportes llevan número de recibo (lo pone la app) y contribuyente; los gastos, su comprobante. Un mes cerrado no se toca: se corrige con un contra-asiento.",
     chat:
@@ -108,3 +112,56 @@ export const TREASURY_HELP = {
 
 export type TreasuryHelpScreen = keyof typeof TREASURY_HELP.screens;
 export type TreasuryHelpField = keyof typeof TREASURY_HELP.fields;
+
+/** Las pantallas en el orden del menú, para el manual imprimible. */
+export const SCREEN_INDEX: Array<{
+  key: TreasuryHelpScreen;
+  label: string;
+  href: string;
+  section: string;
+}> = [
+  { key: "guia", label: "Guía del mes", href: "/admin/tesoreria/guia", section: "Empezar" },
+  { key: "traspaso", label: "Traspaso", href: "/admin/tesoreria/traspaso", section: "Empezar" },
+  { key: "libro", label: "Libro", href: "/admin/tesoreria/libro", section: "Todos los días" },
+  { key: "chat", label: "Mensajes", href: "/admin/tesoreria/chat", section: "Todos los días" },
+  { key: "conciliacion", label: "Conciliación", href: "/admin/tesoreria/conciliacion", section: "Todos los días" },
+  { key: "cajas", label: "Cajas chicas", href: "/admin/tesoreria/cajas", section: "Cada mes" },
+  { key: "cierres", label: "Cierres", href: "/admin/tesoreria/libro/cierres", section: "Cada mes" },
+  { key: "auditoria", label: "Auditoría", href: "/admin/tesoreria/auditoria", section: "Cada mes" },
+  { key: "publicar", label: "Publicar", href: "/admin/tesoreria/publicar", section: "Cada mes" },
+  { key: "compromisos", label: "Compromisos", href: "/admin/tesoreria/compromisos", section: "Cada mes" },
+  { key: "presupuesto", label: "Presupuesto y metas", href: "/admin/tesoreria/presupuesto", section: "El ejercicio" },
+  { key: "metas", label: "Metas de la Asamblea", href: "/admin/tesoreria/metas", section: "El ejercicio" },
+  { key: "progreso", label: "Progreso", href: "/admin/tesoreria/progreso", section: "El ejercicio" },
+  { key: "informes", label: "Informes", href: "/admin/tesoreria/informes", section: "El ejercicio" },
+  { key: "legajo", label: "Legajo para el auditor", href: "/admin/tesoreria/legajo", section: "El ejercicio" },
+  { key: "catalogo", label: "Catálogo", href: "/admin/tesoreria/catalogo", section: "Ajustes" },
+  { key: "contribuyentes", label: "Contribuyentes", href: "/admin/tesoreria/contribuyentes", section: "Ajustes" },
+  { key: "recibo", label: "Recibo y medios de pago", href: "/admin/tesoreria/recibo/ajustes", section: "Ajustes" },
+  { key: "importar", label: "Importar un ejercicio", href: "/admin/tesoreria/libro/importar", section: "Ajustes" },
+];
+
+/** A qué pantalla pertenece cada campo con ayuda, para agruparlos en el manual. */
+export const FIELD_SCREEN: Record<TreasuryHelpField, TreasuryHelpScreen> = {
+  cuenta: "libro",
+  fondo: "libro",
+  rubro: "libro",
+  recibo: "libro",
+  contribuyente: "libro",
+  seudonimo: "libro",
+  aportes: "libro",
+  cuentaExtracto: "conciliacion",
+  destinatario: "informes",
+  periodoInforme: "informes",
+  estadoPresupuesto: "presupuesto",
+  montoPresupuesto: "presupuesto",
+  cadenciaMeta: "metas",
+  direccionMeta: "metas",
+  ejercicioMeta: "metas",
+  nombreTesorero: "recibo",
+  firma: "recibo",
+  calcular: "publicar",
+  compartir: "publicar",
+  vincularContribuyente: "contribuyentes",
+  fusionarContribuyente: "contribuyentes",
+};
