@@ -385,6 +385,24 @@ export async function getTreasuryGuide(
               .join(" · ") || `${plural(boxes.length, "caja al día", "cajas al día")}.`,
     });
   }
+  // La carta semestral (marzo y octubre): costumbre de la Asamblea, no dato.
+  const thisMonth = today.slice(5, 7);
+  if (thisMonth === "03" || thisMonth === "10") {
+    steps.push({
+      key: "carta",
+      order: 0,
+      title: "La carta semestral a la comunidad",
+      why: "Dos veces al año la Asamblea le escribe a la comunidad sobre el Fondo: cómo está, qué necesita el ejercicio, y el agradecimiento por las contribuciones y los sacrificios. Es rendir cuentas y agradecer, las dos cosas que sostienen la confianza.",
+      how: [
+        "Compartir antes el estado del Fondo desde Publicar, para citar cifras vigentes.",
+        "Escribirla como comunicado (Comunicación → Comunicados), solo para creyentes, con una cita de los Escritos si ayuda.",
+      ],
+      href: "/admin/comunicados/nuevo",
+      cta: "Escribir el comunicado",
+      status: "manual",
+      note: `Toca en ${monthLabel(monthKeyOf(today)).toLowerCase()}.`,
+    });
+  }
   steps.forEach((st, i) => {
     st.order = i + 1;
   });

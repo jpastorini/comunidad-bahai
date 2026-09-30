@@ -365,6 +365,23 @@ async function commitmentsItem(
   };
 }
 
+/** La carta semestral a la comunidad (marzo y octubre): estado del Fondo,
+ *  necesidades y agradecimiento. Es una costumbre de la Asamblea, no un
+ *  dato: la tarjeta solo recuerda, y se oculta cuando se mandó. */
+function letterItem(today: string): TreasuryAttentionItem | null {
+  const month = today.slice(5, 7);
+  if (month !== "03" && month !== "10") return null;
+  return {
+    key: `carta:${monthKeyOf(today)}`,
+    tone: "warn",
+    title: "La carta semestral a la comunidad",
+    detail:
+      "En marzo y en octubre la Asamblea le escribe a la comunidad: el estado del Fondo, las necesidades del ejercicio, y el agradecimiento por las contribuciones y los sacrificios. Se manda como comunicado, con las cifras de la última publicación. Ocultá la tarjeta cuando salga.",
+    href: "/admin/comunicados/nuevo",
+    cta: "Escribir el comunicado",
+  };
+}
+
 /** Cajas chicas (074): rendiciones por revisar y cajas sin arqueo. */
 async function cashItems(supabase: SupabaseClient, today: string): Promise<TreasuryAttentionItem[]> {
   const { boxes, missing } = await getCashBoxes(supabase);
@@ -477,7 +494,7 @@ export async function getTreasuryAttention(
     ]);
 
   // Orden: lo grave primero; a igual tono, el orden del ciclo del mes.
-  const all = [closing, audit, ...(cash ?? []), reconciliation, publication, receipts, commitments].filter(
+  const all = [closing, audit, ...(cash ?? []), reconciliation, publication, receipts, commitments, letterItem(today)].filter(
     (x): x is TreasuryAttentionItem => x !== null
   );
   const rank = (t: AttentionTone) => (t === "alert" ? 0 : 1);

@@ -186,8 +186,61 @@ export default async function ManualPage() {
         </p>
       </Section>
 
-      {/* 7 · Las pantallas */}
-      <Section id="pantallas" n={7} title="Las pantallas, una por una">
+      {/* 7 · Visitas y enseñanza */}
+      <Section id="ensenanza" n={7} title="Visitas y enseñanza sobre el Fondo">
+        <p className="text-[14px] leading-relaxed text-dark/85">
+          Llevar el libro es la mitad del cargo. La otra mitad es que la comunidad entienda el Fondo: que contribuir
+          es un privilegio espiritual y un acto voluntario y confidencial, que nadie pide a nadie una cifra, y que la
+          Asamblea rinde cuentas de cada peso. El tesorero es quien lo enseña, con paciencia y sin presión.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <Tip title="Visitas">
+            Visitá a las familias, en especial a quien es nuevo en la comunidad: para presentarte, contar cómo se
+            aporta y escuchar. Nunca para pedir. Si alguien quiere que se le recuerde, ofrecele el compromiso mensual,
+            que se prende desde su perfil y le llega el día 10.
+          </Tip>
+          <Tip title="Enseñanza">
+            Al menos una vez por ejercicio, una profundización sobre el Fondo en la Fiesta o en una reunión: qué es,
+            para qué sirve, qué dicen los Escritos. Las citas sobre sacrificio, desprendimiento y generosidad están en
+            la Biblioteca de la app (Lectura de hoy, por tema) y en el Buscador de pasajes.
+          </Tip>
+          <Tip title="Rendir cuentas">
+            La confianza se construye mostrando: el estado del Fondo compartido cada mes, el informe en la Fiesta, el
+            balance anual a disposición desde el 17 de abril, y la carta semestral. Quien ve adónde va su aporte, vuelve
+            a aportar.
+          </Tip>
+          <Tip title="Agradecer">
+            Cada aporte merece un gracias, y el recibo es la ocasión: al registrarlo le llega el aviso a la persona con
+            su recibo. Compromisos te dice cada mes a quién agradecer; el chat de Tesorería es el lugar para hacerlo
+            en privado.
+          </Tip>
+        </div>
+      </Section>
+
+      {/* 8 · Agenda anual */}
+      <Section id="agenda" n={8} title="La agenda del año">
+        <p className="mb-3 text-[14px] leading-relaxed text-dark/85">
+          Lo que se repite, con su fecha. Lo mensual lo tilda la Guía; lo demás conviene anotarlo en el calendario
+          de la Asamblea.
+        </p>
+        <ol className="flex flex-col gap-2">
+          {AGENDA.map((a) => (
+            <li key={a.when} className="cb-block rounded-xl border border-black/[0.06] p-4">
+              <div className="text-[10px] font-semibold uppercase tracking-[2px] text-gold-dark">{a.when}</div>
+              <h3 className="mt-0.5 text-[15px] font-semibold text-dark">{a.what}</h3>
+              <p className="mt-1 text-[12.5px] text-dark/80">{a.how}</p>
+              {a.href && (
+                <p className="mt-1 text-[11.5px] text-muted">
+                  En la app: <Link href={a.href} className="font-semibold text-terra">{a.href.replace("/admin/", "")}</Link>
+                </p>
+              )}
+            </li>
+          ))}
+        </ol>
+      </Section>
+
+      {/* 9 · Las pantallas */}
+      <Section id="pantallas" n={9} title="Las pantallas, una por una">
         <p className="mb-3 text-[13px] text-muted">En el orden del menú. Debajo de cada una, los campos que tienen ayuda.</p>
         {sections.map((sec) => (
           <div key={sec} className="mb-5">
@@ -214,8 +267,8 @@ export default async function ManualPage() {
         ))}
       </Section>
 
-      {/* 8 · Traspaso */}
-      <Section id="traspaso" n={8} title="Cuando cambie el tesorero">
+      {/* 10 · Traspaso */}
+      <Section id="traspaso" n={10} title="Cuando cambie el tesorero">
         <ol className="flex flex-col gap-2">
           {HANDOVER_STEPS.map((step, i) => (
             <li key={step.title} className="cb-block flex gap-3">
@@ -247,8 +300,49 @@ const TOC = [
   { id: "ciclo", label: "El ciclo del mes" },
   { id: "cajas", label: "Las cajas chicas" },
   { id: "quien", label: "Quién ve qué" },
+  { id: "ensenanza", label: "Visitas y enseñanza sobre el Fondo" },
+  { id: "agenda", label: "La agenda del año" },
   { id: "pantallas", label: "Las pantallas, una por una" },
   { id: "traspaso", label: "Cuando cambie el tesorero" },
+];
+
+const AGENDA: Array<{ when: string; what: string; how: string; href?: string }> = [
+  {
+    when: "Cada mes",
+    what: "El ciclo: cargar, conciliar, rendir y arquear, auditar y cerrar, compartir, compromisos.",
+    how: "La Guía del mes lo tilda. El día 5 llega el aviso si el mes anterior sigue abierto; el 10 sale solo el recordatorio a quien declaró un compromiso.",
+    href: "/admin/tesoreria/guia",
+  },
+  {
+    when: "Cada Fiesta de 19 Días",
+    what: "El estado del Fondo en la diapositiva de Tesorería, y el informe del mes si lo hay.",
+    how: "Calcular y compartir desde Publicar antes de la Fiesta; la Fiesta se queda con la foto vigente al iniciarla.",
+    href: "/admin/tesoreria/publicar",
+  },
+  {
+    when: "Marzo y octubre",
+    what: "La carta semestral a la comunidad: el estado del Fondo, las necesidades del ejercicio, y el agradecimiento por las contribuciones y los sacrificios.",
+    how: "Se escribe como comunicado (Comunicación → Comunicados), con las cifras de la última publicación y, si sirve, una cita de los Escritos sobre la generosidad. El tablero lo recuerda esos dos meses.",
+    href: "/admin/comunicados/nuevo",
+  },
+  {
+    when: "17 de abril",
+    what: "Cierre del ejercicio estatutario: la Memoria y Balance anual, a disposición de la comunidad desde ese día (art. XI de los estatutos).",
+    how: "En Informes, nuevo informe «Memoria y Balance» con el preset 18 abr → 17 abr; cotización de cierre, memoria y firmas; emitir. La Asamblea lo aprueba en reunión.",
+    href: "/admin/tesoreria/informes",
+  },
+  {
+    when: "Riḍván (21 de abril)",
+    what: "Empieza el ejercicio contable y se elige la Asamblea.",
+    how: "Cargar la composición nueva en Datos de la Asamblea (el Tesorero/a declarado firma los recibos), crear el presupuesto del ejercicio y revisar las metas.",
+    href: "/admin/tesoreria/presupuesto",
+  },
+  {
+    when: "Al cerrar el ejercicio, y cuando lo pida la AEN",
+    what: "El legajo para el auditor y, si cambia el tesorero, el acta de traspaso.",
+    how: "Tesorería → Legajo para el auditor arma el ZIP; Traspaso imprime el acta para firmar.",
+    href: "/admin/tesoreria/legajo",
+  },
 ];
 
 const GLOSSARY = [

@@ -73,17 +73,18 @@ function Box({
 export function FigureMonthCycle() {
   const steps = [
     { title: "Cargar", sub: "recibo o comprobante", when: "todos los días" },
-    { title: "Conciliar", sub: "extracto contra libro", when: "cada dos semanas" },
+    { title: "Conciliar", sub: "extracto vs. libro", when: "cada 15 días" },
     { title: "Rendir y arquear", sub: "las cajas chicas", when: "fin de mes" },
     { title: "Auditar y cerrar", sub: "el mes se congela", when: "primeros días" },
-    { title: "Compartir e informar", sub: "comunidad y Asamblea", when: "antes de la Fiesta" },
+    { title: "Compartir", sub: "Fondo e informes", when: "antes de la Fiesta" },
+    { title: "Compromisos", sub: "agradecer y recordar", when: "pasado el 10" },
   ];
-  const w = 142;
-  const gap = 14;
-  const x0 = 8;
+  const w = 120;
+  const gap = 8;
+  const x0 = 6;
   return (
     <figure className="my-4 text-dark">
-      <svg viewBox="0 0 780 150" role="img" aria-label="El ciclo del mes en cinco etapas: cargar, conciliar, rendir y arquear, auditar y cerrar, compartir e informar; al terminar vuelve a empezar." style={{ maxWidth: "100%", height: "auto" }}>
+      <svg viewBox="0 0 780 150" role="img" aria-label="El ciclo del mes en seis etapas: cargar, conciliar, rendir y arquear, auditar y cerrar, compartir, y compromisos (agradecer y recordar); al terminar vuelve a empezar." style={{ maxWidth: "100%", height: "auto" }}>
         <Arrow id="a1" />
         {steps.map((s, i) => {
           const x = x0 + i * (w + gap);
@@ -101,7 +102,7 @@ export function FigureMonthCycle() {
         })}
         {/* vuelta al inicio */}
         <path
-          d={`M ${x0 + 4 * (w + gap) + w / 2} 92 L ${x0 + 4 * (w + gap) + w / 2} 122 L ${x0 + w / 2} 122 L ${x0 + w / 2} 94`}
+          d={`M ${x0 + 5 * (w + gap) + w / 2} 92 L ${x0 + 5 * (w + gap) + w / 2} 122 L ${x0 + w / 2} 122 L ${x0 + w / 2} 94`}
           fill="none"
           stroke="currentColor"
           strokeWidth="1.2"

@@ -446,10 +446,16 @@ cargo:
   meses están cerrados. La pantalla muestra la misma foto antes de
   generar y avisa si hay meses abiertos, cajas sin arqueo o hallazgos
   graves. El route está en `outputFileTracingIncludes` (pdfkit).
-- **Manual del tesorero** (`/admin/tesoreria/manual`): ocho secciones
+- **Manual del tesorero** (`/admin/tesoreria/manual`): diez secciones
   con índice —antes de empezar, cinco palabras (glosario), cómo se mueve
-  la plata, el ciclo del mes, las cajas chicas, quién ve qué, las
-  pantallas una por una, el traspaso—. Los textos salen de
+  la plata, el ciclo del mes (seis etapas, compromisos incluidos), las
+  cajas chicas, quién ve qué, visitas y enseñanza sobre el Fondo, la
+  agenda del año (`AGENDA`: mensual, cada Fiesta, la **carta semestral a
+  la comunidad en marzo y octubre** con estado del Fondo, necesidades y
+  agradecimiento, el 17/4, Riḍván, legajo y acta), las pantallas una por
+  una, el traspaso—. La carta semestral es costumbre de la Asamblea, no
+  dato: en marzo y octubre el tablero la recuerda (`letterItem`, clave
+  `carta:<mes>`, ocultable) y la Guía la agrega como paso manual. Los textos salen de
   `lib/treasury-help.ts` (`SCREEN_INDEX` con los campos agrupados por
   pantalla vía `FIELD_SCREEN`); si se agrega una pantalla o un campo con
   ayuda hay que sumarlo a esos dos índices o el manual no lo lista. Los
