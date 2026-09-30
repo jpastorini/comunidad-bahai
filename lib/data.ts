@@ -211,16 +211,16 @@ export async function getLatestOracionDelMes(): Promise<StudyMaterial | null> {
   return all[0] ?? null;
 }
 
-/** La ficha vieja de Tesorería (medios de pago, cifras a mano). Null si la
- *  comunidad nunca la cargó: la pantalla esconde esas secciones en vez de
- *  mostrar "Transferencia · Datos bancarios" y montos inventados. */
+/** Los medios de pago de "Cómo aportar" (tabla `treasury`, reducida a eso
+ *  en la 076). Null si la comunidad nunca los cargó: la pantalla esconde la
+ *  sección en vez de mostrar "Transferencia · Datos bancarios" inventados. */
 export async function getTreasury(): Promise<Treasury | null> {
   if (!isSupabaseConfigured()) return seedTreasury;
   const supabase = createSupabaseServer();
   const { data, error } = await supabase
     .from("treasury")
-    .select("*")
-    .order("period", { ascending: false })
+    .select("methods")
+    .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) console.error(`[data] getTreasury: ${error.code ?? ""} ${error.message}`);

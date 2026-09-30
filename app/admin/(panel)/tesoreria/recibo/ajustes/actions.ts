@@ -125,11 +125,9 @@ export async function saveReceiptSettingsAction(formData: FormData) {
 
 /**
  * Los medios de pago que la comunidad ve en "Cómo aportar" (/tesoreria).
- * Es lo ÚNICO que sobrevive de la tabla `treasury` vieja: las cifras a
+ * Es lo ÚNICO que quedó en la tabla `treasury` vieja (076): las cifras a
  * mano se jubilaron con la 066 (el estado del Fondo se calcula y se
- * comparte desde Publicar). La fila se conserva —una por localidad— y
- * acá solo se reescribe `methods`; el resto de columnas queda como
- * está hasta que una migración las tire.
+ * comparte desde Publicar). Una fila por localidad.
  */
 export async function savePaymentMethodsAction(formData: FormData) {
   const session = await requireAdmin();
@@ -161,14 +159,7 @@ export async function savePaymentMethodsAction(formData: FormData) {
   const now = new Date().toISOString();
   const { error } = id
     ? await supabase.from("treasury").update({ methods, updated_at: now }).eq("id", id)
-    : await supabase.from("treasury").insert({
-        period: "—",
-        goal_amount: 0,
-        current_amount: 0,
-        contributions: [],
-        methods,
-        updated_at: now,
-      });
+    : await supabase.from("treasury").insert({ methods, updated_at: now });
   if (error) {
     console.error("[savePaymentMethodsAction]", error);
     fail("No se pudieron guardar los medios de pago.");

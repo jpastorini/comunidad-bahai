@@ -243,15 +243,6 @@ export const seedNeeds: ServiceNeed[] = [
 ];
 
 export const seedTreasury: Treasury = {
-  goal_amount: 5000,
-  current_amount: 3250,
-  period: "Año 2026",
-  contributions: [
-    { label: "Ingresos del mes", amount: 450 },
-    { label: "Fondo Nacional", amount: 150 },
-    { label: "Fondo Continental", amount: 50 },
-    { label: "Fondo Local", amount: 250 },
-  ],
   methods: [
     { type: "Transferencia", description: "Datos bancarios", letter: "T" },
     { type: "Efectivo", description: "En reunión", letter: "E" },

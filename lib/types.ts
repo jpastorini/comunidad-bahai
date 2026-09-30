@@ -369,11 +369,10 @@ export type ServiceNeed = {
   volunteers: string[];
 };
 
+/** La ficha vieja de Tesorería (tabla `treasury`), reducida a lo único que
+ *  la comunidad sigue leyendo de ahí: los medios de pago de "Cómo aportar"
+ *  (076). Se editan en Recibo y medios de pago. */
 export type Treasury = {
-  goal_amount: number;
-  current_amount: number;
-  period: string;
-  contributions: { label: string; amount: number }[];
   methods: { type: string; description: string; letter: string }[];
 };
 

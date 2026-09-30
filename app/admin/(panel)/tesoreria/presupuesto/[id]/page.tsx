@@ -5,7 +5,6 @@ import { Card, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { bahaiYearFromPeriod } from "@/lib/budget-lookup";
-import { BudgetReportShare } from "@/components/treasury/BudgetReportShare";
 import { addBudgetCategoryAction, saveBudgetItemsAction } from "../actions";
 import { BudgetEditor, type EditorItem } from "../budget-editor";
 
@@ -116,20 +115,6 @@ export default async function PresupuestoEditorPage({
         addCategoryAction={addBudgetCategoryAction}
       />
 
-      <Card className="mt-5">
-        <h2 className="mb-1 font-display text-[16px] font-semibold text-dark">
-          Compartir reporte
-        </h2>
-        <p className="mb-4 text-[12px] text-muted">
-          Genera una imagen del presupuesto para enviar al grupo. Refleja lo
-          último guardado.
-        </p>
-        <BudgetReportShare
-          localityName={session.locality.name}
-          period={budget.period}
-          items={items}
-        />
-      </Card>
     </>
   );
 }

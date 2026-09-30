@@ -2832,11 +2832,12 @@ cambia nada.
   Después: registrar el cambio de tesorero con "Reemplazar", probar que un
   recibo viejo reimpreso conserve la firma, y armar el primer legajo del
   183 para ver qué le falta al auditor.
-- **Jubilar del todo la tabla `treasury` vieja.** Solo queda `methods`
-  (medios de pago, editados en Recibo y medios de pago); las columnas de
-  cifras a mano ya no las escribe nadie. Falta una migración que las tire
-  o mueva `methods` a `treasury_receipt_settings`, y jubilar
-  `BudgetReportShare` del presupuesto.
+- **Aplicar la 076** (2026-09-30): tira las columnas muertas de la tabla
+  `treasury` vieja (meta, recaudado, informe mensual, período); queda solo
+  `methods`. Hasta aplicarla, guardar medios de pago en una comunidad que
+  nunca los cargó falla (el insert ya no manda `period`, que era not null).
+  `BudgetReportShare` (la imagen del presupuesto para WhatsApp) se fue con
+  el mismo commit: el estado del Fondo se comparte desde Publicar.
 - **Aplicar la 074 y estrenar las cajas chicas** (2026-09-29): crear la
   caja del tesorero con su fondo fijo y hacerle el primer arqueo; crear la
   de la Secretaría con responsable y probar el ciclo entero desde un
