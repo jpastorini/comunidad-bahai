@@ -13,15 +13,16 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { HANDOVER_STEPS, getTreasuryGuide } from "@/lib/treasury-guide";
 import { FIELD_SCREEN, SCREEN_INDEX, TREASURY_HELP } from "@/lib/treasury-help";
 import { todayISO } from "@/lib/treasury-ledger";
+import { QUOTES_SOURCE, TREASURY_QUOTES, type TreasuryQuote } from "@/lib/treasury-quotes";
 
 export const dynamic = "force-dynamic";
 
 /**
- * El manual del tesorero: los mismos textos de ayuda que están repartidos
- * por el panel (lib/treasury-help.ts), juntos y en el orden del menú, con
- * cuatro dibujos de lo que en prosa cuesta armar (el ciclo, cómo se
- * mueve la plata, la rendición, el mes cerrado), el glosario de cinco
- * palabras, quién ve qué, y los pasos del traspaso. Para leer en
+ * El manual del tesorero. Empieza por el espíritu (los pasajes de la
+ * recopilación «Los Fondos y las contribuciones bahá'ís», copiados
+ * textualmente, ver lib/treasury-quotes.ts) y sigue con la práctica: los
+ * mismos textos de ayuda del panel (lib/treasury-help.ts), cuatro dibujos,
+ * el glosario, quién ve qué, la agenda y el traspaso. Para leer en
  * pantalla o imprimir el primer día. No se escribe dos veces: si un "?"
  * cambia, cambia acá.
  */
@@ -41,6 +42,7 @@ export default async function ManualPage() {
     fieldsByScreen.set(screen, [...(fieldsByScreen.get(screen) ?? []), { key, text }]);
   }
   const sections = Array.from(new Set(SCREEN_INDEX.map((s) => s.section)));
+  const Q = TREASURY_QUOTES;
 
   return (
     <div className="cb-manual">
@@ -49,7 +51,7 @@ export default async function ManualPage() {
         eyebrow="Tesorería"
         help={TREASURY_HELP.screens.manual}
         title="Manual del tesorero"
-        description={`Cómo se lleva la Tesorería de ${session.locality.name} en la app, contado para quien recién agarra el cargo. Versión del ${formatDate(todayISO())}.`}
+        description={`Cómo se lleva la Tesorería de ${session.locality.name}: el espíritu, la práctica y la app, contado para quien recién agarra el cargo. Versión del ${formatDate(todayISO())}.`}
         actions={<PrintButton />}
       />
 
@@ -67,8 +69,54 @@ export default async function ManualPage() {
         </ol>
       </nav>
 
-      {/* 1 · Bienvenida */}
-      <Section id="bienvenida" n={1} title="Antes de empezar">
+      {/* 1 · El espíritu */}
+      <Section id="espiritu" title="El espíritu de la Tesorería">
+        <p className="text-[14px] leading-relaxed text-dark/85">
+          Antes que un libro, la Tesorería es una confianza. El Fondo está bajo el control exclusivo de la Asamblea,
+          se sostiene solo con lo que los creyentes deciden dar, y el tesorero es quien lo custodia en nombre de
+          todos. Cinco principios lo ordenan, y los Escritos los dicen mejor que cualquier manual.
+        </p>
+
+        <Principle title="Dar es un privilegio y una medida de la fe">
+          <Quote q={Q.manantial} />
+          <Quote q={Q.medida_de_fe} />
+        </Principle>
+
+        <Principle title="Siempre voluntario, nunca bajo presión">
+          <Quote q={Q.voluntarias} />
+          <Quote q={Q.sin_presion} />
+          <p className="mt-2 text-[13px] text-dark/80">
+            En la práctica: los llamamientos generales (la carta semestral, la diapositiva de la Fiesta) sí; pedirle
+            a una persona, no. El compromiso mensual que la app recuerda el día 10 lo activa cada creyente por su
+            cuenta y lo apaga cuando quiere.
+          </p>
+        </Principle>
+
+        <Principle title="Lo que vale es el sacrificio, no la cifra">
+          <Quote q={Q.privacion} />
+          <Quote q={Q.sin_deudas} />
+        </Principle>
+
+        <Principle title="Confidencial, y con cuentas claras">
+          <Quote q={Q.confidencial} />
+          <p className="mt-2 text-[13px] text-dark/80">
+            Por eso en la app los nombres de quienes aportan los ve solo quien tiene el permiso de Tesorería, arrancan
+            ocultos en el Libro, y ningún informe ni publicación los lleva. La confianza se construye con lo otro:
+            mostrar cada mes cómo está el Fondo y en qué se usó.
+          </p>
+        </Principle>
+
+        <Principle title="Administrar con juicio y sencillez">
+          <Quote q={Q.administracion_juiciosa} />
+          <Quote q={Q.sabia_economia} />
+          <Quote q={Q.flexibles} />
+        </Principle>
+
+        <p className="mt-4 text-[11.5px] text-muted">{QUOTES_SOURCE}</p>
+      </Section>
+
+      {/* 2 · Antes de empezar */}
+      <Section id="bienvenida" title="Antes de empezar">
         <p className="text-[14px] leading-relaxed text-dark/85">
           La Tesorería en la app es un <strong>libro</strong>: cada aporte y cada gasto es una línea, y todo lo demás
           —saldos, recibos, informes, el balance anual— se calcula solo a partir de esas líneas. Tu trabajo es que las
@@ -92,8 +140,8 @@ export default async function ManualPage() {
         </p>
       </Section>
 
-      {/* 2 · Glosario */}
-      <Section id="glosario" n={2} title="Cinco palabras">
+      {/* 3 · Glosario */}
+      <Section id="glosario" title="Cinco palabras">
         <dl className="grid gap-3 sm:grid-cols-2">
           {GLOSSARY.map((g) => (
             <div key={g.term} className="rounded-xl bg-bg/60 px-4 py-3">
@@ -104,8 +152,8 @@ export default async function ManualPage() {
         </dl>
       </Section>
 
-      {/* 3 · Cómo se mueve la plata */}
-      <Section id="plata" n={3} title="Cómo se mueve la plata">
+      {/* 4 · Cómo se mueve la plata */}
+      <Section id="plata" title="Cómo se mueve la plata">
         <p className="text-[14px] leading-relaxed text-dark/85">
           Hay dos maneras de que entre un aporte y dos de que salga un gasto. Los giros entran a la{" "}
           <strong>cuenta</strong>; el efectivo de la Fiesta entra a la <strong>caja chica del tesorero</strong> y desde
@@ -119,10 +167,15 @@ export default async function ManualPage() {
           la caja, despachalo con ese motivo.
         </p>
         <FigureMoneyFlow />
+        <Quote q={Q.anonimos} compact />
+        <p className="mt-1 text-[12.5px] text-dark/80">
+          La canasta de la Fiesta es eso: varios aportes anónimos en un solo recibo, sin contribuyente (campo «Aportes»
+          del movimiento).
+        </p>
       </Section>
 
-      {/* 4 · El ciclo del mes */}
-      <Section id="ciclo" n={4} title="El ciclo del mes">
+      {/* 5 · El ciclo del mes */}
+      <Section id="ciclo" title="El ciclo del mes">
         <p className="text-[14px] leading-relaxed text-dark/85">
           Todo el trabajo se ordena en un ciclo que se repite cada mes. En la app (Guía del mes) cada paso aparece
           tildado según lo que ya está hecho.
@@ -150,10 +203,11 @@ export default async function ManualPage() {
           ))}
         </ol>
         <FigureClosedMonth />
+        <Quote q={Q.regularidad} compact />
       </Section>
 
-      {/* 5 · Cajas chicas */}
-      <Section id="cajas" n={5} title="Las cajas chicas">
+      {/* 6 · Cajas chicas */}
+      <Section id="cajas" title="Las cajas chicas">
         <p className="text-[14px] leading-relaxed text-dark/85">
           El efectivo que manejan la Secretaría o un coordinador tiene un <strong>fondo fijo</strong> y una persona{" "}
           <strong>responsable</strong>, que carga sus gastos con la foto del comprobante desde su celular y rinde cuando
@@ -166,8 +220,8 @@ export default async function ManualPage() {
         </p>
       </Section>
 
-      {/* 6 · Quién ve qué */}
-      <Section id="quien" n={6} title="Quién ve qué">
+      {/* 7 · Quién ve qué */}
+      <Section id="quien" title="Quién ve qué">
         <div className="grid gap-3 sm:grid-cols-3">
           {WHO_SEES.map((w) => (
             <div key={w.who} className="rounded-xl border border-black/[0.06] p-4">
@@ -184,10 +238,15 @@ export default async function ManualPage() {
           Los nombres de quienes aportan los ve solo quien tiene el permiso de Tesorería. Ningún informe ni la
           publicación del estado del Fondo los lleva.
         </p>
+        <Quote q={Q.solo_bahais} compact />
+        <p className="mt-1 text-[12.5px] text-dark/80">
+          Por eso un Amigo/a de la Fe no ve la Tesorería en la app, y un aporte suyo al Fondo no se acepta: si insiste,
+          puede destinarse a fines caritativos, nunca al Fondo de la Asamblea.
+        </p>
       </Section>
 
-      {/* 7 · Visitas y enseñanza */}
-      <Section id="ensenanza" n={7} title="Visitas y enseñanza sobre el Fondo">
+      {/* 8 · Visitas y enseñanza */}
+      <Section id="ensenanza" title="Visitas y enseñanza sobre el Fondo">
         <p className="text-[14px] leading-relaxed text-dark/85">
           Llevar el libro es la mitad del cargo. La otra mitad es que la comunidad entienda el Fondo: que contribuir
           es un privilegio espiritual y un acto voluntario y confidencial, que nadie pide a nadie una cifra, y que la
@@ -201,8 +260,9 @@ export default async function ManualPage() {
           </Tip>
           <Tip title="Enseñanza">
             Al menos una vez por ejercicio, una profundización sobre el Fondo en la Fiesta o en una reunión: qué es,
-            para qué sirve, qué dicen los Escritos. Las citas sobre sacrificio, desprendimiento y generosidad están en
-            la Biblioteca de la app (Lectura de hoy, por tema) y en el Buscador de pasajes.
+            para qué sirve, qué dicen los Escritos. Los pasajes de este manual y las citas sobre sacrificio,
+            desprendimiento y generosidad de la Biblioteca de la app (Lectura de hoy, por tema; Buscador de pasajes)
+            son el material.
           </Tip>
           <Tip title="Rendir cuentas">
             La confianza se construye mostrando: el estado del Fondo compartido cada mes, el informe en la Fiesta, el
@@ -217,8 +277,8 @@ export default async function ManualPage() {
         </div>
       </Section>
 
-      {/* 8 · Agenda anual */}
-      <Section id="agenda" n={8} title="La agenda del año">
+      {/* 9 · Agenda anual */}
+      <Section id="agenda" title="La agenda del año">
         <p className="mb-3 text-[14px] leading-relaxed text-dark/85">
           Lo que se repite, con su fecha. Lo mensual lo tilda la Guía; lo demás conviene anotarlo en el calendario
           de la Asamblea.
@@ -239,8 +299,8 @@ export default async function ManualPage() {
         </ol>
       </Section>
 
-      {/* 9 · Las pantallas */}
-      <Section id="pantallas" n={9} title="Las pantallas, una por una">
+      {/* 10 · Las pantallas */}
+      <Section id="pantallas" title="Las pantallas, una por una">
         <p className="mb-3 text-[13px] text-muted">En el orden del menú. Debajo de cada una, los campos que tienen ayuda.</p>
         {sections.map((sec) => (
           <div key={sec} className="mb-5">
@@ -267,8 +327,8 @@ export default async function ManualPage() {
         ))}
       </Section>
 
-      {/* 10 · Traspaso */}
-      <Section id="traspaso" n={10} title="Cuando cambie el tesorero">
+      {/* 11 · Traspaso */}
+      <Section id="traspaso" title="Cuando cambie el tesorero">
         <ol className="flex flex-col gap-2">
           {HANDOVER_STEPS.map((step, i) => (
             <li key={step.title} className="cb-block flex gap-3">
@@ -294,6 +354,7 @@ export default async function ManualPage() {
 // ─── Piezas ──────────────────────────────────────────────────────
 
 const TOC = [
+  { id: "espiritu", label: "El espíritu de la Tesorería" },
   { id: "bienvenida", label: "Antes de empezar" },
   { id: "glosario", label: "Cinco palabras" },
   { id: "plata", label: "Cómo se mueve la plata" },
@@ -382,7 +443,8 @@ const WHO_SEES = [
   },
 ];
 
-function Section({ id, n, title, children }: { id: string; n: number; title: string; children: React.ReactNode }) {
+function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  const n = TOC.findIndex((t) => t.id === id) + 1;
   return (
     <section id={id} className="cb-section mb-8 scroll-mt-4">
       <div className="mb-3 flex items-baseline gap-3">
@@ -391,6 +453,29 @@ function Section({ id, n, title, children }: { id: string; n: number; title: str
       </div>
       {children}
     </section>
+  );
+}
+
+function Principle({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="cb-block mt-5">
+      <h3 className="font-display text-[17px] font-semibold text-dark">{title}</h3>
+      <div className="mt-2 flex flex-col gap-3">{children}</div>
+    </div>
+  );
+}
+
+/** Un pasaje de la recopilación: textual, con su referencia. */
+function Quote({ q, compact = false }: { q: TreasuryQuote; compact?: boolean }) {
+  return (
+    <blockquote
+      className={`cb-block border-l-[3px] border-gold/60 bg-gold/[0.05] py-3 pl-4 pr-4 ${compact ? "mt-3" : ""}`}
+    >
+      <p className={`font-display leading-relaxed text-dark ${compact ? "text-[14px]" : "text-[15px]"}`}>{q.text}</p>
+      <footer className="mt-2 text-[11.5px] text-muted">
+        <span className="font-semibold text-dark/80">{q.author}</span> · {q.reference}
+      </footer>
+    </blockquote>
   );
 }
 
@@ -445,7 +530,6 @@ const MANUAL_CSS = `
   .cb-manual { position: absolute; left: 0; top: 0; width: 100%; }
   .cb-manual .cb-noprint { display: none !important; }
   .cb-manual .cb-block, .cb-manual figure { break-inside: avoid; }
-  .cb-manual .cb-section { break-before: auto; }
   .cb-manual a { color: inherit; text-decoration: none; }
   .cb-manual svg { max-height: 70mm; }
 }

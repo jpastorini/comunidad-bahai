@@ -446,8 +446,15 @@ cargo:
   meses están cerrados. La pantalla muestra la misma foto antes de
   generar y avisa si hay meses abiertos, cajas sin arqueo o hallazgos
   graves. El route está en `outputFileTracingIncludes` (pdfkit).
-- **Manual del tesorero** (`/admin/tesoreria/manual`): diez secciones
-  con índice —antes de empezar, cinco palabras (glosario), cómo se mueve
+- **Manual del tesorero** (`/admin/tesoreria/manual`): once secciones
+  con índice —**el espíritu de la Tesorería** primero (cinco principios
+  con trece pasajes en `lib/treasury-quotes.ts`, copiados TEXTUALMENTE de
+  la recopilación «Los Fondos y las contribuciones bahá'ís» del
+  Departamento de Investigación de la Casa Universal de Justicia,
+  traducción del Panel 2021, que está en `corpus_chunks`; se verificó por
+  script que cada texto es subcadena exacta del corpus. ⚠️ Ninguna cita se
+  escribe de memoria: se toma del corpus con su referencia, y las cartas
+  escritas en nombre de Shoghi Effendi se atribuyen así), antes de empezar, cinco palabras (glosario), cómo se mueve
   la plata, el ciclo del mes (seis etapas, compromisos incluidos), las
   cajas chicas, quién ve qué, visitas y enseñanza sobre el Fondo, la
   agenda del año (`AGENDA`: mensual, cada Fiesta, la **carta semestral a
