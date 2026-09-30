@@ -8,6 +8,8 @@ import { requireBahai } from "@/lib/auth";
 import { getTreasury } from "@/lib/data";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getCurrentPublication } from "@/lib/treasury-publications";
+import { AUDIENCE_LABEL, fmtLongDate } from "@/lib/treasury-report-content";
+import { getCommunityReports } from "@/lib/treasury-reports";
 import type { TreasuryCommitment } from "@/lib/types";
 import { CommitmentSection } from "./commitment-section";
 
@@ -18,13 +20,18 @@ export default async function TesoreriaPage() {
   const session = await requireBahai("/tesoreria");
   const supabase = createSupabaseServer();
 
-  const [t, publication, { data: commitment }] = await Promise.all([
+  const [t, reports, publication, { data: commitment }] = await Promise.all([
     getTreasury(),
+    // Los informes emitidos para la comunidad y el balance anual (054):
+    // la RLS deja leerlos desde que se publican; hasta ahora solo se
+    // repartían por el link de WhatsApp.
+    getCommunityReports(supabase, session.locality.id),
     // El estado del Fondo es lo que el tesorero CALCULÓ Y COMPARTIÓ en
     // Tesorería → Publicar (066), con su fecha. No se recalcula acá: si
     // cada pantalla sumara por su cuenta, la app volvería a decir cosas
     // distintas en lugares distintos.
     getCurrentPublication(supabase, session.locality.id),
+    // (ver arriba)
     // El compromiso es con el Fondo de LA comunidad que se tiene puesta
     // (063): quien pertenece a su AEL y a la Comunidad Nacional sostiene
     // uno con cada una, y acá se edita el de esta.
@@ -50,6 +57,37 @@ export default async function TesoreriaPage() {
         ) : (
           <div className="mb-3.5 rounded-[20px] bg-card p-5 text-center text-[12.5px] text-muted shadow-card-elevated">
             La Tesorería todavía no compartió el estado del Fondo.
+          </div>
+        )}
+
+        {/* Informes emitidos: el deck de la Fiesta y el balance anual. */}
+        {reports.length > 0 && (
+          <div className="mb-3.5">
+            <h2 className="mb-2.5 text-[14px] font-semibold text-dark">Informes de Tesorería</h2>
+            <ul className="flex flex-col gap-2">
+              {reports.map((r) => (
+                <li key={r.id}>
+                  <Link
+                    href={`/informe/${r.id}`}
+                    className="tap flex items-center gap-3 rounded-2xl bg-card p-3.5 shadow-card-soft"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[12.5px] font-semibold text-dark">{r.title}</span>
+                        <span className="rounded bg-gold/15 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-gold-dark">
+                          {r.audience === "balance" ? "Balance anual" : AUDIENCE_LABEL[r.audience]}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 font-body text-[10.5px] text-muted">
+                        Del {fmtLongDate(r.period_from)} al {fmtLongDate(r.period_to)}
+                        {r.editorial.approval?.meetingDate ? " · aprobado por la Asamblea" : ""}
+                      </div>
+                    </div>
+                    <IconChevronRight size={14} className="shrink-0 text-muted" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

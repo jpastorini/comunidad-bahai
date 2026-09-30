@@ -48,6 +48,10 @@ Para evitarlo:
    función async (una constante, un tipo con valor) compila en tsc y
    falla en `next build`; pasó dos veces (Encuestas y Buscador). Si
    tocás un `actions.ts`, corré `npx next build` antes de pushear.
+   Lo mismo si un componente `"use client"` importa de un módulo de
+   `lib/`: si ese módulo (o algo que importa) lleva `import "server-only"`,
+   tsc pasa y el build cae. Lo puro que comparten cliente y servidor va
+   en un módulo aparte sin `server-only` (ej. `treasury-contributors-shared.ts`).
 
 5. **Pushear a `main` dispara el deploy en Vercel** automáticamente.
    El usuario trabaja solo, así que se pushea directo a `main`
@@ -2803,9 +2807,13 @@ cambia nada.
   anual ya corta el 18/4 → 17/4 por preset, pero `treasury-year.ts`, los
   saldos de apertura y "Mis aportes" siguen en Riḍván. Ver "Adecuación a
   la ley uruguaya": condiciona el cierre de período del 184.
-- **El balance publicado no tiene pantalla en la app de la comunidad.** La
-  RLS ya lo deja leer (054) y los estatutos lo exigen desde el 17 de
-  abril; falta listarlo en `/tesoreria` (punto 14 de la lista legal).
+- **El balance ya se lista en `/tesoreria`** (2026-09-30, punto 14 de la
+  lista legal): junto con los informes emitidos para la comunidad, en la
+  sección "Informes de Tesorería", que abre `/informe/[id]` (fuera del
+  grupo `(app)`, como el programa de la Fiesta; RLS de la 054 decide, la
+  hoja interna nunca aparece). Emitir por primera vez manda push: a los
+  creyentes si es deck o balance, a la Asamblea si es la hoja interna;
+  re-publicar no vuelve a avisar.
 - **La aprobación sigue siendo texto del editor** (fecha de reunión y
   acta), también en el balance. Aprobar desde la app con `approved_at` /
   `approved_by` y bloquear el informe aprobado es el punto 13.
@@ -2844,10 +2852,6 @@ cambia nada.
 - **Cierre de período.** Generar los asientos "Saldo anterior" del 184 a
   partir de los saldos al cierre del 183 (`is_opening_balance`), en vez
   de cargarlos a mano.
-- **El informe no avisa.** Al publicar no sale push ni aparece en la app
-  de la comunidad: la distribución es el link `/i/<token>` por WhatsApp.
-  La RLS ya deja que un creyente lea los informes publicados de su
-  localidad, así que sumar una pantalla en `/tesoreria` es solo UI.
 - **La Asamblea no puede aprobar desde la app.** El registro
   (`/admin/informes`) muestra el estado, pero la aprobación la tipea el
   tesorero en el editor. Si se quiere que la Asamblea marque "aprobado"

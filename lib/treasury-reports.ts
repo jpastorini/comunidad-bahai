@@ -110,6 +110,33 @@ export async function getAdminReports(
   return ((data ?? []) as Record<string, unknown>[]).map(parseRow);
 }
 
+/**
+ * Los informes emitidos que un creyente puede leer: el deck para la
+ * comunidad y la Memoria y Balance anual. La RLS (054) ya lo acota; el
+ * filtro de acá es para que la lista no dependa de la policy si algún día
+ * cambia. Del más reciente al más viejo.
+ */
+export async function getCommunityReports(
+  supabase: SupabaseClient,
+  localityId: string,
+  limit = 12
+): Promise<TreasuryReport[]> {
+  const { data, error } = await supabase
+    .from("treasury_reports")
+    .select(REPORT_FIELDS)
+    .eq("locality_id", localityId)
+    .eq("status", "published")
+    .in("audience", ["comunidad", "balance"])
+    .order("period_to", { ascending: false })
+    .order("published_at", { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error("[getCommunityReports]", error);
+    return [];
+  }
+  return ((data ?? []) as Record<string, unknown>[]).map(parseRow);
+}
+
 export async function getReport(
   supabase: SupabaseClient,
   id: string

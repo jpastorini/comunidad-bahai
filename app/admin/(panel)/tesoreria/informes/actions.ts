@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { getLocalityAdminIds, getLocalityMemberIds, sendPushToUsers } from "@/lib/push";
 import { setFlashToast } from "@/lib/toast";
 import {
   DESTINATION_TONES,
@@ -273,13 +274,43 @@ export async function saveReportAction(formData: FormData) {
     })
     .eq("id", id);
 
+  // Avisar la PRIMERA vez que se emite (re-publicar no vuelve a avisar).
+  // A la comunidad le llegan el deck y el balance; la hoja interna, a la
+  // Asamblea, que es quien la aprueba.
+  if (!error && publishing && prev.status !== "published") {
+    const audience = readAudience(formData);
+    const localityId = session.locality.id;
+    try {
+      if (audience === "internos") {
+        await sendPushToUsers(await getLocalityAdminIds(localityId), {
+          title: "Informe de Tesorería para aprobar",
+          body: `${title} · del ${fmtDayMonth(from)} al ${fmtDayMonth(to)}. Para tratar en la próxima reunión.`,
+          url: `/admin/informe/${id}`,
+          tag: `informe-${id}`,
+        });
+      } else {
+        await sendPushToUsers(await getLocalityMemberIds(localityId, { bahaiOnly: true }), {
+          title: audience === "balance" ? "Memoria y Balance anual" : "Informe de Tesorería",
+          body: `${title} · del ${fmtDayMonth(from)} al ${fmtDayMonth(to)}. ${session.locality.name}.`,
+          url: `/informe/${id}`,
+          tag: `informe-${id}`,
+        });
+      }
+    } catch (e) {
+      console.error("[saveReportAction] push:", e);
+    }
+    revalidatePath("/tesoreria");
+  }
+
   setFlashToast(
     error
       ? { tone: "error", message: `Error: ${error.message}` }
       : {
           tone: "success",
           message: publishing
-            ? "Informe publicado. El link ya se puede compartir."
+            ? prev.status === "published"
+              ? "Informe actualizado."
+              : "Informe emitido: la comunidad lo ve en Tesorería y le llegó el aviso."
             : intent === "unpublish"
               ? "Informe despublicado: el link dejó de funcionar."
               : intent === "recalc"
