@@ -1,4 +1,5 @@
 import { Button, PageHeader } from "@/components/admin/ui";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/treasury-ledger";
@@ -50,6 +51,7 @@ export default async function MetasPage() {
       <PageHeader
         back={{ href: "/admin/tesoreria/presupuesto", label: "Presupuesto y metas" }}
         eyebrow="Tesorería · Presupuesto y metas"
+        help={TREASURY_HELP.screens.metas}
         title="Metas de la Asamblea"
         description="Lo que la Asamblea se propuso, con el rubro del libro que lo mide. De acá salen las barras de progreso del tablero."
         actions={

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Banner, Button, Card, Field, Select } from "@/components/admin/ui";
@@ -109,7 +110,7 @@ export function ReconcileClient({
 
       <Card>
         <form onSubmit={submit} className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
-          <Field label="Cuenta del libro" name="account_id" required>
+          <Field label="Cuenta del libro" name="account_id" required help={TREASURY_HELP.fields.cuentaExtracto}>
             <Select
               id="account_id"
               name="account_id"

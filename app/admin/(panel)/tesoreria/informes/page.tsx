@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { Banner, Card, PageHeader } from "@/components/admin/ui";
 import { CopyLinkButton } from "@/components/treasury/CopyLinkButton";
 import { ShareReportButton } from "@/components/treasury/ShareReportButton";
@@ -32,6 +33,7 @@ export default async function InformesTesoreriaPage() {
     <>
       <PageHeader
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.informes}
         title="Informes"
         description="Elegís el período y las cifras salen del libro. Dos formatos: la hoja que se adjunta al acta y el deck que se presenta en la Fiesta."
         actions={

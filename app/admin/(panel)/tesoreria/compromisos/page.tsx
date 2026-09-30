@@ -1,4 +1,5 @@
 import { ContactButtons } from "@/components/admin/chat/ContactButtons";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { Banner, Card, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -65,6 +66,7 @@ export default async function CompromisosPage({
     <>
       <PageHeader
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.compromisos}
         title="Compromisos"
         description={`Cómo viene ${monthLabel(month)} respecto de lo que cada creyente declaró aportar. Es información reservada del tesorero.`}
       />

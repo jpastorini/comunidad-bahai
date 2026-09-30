@@ -1,4 +1,5 @@
 import { Banner, Button, Card, PageHeader } from "@/components/admin/ui";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { isNationalLocality } from "@/lib/types";
@@ -148,6 +149,7 @@ export default async function LibroTesoreriaPage({
     <>
       <PageHeader
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.libro}
         title={
           focusing
             ? entries.length === 1

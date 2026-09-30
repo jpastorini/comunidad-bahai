@@ -1,4 +1,5 @@
 import { Banner, Card, PageHeader } from "@/components/admin/ui";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { todayISO } from "@/lib/treasury-ledger";
 import { statutoryYears } from "@/lib/treasury-reports";
@@ -46,6 +47,7 @@ export default async function LegajoPage() {
     <>
       <PageHeader
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.legajo}
         title="Legajo para el auditor"
         description="Todo lo que una auditoría pide, de un período, en una sola carpeta comprimida para entregar."
       />

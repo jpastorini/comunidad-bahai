@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { IconArrowRight } from "@/components/Icons";
 import { DateInput as BaseDateInput } from "@/components/DateInput";
 import { TimeInput as BaseTimeInput } from "@/components/TimeInput";
+import { HelpTip } from "@/components/HelpTip";
 
 // ──────────────── Page header ────────────────
 type PageHeaderProps = {
@@ -17,9 +18,13 @@ type PageHeaderProps = {
    *  nuevo, detalle). Reemplaza a los botones "Volver" sueltos: uno solo,
    *  siempre en el mismo lugar. */
   back?: { href: string; label: string };
+  /** Qué es esta pantalla y para qué se usa, en dos o tres frases: un
+   *  "?" al lado del título que se abre al tocarlo. Los textos de
+   *  Tesorería viven en lib/treasury-help.ts. */
+  help?: string;
 };
 
-export function PageHeader({ eyebrow, title, description, actions, back }: PageHeaderProps) {
+export function PageHeader({ eyebrow, title, description, actions, back, help }: PageHeaderProps) {
   return (
     <div className="mb-7 flex flex-col gap-4 md:mb-10 md:flex-row md:items-end md:justify-between md:gap-6">
       <div className="min-w-0">
@@ -38,6 +43,7 @@ export function PageHeader({ eyebrow, title, description, actions, back }: PageH
         )}
         <h1 className="mt-1 font-display text-[30px] font-bold leading-[1.1] text-dark md:text-[40px]">
           {title}
+          {help && <HelpTip title={title} text={help} className="ml-2 -translate-y-1" />}
         </h1>
         {description && (
           <p className="mt-2 max-w-2xl font-body text-[14px] leading-relaxed text-muted">
@@ -136,16 +142,19 @@ type FieldProps = {
   name: string;
   hint?: string;
   required?: boolean;
+  /** Ayuda del campo: un "?" al lado de la etiqueta. */
+  help?: string;
   children?: ReactNode;
 };
 
-export function Field({ label, name, hint, required, children }: FieldProps) {
+export function Field({ label, name, hint, required, help, children }: FieldProps) {
   return (
     <label htmlFor={name} className="block">
       <div className="mb-1 flex items-baseline justify-between">
         <span className="text-[12px] font-semibold text-dark">
           {label}
           {required && <span className="ml-0.5 text-rose-500">*</span>}
+          {help && <HelpTip title={label} text={help} className="ml-1.5" />}
         </span>
         {hint && <span className="text-[10px] text-muted">{hint}</span>}
       </div>

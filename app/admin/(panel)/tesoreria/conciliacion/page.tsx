@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/admin/ui";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getAccountReconciliation, getImports } from "@/lib/treasury-statements";
@@ -50,6 +51,7 @@ export default async function ConciliacionPage({
     <>
       <PageHeader
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.conciliacion}
         title="Conciliación"
         description="El extracto de cada cuenta contra el libro. Importás el archivo que exporta la plataforma y la app cruza lo que puede; lo que queda suelto de cada lado lo resolvés acá."
       />

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { PageHeader } from "@/components/admin/ui";
 import { ReportRegistry } from "@/components/treasury/ReportRegistry";
 import { requireAdmin } from "@/lib/auth";
@@ -35,6 +36,7 @@ export default async function RegistroInformesPage() {
     <>
       <PageHeader
         eyebrow="Asamblea"
+        help={TREASURY_HELP.screens.registroInformes}
         title="Registro de informes"
         description="Registro de los informes emitidos por la Tesorería. Solo consulta: se editan desde la sección Tesorería."
         actions={

@@ -1,4 +1,5 @@
 import { ChatListRefresher } from "@/components/admin/chat/ChatListRefresher";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import {
   ConversationList,
   type ConversationSummary,
@@ -38,6 +39,7 @@ export default async function TreasuryChatListPage() {
       <ChatListRefresher channel="admin-chat-list-tesoreria" />
       <PageHeader
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.chat}
         title="Mensajes al tesorero"
         description="Avisos de aportes al Fondo y consultas de tesorería. Solo los ve quien tiene el tag de Tesorería."
       />

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { linkRefs, type BudgetLinkRow } from "@/lib/budget-links";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
@@ -98,6 +99,7 @@ export default async function PresupuestoEditorPage({
     <>
       <PageHeader back={{ href: "/admin/tesoreria/presupuesto", label: "Presupuesto" }}
         eyebrow="Tesorería · Presupuesto"
+        help={TREASURY_HELP.screens.presupuestoDetalle}
         title={budget.period}
         description="Tomá como referencia lo gastado el año pasado y definí el presupuesto de este año por categoría. Las categorías en $0 se omiten del total."
       />

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { Banner, Card, PageHeader } from "@/components/admin/ui";
 import { HelpTip } from "@/components/HelpTip";
 import { IconArrowRight } from "@/components/Icons";
@@ -58,6 +59,7 @@ export default async function CajasPage() {
     <>
       <PageHeader
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.cajas}
         title="Cajas chicas"
         description="El efectivo que manejan el tesorero, la Secretaría o un coordinador: cada caja con su responsable, su fondo fijo, su rendición y su arqueo."
       />

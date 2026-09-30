@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { Button, Field, TextInput } from "@/components/admin/ui";
 import { ReceiptSheet } from "@/components/treasury/ReceiptSheet";
 import {
@@ -184,6 +185,7 @@ export function ReceiptSettingsForm({
 
         <Field
           label="Nombre del Tesorero/a"
+          help={TREASURY_HELP.fields.nombreTesorero}
           name="treasurer_name"
           hint={
             signerName
@@ -216,6 +218,7 @@ export function ReceiptSettingsForm({
 
         <Field
           label="Firma escaneada"
+          help={TREASURY_HELP.fields.firma}
           name="signature"
           hint={
             settings?.signature_path

@@ -1,4 +1,5 @@
 import { Banner, Button, Card, PageHeader } from "@/components/admin/ui";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -110,6 +111,7 @@ export default async function CierresPage() {
       <PageHeader
         back={{ href: "/admin/tesoreria/libro", label: "Libro" }}
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.cierres}
         title="Cierres mensuales"
         description="Cerrás el mes, imprimís su Libro de Caja y lo pegás en el libro. Un mes cerrado ya no se toca: se corrige con contra-asientos."
         actions={<Button variant="secondary" href="/admin/tesoreria/libro">Ir al libro</Button>}

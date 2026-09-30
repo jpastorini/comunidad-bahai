@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/admin/ui";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getTreasuryCatalog } from "@/lib/treasury-catalog";
@@ -26,6 +27,7 @@ export default async function CatalogoPage() {
     <>
       <PageHeader
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.catalogo}
         title="Catálogo"
         description="Las cuentas, fondos, categorías y subcategorías con que se carga el libro. Lo que nunca se usó se elimina; lo que ya tiene movimientos se desactiva y queda en el historial."
       />

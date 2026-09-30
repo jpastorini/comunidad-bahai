@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { Banner, PageHeader } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { receiptAssets } from "@/lib/receipt-assets";
@@ -51,6 +52,7 @@ export default async function ReciboPage({
     <>
       <PageHeader back={{ href: "/admin/tesoreria/libro", label: "Libro" }}
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.reciboHoja}
         title={`Recibo N.° ${entry.receipt_number ?? "—"}`}
         description="Se imprime en A5, igual que el de la planilla."
       />

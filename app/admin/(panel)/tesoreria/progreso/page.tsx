@@ -1,4 +1,5 @@
 import { Banner, Button, Card, PageHeader } from "@/components/admin/ui";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { ProgressBoard } from "@/components/treasury/ProgressBoard";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -44,6 +45,7 @@ export default async function ProgresoPage({
     <>
       <PageHeader
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.progreso}
         title="Progreso del ejercicio"
         description="Cómo viene el año contra el presupuesto y contra las metas. El ejercicio va de Riḍván a Riḍván."
         actions={

@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { HelpTip } from "@/components/HelpTip";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import {
   AttachmentsPanel,
   type AttachmentsHandle,
@@ -268,7 +270,7 @@ export function EntryForm({
           </div>
         </Field>
 
-        <Field label="Cuenta" className="col-span-2 sm:col-span-1">
+        <Field label="Cuenta" help={TREASURY_HELP.fields.cuenta} className="col-span-2 sm:col-span-1">
           <select
             name="account_id"
             defaultValue={entry?.account_id ?? prefill?.accountId ?? ""}
@@ -286,7 +288,7 @@ export function EntryForm({
           </select>
         </Field>
 
-        <Field label="Fondo" className="col-span-2 sm:col-span-1">
+        <Field label="Fondo" help={TREASURY_HELP.fields.fondo} className="col-span-2 sm:col-span-1">
           <select
             value={fundId}
             onChange={(e) => setFundId(e.target.value)}
@@ -308,7 +310,7 @@ export function EntryForm({
         </Field>
       </div>
 
-      <Field label="Subcategoría">
+      <Field label="Subcategoría" help={TREASURY_HELP.fields.rubro}>
         <select
           name="subcategory_id"
           value={subcategoryId}
@@ -399,7 +401,7 @@ export function EntryForm({
             )}
           </div>
 
-          <Field label="En el recibo figura como" className="col-span-2">
+          <Field label="En el recibo figura como" help={TREASURY_HELP.fields.seudonimo} className="col-span-2">
             <input
               type="text"
               name="receipt_name"
@@ -417,7 +419,7 @@ export function EntryForm({
             />
           </Field>
 
-          <Field label="N° recibo" className="col-span-1">
+          <Field label="N° recibo" help={TREASURY_HELP.fields.recibo} className="col-span-1">
             <input
               type="number"
               name="receipt_number"
@@ -428,7 +430,7 @@ export function EntryForm({
             />
           </Field>
 
-          <Field label="Aportes" className="col-span-1">
+          <Field label="Aportes" help={TREASURY_HELP.fields.aportes} className="col-span-1">
             <input
               type="number"
               name="contributions_count"
@@ -476,15 +478,19 @@ function Field({
   label,
   children,
   className = "",
+  help,
 }: {
   label: string;
   children: React.ReactNode;
   className?: string;
+  /** Ayuda del campo: un "?" al lado de la etiqueta (lib/treasury-help.ts). */
+  help?: string;
 }) {
   return (
     <label className={`block ${className}`}>
       <span className="mb-1 block text-[10.5px] uppercase tracking-wide text-muted">
         {label}
+        {help && <HelpTip title={label} text={help} className="ml-1.5 -translate-y-[1px]" />}
       </span>
       {children}
     </label>

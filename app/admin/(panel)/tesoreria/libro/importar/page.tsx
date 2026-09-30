@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/admin/ui";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getLedgerYears } from "@/lib/treasury-ledger";
@@ -38,6 +39,7 @@ export default async function ImportarLibroPage() {
     <>
       <PageHeader
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.importar}
         title="Importar un ejercicio"
         description="Cargá al libro un año entero desde la planilla con que se llevaba antes. Primero ves qué entra; nada se guarda hasta que confirmes."
         back={{ href: "/admin/tesoreria/libro", label: "Libro" }}

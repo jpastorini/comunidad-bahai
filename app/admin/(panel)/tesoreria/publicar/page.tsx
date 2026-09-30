@@ -1,4 +1,6 @@
 import { Banner, Button, Card, Checkbox, PageHeader } from "@/components/admin/ui";
+import { HelpTip } from "@/components/HelpTip";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { PublishedTreasury } from "@/components/treasury/PublishedTreasury";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -47,6 +49,7 @@ export default async function PublicarPage() {
     <>
       <PageHeader
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.publicar}
         title="Publicar el estado del Fondo"
         description="Lo que la comunidad ve de la Tesorería —en la app y en la Fiesta— sale de acá y de ningún otro lado. Calculá, revisá y compartí: la gente lo ve con la fecha en que lo compartiste, y no cambia hasta que vuelvas a hacerlo."
       />
@@ -61,7 +64,9 @@ export default async function PublicarPage() {
       )}
 
       <Card className="mb-5">
-        <h2 className="text-[15px] font-semibold text-dark">1 · Calcular</h2>
+        <h2 className="flex items-center gap-2 text-[15px] font-semibold text-dark">
+          1 · Calcular <HelpTip title="Calcular" text={TREASURY_HELP.fields.calcular} />
+        </h2>
         <p className="mt-1 text-[12.5px] text-muted">
           Se arma desde el libro con los movimientos hasta la fecha que elijas.
           Todavía no lo ve nadie más que vos.
@@ -100,7 +105,9 @@ export default async function PublicarPage() {
 
       {draft && (
         <Card className="mb-5 border-terra/30">
-          <h2 className="text-[15px] font-semibold text-dark">2 · Revisar y compartir</h2>
+          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-dark">
+            2 · Revisar y compartir <HelpTip title="Compartir" text={TREASURY_HELP.fields.compartir} />
+          </h2>
           <p className="mt-1 text-[12.5px] text-muted">
             Así lo va a ver la comunidad. Calculado el {formatStamp(draft.calculated_at)}.
             Si cargás un movimiento ahora, este cálculo no lo incluye: volvé a calcular.

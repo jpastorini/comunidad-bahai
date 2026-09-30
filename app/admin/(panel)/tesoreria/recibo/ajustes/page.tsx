@@ -1,4 +1,5 @@
 import { Banner, Button, Card, PageHeader, TextInput } from "@/components/admin/ui";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
 import { receiptAssets } from "@/lib/receipt-assets";
@@ -50,6 +51,7 @@ export default async function AjustesReciboPage() {
     <>
       <PageHeader
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.recibo}
         title="Recibo y medios de pago"
         description="Quién firma, con qué firma y de qué color sale el comprobante de contribución; y cómo se aporta, que es lo que la comunidad ve en Tesorería."
       />

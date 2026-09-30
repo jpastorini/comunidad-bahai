@@ -1,4 +1,5 @@
 import { Banner, Button, Card, PageHeader } from "@/components/admin/ui";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { todayISO } from "@/lib/treasury-ledger";
 import { periodPresets } from "@/lib/treasury-reports";
@@ -18,6 +19,7 @@ export default async function NuevoInformePage() {
     <>
       <PageHeader back={{ href: "/admin/tesoreria/informes", label: "Informes" }}
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.informeNuevo}
         title="Nuevo informe"
         description="Elegí el período. Las cifras se leen del libro y quedan congeladas en el informe."
       />

@@ -462,9 +462,14 @@ pantalla).
   muestra a la comunidad cada caja con su fondo fijo y si el último arqueo
   cuadró, sin nombres.
 - **Ayuda en el lugar**: `components/HelpTip.tsx`, un "?" que abre una
-  explicación corta (toque, no hover). Pedido para el próximo tesorero;
-  está en todas las pantallas nuevas y conviene sumarlo al resto del
-  panel.
+  explicación corta (toque, no hover). Pedido para el próximo tesorero.
+  Los textos viven en UN archivo, `lib/treasury-help.ts` (`screens` y
+  `fields`), y llegan por dos props: `help` en `PageHeader` (todas las
+  pantallas de Tesorería y el Registro de informes) y `help` en `Field`
+  (los campos que confunden: cuenta, fondo, rubro, recibo, seudónimo,
+  destinatario del informe, "se mide por" de las metas, firma…). Si
+  agregás una pantalla o un campo de Tesorería, el texto va ahí y no
+  escrito en la pantalla.
 
 ⚠️ Hasta que corra la 074, la pantalla avisa y no crea cajas; el tablero,
 la guía, la auditoría y la publicación la ignoran (todas detectan el
@@ -2782,7 +2787,7 @@ cambia nada.
   celular ajeno (cargar un gasto con foto → rendir → aprobar con
   reposición → ver los asientos y el comprobante en el Libro). Después,
   compartir el estado del Fondo para que la comunidad vea el bloque de
-  cajas. Pendiente de producto: HelpTips en el resto del panel.
+  cajas.
 - **Las metas viven en dos lados.** `treasury_goals` (042) es el dato,
   pero el editor del informe (041) todavía tiene sus propios campos de
   texto para "Meta de la Asamblea" y "Destino de los Fondos". Conviene

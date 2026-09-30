@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { DateInput, Field, Select, TextInput } from "@/components/admin/ui";
 import {
   AUDIENCE_HINT,
@@ -71,6 +72,7 @@ export function PeriodPicker({
     <>
       <Field
         label="Destinatario"
+        help={TREASURY_HELP.fields.destinatario}
         name="audience"
         hint="define el formato y quién lo puede leer"
       >
@@ -111,7 +113,7 @@ export function PeriodPicker({
       </Field>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <Field label="Desde" name="period_from" required>
+        <Field label="Desde" name="period_from" required help={TREASURY_HELP.fields.periodoInforme}>
           <DateInput
             id="period_from"
             name="period_from"

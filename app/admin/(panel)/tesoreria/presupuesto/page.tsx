@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import {
   Banner,
   Button,
@@ -91,6 +92,7 @@ export default async function PresupuestoListPage() {
     <>
       <PageHeader
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.presupuesto}
         title="Presupuesto y metas"
         description="Lo que la Asamblea planea gastar en el ejercicio, por categoría, y lo que se propuso lograr. Las categorías en $0 no se cuentan en las metas del año."
       />

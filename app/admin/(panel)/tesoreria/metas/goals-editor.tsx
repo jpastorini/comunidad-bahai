@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import {
   Banner,
   Button,
@@ -201,7 +202,7 @@ export function GoalsEditor({
                   <option value="USD">Dólares (USD)</option>
                 </Select>
               </Field>
-              <Field label="El monto es" name={`cadence_${row.uid}`}>
+              <Field label="El monto es" name={`cadence_${row.uid}`} help={TREASURY_HELP.fields.cadenciaMeta}>
                 <Select
                   name="goal_cadence"
                   value={row.cadence}
@@ -218,7 +219,7 @@ export function GoalsEditor({
                   ))}
                 </Select>
               </Field>
-              <Field label="Se mide por" name={`direction_${row.uid}`}>
+              <Field label="Se mide por" name={`direction_${row.uid}`} help={TREASURY_HELP.fields.direccionMeta}>
                 <Select
                   name="goal_direction"
                   value={row.direction}
@@ -289,7 +290,7 @@ export function GoalsEditor({
                   placeholder="En averiguación"
                 />
               </Field>
-              <Field label="Ejercicio" name={`year_${row.uid}`} hint="vacío = permanente">
+              <Field label="Ejercicio" name={`year_${row.uid}`} hint="vacío = permanente" help={TREASURY_HELP.fields.ejercicioMeta}>
                 <TextInput
                   name="goal_year"
                   type="number"

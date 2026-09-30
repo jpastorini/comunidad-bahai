@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { IconArrowRight } from "@/components/Icons";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
@@ -38,6 +39,7 @@ export default async function GuiaPage() {
     <>
       <PageHeader
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.guia}
         title="Guía del mes"
         description={`El ciclo de la Tesorería, paso a paso, para ${guide.monthLabel.toLowerCase()}: qué se hace, por qué, dónde, y qué ya está hecho.`}
       />

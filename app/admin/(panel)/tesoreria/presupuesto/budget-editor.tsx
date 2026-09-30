@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { Banner, Button, Card, Field, Select, TextArea, TextInput } from "@/components/admin/ui";
 import { LedgerLinksPicker } from "@/components/admin/LedgerLinksPicker";
 import { categoryMeta, fmtUYU } from "@/lib/budget";
@@ -113,7 +114,7 @@ export function BudgetEditor({
                 placeholder="183"
               />
             </Field>
-            <Field label="Estado" name="status">
+            <Field label="Estado" name="status" help={TREASURY_HELP.fields.estadoPresupuesto}>
               <Select
                 id="status"
                 name="status"
@@ -315,7 +316,7 @@ function BudgetItemRow({
           />
         </Field>
         {/* Luego: presupuesto de este año */}
-        <Field label="Presupuesto este año ($)" name={`planned_${item.id}`}>
+        <Field label="Presupuesto este año ($)" name={`planned_${item.id}`} help={TREASURY_HELP.fields.montoPresupuesto}>
           <TextInput
             name="planned_amount[]"
             type="number"

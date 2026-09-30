@@ -1,4 +1,5 @@
 import { Banner, Card, PageHeader } from "@/components/admin/ui";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -74,6 +75,7 @@ export default async function AuditoriaPage({
     <>
       <PageHeader
         eyebrow="Tesorería"
+        help={TREASURY_HELP.screens.auditoria}
         title="Auditoría"
         description={`${active} comprobaciones sobre el libro, los cierres y los informes, contra lo que piden el MEC, la DGI y los estatutos.`}
       />
