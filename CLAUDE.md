@@ -2844,11 +2844,13 @@ cambia nada.
   reposición → ver los asientos y el comprobante en el Libro). Después,
   compartir el estado del Fondo para que la comunidad vea el bloque de
   cajas.
-- **Las metas viven en dos lados.** `treasury_goals` (042) es el dato,
-  pero el editor del informe (041) todavía tiene sus propios campos de
-  texto para "Meta de la Asamblea" y "Destino de los Fondos". Conviene
-  que las diapositivas del informe se alimenten de `treasury_goals` y
-  esos campos desaparezcan, o el tesorero carga lo mismo dos veces.
+- **Las metas ya viven en un solo lugar** (2026-09-30): el snapshot del
+  informe trae `goals` desde `treasury_goals` vía `getTreasuryProgress`
+  al cierre del período, el deck las dibuja con barra (diapositiva
+  "Metas de la Asamblea") y el editor perdió los campos tipeados; un
+  informe guardado antes sigue mostrando su meta a mano hasta que se
+  recalcule. "Destino de los Fondos" sigue siendo editorial a propósito:
+  es comunicación libre (proyectos en curso), no un dato del libro.
 - **Cierre de período.** Generar los asientos "Saldo anterior" del 184 a
   partir de los saldos al cierre del 183 (`is_opening_balance`), en vez
   de cargarlos a mano.

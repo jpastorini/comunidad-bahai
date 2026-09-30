@@ -4,6 +4,7 @@ import { createSupabaseAdmin } from "./supabase/admin";
 import { findBudgetForYear } from "./budget-lookup";
 import { isLinked, linkedActual, type BudgetLinkRow } from "./budget-links";
 import { addMoney } from "./treasury-format";
+import { getTreasuryProgress } from "./treasury-progress";
 import {
   EMPTY_EDITORIAL,
   EMPTY_SNAPSHOT,
@@ -587,6 +588,33 @@ export async function computeReportSnapshot(
     to
   );
 
+  // Las metas de la Asamblea (042/068), medidas contra el libro al cierre
+  // del período, congeladas en el informe. Antes se tipeaban a mano en el
+  // editor y vivían en dos lados; ahora salen de Presupuesto y metas.
+  const progress = await getTreasuryProgress(supabase, {
+    localityId: input.localityId,
+    asOf: to,
+    bahaiYear,
+  }).catch((e) => {
+    console.error("[computeReportSnapshot] metas:", e);
+    return null;
+  });
+  const goals = (progress?.goals ?? [])
+    .filter((g) => g.status !== "archivada")
+    .map((g) => ({
+      title: g.title,
+      description: g.description,
+      badge: g.badge,
+      status: g.status,
+      cadence: g.cadence,
+      direction: g.direction,
+      currency: g.currency,
+      target: g.target,
+      actual: g.actual,
+      targetToDate: g.targetToDate,
+      measurable: g.measurable,
+    }));
+
   return {
     from,
     to,
@@ -614,6 +642,7 @@ export async function computeReportSnapshot(
         : null,
     budget,
     internalTransfers: transferGroups.size,
+    goals,
   };
 }
 

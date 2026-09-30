@@ -325,7 +325,10 @@ function buildSlides(report: ReportDeckData, localityName: string): Slide[] {
     slides.push({ key: "budget", node: <Budget report={report} /> });
   }
 
-  if (ed.goal) {
+  if (s.goals.length > 0) {
+    slides.push({ key: "goals", node: <Goals report={report} /> });
+  } else if (ed.goal) {
+    // Informes guardados antes de que las metas salieran de treasury_goals.
     slides.push({ key: "goal", node: <Goal report={report} /> });
   }
 
@@ -1142,7 +1145,74 @@ function Budget({ report }: { report: ReportDeckData }) {
   );
 }
 
-// ─── 10 · Meta de la Asamblea ────────────────────────────────────
+// ─── 10 · Metas de la Asamblea (treasury_goals) ──────────────────
+
+function Goals({ report }: { report: ReportDeckData }) {
+  const goals = report.snapshot.goals;
+  const withNumber = goals.filter((g) => g.target !== null && g.measurable);
+  const others = goals.filter((g) => g.target === null || !g.measurable);
+  return (
+    <SlideShell
+      eyebrow="Metas de la Asamblea"
+      title="Lo que nos propusimos"
+      sub={`Medido contra el libro al ${fmtLongDate(report.periodTo)}`}
+    >
+      <Panel>
+        <div className="flex flex-col gap-4">
+          {withNumber.map((g) => {
+            const goal = g.cadence === "mensual" ? (g.targetToDate ?? g.target ?? 0) : (g.target ?? 0);
+            const pct = goal > 0 ? Math.min(1, g.actual / goal) : 0;
+            const done = g.status === "lograda" || pct >= 1;
+            return (
+              <div key={g.title}>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-[15px] font-semibold text-dark sm:text-[17px]">
+                    {g.title}
+                    {g.badge && (
+                      <span className="ml-2 rounded-full border border-gold/30 bg-gold/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gold-dark">
+                        {g.badge}
+                      </span>
+                    )}
+                  </span>
+                  <span className="tabular-nums text-[13px] text-muted">
+                    <strong className={done ? "text-green" : "text-dark"}>{fmtAmount(g.actual, g.currency)}</strong>
+                    {" de "}
+                    {fmtAmount(goal, g.currency)}
+                    {g.cadence === "mensual" ? " a la fecha" : ""} · {Math.round(pct * 100)} %
+                  </span>
+                </div>
+                <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-black/[0.06]">
+                  <div
+                    className={`h-full rounded-full ${done ? "bg-green" : "bg-gold"}`}
+                    style={{ width: `${Math.round(pct * 100)}%` }}
+                  />
+                </div>
+                {g.description && <p className="mt-1 text-[12px] text-muted">{g.description}</p>}
+              </div>
+            );
+          })}
+          {others.length > 0 && (
+            <div className={`flex flex-col gap-2 ${withNumber.length > 0 ? "border-t border-black/[0.06] pt-3" : ""}`}>
+              {others.map((g) => (
+                <div key={g.title} className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-2 text-[14px] font-semibold text-dark">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-gold ring-4 ring-gold/15" />
+                    <span className="truncate">{g.title}</span>
+                  </span>
+                  <span className="shrink-0 rounded-full border border-gold/30 bg-gold/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gold-dark">
+                    {g.badge ?? (g.status === "lograda" ? "Lograda" : "En curso")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Panel>
+    </SlideShell>
+  );
+}
+
+// ─── 10b · Meta tipeada a mano (informes anteriores a 2026-09-30) ──
 
 function Goal({ report }: { report: ReportDeckData }) {
   const goal = report.editorial.goal;

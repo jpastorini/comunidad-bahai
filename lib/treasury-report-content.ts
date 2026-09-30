@@ -125,10 +125,31 @@ export type ReportBudgetLine = {
   linked: boolean;
 };
 
+/** Una meta de la Asamblea (treasury_goals, 042/068) congelada en el
+ *  informe, con lo medido al cierre del período. Antes se tipeaba a mano
+ *  en el editor ("Meta de la Asamblea"), en dos lugares a la vez. */
+export type ReportGoalRow = {
+  title: string;
+  description: string | null;
+  badge: string | null;
+  status: "activa" | "lograda" | "archivada";
+  cadence: "mensual" | "anual" | "unica";
+  direction: "gasto" | "ingreso";
+  currency: string;
+  target: number | null;
+  actual: number;
+  targetToDate: number | null;
+  measurable: boolean;
+};
+
 export type ReportSnapshot = {
   from: string;
   to: string;
   bahaiYear: number | null;
+  /** Las metas activas o logradas al cierre, medidas contra el libro. Sale
+   *  vacío en informes guardados antes de 2026-09-30 hasta que se
+   *  recalculen. */
+  goals: ReportGoalRow[];
   /** Contribuciones del período, por moneda. */
   income: ReportMoney[];
   /** Cantidad de aportes (suma de contributions_count). */
@@ -164,6 +185,7 @@ export const EMPTY_SNAPSHOT: ReportSnapshot = {
   from: "",
   to: "",
   bahaiYear: null,
+  goals: [],
   income: [],
   incomeCount: 0,
   receiptFrom: null,
@@ -501,6 +523,22 @@ export function sanitizeReportSnapshot(raw: unknown): ReportSnapshot {
       ? { period: str(budgetRaw.period), lines: budgetLines }
       : null,
     internalTransfers: num(o.internalTransfers),
+    goals: arr(o.goals)
+      .map((g) => obj(g))
+      .map((g) => ({
+        title: str(g.title),
+        description: str(g.description) || null,
+        badge: str(g.badge) || null,
+        status: (["activa", "lograda", "archivada"].includes(str(g.status)) ? str(g.status) : "activa") as ReportGoalRow["status"],
+        cadence: (["mensual", "anual", "unica"].includes(str(g.cadence)) ? str(g.cadence) : "anual") as ReportGoalRow["cadence"],
+        direction: str(g.direction) === "ingreso" ? ("ingreso" as const) : ("gasto" as const),
+        currency: str(g.currency) || "UYU",
+        target: g.target === null || g.target === undefined ? null : num(g.target),
+        actual: num(g.actual),
+        targetToDate: g.targetToDate === null || g.targetToDate === undefined ? null : num(g.targetToDate),
+        measurable: bool(g.measurable, true),
+      }))
+      .filter((g) => g.title.length > 0),
   };
 }
 

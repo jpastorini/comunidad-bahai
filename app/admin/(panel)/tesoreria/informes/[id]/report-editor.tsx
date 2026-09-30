@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Banner,
   Button,
@@ -117,7 +118,6 @@ export function ReportEditor({
     setRows((prev) => prev.filter((r) => r.uid !== uid));
   }
 
-  const goal = editorial.goal;
 
   return (
     <form action={saveAction}>
@@ -518,67 +518,19 @@ export function ReportEditor({
         </Card>
       )}
 
-      {/* ─── Meta de la Asamblea (solo deck) ───────────────────── */}
+      {/* ─── Metas de la Asamblea (solo deck) ──────────────────── */}
       <Card className={`mb-4 ${esInterno ? "hidden" : ""}`}>
         <h2 className="mb-1 font-display text-[20px] font-semibold text-dark">
-          Meta de la Asamblea
+          Metas de la Asamblea
         </h2>
-        <p className="mb-4 text-[12px] text-muted">
-          Una sola meta destacada, con sus cifras escritas a mano (son
-          objetivos, no saldos). Si dejás el título vacío, la sección no
-          aparece.
+        <p className="text-[12px] text-muted">
+          Salen solas de <strong>Tesorería → Presupuesto y metas</strong>, medidas contra el
+          libro al cierre del período, y se congelan en el informe al guardar. Ya no se tipean
+          acá: una meta vivía en dos lados y el tesorero la cargaba dos veces.{" "}
+          <Link href="/admin/tesoreria/metas" className="font-semibold text-terra hover:underline">
+            Editar las metas
+          </Link>
         </p>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Título" name="goal_title" hint="ej. Cachimba del Piojo">
-            <TextInput
-              id="goal_title"
-              name="goal_title"
-              defaultValue={goal?.title ?? ""}
-            />
-          </Field>
-          <Field label="Bajada" name="goal_subtitle" hint="opcional">
-            <TextInput
-              id="goal_subtitle"
-              name="goal_subtitle"
-              defaultValue={goal?.subtitle ?? ""}
-              placeholder="Financiar el 100 % de las actividades"
-            />
-          </Field>
-          <Field label="Meta mensual" name="goal_monthly" hint="texto libre">
-            <TextInput
-              id="goal_monthly"
-              name="goal_monthly"
-              defaultValue={goal?.monthly ?? ""}
-              placeholder="$ 3.500"
-            />
-          </Field>
-          <Field label="Meta anual" name="goal_annual" hint="texto libre">
-            <TextInput
-              id="goal_annual"
-              name="goal_annual"
-              defaultValue={goal?.annual ?? ""}
-              placeholder="$ 42.000"
-            />
-          </Field>
-          <Field label="Cubierto" name="goal_covered" hint="texto libre">
-            <TextInput
-              id="goal_covered"
-              name="goal_covered"
-              defaultValue={goal?.covered ?? ""}
-              placeholder="≈ 23 %"
-            />
-          </Field>
-        </div>
-        <div className="mt-4">
-          <Field label="Nota de la meta" name="goal_note" hint="opcional">
-            <TextArea
-              id="goal_note"
-              name="goal_note"
-              rows={2}
-              defaultValue={goal?.note ?? ""}
-            />
-          </Field>
-        </div>
       </Card>
 
       {/* ─── Destino de los Fondos (solo deck) ─────────────────── */}

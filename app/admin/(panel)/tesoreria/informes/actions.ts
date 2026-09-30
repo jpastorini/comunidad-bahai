@@ -82,14 +82,9 @@ function readEditorial(formData: FormData): ReportEditorial {
   return sanitizeReportEditorial({
     notes,
     destination,
-    goal: {
-      title: str("goal_title"),
-      subtitle: str("goal_subtitle"),
-      monthly: str("goal_monthly"),
-      annual: str("goal_annual"),
-      covered: str("goal_covered"),
-      note: str("goal_note"),
-    },
+    // La meta tipeada a mano se jubiló (2026-09-30): las metas van en el
+    // snapshot, desde treasury_goals. Vacía → null.
+    goal: { title: "", subtitle: "", monthly: "", annual: "", covered: "", note: "" },
     quote: { text: str("quote_text"), source: str("quote_source") },
     signature: { name: str("signature_name"), role: str("signature_role") },
     observations: str("observations"),
