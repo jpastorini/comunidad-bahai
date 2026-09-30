@@ -531,3 +531,36 @@ export async function sendMonthCloseReminders(): Promise<{ sent: number; error?:
   }
   return { sent };
 }
+
+/**
+ * La carta semestral a la comunidad: el 1.º de marzo y el 1.º de octubre,
+ * a quien tiene el tag de Tesorería en cada comunidad. Es una costumbre
+ * de la Asamblea (estado del Fondo, necesidades, agradecimiento), no un
+ * dato, así que el aviso no comprueba nada: recuerda. El tablero y la
+ * Guía lo repiten durante el mes; esto llega aunque nadie abra el panel.
+ */
+export async function sendSemiannualLetterReminders(): Promise<{ sent: number; error?: string }> {
+  const supabase = createSupabaseAdmin();
+  if (!supabase) return { sent: 0, error: "no-admin-client" };
+  const today = civilDateISO();
+  const month = today.slice(5, 7);
+  if (today.slice(8, 10) !== "01" || (month !== "03" && month !== "10")) return { sent: 0 };
+
+  const { data: locs, error } = await supabase.from("localities").select("id, name");
+  if (error) return { sent: 0, error: error.message };
+
+  let sent = 0;
+  for (const loc of (locs ?? []) as Array<{ id: string; name: string }>) {
+    const members = await getLocalityMembers(supabase, loc.id);
+    const ids = members.filter((m) => m.can_manage_treasury).map((m) => m.id);
+    if (ids.length === 0) continue;
+    await sendPushToUsers(ids, {
+      title: "Este mes toca la carta a la comunidad",
+      body: `${loc.name}: el estado del Fondo, las necesidades del ejercicio y el agradecimiento por las contribuciones y los sacrificios. Compartí primero el estado del Fondo y escribila como comunicado.`,
+      url: "/admin/tesoreria/guia",
+      tag: `carta-${today.slice(0, 7)}`,
+    });
+    sent += ids.length;
+  }
+  return { sent };
+}

@@ -455,7 +455,9 @@ cargo:
   agradecimiento, el 17/4, Riḍván, legajo y acta), las pantallas una por
   una, el traspaso—. La carta semestral es costumbre de la Asamblea, no
   dato: en marzo y octubre el tablero la recuerda (`letterItem`, clave
-  `carta:<mes>`, ocultable) y la Guía la agrega como paso manual. Los textos salen de
+  `carta:<mes>`, ocultable), la Guía la agrega como paso manual, y el
+  1.º de esos meses sale un push a quien tiene el tag
+  (`sendSemiannualLetterReminders`, cron de la mañana). Los textos salen de
   `lib/treasury-help.ts` (`SCREEN_INDEX` con los campos agrupados por
   pantalla vía `FIELD_SCREEN`); si se agrega una pantalla o un campo con
   ayuda hay que sumarlo a esos dos índices o el manual no lo lista. Los
