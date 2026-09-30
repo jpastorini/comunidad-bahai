@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { Button, Select, TextInput } from "@/components/admin/ui";
 import { HelpTip } from "@/components/HelpTip";
 import { formatDate } from "@/lib/format";
-import type { ContributorRow } from "@/lib/treasury-contributors";
-import { normalizeContributorName } from "@/lib/treasury-contributors";
+import {
+  normalizeContributorName,
+  type ContributorRow,
+} from "@/lib/treasury-contributors-shared";
 import { formatMoney } from "@/lib/treasury-format";
 import { TREASURY_HELP } from "@/lib/treasury-help";
 import type { LedgerMember } from "@/lib/treasury-ledger";
