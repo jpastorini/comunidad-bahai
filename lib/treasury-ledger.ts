@@ -82,6 +82,10 @@ export type TreasuryEntry = {
   /** Es un contra-asiento que revierte al movimiento indicado. */
   adjusts_entry_id: string | null;
   adjustment_reason: string | null;
+  /** Cotización BCU de referencia (078), solo en transferencias entre
+   *  monedas: pesos por dólar y fecha del cierre usado. */
+  bcu_rate: number | null;
+  bcu_rate_date: string | null;
 };
 
 /** Un creyente de la localidad, para vincularlo como contribuyente. */
@@ -197,8 +201,10 @@ export async function getLedgerYears(
   return [...years].sort((a, b) => b - a);
 }
 
-const ENTRY_FIELDS =
+const ENTRY_FIELDS_054 =
   "id, entry_date, bahai_year, account_id, subcategory_id, category_id, fund_id, currency, amount, description, receipt_number, contributions_count, contributor_id, receipt_name, receipt_issued, transfer_group_id, is_opening_balance, voided_at, void_reason, adjusts_entry_id, adjustment_reason";
+
+const ENTRY_FIELDS = `${ENTRY_FIELDS_054}, bcu_rate, bcu_rate_date`;
 
 const LEGACY_ENTRY_FIELDS =
   "id, entry_date, bahai_year, account_id, subcategory_id, category_id, fund_id, currency, amount, description, receipt_number, contributions_count, contributor_id, receipt_name, receipt_issued, transfer_group_id, is_opening_balance";
@@ -229,7 +235,13 @@ async function fetchLedgerEntries(
       .order("receipt_number", { ascending: false, nullsFirst: false });
   };
 
-  const { data, error } = await build(ENTRY_FIELDS);
+  let { data, error } = await build(ENTRY_FIELDS);
+
+  // Sin la 078 no existen las columnas de la cotización BCU: se piden las
+  // de la 054 y la cotización queda en null.
+  if (error?.code === "42703") {
+    ({ data, error } = await build(ENTRY_FIELDS_054));
+  }
 
   if (error) {
     // Antes de la 054 las columnas nuevas no existen (42703): se vuelve a
@@ -253,6 +265,8 @@ async function fetchLedgerEntries(
         void_reason: null,
         adjusts_entry_id: null,
         adjustment_reason: null,
+        bcu_rate: null,
+        bcu_rate_date: null,
       }));
     }
     console.error("[getLedgerEntries]", error);
@@ -262,6 +276,8 @@ async function fetchLedgerEntries(
   return ((data ?? []) as unknown as TreasuryEntry[]).map((e) => ({
     ...e,
     amount: Number(e.amount),
+    bcu_rate: e.bcu_rate == null ? null : Number(e.bcu_rate),
+    bcu_rate_date: e.bcu_rate_date ?? null,
   }));
 }
 

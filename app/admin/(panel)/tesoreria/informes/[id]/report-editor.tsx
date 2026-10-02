@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { fetchBcuRateAction } from "../actions";
+import { fetchBcuRateAction } from "../../bcu-actions";
 import {
   Banner,
   Button,

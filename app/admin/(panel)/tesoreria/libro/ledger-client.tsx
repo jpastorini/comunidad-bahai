@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LedgerCatalog, TreasuryEntry } from "@/lib/treasury-ledger";
 import { monthKeyOf, monthLabel, monthRange } from "@/lib/treasury-cashbook";
-import { formatMoney } from "@/lib/treasury-format";
+import { formatMoney, parseMoney } from "@/lib/treasury-format";
+import { fetchBcuRateAction } from "../bcu-actions";
 import {
   activeFilterCount,
   applyLedgerFilters,
@@ -1236,6 +1237,13 @@ function StateChips({ entry: e }: { entry: TreasuryEntry }) {
       title: e.adjustment_reason ?? undefined,
     });
   }
+  if (e.bcu_rate) {
+    chips.push({
+      text: `BCU ${e.bcu_rate.toLocaleString("es-UY", { maximumFractionDigits: 3 })}`,
+      cls: "bg-bg text-muted",
+      title: `Cotización BCU, dólar billete${e.bcu_rate_date ? ` del ${formatDate(e.bcu_rate_date)}` : ""}`,
+    });
+  }
   if (chips.length === 0) return null;
   return (
     <>
@@ -1430,6 +1438,59 @@ function TransferForm({
   const [toCurrency, setToCurrency] = useState("UYU");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [date, setDate] = useState(today);
+  const [fromAmount, setFromAmount] = useState("");
+  const [toAmount, setToAmount] = useState("");
+  // Mientras la persona no escriba el monto que entra, se propone con la
+  // cotización del BCU; apenas lo toca, manda lo que escribió (es lo que
+  // aplicó el banco y lo que va a decir el extracto).
+  const [toTouched, setToTouched] = useState(false);
+  const [bcu, setBcu] = useState<{ date: string; rate: number } | null>(null);
+  const [bcuError, setBcuError] = useState<string | null>(null);
+  const crossCurrency = fromCurrency !== toCurrency;
+
+  useEffect(() => {
+    if (!crossCurrency || !date) {
+      setBcu(null);
+      setBcuError(null);
+      return;
+    }
+    let alive = true;
+    setBcuError(null);
+    fetchBcuRateAction(date)
+      .then((r) => {
+        if (!alive) return;
+        if (r.ok) setBcu({ date: r.date, rate: r.rate });
+        else {
+          setBcu(null);
+          setBcuError(r.error);
+        }
+      })
+      .catch(() => alive && setBcuError("No se pudo consultar al BCU."));
+    return () => {
+      alive = false;
+    };
+  }, [crossCurrency, date]);
+
+  // Propuesta del monto que entra: pesos ÷ cotización, o dólares × cotización.
+  useEffect(() => {
+    if (toTouched) return;
+    const from = parseMoney(fromAmount);
+    if (!crossCurrency || !bcu || !Number.isFinite(from) || from <= 0) return;
+    const to = fromCurrency === "UYU" ? from / bcu.rate : from * bcu.rate;
+    setToAmount(to.toFixed(2).replace(".", ","));
+  }, [fromAmount, fromCurrency, crossCurrency, bcu, toTouched]);
+
+  // El tipo de cambio que quedó en los dos montos, contra el del BCU.
+  const fromN = parseMoney(fromAmount);
+  const toN = parseMoney(toAmount);
+  const implied =
+    crossCurrency && fromN > 0 && toN > 0
+      ? fromCurrency === "UYU"
+        ? fromN / toN
+        : toN / fromN
+      : null;
+  const fmtRate = (n: number) => n.toLocaleString("es-UY", { maximumFractionDigits: 3 });
 
   // Las subcategorías de movimiento entre cuentas: cambio de caja y
   // compra de divisas. Si la localidad las nombró distinto, se ofrecen
@@ -1458,8 +1519,9 @@ function TransferForm({
     <form onSubmit={onSubmit} className="space-y-3">
       <input type="hidden" name="bahai_year" value={year} />
       <p className="text-[12px] leading-relaxed text-muted">
-        Se cargan las dos patas juntas. Si cambiás de moneda, poné el monto
-        que sale y el que entra: el tipo de cambio queda implícito.
+        Se cargan las dos patas juntas. Si cambiás de moneda, el monto que
+        entra se propone con la cotización del BCU de esa fecha; si el banco
+        aplicó otra, corregilo con lo que entró de verdad.
       </p>
 
       <div className="grid grid-cols-2 gap-3">
@@ -1469,7 +1531,8 @@ function TransferForm({
           </span>
           <DateInput
             name="entry_date"
-            defaultValue={today}
+            value={date}
+            onValueChange={setDate}
             required
             className={inputClass}
           />
@@ -1508,6 +1571,8 @@ function TransferForm({
               inputMode="decimal"
               name="from_amount"
               placeholder="0,00"
+              value={fromAmount}
+              onChange={(e) => setFromAmount(e.target.value)}
               required
               className={`${inputClass} flex-1`}
             />
@@ -1541,6 +1606,11 @@ function TransferForm({
               inputMode="decimal"
               name="to_amount"
               placeholder="0,00"
+              value={toAmount}
+              onChange={(e) => {
+                setToTouched(true);
+                setToAmount(e.target.value);
+              }}
               required
               className={`${inputClass} flex-1`}
             />
@@ -1554,6 +1624,44 @@ function TransferForm({
           </div>
         </div>
       </div>
+
+      {crossCurrency && (
+        <div className="rounded-xl bg-bg px-3 py-2 text-[12px] leading-relaxed text-dark">
+          {bcu ? (
+            <>
+              Cotización BCU (dólar billete)
+              {bcu.date !== date ? ` del último cierre, ${formatDate(bcu.date)}` : ` del ${formatDate(bcu.date)}`}
+              : <b>$ {fmtRate(bcu.rate)}</b>. Queda guardada en la transferencia.
+              {implied != null && (
+                <>
+                  {" "}
+                  Con estos montos el cambio es <b>$ {fmtRate(implied)}</b>
+                  {Math.abs(implied / bcu.rate - 1) >= 0.0005 && (
+                    <> ({implied > bcu.rate ? "+" : "−"}
+                    {(Math.abs(implied / bcu.rate - 1) * 100).toLocaleString("es-UY", { maximumFractionDigits: 1 })} % contra el BCU)</>
+                  )}
+                  .
+                </>
+              )}
+              {toTouched && (
+                <button
+                  type="button"
+                  onClick={() => setToTouched(false)}
+                  className="ml-1 font-medium text-terra underline"
+                >
+                  Volver a calcular con el BCU
+                </button>
+              )}
+            </>
+          ) : bcuError ? (
+            <span className="text-rose-700">
+              {bcuError} Poné los dos montos a mano; la transferencia se guarda igual.
+            </span>
+          ) : (
+            <span className="text-muted">Consultando la cotización del BCU…</span>
+          )}
+        </div>
+      )}
 
       <label className="block">
         <span className="mb-1 block text-[10.5px] uppercase tracking-wide text-muted">

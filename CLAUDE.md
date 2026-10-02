@@ -1598,7 +1598,14 @@ Cuatro cosas del dominio que el modelo respeta y conviene no romper:
 - **Las transferencias** (cambio de caja, compra de divisas) son UNA
   operación con dos asientos atados por `transfer_group_id`, y pueden
   cruzar monedas: el tipo de cambio queda implícito en los dos montos.
-  Borrar una pata borra las dos.
+  Borrar una pata borra las dos. Entre monedas (078), cada pata guarda
+  además `bcu_rate`/`bcu_rate_date`: el dólar billete del BCU (servicio
+  web público, `lib/bcu.ts`, último cierre en o antes de la fecha), que
+  pide el SERVIDOR al guardar. El formulario lo muestra, propone con él el
+  monto que entra y compara el cambio de los dos montos contra el BCU.
+  ⚠️ Los montos siguen siendo los reales (los del extracto, 061): la
+  cotización BCU es la referencia oficial, no reemplaza lo que aplicó el
+  banco. Si el BCU no responde, la transferencia se guarda sin cotización.
 - **Los recibos son correlativos y sin huecos.** El próximo número lo da
   `next_receipt_number()`, no la memoria de nadie. Una línea puede agrupar
   varios aportes anónimos (`contributions_count`): es la canasta de la

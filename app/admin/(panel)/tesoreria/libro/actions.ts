@@ -10,6 +10,7 @@ import { sendPushToUsers } from "@/lib/push";
 import { formatMoney, formatReceiptDate, parseMoney } from "@/lib/treasury-format";
 import { todayISO } from "@/lib/treasury-ledger";
 import { resolveContributor } from "@/lib/treasury-contributor-resolve";
+import { getBcuUsdRate } from "@/lib/bcu";
 
 type Result = { ok: boolean; error: string | null };
 
@@ -601,7 +602,22 @@ export async function saveTransferAction(formData: FormData): Promise<Result> {
     created_by: session.user.id,
   };
 
-  const { error } = await supabase.from("treasury_entries").insert([
+  // Entre monedas, cada pata guarda la cotización BCU de referencia (078).
+  // La pide el servidor, no el formulario: es el dato oficial y no tiene
+  // que depender de lo que mande el navegador. Si el BCU no responde, la
+  // transferencia se guarda igual sin cotización: no se frena el libro
+  // por un servicio externo.
+  let fx: { bcu_rate: number; bcu_rate_date: string } | null = null;
+  if (fromCurrency !== toCurrency) {
+    try {
+      const r = await getBcuUsdRate(entryDate);
+      if (r) fx = { bcu_rate: r.rate, bcu_rate_date: r.date };
+    } catch (e) {
+      console.error("[saveTransfer] cotización BCU", entryDate, e);
+    }
+  }
+
+  const legs = [
     {
       ...common,
       account_id: fromAccount,
@@ -614,7 +630,14 @@ export async function saveTransferAction(formData: FormData): Promise<Result> {
       currency: toCurrency,
       amount: toAmount,
     },
-  ]);
+  ];
+  let { error } = await supabase
+    .from("treasury_entries")
+    .insert(fx ? legs.map((l) => ({ ...l, ...fx })) : legs);
+  // Sin la 078 las columnas no existen: se guarda sin la cotización.
+  if (fx && error && (error.code === "PGRST204" || error.code === "42703")) {
+    ({ error } = await supabase.from("treasury_entries").insert(legs));
+  }
 
   if (error) return fail(friendlyDbError(error.message));
 
