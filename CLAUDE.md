@@ -2046,7 +2046,10 @@ el ejercicio estatutario: `periodPresets()` ofrece "Ejercicio estatutario
 destinatario. Lo que el libro no sabe va en `editorial.balance`: la
 **memoria** en prosa, la **cotización de cierre** del dólar con fecha y
 fuente —no hay tipo de cambio por movimiento todavía, así que la declara
-el tesorero y la hoja la imprime como criterio de conversión; sin ella no
+el tesorero y la hoja la imprime como criterio de conversión (el botón
+"Traer la cotización del BCU" la llena desde el servicio web público del
+BCU, dólar billete código 2225, último cierre en o antes de la fecha:
+`lib/bcu.ts`; sigue siendo una cifra que el tesorero guarda); sin ella no
 totaliza en pesos, porque "nunca sumar monedas distintas" solo se rompe
 con un tipo de cambio dicho y firmado— y las tres **firmas** (Coordinador,
 Secretario, Tesorero, art. VII del estatuto), propuestas desde la
