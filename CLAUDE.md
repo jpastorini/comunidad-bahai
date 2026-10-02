@@ -1674,6 +1674,17 @@ BOM, separador `;` y coma decimal, porque el destino es un Excel en
 es-UY: con `,` de separador Excel mete la fila entera en una celda, y con
 punto decimal la columna no se puede sumar sin convertirla.
 
+**El Libro Diario** (botón al lado de "Exportar CSV", 2026-10-02): lo
+mismo que está en pantalla, en partida doble para el contador
+(`lib/treasury-journal.ts`, puro). El libro es de CAJA y cada movimiento
+ya tiene las dos caras: ingreso = Debe la cuenta / Haber el rubro; gasto =
+al revés; apertura contra "Saldo de apertura"; una transferencia es UN
+asiento con sus dos patas (si el filtro dejó afuera una, se busca entre
+todo lo cargado), y entre monedas pasa por "Cambio de moneda" para que
+cuadre en cada moneda sin sumar pesos con dólares, con el cambio de los
+montos y el del BCU en el concepto. Sin anulados ni nombres de
+contribuyentes, con totales Debe = Haber por moneda al pie.
+
 De paso se arregló un bug latente que el rango habría hecho frecuente: el
 `bahai_year` del alta salía del año EN PANTALLA, así que cargar un
 movimiento del 15 de abril mirando el ejercicio siguiente lo etiquetaba

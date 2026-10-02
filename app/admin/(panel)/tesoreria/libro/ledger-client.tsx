@@ -7,6 +7,7 @@ import type { LedgerCatalog, TreasuryEntry } from "@/lib/treasury-ledger";
 import { monthKeyOf, monthLabel, monthRange } from "@/lib/treasury-cashbook";
 import { formatMoney, parseMoney } from "@/lib/treasury-format";
 import { fetchBcuRateAction } from "../bcu-actions";
+import { buildJournal, journalCSV } from "@/lib/treasury-journal";
 import {
   activeFilterCount,
   applyLedgerFilters,
@@ -186,15 +187,25 @@ export function LedgerClient({
     router.push(`/admin/tesoreria/libro?from=${from}&to=${to}`);
   }
 
-  function exportCSV() {
-    const csv = ledgerCSV(filtered, names, reconciled, { showNames });
+  function download(csv: string, filename: string) {
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = ledgerCSVFilename(scopeLabel);
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  function exportCSV() {
+    download(ledgerCSV(filtered, names, reconciled, { showNames }), ledgerCSVFilename(scopeLabel));
+  }
+
+  /** Lo que está en pantalla, en partida doble para el contador
+   *  (lib/treasury-journal.ts). Nunca lleva nombres de contribuyentes. */
+  function exportJournal() {
+    const csv = journalCSV(buildJournal(filtered, entries, names), scopeLabel);
+    download(csv, ledgerCSVFilename(scopeLabel).replace(/^libro-/, "libro-diario-"));
   }
 
   /** Nombre del contribuyente, o el antifaz si están ocultos. La cantidad
@@ -315,6 +326,15 @@ export function LedgerClient({
           }
         >
           Exportar CSV
+        </button>
+        <button
+          type="button"
+          onClick={exportJournal}
+          disabled={filtered.length === 0}
+          className="tap rounded-xl border border-black/10 px-3 py-2 text-[12.5px] font-semibold text-dark hover:bg-bg disabled:opacity-40"
+          title="Lo que está en pantalla en formato Libro Diario (Debe y Haber), para el contador. Sin anulados ni nombres de contribuyentes."
+        >
+          Libro Diario
         </button>
         <button
           type="button"
