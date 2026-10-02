@@ -22,6 +22,7 @@ import {
   suggestEditorial,
 } from "@/lib/treasury-reports";
 import { treasuryYearForDate } from "@/lib/treasury-year";
+import { getBcuUsdRate } from "@/lib/bcu";
 
 /**
  * Informes de Tesorería — server actions.
@@ -344,4 +345,26 @@ export async function deleteReportAction(formData: FormData) {
   }
   revalidateReports();
   redirect("/admin/tesoreria/informes");
+}
+
+/**
+ * La cotización del dólar billete del BCU para el balance: el último
+ * cierre en o antes de la fecha. No guarda nada; el editor la pone en el
+ * campo y el tesorero la guarda con el resto, así sigue siendo una cifra
+ * declarada (ver BalanceSheet).
+ */
+export async function fetchBcuRateAction(
+  dateIso: string,
+): Promise<{ ok: true; date: string; rate: number } | { ok: false; error: string }> {
+  const session = await requireAdmin();
+  ensureTreasuryTag(session.profile);
+  if (!ISO_DATE.test(dateIso)) return { ok: false, error: "Elegí primero la fecha de la cotización." };
+  try {
+    const r = await getBcuUsdRate(dateIso);
+    if (!r) return { ok: false, error: "El BCU no tiene cotización para esa fecha." };
+    return { ok: true, ...r };
+  } catch (e) {
+    console.error("[bcu] cotización", dateIso, e);
+    return { ok: false, error: "No se pudo consultar al BCU. Probá de nuevo en un rato o cargala a mano." };
+  }
 }

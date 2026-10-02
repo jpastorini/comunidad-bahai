@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { fetchBcuRateAction } from "../actions";
 import {
   Banner,
   Button,
@@ -96,6 +97,41 @@ export function ReportEditor({
   const esInterno = audience !== "comunidad";
   const esBalance = audience === "balance";
   const bal = editorial.balance;
+  const [rateUsd, setRateUsd] = useState(bal?.rateUsd ?? "");
+  const [rateDate, setRateDate] = useState(bal?.rateDate || periodTo);
+  const [rateSource, setRateSource] = useState(bal?.rateSource ?? "BCU · dólar billete");
+  const [bcuBusy, setBcuBusy] = useState(false);
+  const [bcuNote, setBcuNote] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // El BCU publica solo días hábiles: si la fecha cae en fin de semana o
+  // feriado, trae el último cierre anterior y lo dice, y la fecha del
+  // campo pasa a ser la del cierre usado (es la que imprime la hoja).
+  async function loadBcuRate() {
+    setBcuBusy(true);
+    setBcuNote(null);
+    try {
+      const r = await fetchBcuRateAction(rateDate);
+      if (!r.ok) {
+        setBcuNote({ ok: false, text: r.error });
+        return;
+      }
+      const shown = r.rate.toLocaleString("es-UY", { maximumFractionDigits: 3 });
+      setRateUsd(shown);
+      setRateSource(`BCU · dólar billete, cierre del ${fmtIso(r.date)}`);
+      setBcuNote({
+        ok: true,
+        text:
+          r.date === rateDate
+            ? `$ ${shown} por dólar. Se guarda al guardar el informe.`
+            : `El ${fmtIso(rateDate)} no hubo cierre; se usó el del ${fmtIso(r.date)}: $ ${shown}.`,
+      });
+      setRateDate(r.date);
+    } catch {
+      setBcuNote({ ok: false, text: "No se pudo consultar al BCU." });
+    } finally {
+      setBcuBusy(false);
+    }
+  }
 
   function addRow() {
     setRows((prev) => [
@@ -464,7 +500,8 @@ export function ReportEditor({
                 id="balance_rate_usd"
                 name="balance_rate_usd"
                 inputMode="decimal"
-                defaultValue={bal?.rateUsd ?? ""}
+                value={rateUsd}
+                onChange={(e) => setRateUsd(e.target.value)}
                 placeholder="43,25"
               />
             </Field>
@@ -472,16 +509,28 @@ export function ReportEditor({
               <DateInput
                 id="balance_rate_date"
                 name="balance_rate_date"
-                defaultValue={bal?.rateDate ?? periodTo}
+                value={rateDate}
+                onValueChange={setRateDate}
               />
             </Field>
             <Field label="Fuente" name="balance_rate_source">
               <TextInput
                 id="balance_rate_source"
                 name="balance_rate_source"
-                defaultValue={bal?.rateSource ?? "BCU · interbancario comprador"}
+                value={rateSource}
+                onChange={(e) => setRateSource(e.target.value)}
               />
             </Field>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <Button variant="secondary" onClick={loadBcuRate} disabled={bcuBusy || !rateDate}>
+              {bcuBusy ? "Consultando al BCU…" : "Traer la cotización del BCU"}
+            </Button>
+            {bcuNote && (
+              <span className={`text-[12px] ${bcuNote.ok ? "text-muted" : "text-rose-700"}`}>
+                {bcuNote.text}
+              </span>
+            )}
           </div>
           <p className="mt-2 text-[11.5px] text-muted">
             Sin cotización, la hoja muestra los saldos en cada moneda y no los
@@ -746,4 +795,10 @@ function Figure({
       <div className="mt-0.5 text-[11.5px] text-muted">{meta}</div>
     </div>
   );
+}
+
+/** "2026-10-01" → "01/10/2026". */
+function fmtIso(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
 }
