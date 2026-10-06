@@ -111,6 +111,47 @@ export async function getAdminReports(
   return ((data ?? []) as Record<string, unknown>[]).map(parseRow);
 }
 
+/** Hasta cuándo llegó el último informe EMITIDO de cada destinatario. */
+export type LastPublishedByAudience = Partial<
+  Record<ReportAudience, { to: string; title: string }>
+>;
+
+/**
+ * Para proponer el período del informe nuevo: cada destinatario tiene su
+ * propia serie (el deck de la Fiesta es mensual, la hoja interna va a la
+ * reunión, el balance es anual), así que "el último" se busca por
+ * destinatario y solo entre los emitidos. Un borrador no cuenta: puede
+ * ser una prueba, o quedar sin publicar, y el informe siguiente tiene
+ * que arrancar donde terminó el que la gente efectivamente recibió. Se
+ * ordena por `period_to`, no por fecha de publicación: lo que importa es
+ * hasta qué día están informadas las cifras.
+ */
+export async function getLastPublishedByAudience(
+  supabase: SupabaseClient,
+  localityId: string
+): Promise<LastPublishedByAudience> {
+  const { data, error } = await supabase
+    .from("treasury_reports")
+    .select("audience, period_to, title")
+    .eq("locality_id", localityId)
+    .eq("status", "published")
+    .order("period_to", { ascending: false });
+  if (error) {
+    console.error("[getLastPublishedByAudience]", error);
+    return {};
+  }
+  const out: LastPublishedByAudience = {};
+  for (const row of (data ?? []) as Record<string, unknown>[]) {
+    const audience = parseAudience(row.audience);
+    if (out[audience]) continue;
+    out[audience] = {
+      to: row.period_to as string,
+      title: (row.title as string) ?? "",
+    };
+  }
+  return out;
+}
+
 /**
  * Los informes emitidos que un creyente puede leer: el deck para la
  * comunidad y la Memoria y Balance anual. La RLS (054) ya lo acota; el

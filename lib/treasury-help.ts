@@ -47,7 +47,7 @@ export const TREASURY_HELP = {
     informes:
       "El taller de los informes: el deck que se proyecta en la Fiesta (comunidad), la hoja que se adjunta al acta y la Asamblea aprueba (internos), y la Memoria y Balance anual. Las cifras se congelan al guardar: el informe que se presentó no cambia porque después se cargó algo.",
     informeNuevo:
-      "Elegí a quién va y el período. Los atajos son los meses bahá'ís (el corte natural de la Fiesta) y el ejercicio estatutario del 18 de abril al 17 de abril para el balance. Después se completan los textos y se emite.",
+      "Elegí a quién va: las fechas se completan solas, desde el día siguiente al último informe emitido para ese destinatario hasta hoy. Los atajos son los meses bahá'ís (el corte natural de la Fiesta) y el ejercicio estatutario del 18 de abril al 17 de abril para el balance. Después se completan los textos y se emite.",
     legajo:
       "Todo lo que un auditor pide, de un período, en una carpeta comprimida: el libro, el Libro de Caja de cada mes, recibos, comprobantes, extractos, auditoría, informes y la ficha de la Asamblea. Se arma en tu navegador y se descarga solo. Es confidencial: lleva nombres.",
     contribuyentes:

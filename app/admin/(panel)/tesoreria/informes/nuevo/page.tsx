@@ -1,8 +1,12 @@
 import { Banner, Button, Card, PageHeader } from "@/components/admin/ui";
 import { TREASURY_HELP } from "@/lib/treasury-help";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
+import { createSupabaseServer } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/treasury-ledger";
-import { periodPresets } from "@/lib/treasury-reports";
+import {
+  getLastPublishedByAudience,
+  periodPresets,
+} from "@/lib/treasury-reports";
 import { treasuryYearForDate } from "@/lib/treasury-year";
 import { createReportAction } from "../actions";
 import { PeriodPicker } from "./period-picker";
@@ -14,6 +18,12 @@ export default async function NuevoInformePage() {
   const today = todayISO();
   const bahaiYear = treasuryYearForDate(today);
   const presets = bahaiYear ? periodPresets(bahaiYear, today) : [];
+  // El período se propone a partir del último informe emitido para el
+  // destinatario elegido: desde el día siguiente hasta hoy.
+  const lastPublished = await getLastPublishedByAudience(
+    createSupabaseServer(),
+    session.locality.id
+  );
 
   return (
     <>
@@ -21,7 +31,7 @@ export default async function NuevoInformePage() {
         eyebrow="Tesorería"
         help={TREASURY_HELP.screens.informeNuevo}
         title="Nuevo informe"
-        description="Elegí el período. Las cifras se leen del libro y quedan congeladas en el informe."
+        description="Elegí el destinatario: el período sigue al último informe que emitiste para él. Las cifras se leen del libro y quedan congeladas en el informe."
       />
 
       <form action={createReportAction}>
@@ -29,6 +39,7 @@ export default async function NuevoInformePage() {
           <PeriodPicker
             presets={presets}
             today={today}
+            lastPublished={lastPublished}
             defaultTitle="Fiesta de los Diecinueve Días"
           />
         </Card>
