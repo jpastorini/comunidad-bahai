@@ -24,12 +24,12 @@ type Props = {
  * "Buscar comunicado…" y nada detrás.
  *
  * Filtra en el navegador, al escribir, sobre la lista que ya llegó: no hay
- * ida al servidor ni recarga. Las tarjetas que no coinciden se ESCONDEN
- * (`hidden`), no se desmontan, por dos razones: conservan su estado (la
- * opción elegida en una encuesta sin votar todavía), y una tarjeta
- * escondida no está en pantalla, así que el "visto" de la 048 no la marca
- * por error. Busca todas las palabras (en cualquier orden) sin mirar
- * acentos ni mayúsculas, porque en el celular se escribe sin tildes.
+ * ida al servidor ni recarga. Busca en el texto completo aunque la
+ * tarjeta compacta no lo muestre: el comunicado se abre en su pantalla.
+ * Las tarjetas que no coinciden se ESCONDEN (`hidden`), no se desmontan,
+ * para que la animación de entrada no se repita con cada letra. Busca
+ * todas las palabras (en cualquier orden) sin mirar acentos ni
+ * mayúsculas, porque en el celular se escribe sin tildes.
  */
 export function ComunicadosSearch({ items, emptyText, footer }: Props) {
   const [query, setQuery] = useState("");

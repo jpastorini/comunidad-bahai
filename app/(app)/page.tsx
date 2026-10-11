@@ -56,7 +56,7 @@ export default async function HomePage() {
             title={featured.title}
             excerpt={featured.excerpt}
             ctaLabel="Leer comunicado"
-            href="/comunicados"
+            href={`/comunicados/${featured.id}`}
           />
         )}
         <CitaDelDiaCard

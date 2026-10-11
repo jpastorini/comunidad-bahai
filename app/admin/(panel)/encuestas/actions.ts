@@ -85,7 +85,7 @@ export async function upsertEncuestaAction(formData: FormData) {
     await sendPushToUsers(recipients, {
       title: "La Asamblea pregunta",
       body: question,
-      url: `/comunicados#c-${messageId}`,
+      url: `/comunicados/${messageId}`,
       tag: "comunicado",
     });
   }

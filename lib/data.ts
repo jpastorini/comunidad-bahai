@@ -96,6 +96,32 @@ export async function getLocalAnnouncements(): Promise<Message[]> {
   return data as Message[];
 }
 
+/**
+ * Un comunicado de la Asamblea (local o nacional) por id, para su
+ * pantalla propia (`/comunicados/[id]`). La RLS decide si existe para
+ * quien pregunta —audiencia, localidad, Amigo de la Fe—; si no, null y
+ * la página responde 404. Mismo select que la lista.
+ */
+export async function getLocalAnnouncement(id: string): Promise<Message | null> {
+  if (!isSupabaseConfigured()) {
+    return seedLocalAnnouncements.find((m) => m.id === id) ?? null;
+  }
+  const supabase = createSupabaseServer();
+  const { data, error } = await supabase
+    .from("messages")
+    .select(
+      "id, date, title, excerpt, full_text, is_new, source, subject, pdf_url, image_url, ask_confirmation"
+    )
+    .eq("id", id)
+    .in("source", ["asamblea_local", "asamblea_nacional"])
+    .maybeSingle();
+  if (error) {
+    dataFailure("getLocalAnnouncement", error);
+    return null;
+  }
+  return (data as Message | null) ?? null;
+}
+
 /** Comunicado más reciente de la Asamblea Local — mostrado en la tarjeta destacada de Home. */
 export async function getLatestLocalAnnouncement(): Promise<Message | null> {
   if (!isSupabaseConfigured()) return seedFeaturedLocalAnnouncement;

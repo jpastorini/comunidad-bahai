@@ -1,17 +1,23 @@
 import Link from "next/link";
-import { ComunicadoCard } from "@/components/comunicados/ComunicadoCard";
+import { ComunicadoListItem } from "@/components/comunicados/ComunicadoListItem";
 import { ComunicadosSearch } from "@/components/comunicados/ComunicadosSearch";
-import { ScrollToHash } from "@/components/comunicados/ScrollToHash";
+import { HashRedirect } from "@/components/comunicados/HashRedirect";
 import { GoldHeader } from "@/components/GoldHeader";
 import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { requireMember } from "@/lib/auth";
 import { getLocalAnnouncements } from "@/lib/data";
 import { getMyMessageReads, isNewForReader } from "@/lib/message-reads";
-import { getMyPollVotes, getPollResults, getPollsForMessages } from "@/lib/polls";
+import { getMyPollVotes, getPollsForMessages } from "@/lib/polls";
 import { markComunicadosSeenAction } from "./actions";
 
 export const revalidate = 60;
 
+/**
+ * La lista de Comunicados: tarjetas compactas (imagen, título, asunto)
+ * que abren el comunicado en su pantalla propia, `/comunicados/[id]`.
+ * El texto completo no se muestra acá, pero el buscador sigue
+ * buscando en él.
+ */
 export default async function ComunicadosPage({
   searchParams,
 }: {
@@ -26,18 +32,16 @@ export default async function ComunicadosPage({
 
   // Apaga el punto de aviso de AEL — el miembro acaba de abrir Comunicados.
   // Y trae qué comunicados ya vio/confirmó esta persona (048): el badge
-  // "Nuevo" y el botón "Enterado/a" salen de ahí. Las encuestas (051)
-  // vienen con la pregunta, lo que esta persona votó y los totales.
+  // "Nuevo" y la línea "pide confirmar lectura" salen de ahí. De las
+  // encuestas (051) la lista solo necesita si están abiertas y si esta
+  // persona ya votó; los totales se ven al abrir.
   const [, reads, polls] = await Promise.all([
     markComunicadosSeenAction(session.user.id),
     getMyMessageReads(session.user.id, ids),
     getPollsForMessages(ids),
   ]);
   const pollIds = [...polls.values()].map((p) => p.id);
-  const [myVotes, results] = await Promise.all([
-    getMyPollVotes(session.user.id, pollIds),
-    getPollResults(pollIds),
-  ]);
+  const myVotes = await getMyPollVotes(session.user.id, pollIds);
 
   // 057: los nacionales que la persona ocultó salen de la lista, salvo
   // que esté mirando justamente los ocultos. Se filtra acá y no en la
@@ -51,7 +55,7 @@ export default async function ComunicadosPage({
 
   return (
     <>
-      <ScrollToHash />
+      <HashRedirect />
       <GoldHeader
         title="Institucional"
         subtitle={session.locality.name}
@@ -74,14 +78,13 @@ export default async function ComunicadosPage({
               .filter(Boolean)
               .join(" "),
             card: (
-              <ComunicadoCard
+              <ComunicadoListItem
                 message={m}
                 read={read}
                 isNew={isNewForReader(m, read ?? undefined)}
                 featured={i === 0}
                 poll={poll}
                 myVote={poll ? myVotes.get(poll.id) ?? null : null}
-                pollResults={poll ? results.get(poll.id) ?? null : null}
               />
             ),
           };

@@ -939,8 +939,9 @@ la publicación, mismo `ReadReportRefresher`). La tabla de
 lectura.
 
 De paso quedó el **deep link del push**: el aviso de un comunicado nuevo
-abre `/comunicados#c-<id>` y `ScrollToHash` lleva la vista a esa tarjeta
-(la lista scrollea dentro de `.scroll-area`, el salto nativo no alcanza).
+abre el comunicado en su pantalla (`/comunicados/<id>`, desde el
+2026-10-11; antes `/comunicados#c-<id>`, que `HashRedirect` sigue
+resolviendo para los avisos ya enviados).
 
 ⚠️ Hasta que corra la 051, guardar un comunicado con pregunta avisa "la
 encuesta no: falta aplicar la migración 051" (el comunicado se guarda) y
@@ -1055,10 +1056,24 @@ falla en el log sin tumbar los otros dos de la mañana.
 cuadro de `/comunicados` era un `<span>` con "Buscar comunicado…" y nada
 detrás. Ahora filtra en el navegador al escribir —título, asunto,
 extracto, texto completo y la pregunta de la encuesta—, todas las
-palabras, sin acentos ni mayúsculas. Las tarjetas que no coinciden se
-esconden con `hidden` y NO se desmontan: conservan su estado (la opción
-elegida de una encuesta sin votar) y, al no estar en pantalla, el
-"visto" de la 048 no las marca.
+palabras, sin acentos ni mayúsculas. Busca en el texto completo aunque
+la tarjeta compacta no lo muestre. Las tarjetas que no coinciden se
+esconden con `hidden`, no se desmontan.
+
+**Cada comunicado tiene su pantalla** (`/comunicados/[id]`, sin
+migración, 2026-10-11). Pedido del usuario: llegaba a la lista, tocaba
+el comunicado y no abría. La lista (`ComunicadoListItem`, componente de
+servidor) muestra solo imagen, fecha y chapitas, título y asunto, y toda
+la tarjeta es un link; al pie, solo cuando corresponde, una línea dice
+qué hay para hacer adentro —"Pide confirmar lectura" / "Lectura
+confirmada", "Encuesta abierta (· votaste)" / "Encuesta cerrada", "PDF
+adjunto"—, porque con la tarjeta cerrada nadie se enteraría. El
+comunicado completo (`ComunicadoCard`: texto, PDF, encuesta,
+"Enterado/a", ocultar el nacional) vive en la pantalla propia, con "←
+Comunicados" arriba; ocultar o devolver un nacional vuelve a la lista. El
+"Leer comunicado" del Inicio y el push de comunicado nuevo o encuesta
+apuntan a esa pantalla. Datos por `getLocalAnnouncement(id)` (la RLS
+decide si existe; si no, 404).
 
 ## Programa de la Fiesta (migración 050)
 
@@ -1180,13 +1195,15 @@ La Asamblea necesita saber, por comunicado, a quién NO le llegó, para
 contactarlo por otro medio. Tabla `message_reads`, una fila por
 (comunicado, persona), con dos marcas que significan cosas distintas:
 
-- **`seen_at`, automático.** La tarjeta estuvo en pantalla. Lo dispara
-  `ComunicadoCard` (`components/comunicados/`) con un
-  IntersectionObserver: la mitad de la tarjeta —o media pantalla, si la
-  tarjeta es más alta que el viewport— a la vista durante 1,5 s
-  seguidos. Pasar scrolleando no cuenta; detenerse a leer sí. Los
-  comunicados no tienen página propia (son tarjetas con el texto
-  completo en la lista), por eso "abrió" no existe como señal.
+- **`seen_at`, automático: abrió el comunicado.** Lo marca
+  `ComunicadoCard` (`components/comunicados/`) al montar en la pantalla
+  propia `/comunicados/[id]`, en un efecto del cliente —no en el render
+  del servidor, para que un prefetch de la ruta no cuente como
+  lectura—. Hasta el 2026-10-11 los comunicados no tenían página y
+  "visto" era que la tarjeta hubiera quedado 1,5 s a la vista en la
+  lista (IntersectionObserver); con la pantalla propia, abrir es la
+  señal honesta. Quien lee el título en la lista y no entra cuenta como
+  "no vio", que es justamente a quien la Asamblea quiere llamar.
 - **`confirmed_at`, explícito.** El botón "Enterado/a", que aparece solo
   si el comunicado lo pide (`messages.ask_confirmation`, checkbox del
   formulario de la Asamblea). El error caro es el falso positivo —el

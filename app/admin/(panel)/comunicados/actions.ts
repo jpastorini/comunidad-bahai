@@ -124,8 +124,8 @@ export async function upsertComunicadoAction(formData: FormData) {
 
   // Push solo al PUBLICAR uno nuevo (no al editar), a la audiencia del
   // comunicado — incluido quien publica, sirve como confirmación. El
-  // aviso lleva directo a la tarjeta (`#c-<id>`), que con una encuesta
-  // es lo que importa: la pregunta tiene que quedar bajo el dedo.
+  // aviso abre el comunicado en su pantalla (`/comunicados/<id>`), que
+  // con una encuesta es lo que importa: la pregunta queda bajo el dedo.
   if (!id && !error && messageId) {
     const recipients = national
       ? await getAllMemberIds({ bahaiOnly: audience === "creyentes" })
@@ -139,7 +139,7 @@ export async function upsertComunicadoAction(formData: FormData) {
           ? "La Asamblea pregunta"
           : "Nuevo comunicado",
       body: pollQuestion ?? title,
-      url: `/comunicados#c-${messageId}`,
+      url: `/comunicados/${messageId}`,
       tag: "comunicado",
     });
   }
