@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { TREASURY_HELP } from "@/lib/treasury-help";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Banner, Button, Card, Field, Select } from "@/components/admin/ui";
 import { PLATFORM_LABELS } from "@/lib/bank-statements";
 import { formatMoney, formatReceiptDate } from "@/lib/treasury-format";
 import type { ReconcileEntry } from "@/lib/treasury-reconcile";
 import type {
   AccountReconciliation,
+  CandidateEntry,
   LineView,
   StatementImport,
   StoredLine,
@@ -288,17 +289,29 @@ function AccountState({ data: d, account }: { data: AccountReconciliation; accou
         <SectionTitle
           title={`En ${platformLabel} y no en el libro`}
           count={pendingCount}
-          hint="Lo que la plataforma registró y el libro todavía no: un giro sin cargar, una comisión. Cargalo en el libro y volvé a importar, o vinculalo a mano si ya está con otra fecha o importe."
+          hint="Lo que la plataforma registró y el libro todavía no: un giro sin cargar, una comisión. Cargalo en el libro y volvé a importar, o vinculalo a mano si ya está con otra fecha o importe. Si está cargado en otra cuenta, el buscador te lo dice."
         />
         {pendingCount === 0 ? (
           <Empty>Todo lo que movió la plataforma está en el libro.</Empty>
         ) : (
           <ul className="mt-3 divide-y divide-black/5">
             {d.pending.map((l) => (
-              <PendingLineRow key={l.id} line={l} candidates={d.candidates} onChanged={() => router.refresh()} />
+              <PendingLineRow
+                key={l.id}
+                line={l}
+                candidates={d.candidates}
+                elsewhere={d.elsewhere}
+                onChanged={() => router.refresh()}
+              />
             ))}
             {feeGaps.map((m) => (
-              <FeeGapRow key={`gap-${m.line.id}`} view={m} candidates={d.candidates} onChanged={() => router.refresh()} />
+              <FeeGapRow
+                key={`gap-${m.line.id}`}
+                view={m}
+                candidates={d.candidates}
+                elsewhere={d.elsewhere}
+                onChanged={() => router.refresh()}
+              />
             ))}
           </ul>
         )}
@@ -370,19 +383,17 @@ function AccountState({ data: d, account }: { data: AccountReconciliation; accou
 function PendingLineRow({
   line,
   candidates,
+  elsewhere,
   onChanged,
 }: {
   line: StoredLine;
-  candidates: ReconcileEntry[];
+  candidates: CandidateEntry[];
+  elsewhere: CandidateEntry[];
   onChanged: () => void;
 }) {
   const [mode, setMode] = useState<null | "link" | "dismiss">(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, startTransition] = useTransition();
-
-  const options = candidates
-    .filter((e) => e.currency === line.currency)
-    .sort((a, b) => score(a, line) - score(b, line));
 
   function link(entryId: string) {
     if (!entryId) return;
@@ -432,24 +443,15 @@ function PendingLineRow({
         </button>
       </div>
       {mode === "link" && (
-        <div className="mt-2">
-          {options.length === 0 ? (
-            <p className="text-[12px] text-muted">
-              No hay movimientos sin par en {line.currency} cerca de esta fecha. Cargalo en el libro y volvé a importar.
-            </p>
-          ) : (
-            <Select defaultValue="" onChange={(e) => link(e.currentTarget.value)} disabled={busy}>
-              <option value="">Elegí el movimiento del libro…</option>
-              {options.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {formatReceiptDate(e.entry_date)} · {e.rubro ?? "sin rubro"}
-                  {e.receipt_number != null ? ` · recibo ${e.receipt_number}` : ""}
-                  {e.description ? ` · ${e.description}` : ""} · {signed(e.amount)}
-                </option>
-              ))}
-            </Select>
-          )}
-        </div>
+        <EntryPicker
+          currency={line.currency}
+          target={line.amount}
+          date={line.line_date}
+          candidates={candidates}
+          elsewhere={elsewhere}
+          busy={busy}
+          onPick={link}
+        />
       )}
       {mode === "dismiss" && (
         <form
@@ -482,18 +484,17 @@ function PendingLineRow({
 function FeeGapRow({
   view: m,
   candidates,
+  elsewhere,
   onChanged,
 }: {
   view: LineView;
-  candidates: ReconcileEntry[];
+  candidates: CandidateEntry[];
+  elsewhere: CandidateEntry[];
   onChanged: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, startTransition] = useTransition();
-  const options = candidates
-    .filter((e) => e.currency === m.line.currency)
-    .sort((a, b) => Math.abs(a.amount - m.diff) - Math.abs(b.amount - m.diff));
 
   function link(entryId: string) {
     if (!entryId) return;
@@ -535,17 +536,15 @@ function FeeGapRow({
         </button>
       </div>
       {open && (
-        <div className="mt-2">
-          <Select defaultValue="" onChange={(e) => link(e.currentTarget.value)} disabled={busy}>
-            <option value="">Elegí el movimiento del libro…</option>
-            {options.map((e) => (
-              <option key={e.id} value={e.id}>
-                {formatReceiptDate(e.entry_date)} · {e.rubro ?? "sin rubro"}
-                {e.description ? ` · ${e.description}` : ""} · {signed(e.amount)}
-              </option>
-            ))}
-          </Select>
-        </div>
+        <EntryPicker
+          currency={m.line.currency}
+          target={m.diff}
+          date={m.line.line_date}
+          candidates={candidates}
+          elsewhere={elsewhere}
+          busy={busy}
+          onPick={link}
+        />
       )}
       {error && <p className="mt-1.5 text-[12px] text-rose-700">{error}</p>}
     </li>
@@ -687,9 +686,202 @@ function ImportRow({ imp, onChanged }: { imp: StatementImport; onChanged: () => 
 
 /** Cuánto se parece un movimiento a la línea, para ordenar el
  *  desplegable: primero el importe, después la fecha. */
-function score(e: ReconcileEntry, line: StoredLine): number {
-  const amountGap = Math.abs(Math.abs(e.amount) - Math.abs(line.amount));
-  const [ly, lm, ld] = line.line_date.split("-").map(Number);
+// ─── El buscador de movimientos del libro ──────────────────────────────
+
+/** Cuántos se muestran antes de pedir "mostrar más": la lista entera de
+ *  una cuenta con mucho movimiento no cabe, y lo que se busca suele estar
+ *  arriba (ordenado por parecido) o se escribe. */
+const PICKER_PAGE = 12;
+
+/**
+ * Para vincular una línea a mano: un cuadro de búsqueda sobre los
+ * movimientos sin par de la cuenta, ordenados por parecido (importe y
+ * fecha), más un grupo aparte con los de OTRAS cuentas que coinciden —esos
+ * no se vinculan: la línea es de esta cuenta, así que lo que corresponde
+ * es corregir la cuenta del movimiento en el Libro, y el grupo lleva a eso.
+ * Reemplazó a un `<select>` sin búsqueda, donde un movimiento cargado en
+ * otra cuenta sencillamente no aparecía y no había cómo saber por qué.
+ *
+ * Se busca también por nombre de contribuyente, pero el nombre no se
+ * imprime: los nombres del libro arrancan ocultos y acá no hay botón para
+ * mostrarlos. El recibo y el importe identifican al movimiento igual.
+ */
+function EntryPicker({
+  currency,
+  target,
+  date,
+  candidates,
+  elsewhere,
+  busy,
+  onPick,
+}: {
+  currency: string;
+  /** El importe que se busca cerrar (el de la línea, o lo que falta). */
+  target: number;
+  date: string;
+  candidates: CandidateEntry[];
+  elsewhere: CandidateEntry[];
+  busy: boolean;
+  onPick: (entryId: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [showAll, setShowAll] = useState(false);
+  const terms = useMemo(() => fold(query).split(/\s+/).filter(Boolean), [query]);
+
+  const own = useMemo(
+    () =>
+      candidates
+        .filter((e) => e.currency === currency && matchesTerms(e, terms))
+        .sort((a, b) => score(a, target, date) - score(b, target, date)),
+    [candidates, currency, terms, target, date]
+  );
+  // Sin búsqueda, de las otras cuentas se muestra solo lo que tiene el
+  // importe exacto: es el diagnóstico ("está cargado en otra cuenta") sin
+  // llenar la lista de ruido. Con búsqueda, lo que coincida.
+  const others = useMemo(
+    () =>
+      elsewhere
+        .filter((e) => e.currency === currency)
+        .filter((e) =>
+          terms.length > 0 ? matchesTerms(e, terms) : Math.abs(Math.abs(e.amount) - Math.abs(target)) < 0.005
+        )
+        .sort((a, b) => score(a, target, date) - score(b, target, date)),
+    [elsewhere, currency, terms, target, date]
+  );
+
+  const visible = showAll || terms.length > 0 ? own : own.slice(0, PICKER_PAGE);
+  const hidden = own.length - visible.length;
+  const nothingAtAll = candidates.filter((e) => e.currency === currency).length === 0;
+
+  return (
+    <div className="mt-2 rounded-xl border border-black/10 bg-bg/40 p-2.5">
+      <input
+        type="search"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setShowAll(false);
+        }}
+        className={inputClass}
+        placeholder="Buscar por recibo, importe, detalle, rubro o nombre…"
+        autoFocus
+        disabled={busy}
+      />
+      {nothingAtAll ? (
+        <p className="mt-2 text-[12px] text-muted">
+          No hay movimientos sin par en {currency} cerca de esta fecha. Cargalo en el libro y volvé a importar.
+        </p>
+      ) : own.length === 0 ? (
+        <p className="mt-2 text-[12px] text-muted">
+          Ningún movimiento sin par de esta cuenta coincide con &ldquo;{query.trim()}&rdquo;.
+        </p>
+      ) : (
+        <ul className="mt-2 max-h-72 divide-y divide-black/5 overflow-y-auto rounded-lg border border-black/5 bg-card">
+          {visible.map((e) => (
+            <li key={e.id}>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onPick(e.id)}
+                className="flex w-full items-baseline justify-between gap-3 px-3 py-2 text-left transition hover:bg-bg disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <span className="min-w-0 text-[12.5px] text-dark">
+                  <span className="tabular-nums">{formatReceiptDate(e.entry_date)}</span> · {e.rubro ?? "sin rubro"}
+                  {e.receipt_number != null ? ` · recibo ${e.receipt_number}` : ""}
+                  {e.description ? <span className="text-muted"> · {e.description}</span> : null}
+                </span>
+                <span className={`shrink-0 font-semibold tabular-nums ${e.amount < 0 ? "text-rose-700" : "text-green"}`}>
+                  {signed(e.amount)}
+                </span>
+              </button>
+            </li>
+          ))}
+          {hidden > 0 && (
+            <li>
+              <button
+                type="button"
+                className="w-full px-3 py-2 text-left text-[12px] font-semibold text-terra hover:bg-bg"
+                onClick={() => setShowAll(true)}
+              >
+                Mostrar {hidden} más…
+              </button>
+            </li>
+          )}
+        </ul>
+      )}
+      {others.length > 0 && (
+        <div className="mt-2.5">
+          <div className="text-[11.5px] font-semibold uppercase tracking-wide text-amber-800">
+            En otra cuenta del libro
+          </div>
+          <p className="mt-0.5 text-[11.5px] text-muted">
+            {terms.length > 0 ? "Coincide" : "El mismo importe está"} cargado en otra cuenta. No se puede vincular desde
+            acá: corregí la cuenta del movimiento en el Libro y volvé a vincular (o a importar).
+          </p>
+          <ul className="mt-1.5 divide-y divide-amber-200/60 rounded-lg border border-amber-200/80 bg-amber-50/60">
+            {others.slice(0, PICKER_PAGE).map((e) => (
+              <li key={e.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-3 py-2">
+                <span className="min-w-0 text-[12.5px] text-dark">
+                  <span className="tabular-nums">{formatReceiptDate(e.entry_date)}</span> · {e.rubro ?? "sin rubro"}
+                  {e.receipt_number != null ? ` · recibo ${e.receipt_number}` : ""}
+                  {e.description ? <span className="text-muted"> · {e.description}</span> : null}
+                  <span className="text-amber-800"> · en {e.account_name}</span>
+                </span>
+                <span className="flex shrink-0 items-baseline gap-3">
+                  <span className={`font-semibold tabular-nums ${e.amount < 0 ? "text-rose-700" : "text-green"}`}>
+                    {signed(e.amount)}
+                  </span>
+                  <Link
+                    href={`/admin/tesoreria/libro?ids=${e.id}`}
+                    className="text-[12px] font-semibold text-terra hover:underline"
+                  >
+                    Corregir en el Libro →
+                  </Link>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Minúsculas y sin acentos: en el celular se escribe sin acentos. */
+function fold(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+/** Todas las palabras tienen que estar en algún campo: fecha, recibo,
+ *  rubro, detalle, nombre del contribuyente o importe (en cualquiera de
+ *  las formas en que se escribe: 2000, 2000,00, 2.000,00). */
+function matchesTerms(e: CandidateEntry, terms: string[]): boolean {
+  if (terms.length === 0) return true;
+  const abs = Math.abs(e.amount);
+  const haystack = fold(
+    [
+      formatReceiptDate(e.entry_date),
+      e.receipt_number != null ? `recibo ${e.receipt_number}` : "",
+      e.rubro ?? "",
+      e.description ?? "",
+      e.contributor_name ?? "",
+      String(abs),
+      abs.toFixed(2).replace(".", ","),
+      formatMoney(abs),
+      formatMoney(abs).replace(/,00$/, ""),
+    ].join(" | ")
+  );
+  return terms.every((t) => haystack.includes(t));
+}
+
+/** Parecido con lo que se busca cerrar: primero el importe, después la
+ *  distancia en días. Menor es mejor. */
+function score(e: CandidateEntry, target: number, date: string): number {
+  const amountGap = Math.abs(Math.abs(e.amount) - Math.abs(target));
+  const [ly, lm, ld] = date.split("-").map(Number);
   const [ey, em, ed] = e.entry_date.split("-").map(Number);
   const days = Math.abs((Date.UTC(ey, em - 1, ed) - Date.UTC(ly, lm - 1, ld)) / 86400000);
   return amountGap * 1000 + days;

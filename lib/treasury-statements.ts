@@ -93,7 +93,21 @@ export type AccountReconciliation = {
    *  sin par: lo que la plataforma no muestra. */
   pendingEntries: ReconcileEntry[];
   /** Movimientos sin par cerca de la cobertura, para vincular a mano. */
-  candidates: ReconcileEntry[];
+  candidates: CandidateEntry[];
+  /** Movimientos sin par de las OTRAS cuentas de la comunidad, en la misma
+   *  ventana. No se vinculan (la línea es de esta cuenta): se muestran para
+   *  decir "está cargado en otra cuenta, corregilo en el Libro", que es el
+   *  caso más común de un giro que el motor no encuentra. */
+  elsewhere: CandidateEntry[];
+};
+
+/** Un movimiento ofrecido para vincular a mano. El nombre del
+ *  contribuyente viaja para que el buscador lo encuentre; la pantalla
+ *  NO lo imprime (los nombres del libro arrancan ocultos). */
+export type CandidateEntry = ReconcileEntry & {
+  account_id: string;
+  account_name: string;
+  contributor_name: string | null;
 };
 
 /** Códigos de "todavía no corrió la 061". */
@@ -212,48 +226,121 @@ export async function getAccountEntries(
   upTo: string,
   rubroOf: Map<string, string>
 ): Promise<{ entries: ReconcileEntry[]; error: string | null }> {
+  const rows = await selectEntries(supabase, (q) => q.eq("account_id", accountId).lte("entry_date", upTo));
+  if (rows.error) return { entries: [], error: rows.error };
+  return { entries: rows.entries.map((r) => toReconcileEntry(r, rubroOf)), error: null };
+}
+
+/** La fila cruda de `treasury_entries` que la conciliación necesita. */
+type RawEntryRow = {
+  id: string;
+  entry_date: string;
+  amount: number | string;
+  currency: string;
+  description: string | null;
+  receipt_number: number | null;
+  subcategory_id: string;
+  transfer_group_id: string | null;
+  is_opening_balance: boolean;
+  voided_at?: string | null;
+  account_id: string;
+  contributor_id: string | null;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type EntriesQuery = any;
+
+/** Antes de la 054 no existe `voided_at`: se reintenta sin ella. */
+async function selectEntries(
+  supabase: SupabaseClient,
+  refine: (q: EntriesQuery) => EntriesQuery
+): Promise<{ entries: RawEntryRow[]; error: string | null }> {
   const FIELDS =
-    "id, entry_date, amount, currency, description, receipt_number, subcategory_id, transfer_group_id, is_opening_balance, voided_at";
-  const first = await supabase
-    .from("treasury_entries")
-    .select(FIELDS)
-    .eq("account_id", accountId)
-    .lte("entry_date", upTo)
-    .order("entry_date", { ascending: true });
+    "id, entry_date, amount, currency, description, receipt_number, subcategory_id, transfer_group_id, is_opening_balance, voided_at, account_id, contributor_id";
+  const first = await refine(supabase.from("treasury_entries").select(FIELDS)).order("entry_date", {
+    ascending: true,
+  });
   let rows: unknown[] | null = first.data as unknown[] | null;
   let error = first.error;
   if (error && error.code === "42703") {
-    const legacy = await supabase
-      .from("treasury_entries")
-      .select(FIELDS.replace(", voided_at", ""))
-      .eq("account_id", accountId)
-      .lte("entry_date", upTo)
-      .order("entry_date", { ascending: true });
+    const legacy = await refine(
+      supabase.from("treasury_entries").select(FIELDS.replace(", voided_at", ""))
+    ).order("entry_date", { ascending: true });
     rows = legacy.data as unknown[] | null;
     error = legacy.error;
   }
   if (error) {
-    console.error("[getAccountEntries]", error);
+    console.error("[selectEntries]", error);
     return { entries: [], error: error.message };
   }
-  type Row = Omit<ReconcileEntry, "rubro" | "voided_at"> & {
-    subcategory_id: string;
-    voided_at?: string | null;
-  };
+  return { entries: (rows ?? []) as RawEntryRow[], error: null };
+}
+
+function toReconcileEntry(r: RawEntryRow, rubroOf: Map<string, string>): ReconcileEntry {
   return {
-    entries: ((rows ?? []) as Row[]).map((r) => ({
-      id: r.id,
-      entry_date: r.entry_date,
-      amount: Number(r.amount),
-      currency: r.currency,
-      description: r.description,
-      receipt_number: r.receipt_number,
-      rubro: rubroOf.get(r.subcategory_id) ?? null,
-      transfer_group_id: r.transfer_group_id,
-      is_opening_balance: r.is_opening_balance,
-      voided_at: r.voided_at ?? null,
-    })),
-    error: null,
+    id: r.id,
+    entry_date: r.entry_date,
+    amount: Number(r.amount),
+    currency: r.currency,
+    description: r.description,
+    receipt_number: r.receipt_number,
+    rubro: rubroOf.get(r.subcategory_id) ?? null,
+    transfer_group_id: r.transfer_group_id,
+    is_opening_balance: r.is_opening_balance,
+    voided_at: r.voided_at ?? null,
+  };
+}
+
+/**
+ * Los candidatos para vincular a mano: los movimientos vivos y sin par de
+ * la cuenta dentro de la ventana, y aparte los de las OTRAS cuentas de la
+ * comunidad en la misma ventana. Resuelve nombre de cuenta y de
+ * contribuyente. Lo que ya cerró contra alguna línea (de cualquier cuenta)
+ * queda afuera: un movimiento cierra contra UNA línea.
+ */
+async function getCandidates(
+  supabase: SupabaseClient,
+  accountId: string,
+  window: { from: string; to: string } | null,
+  rubroOf: Map<string, string>
+): Promise<{ candidates: CandidateEntry[]; elsewhere: CandidateEntry[] }> {
+  const inWindow = (q: EntriesQuery) =>
+    window ? q.gte("entry_date", window.from).lte("entry_date", window.to) : q;
+  const [own, others, accounts] = await Promise.all([
+    selectEntries(supabase, (q) => inWindow(q.eq("account_id", accountId))),
+    selectEntries(supabase, (q) => inWindow(q.neq("account_id", accountId))),
+    supabase.from("treasury_accounts").select("id, name"),
+  ]);
+  const rows = [...own.entries, ...others.entries].filter((r) => !r.voided_at && !r.is_opening_balance);
+  if (rows.length === 0) return { candidates: [], elsewhere: [] };
+
+  const ids = rows.map((r) => r.id);
+  const contributorIds = [...new Set(rows.map((r) => r.contributor_id).filter((x): x is string => !!x))];
+  const [matches, contributors] = await Promise.all([
+    supabase.from("treasury_statement_matches").select("entry_id").in("entry_id", ids),
+    contributorIds.length > 0
+      ? supabase.from("treasury_contributors").select("id, name").in("id", contributorIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+  ]);
+  const matched = new Set(((matches.data ?? []) as Array<{ entry_id: string }>).map((m) => m.entry_id));
+  const nameOf = new Map(
+    ((contributors.data ?? []) as Array<{ id: string; name: string }>).map((c) => [c.id, c.name])
+  );
+  const accountOf = new Map(
+    ((accounts.data ?? []) as Array<{ id: string; name: string }>).map((a) => [a.id, a.name])
+  );
+
+  const out = rows
+    .filter((r) => !matched.has(r.id))
+    .map<CandidateEntry>((r) => ({
+      ...toReconcileEntry(r, rubroOf),
+      account_id: r.account_id,
+      account_name: accountOf.get(r.account_id) ?? "otra cuenta",
+      contributor_name: r.contributor_id ? nameOf.get(r.contributor_id) ?? null : null,
+    }));
+  return {
+    candidates: out.filter((e) => e.account_id === accountId),
+    elsewhere: out.filter((e) => e.account_id !== accountId),
   };
 }
 
@@ -319,13 +406,17 @@ export async function getAccountReconciliation(
   const pendingEntries = coverage
     ? live.filter((e) => e.entry_date >= coverage.from && e.entry_date <= coverage.to)
     : [];
-  const candidates = coverage
-    ? live.filter(
-        (e) =>
-          e.entry_date >= shiftDate(coverage.from, -CANDIDATE_WINDOW_DAYS) &&
-          e.entry_date <= shiftDate(coverage.to, CANDIDATE_WINDOW_DAYS)
-      )
-    : live;
+  const { candidates, elsewhere } = await getCandidates(
+    supabase,
+    accountId,
+    coverage
+      ? {
+          from: shiftDate(coverage.from, -CANDIDATE_WINDOW_DAYS),
+          to: shiftDate(coverage.to, CANDIDATE_WINDOW_DAYS),
+        }
+      : null,
+    rubroOf
+  );
 
   const withBalance = imports.rows.find((i) => i.closing_balance != null);
   const latestBalance = withBalance
@@ -358,6 +449,7 @@ export async function getAccountReconciliation(
     dismissed,
     pendingEntries,
     candidates,
+    elsewhere,
   };
 }
 

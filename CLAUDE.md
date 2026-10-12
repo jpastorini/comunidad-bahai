@@ -2153,11 +2153,27 @@ sobre TODAS las líneas pendientes de la cuenta (no solo las nuevas: un
 movimiento cargado hoy puede cerrar una línea de hace dos semanas)
 contra los movimientos sin par, y guardar. Lo que el motor no resuelve
 lo hace el tesorero en la pantalla: **Vincular a un movimiento** (un
-desplegable con los movimientos sin par de la misma moneda a ±30 días,
-ordenados por parecido), **No corresponde al libro** (con motivo),
-**Deshacer**. Cuando la línea cerró contra la transferencia pero la suma
-de sus movimientos no da el importe (`LineView.diff`), aparece en
-pendientes como "Comisión de la transferencia … gasto a registrar".
+buscador, `EntryPicker`, sobre los movimientos sin par de la misma
+moneda a ±30 días, ordenados por parecido: filtra por recibo, importe
+en cualquier forma, detalle, rubro o nombre del contribuyente —el nombre
+se busca pero NO se imprime, como en el Libro—), **No corresponde al
+libro** (con motivo), **Deshacer**. Cuando la línea cerró contra la
+transferencia pero la suma de sus movimientos no da el importe
+(`LineView.diff`), aparece en pendientes como "Comisión de la
+transferencia … gasto a registrar".
+
+⚠️ **El caso más común de "no lo encuentra" es un movimiento cargado en
+OTRA cuenta** (2026-10-11: un giro a Prex registrado en Caja Chica
+Tesorero). Era invisible: la lista solo trae movimientos de la cuenta
+del extracto y `linkLineAction` rechaza vincular entre cuentas, que está
+bien —la línea ES de esta cuenta—. Ahora `getAccountReconciliation`
+devuelve además `elsewhere` (los sin par de las otras cuentas de la
+comunidad en la misma ventana) y el buscador los muestra en un grupo
+ámbar "En otra cuenta del libro": sin escribir nada, solo los del mismo
+importe (el diagnóstico sin ruido); con búsqueda, los que coincidan. No
+se eligen: cada uno lleva a `/admin/tesoreria/libro?ids=<id>`, que abre
+el movimiento para corregirle la cuenta; después se vincula a mano o se
+vuelve a importar.
 
 ⚠️ Hasta que corra la 061, la pantalla avisa y no importa
 (`isStatementsSchemaMissing`: 42P01 / 42703 / PGRST205); Cierres y
