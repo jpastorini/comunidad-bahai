@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   WEEKDAYS,
+  weekdayByIndex,
   HOURS,
   cellKey,
   formatHourRange,
@@ -62,7 +63,7 @@ export function AvailabilityMini({ data }: { data: LocalityAvailability }) {
                 className="flex items-center justify-between rounded-lg bg-bg/60 px-2.5 py-1.5 text-[12px]"
               >
                 <span className="font-medium text-dark">
-                  {WEEKDAYS[c.weekday].long} {formatHourRange(c.hour)}
+                  {weekdayByIndex(c.weekday).long} {formatHourRange(c.hour)}
                 </span>
                 <span className="text-[11px] text-muted">
                   <span className="font-bold text-emerald-600">{c.available}</span>
@@ -138,7 +139,7 @@ function MiniRow({
         const available = entries.filter((e) => e.level === 2).length;
         const sometimes = entries.filter((e) => e.level === 1).length;
         const intensity = available / denom;
-        const title = `${WEEKDAYS[d.index].long} ${formatHourRange(hour)} · ${available} disponible${available === 1 ? "" : "s"}${sometimes ? `, ${sometimes} a veces` : ""}`;
+        const title = `${d.long} ${formatHourRange(hour)} · ${available} disponible${available === 1 ? "" : "s"}${sometimes ? `, ${sometimes} a veces` : ""}`;
         return (
           <div
             key={d.index}

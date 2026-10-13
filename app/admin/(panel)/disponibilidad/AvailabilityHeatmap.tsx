@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   HOURS,
   WEEKDAYS,
+  weekdayByIndex,
   cellKey,
   formatHourRange,
   type CellEntry,
@@ -132,7 +133,7 @@ export function AvailabilityHeatmap({ data }: { data: LocalityAvailability }) {
           }}
         >
           <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
-            {WEEKDAYS[tip.weekday].long} · {formatHourRange(tip.hour)}
+            {weekdayByIndex(tip.weekday).long} · {formatHourRange(tip.hour)}
           </div>
           {tip.available.length > 0 && (
             <NameList

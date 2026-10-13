@@ -4,17 +4,25 @@
 // lecturas que tocan la base viven en `lib/availability-data.ts`.
 
 // ─── Días, horas y niveles ───────────────────────────────────────
-// La semana arranca en lunes (es-UY). weekday: 0=Lun … 6=Dom.
+// La grilla se MUESTRA de domingo a sábado, como todos los calendarios de
+// la app. El índice guardado en la base no cambió (weekday 0=Lun … 6=Dom),
+// así que `index` no es la posición en el arreglo: para la etiqueta de un
+// índice, `weekdayByIndex()`.
 
 export const WEEKDAYS = [
+  { index: 6, short: "Dom", long: "Domingo" },
   { index: 0, short: "Lun", long: "Lunes" },
   { index: 1, short: "Mar", long: "Martes" },
   { index: 2, short: "Mié", long: "Miércoles" },
   { index: 3, short: "Jue", long: "Jueves" },
   { index: 4, short: "Vie", long: "Viernes" },
   { index: 5, short: "Sáb", long: "Sábado" },
-  { index: 6, short: "Dom", long: "Domingo" },
 ] as const;
+
+/** El día por su índice guardado (0=Lun … 6=Dom), no por su posición. */
+export function weekdayByIndex(index: number) {
+  return WEEKDAYS.find((d) => d.index === index) ?? WEEKDAYS[0];
+}
 
 /** Bloques de 1 h, identificados por su hora de inicio: 08:00 … 21:00. */
 export const FIRST_HOUR = 8;

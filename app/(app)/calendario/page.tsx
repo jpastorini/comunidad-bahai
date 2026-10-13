@@ -5,7 +5,7 @@ import { requireMember } from "@/lib/auth";
 import { getCalendarKind } from "@/lib/calendar-kinds";
 import { getUnifiedCalendarItems } from "@/lib/data";
 
-const WEEKDAY_LABELS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"];
+const WEEKDAY_LABELS = ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"];
 const MONTHS_ES_LONG = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
@@ -29,11 +29,8 @@ export default async function CalendarioPage({
     month === today.getMonth() + 1 && year === today.getFullYear();
   const todayDay = isCurrentMonth ? today.getDate() : null;
 
-  const firstWeekdayJsLikeMonday = (() => {
-    const firstDate = new Date(year, month - 1, 1);
-    const js = firstDate.getDay();
-    return (js + 6) % 7;
-  })();
+  // getDay() da 0=domingo, que es justo donde arranca la grilla.
+  const firstWeekday = new Date(year, month - 1, 1).getDay();
 
   const daysInMonth = new Date(year, month, 0).getDate();
 
@@ -109,7 +106,7 @@ export default async function CalendarioPage({
                 {d}
               </div>
             ))}
-            {Array.from({ length: firstWeekdayJsLikeMonday }).map((_, i) => (
+            {Array.from({ length: firstWeekday }).map((_, i) => (
               <div key={`b${i}`} />
             ))}
             {Array.from({ length: daysInMonth }).map((_, i) => {

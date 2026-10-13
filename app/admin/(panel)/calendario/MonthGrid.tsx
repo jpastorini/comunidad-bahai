@@ -8,7 +8,7 @@ import type { UnifiedCalendarItem } from "@/lib/data";
 // con ?m=YYYY-MM, igual que en el calendario de los miembros.
 
 const WEEKDAYS_ES = [
-  "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo",
+  "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado",
 ];
 const MONTHS_ES_LONG = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -44,8 +44,8 @@ export function MonthGrid({
   }
 
   const daysInMonth = new Date(year, month, 0).getDate();
-  // getDay() da 0=domingo; la grilla arranca en lunes.
-  const leadingBlanks = (new Date(year, month - 1, 1).getDay() + 6) % 7;
+  // getDay() da 0=domingo, que es justo donde arranca la grilla.
+  const leadingBlanks = new Date(year, month - 1, 1).getDay();
   const totalCells = Math.ceil((leadingBlanks + daysInMonth) / 7) * 7;
 
   const prev = monthOffset(month, year, -1);
