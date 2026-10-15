@@ -2086,7 +2086,24 @@ const I: Rule[] = [
 
 // ═══ El motor ═══════════════════════════════════════════════════════
 
-export const RULES: Rule[] = [...A, ...B, ...C, ...D, ...E, ...F, ...G, ...H, ...I];
+/**
+ * Las reglas por tema, en el orden del archivo. Es lo que la pantalla
+ * lista al pie ("Qué se revisó"), para que quien lee la auditoría sepa
+ * qué se comprobó y qué no corre en esta comunidad.
+ */
+export const RULE_GROUPS: Array<{ letter: string; title: string; rules: Rule[] }> = [
+  { letter: "A", title: "Cierres e inmutabilidad", rules: A },
+  { letter: "B", title: "Recibos y numeración", rules: B },
+  { letter: "C", title: "Integridad del libro", rules: C },
+  { letter: "D", title: "Comprobantes y respaldo", rules: D },
+  { letter: "E", title: "Saldos y conciliación", rules: E },
+  { letter: "F", title: "Informes y balance anual", rules: F },
+  { letter: "G", title: "Ficha legal y Asamblea", rules: G },
+  { letter: "H", title: "Presupuesto, metas y contribuyentes", rules: H },
+  { letter: "I", title: "Cajas chicas", rules: I },
+];
+
+export const RULES: Rule[] = RULE_GROUPS.flatMap((g) => g.rules);
 
 /** ¿Corre esta regla en esta clase de comunidad? */
 export function ruleApplies(rule: Rule, kind: "ael" | "nacional"): boolean {

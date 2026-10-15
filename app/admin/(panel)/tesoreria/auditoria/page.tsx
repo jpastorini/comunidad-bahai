@@ -10,6 +10,7 @@ import {
   loadAuditInput,
 } from "@/lib/treasury-audit-server";
 import { AuditoriaClient, type FindingRow } from "./auditoria-client";
+import { RulesChecked } from "./rules-checked";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,18 @@ export default async function AuditoriaPage({
     };
     if (row.status === "pendiente") pending.push(row);
     else dispatched.push(row);
+  }
+
+  // Lo que dio cada regla, para el pie "Qué se revisó".
+  const weight = { alta: 0, media: 1, baja: 2 } as const;
+  const pendingCodes = new Map<string, { n: number; severity: FindingRow["severity"] }>();
+  for (const f of pending) {
+    const cur = pendingCodes.get(f.code);
+    if (!cur) pendingCodes.set(f.code, { n: 1, severity: f.severity });
+    else {
+      cur.n += 1;
+      if (weight[f.severity] < weight[cur.severity]) cur.severity = f.severity;
+    }
   }
 
   const active = RULES.filter((r) => ruleApplies(r, kind)).length;
@@ -125,6 +138,13 @@ export default async function AuditoriaPage({
           total: r.findings_count,
           alta: r.high_count,
         }))}
+      />
+
+      <RulesChecked
+        kind={kind}
+        pendingCodes={pendingCodes}
+        dispatchedCodes={new Set(dispatched.map((f) => f.code))}
+        failedCodes={new Set(result.failed.map((f) => f.code))}
       />
     </>
   );
