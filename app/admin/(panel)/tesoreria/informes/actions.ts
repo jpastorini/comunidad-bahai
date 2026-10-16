@@ -138,6 +138,7 @@ export async function createReportAction(formData: FormData) {
     redirect("/admin/tesoreria/informes/nuevo");
   }
 
+  const audience = readAudience(formData);
   const bahaiYear = treasuryYearForDate(to);
   const snapshot = await computeReportSnapshot(supabase, {
     localityId: session.locality.id,
@@ -153,11 +154,11 @@ export async function createReportAction(formData: FormData) {
       created_by: session.user.id,
       title,
       subtitle,
-      audience: readAudience(formData),
+      audience,
       period_from: from,
       period_to: to,
       bahai_year: bahaiYear,
-      editorial: suggestEditorial(session.profile.full_name ?? ""),
+      editorial: suggestEditorial(session.profile.full_name ?? "", audience),
       snapshot,
     })
     .select("id")

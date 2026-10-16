@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseAdmin } from "./supabase/admin";
 import { findBudgetForYear } from "./budget-lookup";
+import { findTopic } from "./citas";
 import { isLinked, linkedActual, type BudgetLinkRow } from "./budget-links";
 import { addMoney } from "./treasury-format";
 import { getTreasuryProgress } from "./treasury-progress";
@@ -854,15 +855,34 @@ async function budgetComparison(
 
 // ─── Sugerencias para un informe nuevo ───────────────────────────
 
+/** La cita del informe para la comunidad, elegida por el usuario el
+ *  2026-10-16: «Toda alabanza y gratitud sean para la Bendita Belleza…»
+ *  (‘Abdu'l-Bahá). Va por id para que el texto salga del corpus y no se
+ *  escriba a mano. */
+const COMMUNITY_REPORT_QUOTE = { topic: "gratitud", id: "gratitud-8" };
+
 /** Editorial inicial de un informe: la cita y la firma que casi siempre
- *  van, para que el tesorero corrija en vez de escribir de cero. */
-export function suggestEditorial(treasurerName: string): ReportEditorial {
+ *  van, para que el tesorero corrija en vez de escribir de cero. El deck
+ *  de la comunidad lleva su cita de gratitud; las hojas para la Asamblea,
+ *  la de siempre. */
+export function suggestEditorial(
+  treasurerName: string,
+  audience: ReportAudience = "comunidad"
+): ReportEditorial {
+  const community =
+    audience === "comunidad"
+      ? findTopic(COMMUNITY_REPORT_QUOTE.topic)?.quotes.find(
+          (q) => q.id === COMMUNITY_REPORT_QUOTE.id
+        )
+      : undefined;
   return {
     ...EMPTY_EDITORIAL,
-    quote: {
-      text: "¡Oh Hijo del Hombre! Derrocha Mis bienes entre Mis pobres.",
-      source: "Bahá'u'lláh · Palabras Ocultas",
-    },
+    quote: community
+      ? { text: community.text, source: community.reference }
+      : {
+          text: "¡Oh Hijo del Hombre! Derrocha Mis bienes entre Mis pobres.",
+          source: "Bahá'u'lláh · Palabras Ocultas",
+        },
     signature: { name: treasurerName, role: "Tesorero de la Asamblea" },
   };
 }

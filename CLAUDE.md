@@ -1797,6 +1797,14 @@ columna con su propia RLS.
 
 Ninguno de los dos formatos lleva nombres de contribuyentes.
 
+**La cita que trae un informe nuevo** la propone `suggestEditorial()`
+(`lib/treasury-reports.ts`) según el destinatario: el deck de la
+comunidad, «Toda alabanza y gratitud sean para la Bendita Belleza…»
+(‘Abdu'l-Bahá, `gratitud-8` de `public/citas.json`, tomada por id),
+elegida por el usuario el 2026-10-16; las hojas de la Asamblea, «Derrocha
+Mis bienes entre Mis pobres». Es una sugerencia: el tesorero la cambia en
+el editor.
+
 El tesorero da un rango de
 fechas en `/admin/tesoreria/informes/nuevo` (los atajos son los meses
 bahá'ís, que es el corte natural) y, para la comunidad, sale un **deck de
