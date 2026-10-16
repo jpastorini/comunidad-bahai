@@ -1295,10 +1295,15 @@ Tres cosas que conviene no romper:
   —decirle "no registramos tu aporte" a quien ya dio— sería el error
   caro, y por eso el texto **no menciona montos, saldos ni deudas**: es
   un recordatorio con una cita, no un estado de cuenta.
-- **La cita es determinística por mes**, `getCitaDelMes()` (`lib/citas.ts`),
-  sobre los temas `sacrificio`, `desprendimiento` y `generosidad` —unos
-  30 textos únicos, o sea más de dos años sin repetir con doce avisos por
-  año—. Misma mecánica que la Lectura de hoy: sin tabla ni estado.
+- **La cita es fija** desde el 2026-10-16, elegida por el usuario:
+  «Cualquiera que cumpla una buena acción, Dios se lo devolverá con
+  creces…» (‘Abdu'l-Bahá, `generosidad-6` de `public/citas.json`, tomada
+  por id para no escribirla a mano; `COMMITMENT_QUOTE` en
+  `lib/reminders.ts`). Antes rotaba por mes con `getCitaDelMes()` sobre
+  `sacrificio`, `desprendimiento` y `generosidad`, y salió «Cuidad, oh
+  pueblo, no sea que obréis traicioneramente…», que en un recordatorio
+  amable suena a reproche. La rotación queda solo de respaldo si el id
+  desapareciera del corpus.
 - **`last_reminder_sent_at` frena el MES, no el día.** Si el cron se
   reintenta —o si algún día el aviso cambia de hora— nadie recibe dos
   veces el mismo recordatorio.

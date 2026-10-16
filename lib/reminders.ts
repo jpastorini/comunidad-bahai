@@ -7,6 +7,7 @@ import {
   civilDateISO,
   civilDayNumber,
   excerpt,
+  findTopic,
   getCitaDelDia,
   getCitaDelMes,
 } from "./citas";
@@ -271,15 +272,25 @@ export async function sendPrayerReminders(): Promise<{ recipients: number }> {
 /** Día del mes en que sale el recordatorio del compromiso. */
 const COMMITMENT_REMINDER_DAY = 10;
 
-/** Temas de los que sale la cita del recordatorio. Hay ~30 textos únicos
- *  entre los tres, así que con doce avisos por año ninguno se repite en
- *  más de dos años. */
+/** La cita del recordatorio, elegida por el usuario el 2026-10-16: es
+ *  siempre la misma, «Cualquiera que cumpla una buena acción…»
+ *  (‘Abdu'l-Bahá). Va por id para que el texto salga del corpus y no se
+ *  escriba a mano. Antes rotaba por mes entre los temas de abajo, y una
+ *  de las que tocaba («Cuidad, oh pueblo, no sea que obréis
+ *  traicioneramente…») sonaba a reproche en un recordatorio amable. */
+const COMMITMENT_QUOTE = { topic: "generosidad", id: "generosidad-6" };
+
+/** Solo si la cita fija desapareciera del corpus: la rotación de antes. */
 const COMMITMENT_TOPICS = ["sacrificio", "desprendimiento", "generosidad"];
 
-/** La cita del mes del recordatorio, entre comillas. La usan el push del
- *  10 y el "Recordar por WhatsApp" del informe (077): las dos personas
- *  —la que tiene la app y la que no— reciben el mismo texto. */
+/** La cita del recordatorio, entre comillas y con su autor. La usan el
+ *  push del 10 y el "Recordar por WhatsApp" del informe (077): las dos
+ *  personas —la que tiene la app y la que no— reciben el mismo texto. */
 export function commitmentQuoteOfMonth(now: Date = new Date()): string {
+  const fixed = findTopic(COMMITMENT_QUOTE.topic)?.quotes.find(
+    (q) => q.id === COMMITMENT_QUOTE.id
+  );
+  if (fixed) return `«${fixed.text}» ${fixed.author}`;
   const pick = getCitaDelMes(COMMITMENT_TOPICS, now);
   return pick ? `«${excerpt(pick.cita.text, 130)}»` : "";
 }
