@@ -14,6 +14,8 @@ import {
   previousMonthKey,
 } from "@/lib/treasury-cashbook";
 import { formatMoney } from "@/lib/treasury-format";
+import { formatDate } from "@/lib/format";
+import { PrintButton } from "@/components/admin/PrintButton";
 import { getLedgerCatalog, todayISO } from "@/lib/treasury-ledger";
 import { isNationalLocality } from "@/lib/types";
 import { commitmentQuoteOfMonth } from "@/lib/reminders";
@@ -66,19 +68,20 @@ export default async function CompromisosPage({
   }
   if (!options.includes(month)) options.unshift(month);
 
-  const pendientes = report.rows.filter(
-    (r) => r.status === "pendiente" || r.status === "parcial"
-  );
+  const noAportaron = report.rows.filter((r) => r.status === "pendiente");
+  const parciales = report.rows.filter((r) => r.status === "parcial");
   const cumplidos = report.rows.filter((r) => r.status === "cumplido");
   const sinVinculo = report.rows.filter((r) => r.status === "sin_vinculo");
 
   return (
-    <>
+    <div className="cb-compromisos">
+      <style>{PRINT_CSS}</style>
       <PageHeader
         eyebrow="Tesorería"
         help={TREASURY_HELP.screens.compromisos}
         title="Compromisos"
         description={`Cómo viene ${monthLabel(month)} respecto de lo que cada creyente declaró aportar. Es información reservada del tesorero.`}
+        actions={<PrintButton label="Imprimir / PDF" />}
       />
 
       {report.schemaMissing && (
@@ -90,7 +93,7 @@ export default async function CompromisosPage({
         </div>
       )}
 
-      <Card className="mb-5">
+      <Card className="cb-noprint mb-5">
         <form method="get" className="flex flex-wrap items-end gap-3">
           <label className="block">
             <span className="mb-1 block text-[12px] font-semibold text-dark">
@@ -161,7 +164,7 @@ export default async function CompromisosPage({
       )}
 
       {canRegister && (
-        <Card className="mb-5">
+        <Card className="cb-noprint mb-5">
           <NewCommitment contributors={catalog.contributors} members={catalog.members} />
           <p className="mt-2 max-w-[70ch] text-[11.5px] leading-snug text-muted">
             Para quien te lo pidió de palabra. Si la persona usa la app, el
@@ -182,9 +185,19 @@ export default async function CompromisosPage({
       )}
 
       <Group
-        title="Para llamar y recordar"
-        hint="Todavía no figura su aporte del mes en el libro. Si lo cargaste y no aparece acá, fijate que el aporte esté a nombre de la misma ficha."
-        rows={pendientes}
+        title="No aportaron"
+        hint={`No figura ningún aporte suyo en ${monthLabel(month)}. Al lado, el último que hay en el libro, de cualquier mes. Si lo cargaste y no aparece acá, fijate que el aporte esté a nombre de la misma ficha.`}
+        rows={noAportaron}
+        tone="danger"
+        month={month}
+        viewerId={session.user.id}
+        quote={quote}
+      />
+
+      <Group
+        title="Aportaron menos de lo que se propusieron"
+        hint={`Aportaron en ${monthLabel(month)}, pero todavía no llegan a lo que declararon. Al lado, cuánto falta y el último aporte.`}
+        rows={parciales}
         tone="warning"
         month={month}
         viewerId={session.user.id}
@@ -236,9 +249,23 @@ export default async function CompromisosPage({
           </ul>
         </Card>
       )}
-    </>
+    </div>
   );
 }
+
+/** Al imprimir sale solo el reporte: sin el menú del panel, el selector
+ *  de mes, el alta ni los botones de cada fila. */
+const PRINT_CSS = `
+@media print {
+  @page { size: A4 portrait; margin: 14mm; }
+  body * { visibility: hidden; }
+  .cb-compromisos, .cb-compromisos * { visibility: visible; }
+  .cb-compromisos { position: absolute; left: 0; top: 0; width: 100%; }
+  .cb-compromisos .cb-noprint { display: none !important; }
+  .cb-compromisos li { break-inside: avoid; }
+  .cb-compromisos a { color: inherit; text-decoration: none; }
+}
+`;
 
 function Group({
   title,
@@ -252,14 +279,20 @@ function Group({
   title: string;
   hint: string;
   rows: CommitmentRow[];
-  tone: "ok" | "warning" | "neutral";
+  tone: "ok" | "warning" | "danger" | "neutral";
   month: string;
   viewerId: string;
   quote: string;
 }) {
   if (rows.length === 0) return null;
   const dot =
-    tone === "ok" ? "bg-green" : tone === "warning" ? "bg-amber" : "bg-muted";
+    tone === "ok"
+      ? "bg-green"
+      : tone === "warning"
+        ? "bg-amber"
+        : tone === "danger"
+          ? "bg-rose-500"
+          : "bg-muted";
 
   return (
     <Card className="mb-5">
@@ -303,20 +336,47 @@ function Group({
                   </span>
                 )}
               </div>
-              <div className="text-[13.5px] text-dark">
+              <div className="text-right text-[13.5px] text-dark">
                 <strong>{formatMoney(r.paid, r.currency)}</strong>
                 <span className="text-muted">
                   {" "}
                   de {formatMoney(r.amount, r.currency)}
                 </span>
+                {r.status === "parcial" && (
+                  <div className="text-[12px] font-semibold text-amber">
+                    Falta {formatMoney(r.amount - r.paid, r.currency)}
+                  </div>
+                )}
               </div>
             </div>
+
+            {r.linked && r.status !== "cumplido" && (
+              <div className="mt-1 text-[12.5px] text-dark">
+                {r.lastEver ? (
+                  <>
+                    Último aporte:{" "}
+                    <strong>{formatDate(r.lastEver.entry_date)}</strong> ·{" "}
+                    <strong>
+                      {formatMoney(r.lastEver.amount, r.lastEver.currency)}
+                    </strong>
+                    <span className="text-muted">
+                      {" "}
+                      ({sinceLabel(r.lastEver.entry_date, todayISO())})
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-rose-700">
+                    No hay ningún aporte suyo en el libro.
+                  </span>
+                )}
+              </div>
+            )}
 
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-[11.5px] text-muted">
               {r.email && <span>{r.email}</span>}
               {r.phone && <span>{r.phone}</span>}
-              {r.lastPaymentDate && (
-                <span>Último aporte: {r.lastPaymentDate}</span>
+              {r.status === "cumplido" && r.lastPaymentDate && (
+                <span>Último aporte: {formatDate(r.lastPaymentDate)}</span>
               )}
               {r.byFund.length > 0 && (
                 <span>
@@ -335,13 +395,10 @@ function Group({
                     .join(" · ")}
                 </span>
               )}
-              {r.payments.length === 0 && r.linked && (
-                <span>Sin aportes registrados en {monthLabel(month)}</span>
-              )}
             </div>
             {/* Recordar o agradecer por el chat de Tesorería, sin esperar
                 a que la persona escriba (lib/chat-contact.ts). */}
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="cb-noprint mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
               {r.user_id && r.user_id !== viewerId && (
                 <ContactButtons
                   memberId={r.user_id}
@@ -369,6 +426,21 @@ function Group({
       </ul>
     </Card>
   );
+}
+
+/** "hace 12 días", "hace 3 meses": cuánto hace del último aporte, para
+ *  distinguir de un vistazo al que se atrasó del que dejó de aportar. */
+function sinceLabel(dateISO: string, todayIso: string): string {
+  const days = Math.round(
+    (Date.parse(todayIso) - Date.parse(dateISO)) / 86_400_000
+  );
+  if (days <= 0) return "hoy";
+  if (days === 1) return "ayer";
+  if (days < 45) return `hace ${days} días`;
+  const months = Math.round(days / 30.44);
+  if (months < 18) return `hace ${months} meses`;
+  const years = Math.floor(months / 12);
+  return years === 1 ? "hace más de un año" : `hace más de ${years} años`;
 }
 
 /**

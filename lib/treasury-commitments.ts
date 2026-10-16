@@ -73,6 +73,10 @@ export type CommitmentRow = {
   byFund: Array<{ fund: string; amount: number; currency: string }>;
   payments: CommitmentPayment[];
   lastPaymentDate: string | null;
+  /** El último aporte de la persona en TODO el libro hasta el fin del mes,
+   *  no solo dentro del mes: a quien no aportó este mes le dice al
+   *  tesorero si se atrasó un mes o hace medio año que no aporta. */
+  lastEver: { entry_date: string; amount: number; currency: string } | null;
   status: CommitmentStatus;
 };
 
@@ -118,6 +122,25 @@ function isContribution(e: TreasuryEntry): boolean {
     !e.voided_at &&
     !!e.contributor_id
   );
+}
+
+type LastContribution = { entry_date: string; amount: number; currency: string };
+
+/** Se queda con el aporte más reciente de la clave; si cae el mismo día y
+ *  en la misma moneda que el que ya tenía, los suma. */
+function mergeLast(
+  map: Map<string, LastContribution>,
+  key: string,
+  next: LastContribution
+): void {
+  const prev = map.get(key);
+  if (!prev || next.entry_date > prev.entry_date) map.set(key, next);
+  else if (
+    next.entry_date === prev.entry_date &&
+    next.currency === prev.currency
+  ) {
+    prev.amount += next.amount;
+  }
 }
 
 function addTo(
@@ -213,6 +236,48 @@ export async function getCommitmentMonthReport(
   }
 
   const contributions = entries.filter(isContribution);
+
+  // El último aporte de cada ficha hasta el fin del mes, en todo el libro:
+  // una sola consulta para las fichas de todos los que tienen compromiso.
+  const commitmentContributorIds = [
+    ...new Set(
+      commitments.flatMap((c) => [
+        ...(c.user_id ? (contributorsByProfile.get(c.user_id) ?? []) : []),
+        ...(c.contributor_id ? [c.contributor_id] : []),
+      ])
+    ),
+  ];
+  const lastByContributor = new Map<string, LastContribution>();
+  if (commitmentContributorIds.length > 0) {
+    const { data: lastRows, error: lastError } = await supabase
+      .from("treasury_entries")
+      .select("entry_date, amount, currency, contributor_id")
+      .eq("locality_id", localityId)
+      .in("contributor_id", commitmentContributorIds)
+      .gt("amount", 0)
+      .eq("is_opening_balance", false)
+      .is("transfer_group_id", null)
+      .is("voided_at", null)
+      .lte("entry_date", to)
+      .order("entry_date", { ascending: false })
+      .limit(5000);
+    if (lastError) {
+      console.error("[getCommitmentMonthReport] último aporte", lastError);
+    }
+    // Vienen del más nuevo al más viejo: el primero de cada ficha es el
+    // último. Dos aportes del mismo día y moneda se suman: para el
+    // tesorero son "lo que dio ese día".
+    for (const e of (lastRows ?? []) as Array<
+      LastContribution & { contributor_id: string }
+    >) {
+      mergeLast(lastByContributor, e.contributor_id, {
+        entry_date: e.entry_date,
+        amount: Number(e.amount),
+        currency: e.currency,
+      });
+    }
+  }
+
   const claimed = new Set<string>();
 
   const rows: CommitmentRow[] = commitments.map((c) => {
@@ -264,6 +329,14 @@ export async function getCommitmentMonthReport(
           ? "parcial"
           : "pendiente";
 
+    // Con varias fichas, el más reciente de todas.
+    const lastOfPerson = new Map<string, LastContribution>();
+    for (const id of contributorIds) {
+      const l = lastByContributor.get(id);
+      if (l) mergeLast(lastOfPerson, "x", { ...l });
+    }
+    const lastEver = lastOfPerson.get("x") ?? null;
+
     const profile = c.user_id ? profileById.get(c.user_id) : undefined;
     return {
       key: c.id ?? c.user_id ?? c.contributor_id ?? c.display_name,
@@ -289,6 +362,7 @@ export async function getCommitmentMonthReport(
       lastPaymentDate: payments.length
         ? payments[payments.length - 1].entry_date
         : null,
+      lastEver,
       status,
     };
   });
