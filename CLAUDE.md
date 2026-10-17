@@ -2967,14 +2967,19 @@ cambia nada.
 
 ## Pendientes conocidos
 
-- **Aplicar la 079 y estrenar Mercado Pago** (2026-10-17): crear la
-  aplicación en mercadopago.com.uy/developers con la cuenta del POS, cargar
-  las credenciales de PRUEBA en Tesorería → Mercado Pago, crear en el
-  Catálogo la cuenta "Mercado Pago" y un rubro de comisión si faltan, y
-  hacer un aporte de prueba de punta a punta (pantalla de gracias, asiento
-  y comisión en el Libro, push). Borrar los asientos de prueba y pasar a
-  las credenciales de producción. Falta sumarlo a la Guía del mes y que la
-  conciliación lea el extracto de Mercado Pago contra estos asientos.
+- **Mercado Pago en producción** (079 aplicada y probada el 2026-10-17
+  con un vendedor y un comprador de PRUEBA: aporte de $ 500 con recibo,
+  comisión de $ 30,45 en "Gastos por transferencia", cuenta "Mercado Libre
+  Pesos"; asientos de prueba borrados). Las "credenciales de prueba" del
+  panel daban error: se prueba con cuentas de prueba (vendedor + comprador,
+  titular APRO). La aplicación real es "Aportes Comunidad Bahá'í
+  Montevideo"; para sus credenciales de producción Mercado Pago pide un
+  documento de representación de la Asamblea (la carta de autorización
+  firmada por Coordinador/a y Secretario/a es la vía simple). Falta: la
+  carta, cargar el token de producción y volver a marcar "Recibir
+  aportes" (quedó desmarcado). Cada otra Asamblea crea su propia
+  aplicación. Después: sumarlo a la Guía del mes y que la conciliación
+  lea el extracto de Mercado Pago contra estos asientos.
 
 - **Probar "Voy" con la próxima Fiesta publicada** (la 065 se aplicó el
   2026-09-24). Confirmar desde un celular, ver el nombre en `/admin/fiestas/<id>`, y
