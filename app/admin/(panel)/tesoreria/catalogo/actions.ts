@@ -260,3 +260,29 @@ export async function moveCatalogItemAction(formData: FormData): Promise<Result>
   revalidate();
   return ok;
 }
+
+/**
+ * Si el fondo se ofrece al aportar por Mercado Pago desde la app (079).
+ * La RLS de `treasury_funds` (040) acota a la comunidad del tesorero.
+ */
+export async function setFundOnlineAction(formData: FormData): Promise<Result> {
+  const { supabase } = await guard();
+  const id = str(formData, "id");
+  if (!id) return fail("Falta el id.");
+  const on = str(formData, "on") === "1";
+  const { error } = await supabase
+    .from("treasury_funds")
+    .update({ online_contributions: on })
+    .eq("id", id);
+  if (error) {
+    return fail(
+      error.code === "42703" || error.code === "PGRST204"
+        ? "Falta aplicar la migración 079."
+        : error.message
+    );
+  }
+  revalidate();
+  revalidatePath("/tesoreria");
+  revalidatePath("/admin/tesoreria/mercadopago");
+  return ok;
+}

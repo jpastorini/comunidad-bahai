@@ -6,6 +6,7 @@ import { PublishedTreasury } from "@/components/treasury/PublishedTreasury";
 import { ScrollToHash } from "@/components/comunicados/ScrollToHash";
 import { requireBahai } from "@/lib/auth";
 import { getTreasury } from "@/lib/data";
+import { getOnlineOffer } from "@/lib/treasury-online";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getCurrentPublication } from "@/lib/treasury-publications";
 import { AUDIENCE_LABEL, fmtLongDate } from "@/lib/treasury-report-content";
@@ -20,7 +21,7 @@ export default async function TesoreriaPage() {
   const session = await requireBahai("/tesoreria");
   const supabase = createSupabaseServer();
 
-  const [t, reports, publication, { data: commitment }] = await Promise.all([
+  const [t, reports, publication, { data: commitment }, online] = await Promise.all([
     getTreasury(),
     // Los informes emitidos para la comunidad y el balance anual (054):
     // la RLS deja leerlos desde que se publican; hasta ahora solo se
@@ -41,6 +42,9 @@ export default async function TesoreriaPage() {
       .eq("user_id", session.user.id)
       .eq("locality_id", session.locality.id)
       .maybeSingle(),
+    // ¿Se puede aportar por Mercado Pago? (079) Solo si la Tesorería
+    // cargó la cuenta y habilitó al menos un fondo.
+    getOnlineOffer(session.locality.id),
   ]);
 
   return (
@@ -96,6 +100,23 @@ export default async function TesoreriaPage() {
           <h2 className="mb-2.5 text-[14px] font-semibold text-dark">
             Cómo aportar
           </h2>
+          {online.available && (
+            <Link
+              href="/tesoreria/aportar"
+              className="tap mb-2.5 flex items-center gap-3 rounded-2xl bg-card p-3.5 shadow-card-elevated"
+            >
+              <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[12px] bg-[#009EE3] font-display text-[15px] font-bold text-white">
+                MP
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-semibold text-dark">Aportar con Mercado Pago</div>
+                <div className="mt-0.5 font-body text-[10.5px] text-muted">
+                  El monto que desees. Se registra solo y te llega el recibo.
+                </div>
+              </div>
+              <IconChevronRight size={14} className="shrink-0 text-muted" />
+            </Link>
+          )}
           {/* Los medios de pago salen de la ficha vieja (`treasury`); si la
               comunidad no la cargó, no se muestra nada en vez de un ejemplo.
               Es un dato fijo, no un cálculo: por eso no va en la foto. */}

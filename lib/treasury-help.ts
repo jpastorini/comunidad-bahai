@@ -60,6 +60,8 @@ export const TREASURY_HELP = {
       "El recibo de este aporte, para imprimir o compartir por WhatsApp como imagen. Al compartirlo o imprimirlo queda marcado como emitido; un aporte con recibo emitido ya no se edita, se anula.",
     importar:
       "Cargar al libro un ejercicio entero desde la planilla con que se llevaba antes. «Ver qué entra» no guarda nada; «Importar» sí, y se puede deshacer. Se importa del más viejo al más nuevo: la apertura la trae solo el primero, los demás se verifican contra el cierre anterior.",
+    mercadopago:
+      "Los creyentes aportan desde la app (Tesorería → Aportar con Mercado Pago) con el monto que desean. Cuando Mercado Pago acredita el pago, el aporte entra solo al libro: el ingreso por el bruto a nombre de su ficha, con recibo, y un gasto aparte por la comisión y la retención. A vos te llega un aviso; revisalo y emití el recibo como cualquier otro. Si Mercado Pago devuelve un pago, te avisa y vos lo anulás o revertís.",
     registroInformes:
       "Los informes emitidos por la Tesorería, con su estado: aprobado cuando el tesorero anotó la reunión en que la Asamblea lo aprobó. Solo consulta.",
   },
@@ -107,6 +109,18 @@ export const TREASURY_HELP = {
       "Arma la foto del Fondo hasta la fecha de corte y la guarda como borrador que solo vos ves. Calcular de nuevo la reemplaza. Para la Fiesta, el atajo es «hasta el fin del último mes bahá'í».",
     compartir:
       "Publica exactamente lo que estás viendo. Si entre Calcular y Compartir entra un movimiento, sale lo que revisaste. La Fiesta se queda con la foto vigente al iniciarla.",
+    fondoEnLinea:
+      "Si se ofrece a los creyentes al aportar por Mercado Pago desde la app. Arranca marcado solo el Fondo Local; un fondo de manejo interno (la devolución de una deuda) no tiene por qué ofrecerse. Con uno solo marcado, la persona no elige.",
+    mpToken:
+      "La credencial de la aplicación de Mercado Pago de la comunidad (developers → Tus integraciones → la aplicación → Credenciales). Con la de prueba (TEST-…) se prueba todo sin plata real; después se reemplaza por la de producción. Es secreta: no se vuelve a mostrar.",
+    mpWebhook:
+      "Opcional. Si configurás Webhooks en el panel de Mercado Pago, te da una clave secreta: pegala acá y la app verifica que cada aviso venga de Mercado Pago. Sin ella funciona igual, porque cada pago se consulta a Mercado Pago antes de registrarlo.",
+    mpAccount:
+      "La cuenta del libro donde entra la plata de Mercado Pago. Es la misma que se concilia con su extracto.",
+    mpIncome:
+      "El rubro con que se registra cada aporte (el mismo que usás para las contribuciones de los creyentes). El fondo lo elige la persona entre los habilitados.",
+    mpFee:
+      "El rubro del gasto por la comisión y la retención de Mercado Pago. Va en el mismo fondo que el aporte.",
   },
 } as const;
 
@@ -138,6 +152,7 @@ export const SCREEN_INDEX: Array<{
   { key: "catalogo", label: "Catálogo", href: "/admin/tesoreria/catalogo", section: "Ajustes" },
   { key: "contribuyentes", label: "Contribuyentes", href: "/admin/tesoreria/contribuyentes", section: "Ajustes" },
   { key: "recibo", label: "Recibo y medios de pago", href: "/admin/tesoreria/recibo/ajustes", section: "Ajustes" },
+  { key: "mercadopago", label: "Mercado Pago", href: "/admin/tesoreria/mercadopago", section: "Ajustes" },
   { key: "importar", label: "Importar un ejercicio", href: "/admin/tesoreria/libro/importar", section: "Ajustes" },
 ];
 
@@ -164,4 +179,10 @@ export const FIELD_SCREEN: Record<TreasuryHelpField, TreasuryHelpScreen> = {
   compartir: "publicar",
   vincularContribuyente: "contribuyentes",
   fusionarContribuyente: "contribuyentes",
+  fondoEnLinea: "catalogo",
+  mpToken: "mercadopago",
+  mpWebhook: "mercadopago",
+  mpAccount: "mercadopago",
+  mpIncome: "mercadopago",
+  mpFee: "mercadopago",
 };

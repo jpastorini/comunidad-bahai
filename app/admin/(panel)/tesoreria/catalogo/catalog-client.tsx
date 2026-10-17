@@ -2,6 +2,8 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 import { Card } from "@/components/admin/ui";
+import { HelpTip } from "@/components/HelpTip";
+import { TREASURY_HELP } from "@/lib/treasury-help";
 import {
   CATALOG_LABEL,
   canDelete,
@@ -18,6 +20,7 @@ import type {
 } from "@/lib/treasury-ledger";
 import {
   addCatalogItemAction,
+  setFundOnlineAction,
   deleteCatalogItemAction,
   moveCatalogItemAction,
   setCatalogItemActiveAction,
@@ -139,6 +142,16 @@ function SimpleSection({
                 isFirst={i === 0}
                 isLast={i === items.length - 1}
                 pending={pending}
+                online={
+                  // Solo los fondos, y solo si la 079 trajo la columna.
+                  kind === "fund" && "online_contributions" in item
+                    ? {
+                        on: Boolean((item as TreasuryFund).online_contributions),
+                        onToggle: (on) =>
+                          run(() => setFundOnlineAction(fd({ id: item.id, on: on ? "1" : "0" }))),
+                      }
+                    : undefined
+                }
                 onEdit={() => setEditing(item.id)}
                 onMove={(dir) =>
                   run(() => moveCatalogItemAction(fd({ kind, id: item.id, dir })))
@@ -334,6 +347,7 @@ function Row({
   onMove,
   onToggle,
   onDelete,
+  online,
 }: {
   kind: CatalogKind;
   item: Named;
@@ -346,6 +360,8 @@ function Row({
   onMove: (dir: "up" | "down") => void;
   onToggle: (active: boolean) => void;
   onDelete: () => void;
+  /** Fondos: si se ofrece al aportar por Mercado Pago desde la app (079). */
+  online?: { on: boolean; onToggle: (on: boolean) => void };
 }) {
   const [confirming, setConfirming] = useState(false);
   const deletable = canDelete(usage);
@@ -367,6 +383,19 @@ function Row({
           {detail ? `${detail} · ` : ""}
           {usageLabel(usage, kind)}
         </div>
+        {online && item.is_active && (
+          <label className="mt-1 inline-flex cursor-pointer items-center gap-1.5 text-[11.5px] text-dark">
+            <input
+              type="checkbox"
+              checked={online.on}
+              disabled={pending}
+              onChange={(e) => online.onToggle(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-black/20 text-terra focus:ring-terra"
+            />
+            Se puede aportar desde la app
+            <HelpTip title="Aportar desde la app" text={TREASURY_HELP.fields.fondoEnLinea} />
+          </label>
+        )}
       </div>
 
       <div className="flex items-center gap-1">

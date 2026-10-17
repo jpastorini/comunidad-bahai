@@ -203,7 +203,9 @@ export async function getTreasuryCatalog(
       .order("name"),
     supabase
       .from(CATALOG_TABLE.fund)
-      .select("id, name, is_active, sort_order")
+      // "*" para traer `online_contributions` (079) sin romper antes de
+      // que la migración corra.
+      .select("*")
       .eq("locality_id", localityId)
       .order("sort_order")
       .order("name"),

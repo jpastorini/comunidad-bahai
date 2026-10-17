@@ -174,6 +174,9 @@ export const ADMIN_NAV: NavGroup[] = [
         match: ["/admin/tesoreria/aportar"],
         section: "Ajustes",
       },
+      // La cuenta de Mercado Pago con que cobra la comunidad y los aportes
+      // que entran solos al libro desde la app (079).
+      { href: "/admin/tesoreria/mercadopago", label: "Mercado Pago", section: "Ajustes" },
       // Cargar un ejercicio entero desde la planilla con que se llevaba
       // antes (062).
       { href: "/admin/tesoreria/libro/importar", label: "Importar", section: "Ajustes" },

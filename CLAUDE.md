@@ -424,7 +424,11 @@ prellenado desde el chat. Ver la sección "Tesorería para el tesorero que
 entra" más abajo. ·
 **Cajas chicas** (migración 074, 2026-09-29): fondo fijo con responsable,
 rendición que el tesorero aprueba y arqueo, con "Mi caja chica" en la app
-del creyente. Ver la sección "Cajas chicas" más abajo.
+del creyente. Ver la sección "Cajas chicas" más abajo. ·
+**Aportes por Mercado Pago** (migración 079, 2026-10-17): el creyente
+aporta desde `/tesoreria/aportar` con el monto que desea y entra solo al
+libro, con recibo y la comisión como gasto. Ver la sección "Aportes por
+Mercado Pago" más abajo.
 
 ## Traspaso, Manual y aviso mensual de cierre (sin migración, 2026-09-30)
 
@@ -480,6 +484,55 @@ cargo:
   anterior no está cerrado. Solo ese día (el cron es diario, sin marca de
   enviado): si el cron falla el 5, no hay reintento, que es aceptable
   porque el tablero lo dice igual al abrir.
+
+## Aportes por Mercado Pago (migración 079)
+
+Pedido el 2026-10-17. El creyente aporta desde la app con el monto que
+desea y el aporte entra SOLO al libro. Decidido con el usuario: solo
+bahá'ís (`requireBahai()`, igual que toda la Tesorería), **fondos
+dinámicos** marcados por el tesorero en el Catálogo (casilla "Se puede
+aportar desde la app", `treasury_funds.online_contributions`; la 079 marca
+solo el Local), el compromiso mensual a un toque como monto sugerido, y la
+regla ya acordada para Mercado Pago: **aporte por el BRUTO + gasto aparte
+por comisión y retención** (bruto − `net_received_amount`).
+
+- **Cada comunidad cobra en su cuenta.** Credenciales y rubros en
+  `treasury_mp_settings`, tabla **sin policies**: la leen y escriben solo
+  funciones de servidor con service-role, después de chequear el tag. El
+  access token no vuelve al navegador. Pantalla en Tesorería → Ajustes →
+  Mercado Pago (`/admin/tesoreria/mercadopago`), con la cuenta del libro,
+  el rubro del aporte y el de la comisión, y los últimos intentos.
+- **El recorrido** (`lib/treasury-online.ts`, cliente sin SDK en
+  `lib/mercadopago.ts`): `/tesoreria/aportar` → `startOnlineContribution()`
+  guarda el intento (`treasury_online_contributions`) y crea la preferencia
+  de Checkout Pro con el id del intento como `external_reference` y
+  `notification_url` = `/api/mercadopago/webhook?loc=<localidad>` → la
+  persona paga → el webhook Y la vuelta a `/tesoreria/aportar/gracias`
+  terminan los dos en `applyPayment()`. ⚠️ **Del aviso solo se usa el
+  número de pago**: estado, monto y referencia se consultan a la API con el
+  token de la comunidad, así un aviso falsificado no puede registrar nada.
+  La firma (`x-signature`) se verifica solo si se cargó la clave de
+  Webhooks; sin ella funciona igual.
+- **No se registra dos veces**: `mp_payment_id` único y el intento se
+  "toma" (`claimed_at`, vence a los 5 min) antes de escribir. Si el monto
+  cobrado no coincide con el pedido, no se registra y se avisa al tesorero.
+- **El asiento** usa `resolveContributorForProfile()` con la localidad
+  explícita (con service-role la RLS no acota), recibo de
+  `next_receipt_number()` con reintento, `created_by` NULL y "pago N.º" en
+  el detalle. Queda **sin emitir**: el tesorero lo revisa y lo emite como
+  cualquier otro (el tablero lo muestra). Mes cerrado → fecha de hoy y la
+  original en el detalle. Push al creyente con su recibo y al tesorero.
+- **Devoluciones**: el libro NO se corrige solo. El intento pasa a
+  "devuelto" y el tesorero recibe un push para anular o revertir (054).
+- Pagos pendientes (Abitab/RedPagos) se registran recién al acreditarse.
+  Mercado Pago cobra solo en pesos: un compromiso en dólares no se propone.
+- Probar con credenciales `TEST-…` (la pantalla avisa "modo prueba"): los
+  pagos de prueba SÍ entran al libro y hay que borrarlos después.
+  `MP_PUBLIC_URL` (opcional) fuerza la URL pública de los avisos; si no,
+  sale del host del request.
+
+⚠️ Hasta que corra la 079, la pantalla avisa y no guarda, y la comunidad
+no ve el botón (`getOnlineOffer` cae a "no disponible").
 
 ## Contribuyentes (migración 075)
 
@@ -2913,6 +2966,15 @@ cambia nada.
   Nacional" sí es de la persona.
 
 ## Pendientes conocidos
+
+- **Aplicar la 079 y estrenar Mercado Pago** (2026-10-17): crear la
+  aplicación en mercadopago.com.uy/developers con la cuenta del POS, cargar
+  las credenciales de PRUEBA en Tesorería → Mercado Pago, crear en el
+  Catálogo la cuenta "Mercado Pago" y un rubro de comisión si faltan, y
+  hacer un aporte de prueba de punta a punta (pantalla de gracias, asiento
+  y comisión en el Libro, push). Borrar los asientos de prueba y pasar a
+  las credenciales de producción. Falta sumarlo a la Guía del mes y que la
+  conciliación lea el extracto de Mercado Pago contra estos asientos.
 
 - **Probar "Voy" con la próxima Fiesta publicada** (la 065 se aplicó el
   2026-09-24). Confirmar desde un celular, ver el nombre en `/admin/fiestas/<id>`, y

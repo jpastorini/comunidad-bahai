@@ -29,7 +29,9 @@ export type TreasuryAccount = {
   sort_order: number;
 };
 
-export type TreasuryFund = TreasuryAccount;
+/** `online_contributions` llega con la 079: se ofrece al aportar por
+ *  Mercado Pago desde la app. Opcional para andar sin la migración. */
+export type TreasuryFund = TreasuryAccount & { online_contributions?: boolean };
 export type TreasuryCategory = TreasuryAccount;
 
 export type TreasurySubcategory = {

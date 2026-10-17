@@ -66,16 +66,25 @@ async function linkContributor(
   }
 }
 
-/** El contribuyente "persona" de un creyente; se crea si no existe. */
-async function resolveContributorForProfile(
+/**
+ * El contribuyente "persona" de un creyente; se crea si no existe.
+ *
+ * Con el cliente del tesorero la RLS acota a su comunidad. Con
+ * service-role (el aporte por Mercado Pago, 079, que no tiene sesión)
+ * hay que decir la comunidad: si no, encontraría la ficha de la persona
+ * en OTRA comunidad y el aporte quedaría a nombre de un padrón ajeno.
+ */
+export async function resolveContributorForProfile(
   supabase: ServerClient,
-  profileId: string
+  profileId: string,
+  localityId?: string
 ): Promise<string> {
-  const { data: linked } = await supabase
+  let q = supabase
     .from("treasury_contributors")
     .select("id, kind")
-    .eq("profile_id", profileId)
-    .order("created_at");
+    .eq("profile_id", profileId);
+  if (localityId) q = q.eq("locality_id", localityId);
+  const { data: linked } = await q.order("created_at");
   const rows = (linked ?? []) as Array<{ id: string; kind: string }>;
   // Una persona puede tener varios contribuyentes vinculados (a título
   // personal, por su negocio); para un aporte propio manda el personal.
@@ -91,7 +100,7 @@ async function resolveContributorForProfile(
   const name = p?.full_name?.trim() || p?.email?.trim();
   if (!name) throw new Error("Ese creyente no tiene nombre cargado.");
 
-  return findOrCreateContributor(supabase, name, profileId);
+  return findOrCreateContributor(supabase, name, profileId, localityId);
 }
 
 /**
@@ -103,13 +112,15 @@ async function resolveContributorForProfile(
 async function findOrCreateContributor(
   supabase: ServerClient,
   name: string,
-  profileId: string | null
+  profileId: string | null,
+  localityId?: string
 ): Promise<string> {
-  const { data: existing } = await supabase
+  let q = supabase
     .from("treasury_contributors")
     .select("id, profile_id")
-    .ilike("name", name)
-    .maybeSingle();
+    .ilike("name", name);
+  if (localityId) q = q.eq("locality_id", localityId);
+  const { data: existing } = await q.maybeSingle();
   if (existing) {
     const row = existing as { id: string; profile_id: string | null };
     if (profileId && !row.profile_id) {
@@ -124,7 +135,12 @@ async function findOrCreateContributor(
 
   const { data: created, error } = await supabase
     .from("treasury_contributors")
-    .insert({ name, kind: "persona", profile_id: profileId })
+    .insert({
+      name,
+      kind: "persona",
+      profile_id: profileId,
+      ...(localityId ? { locality_id: localityId } : {}),
+    })
     .select("id")
     .single();
   if (error) {
