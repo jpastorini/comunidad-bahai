@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { Banner, Button, Card, Checkbox, Field, PageHeader, Select, TextInput } from "@/components/admin/ui";
+import { Banner, Button, Card, Field, PageHeader, Select } from "@/components/admin/ui";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
 import { isTestToken } from "@/lib/mercadopago";
@@ -9,6 +9,7 @@ import { formatMoney } from "@/lib/treasury-format";
 import { TREASURY_HELP } from "@/lib/treasury-help";
 import { getMpSettings, getRecentContributions, isMpUsable } from "@/lib/treasury-online";
 import { saveMpSettingsAction } from "./actions";
+import { EnabledSwitch, SecretField } from "./settings-controls";
 
 export const dynamic = "force-dynamic";
 
@@ -116,34 +117,16 @@ export default async function MercadoPagoPage() {
 
       <Card className="mb-5">
         <form action={saveMpSettingsAction} className="flex flex-col gap-4">
-          <Checkbox
-            name="enabled"
-            defaultChecked={settings?.enabled ?? false}
-            label="Recibir aportes por Mercado Pago desde la app"
-          />
+          <EnabledSwitch defaultOn={settings?.enabled ?? false} />
 
-          <Field
-            label="Access token"
-            name="access_token"
-            help={TREASURY_HELP.fields.mpToken}
-            hint={settings?.access_token ? `Guardado (…${settings.access_token.slice(-4)}). Vacío = conservar` : undefined}
-          >
-            <TextInput id="access_token" name="access_token" type="password" autoComplete="off" placeholder="APP_USR-… o TEST-…" />
+          <Field label="Access token" name="access_token" help={TREASURY_HELP.fields.mpToken}>
+            <SecretField
+              id="access_token"
+              name="access_token"
+              savedHint={settings?.access_token ? settings.access_token.slice(-4) : null}
+              placeholder="APP_USR-… o TEST-…"
+            />
           </Field>
-
-          <Field
-            label="Clave secreta de Webhooks"
-            name="webhook_secret"
-            help={TREASURY_HELP.fields.mpWebhook}
-            hint={settings?.webhook_secret ? "Guardada. Vacío = conservar" : "Opcional"}
-          >
-            <TextInput id="webhook_secret" name="webhook_secret" type="password" autoComplete="off" />
-          </Field>
-
-          <div className="rounded-xl bg-bg/60 px-3.5 py-3 text-[12px] text-muted">
-            URL de notificaciones (por si Mercado Pago la pide en Webhooks, evento «Pagos»):
-            <div className="mt-1 break-all font-mono text-[11.5px] text-dark">{webhookUrl}</div>
-          </div>
 
           <div className="grid gap-4 md:grid-cols-3">
             <Field label="Cuenta del libro" name="account_id" help={TREASURY_HELP.fields.mpAccount}>
@@ -178,6 +161,40 @@ export default async function MercadoPagoPage() {
             </Link>
             , donde también se marca qué fondos se ofrecen.
           </p>
+
+          {/* Los avisos ya funcionan sin configurar nada: cada cobro le dice
+              a Mercado Pago adónde avisar (notification_url). Lo del panel
+              es opcional y solo suma la verificación de firma; por eso va
+              plegado y al final, para no parecer un paso obligatorio. */}
+          <details className="group rounded-xl border border-black/10 bg-bg/30 px-4 py-3" open={Boolean(settings?.webhook_secret)}>
+            <summary className="cursor-pointer list-none text-[13px] font-semibold text-dark">
+              <span className="mr-1.5 inline-block transition-transform group-open:rotate-90">›</span>
+              Avisos de Mercado Pago (webhooks) · opcional
+              {settings?.webhook_secret && <span className="ml-2 text-[11.5px] font-normal text-green">✓ firma verificada</span>}
+            </summary>
+            <div className="mt-3 flex flex-col gap-3 text-[12.5px] leading-snug text-muted">
+              <p>
+                <strong className="text-dark">Ya funcionan sin hacer nada.</strong> Cada cobro le indica a
+                Mercado Pago adónde avisar cuando el pago se acredita, y la app lo registra aunque la persona
+                no vuelva a la app: si cierra el navegador, si el iPhone la devuelve a Safari, o si paga en
+                Abitab o RedPagos y el dinero se acredita horas después.
+              </p>
+              <p>
+                Configurar Webhooks en el panel de Mercado Pago (Tus integraciones → la aplicación →
+                Webhooks, evento «Pagos», con esta URL) agrega una sola cosa: una clave secreta con la que la
+                app comprueba que cada aviso viene de Mercado Pago. Es una capa extra; sin ella la app igual
+                consulta cada pago a Mercado Pago antes de registrarlo.
+              </p>
+              <div className="rounded-lg bg-card px-3 py-2 font-mono text-[11.5px] text-dark break-all">{webhookUrl}</div>
+              <Field label="Clave secreta de Webhooks" name="webhook_secret" help={TREASURY_HELP.fields.mpWebhook}>
+                <SecretField
+                  id="webhook_secret"
+                  name="webhook_secret"
+                  savedHint={settings?.webhook_secret ? settings.webhook_secret.slice(-4) : null}
+                />
+              </Field>
+            </div>
+          </details>
 
           <div>
             <Button type="submit" disabled={!ready}>Guardar</Button>
