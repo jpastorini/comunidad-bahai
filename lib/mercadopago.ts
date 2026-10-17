@@ -190,13 +190,24 @@ export async function searchPaymentsByReference(
   return (raw.results ?? []).map(toPayment);
 }
 
-/** Comprueba que el token sirve, sin cobrar nada. */
+/**
+ * Comprueba que el token sirve, sin cobrar nada. Se prueba contra la
+ * búsqueda de pagos, que es lo que la integración usa de verdad: `/users/me`
+ * devuelve "At least one policy returned UNAUTHORIZED" con tokens válidos
+ * de aplicaciones de Checkout Pro (pasó con la cuenta de prueba, 2026-10-17).
+ * El apodo de la cuenta es un extra: si `/users/me` no responde, se sigue.
+ */
 export async function checkToken(token: string): Promise<{ ok: true; nickname: string | null } | { ok: false; error: string }> {
   try {
-    const me = await mpFetch<{ nickname?: string; site_id?: string }>(token, "/users/me");
-    return { ok: true, nickname: me.nickname ?? null };
+    await mpFetch<unknown>(token, "/v1/payments/search?limit=1");
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "No se pudo verificar." };
+  }
+  try {
+    const me = await mpFetch<{ nickname?: string }>(token, "/users/me");
+    return { ok: true, nickname: me.nickname ?? null };
+  } catch {
+    return { ok: true, nickname: null };
   }
 }
 

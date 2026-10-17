@@ -61,7 +61,11 @@ export async function saveMpSettingsAction(formData: FormData) {
   let nickname: string | null = null;
   if (token && str(formData, "access_token")) {
     const check = await checkToken(token);
-    if (!check.ok) fail(`El access token no funciona. ${check.error}`);
+    if (!check.ok) {
+      fail(
+        `El access token no funciona (${check.error}). Revisá que sea el Access token —no la Public key— de la cuenta que cobra (en pruebas, la del vendedor).`
+      );
+    }
     nickname = check.nickname;
   }
 
