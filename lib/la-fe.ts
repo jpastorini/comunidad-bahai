@@ -85,7 +85,7 @@ const CHAPTERS: Draft[] = [
     blocks: [
       {
         kind: "p",
-        text: "Los bahá'ís creen que Dios es uno, que todas las grandes religiones vienen de la misma Fuente y que la humanidad entera es un solo pueblo. Creen que Bahá'u'lláh, el Fundador de la Fe, es el Mensajero de Dios para esta época, en la misma línea de Abraham, Krishna, Moisés, Zoroastro, Buda, Jesús y Muḥammad.",
+        text: "La Fe Bahá'í enseña que Dios es uno, que todas las grandes religiones vienen de la misma Fuente y que la humanidad entera es un solo pueblo. Enseña también que Bahá'u'lláh, el Fundador de la Fe, es el Mensajero de Dios para esta época, en la misma línea de Abraham, Krishna, Moisés, Zoroastro, Buda, Jesús y Muḥammad.",
       },
       {
         kind: "p",
@@ -121,7 +121,7 @@ const CHAPTERS: Draft[] = [
           {
             title: "‘Abdu'l-Bahá (1844–1921)",
             photo: { src: "/la-fe/abdul-baha.jpg", alt: "Fotografía antigua de ‘Abdu'l-Bahá joven junto a su hermano Mírzá Mihdí", caption: "‘Abdu'l-Bahá (derecha) con su hermano Mírzá Mihdí, en Edirne, c. 1864–1868." , aspect: "3 / 4" },
-            text: "Hijo mayor de Bahá'u'lláh, designado por Él como intérprete de Sus enseñanzas y centro de Su Alianza. Compartió el destierro de su padre y, liberado en 1908, viajó por Egipto, Europa y América del Norte explicando la Fe. Los bahá'ís lo consideran el ejemplo perfecto de cómo vivir las enseñanzas.",
+            text: "Hijo mayor de Bahá'u'lláh, designado por Él como intérprete de Sus enseñanzas y centro de Su Alianza. Compartió el destierro de su padre y, liberado en 1908, viajó por Egipto, Europa y América del Norte explicando la Fe. Es el ejemplo perfecto de cómo vivir las enseñanzas.",
           },
           {
             title: "Shoghi Effendi y la Casa Universal de Justicia",
@@ -150,7 +150,7 @@ const CHAPTERS: Draft[] = [
     short: "Creemos",
     title: "Lo que creemos",
     lead:
-      "Tres unidades resumen la visión bahá'í del mundo: un solo Dios, una sola religión que se renueva, una sola humanidad.",
+      "Tres unidades resumen lo que enseña la Fe Bahá'í: un solo Dios, una sola religión que se renueva, una sola humanidad.",
     blocks: [
       { kind: "figure", name: "unidad" },
       {
@@ -173,7 +173,7 @@ const CHAPTERS: Draft[] = [
       { kind: "quote", id: "amor-1" },
       {
         kind: "p",
-        text: "El propósito de la vida, para un bahá'í, es conocer y amar a Dios, desarrollar las virtudes del alma y contribuir al progreso de la civilización. La oración, la meditación, el estudio de los Escritos y el servicio a los demás son el camino. El alma es inmortal y sigue su viaje después de la muerte del cuerpo.",
+        text: "Según la Fe Bahá'í, el propósito de la vida es conocer y amar a Dios, desarrollar las virtudes del alma y contribuir al progreso de la civilización. La oración, la meditación, el estudio de los Escritos y el servicio a los demás son el camino. El alma es inmortal y sigue su viaje después de la muerte del cuerpo.",
       },
       { kind: "quote", id: "la-fuerza-de-la-unidad-1" },
     ],
