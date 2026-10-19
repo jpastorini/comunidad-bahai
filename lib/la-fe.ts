@@ -150,7 +150,7 @@ const CHAPTERS: Draft[] = [
     short: "Creemos",
     title: "Lo que creemos",
     lead:
-      "Tres unidades resumen lo que enseña la Fe Bahá'í: un solo Dios, una sola religión que se renueva, una sola humanidad.",
+      "En el centro de las enseñanzas de la Fe Bahá'í hay tres principios de unidad: hay un solo Dios, todas las religiones provienen de Él y se renuevan con el tiempo, y la humanidad es una sola.",
     blocks: [
       { kind: "figure", name: "unidad" },
       {
