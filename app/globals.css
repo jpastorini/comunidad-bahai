@@ -381,3 +381,75 @@ html {
     display: none;
   }
 }
+
+/* ── Folleto «Qué es la Fe Bahá'í» (Enseñanza) ────────────────────────
+   Ilustraciones SVG animadas y entrada de capítulo. Movimiento sereno,
+   solo transform/opacity/stroke, y todo apagado con reduced-motion. */
+.cb-chapter-in {
+  animation: cb-chapter-in 520ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+@keyframes cb-chapter-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+/* Trazo que se dibuja: el elemento declara --cb-len (su longitud). */
+.cb-draw {
+  stroke-dasharray: var(--cb-len, 400);
+  stroke-dashoffset: var(--cb-len, 400);
+  animation: cb-draw 1.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: var(--cb-delay, 0ms);
+}
+@keyframes cb-draw { to { stroke-dashoffset: 0; } }
+.cb-spin-slow {
+  animation: cb-spin-slow 48s linear infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+@keyframes cb-spin-slow { to { transform: rotate(360deg); } }
+.cb-float {
+  animation: cb-float 5s ease-in-out infinite;
+  animation-delay: var(--cb-delay, 0ms);
+}
+@keyframes cb-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.cb-pulse-dot {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: cb-pulse-dot 2.4s ease-out infinite;
+  animation-delay: var(--cb-delay, 0ms);
+}
+@keyframes cb-pulse-dot {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+.cb-pop {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: cb-pop 600ms cubic-bezier(0.2, 0.9, 0.3, 1.3) backwards;
+  animation-delay: var(--cb-delay, 0ms);
+}
+@keyframes cb-pop {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.cb-fade-in {
+  animation: cb-fade-in 700ms ease-out backwards;
+  animation-delay: var(--cb-delay, 0ms);
+}
+@keyframes cb-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.cb-ken-burns {
+  animation: cb-ken-burns 14s ease-out forwards;
+}
+@keyframes cb-ken-burns {
+  from { transform: scale(1.08); }
+  to { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cb-chapter-in, .cb-spin-slow, .cb-float, .cb-pulse-dot, .cb-pop, .cb-fade-in, .cb-ken-burns {
+    animation: none;
+  }
+  .cb-draw { animation: none; stroke-dashoffset: 0; }
+  .cb-pulse-dot { opacity: 0; }
+}

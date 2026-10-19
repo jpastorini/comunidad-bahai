@@ -455,6 +455,24 @@ charla; Fiestas sigue en el hub Calendario.
   por pantalla con el capítulo en el hash de la URL, para que un link
   compartido abra donde corresponde. El MISMO componente y contenido en
   las dos rutas: lo que practica el creyente es lo que lee el simpatizante.
+  **Fotos e ilustraciones** (2026-10-19, pedido del usuario: "algo mucho
+  más animado e ilustrativo que texto"): cada capítulo abre con una foto
+  de portada y una ilustración SVG animada como marca de agua
+  (`FolletoFigures.tsx`: estrella, Alianza, tres círculos de la unidad,
+  constelación de principios, ronda de actividades, mapa del Uruguay con
+  las comunidades encendiéndose; clases `cb-draw`, `cb-pop`, `cb-float`,
+  `cb-spin-slow`, `cb-pulse-dot` en `globals.css`, apagadas con
+  reduced-motion). Bloques nuevos: `photo`, `gallery` (las cuatro
+  actividades, con swipe), `timeline` (la Alianza, se dibuja al entrar),
+  `figure`; los ítems de listas llevan `icon` y pueden llevar `photo`.
+  ⚠️ **Las fotos son del Banco de Medios Bahá'í** (media.bahai.org, ©
+  Comunidad Internacional Bahá'í, uso no comercial; el usuario tiene
+  permiso) y van en `public/la-fe/` **reducidas** a 1000–1200 px y
+  calidad 66–68 (1,6 MB las diez; cada capítulo carga solo las suyas):
+  las originales pesan varios MB. Se bajan del CDN con
+  `?fm=jpg&fit=clip&w=1000&q=66`. Ninguna representa a Bahá'u'lláh ni al
+  Báb; la de ‘Abdu'l-Bahá es una fotografía histórica, que sí se usa. El
+  crédito va al pie de la pantalla pública (`PHOTO_CREDIT`).
 - **Compartir** (`/ensenanza/compartir`, `ShareQr.tsx`): un QR grande por
   vez, fondo blanco pleno, toque para pantalla completa, "Enviar por
   WhatsApp" con el share nativo. Cuatro: el folleto con `?c=<localidad>`

@@ -3,7 +3,7 @@ import { BahaiStar } from "@/components/BahaiStar";
 import { ContactForm } from "@/components/ensenanza/ContactForm";
 import { FolletoReader } from "@/components/ensenanza/FolletoReader";
 import { getContactLocalities } from "@/lib/contact-requests";
-import { getFolleto, LA_FE_LINKS } from "@/lib/la-fe";
+import { getFolleto, LA_FE_LINKS, PHOTO_CREDIT } from "@/lib/la-fe";
 import { submitPublicContactAction } from "./actions";
 
 /**
@@ -84,7 +84,7 @@ export default async function LaFePage({
 
       <footer className="mt-8 text-center text-[11px] leading-relaxed text-muted">
         Comunidad Bahá'í del Uruguay · Las citas son de los Escritos bahá'ís,
-        tomadas de la compilación «La Fuente de Todo Bien».
+        tomadas de la compilación «La Fuente de Todo Bien». {PHOTO_CREDIT}.
       </footer>
     </div>
   );
