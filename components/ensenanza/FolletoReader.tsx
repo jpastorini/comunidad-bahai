@@ -53,6 +53,15 @@ export function FolletoReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slugs.join("|")]);
 
+  // La portada del capítulo siguiente se pide ya, para que al pasar no
+  // haya que esperarla.
+  useEffect(() => {
+    const next = chapters[index + 1];
+    if (!next) return;
+    const img = new Image();
+    img.src = next.hero.src;
+  }, [index, chapters]);
+
   function go(i: number) {
     const next = Math.max(0, Math.min(slugs.length - 1, i));
     if (next === index) return;
@@ -211,15 +220,13 @@ export function FolletoReader({
 function Hero({ chapter, index, total }: { chapter: FolletoChapter; index: number; total: number }) {
   return (
     <div className="relative aspect-[4/3] w-full overflow-hidden bg-pine">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <FadeImg
         key={chapter.hero.src}
         src={chapter.hero.src}
         alt={chapter.hero.alt}
         className="cb-ken-burns absolute inset-0 h-full w-full object-cover"
         style={{ objectPosition: chapter.hero.position ?? "center" }}
-        loading={index === 0 ? "eager" : "lazy"}
-        decoding="async"
+        eager
       />
       <div
         className="absolute inset-0"
@@ -245,6 +252,63 @@ function Hero({ chapter, index, total }: { chapter: FolletoChapter; index: numbe
         </h1>
       </div>
     </div>
+  );
+}
+
+/**
+ * Una foto que entra con fundido. Mientras baja, brilla el fondo
+ * (`cb-shimmer`) y el texto alternativo queda invisible: Chrome de Android
+ * lo dibuja mientras la imagen carga, y con fotos de 150 KB sobre datos
+ * móviles eso se veía como "imágenes rotas" (2026-10-19). Una imagen que ya
+ * está en caché llega con `complete` antes del primer efecto.
+ */
+function FadeImg({
+  src,
+  alt,
+  className = "",
+  style,
+  eager = false,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  style?: React.CSSProperties;
+  eager?: boolean;
+}) {
+  const ref = useRef<HTMLImageElement>(null);
+  const [loaded, setLoaded] = useState(false);
+  // `decode()` y no solo onLoad de React: la portada viene en el HTML del
+  // servidor y puede terminar de cargar antes de que React enganche sus
+  // handlers (quedaba a opacidad 0 con la imagen ya bajada). La promesa
+  // resuelve también cuando la imagen ya estaba lista; un error "termina"
+  // igual, y ahí sí se muestra el texto alternativo.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let alive = true;
+    const done = () => alive && setLoaded(true);
+    if (typeof el.decode === "function") el.decode().then(done, done);
+    else if (el.complete) done();
+    return () => {
+      alive = false;
+    };
+  }, [src]);
+  return (
+    <>
+      {!loaded && <div aria-hidden="true" className="cb-shimmer absolute inset-0 bg-black/[0.05]" />}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={ref}
+        src={src}
+        alt={alt}
+        loading={eager ? "eager" : "lazy"}
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(true)}
+        className={`${className} text-transparent transition-opacity duration-700 ${loaded ? "opacity-100" : "opacity-0"}`}
+        style={style}
+      />
+    </>
   );
 }
 
@@ -274,14 +338,14 @@ function ChapterChip({
 function Photo({ photo, className = "" }: { photo: FolletoPhoto; className?: string }) {
   return (
     <figure className={className}>
-      <div className="overflow-hidden rounded-xl bg-black/[0.04]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+      <div
+        className="relative overflow-hidden rounded-xl bg-black/[0.04]"
+        style={{ aspectRatio: photo.aspect ?? "3 / 2" }}
+      >
+        <FadeImg
           src={photo.src}
           alt={photo.alt}
-          loading="lazy"
-          decoding="async"
-          className="block h-full w-full object-cover"
+          className="absolute inset-0 block h-full w-full object-cover"
           style={{ objectPosition: photo.position ?? "center" }}
         />
       </div>
@@ -312,8 +376,7 @@ function Block({ block, size }: { block: FolletoBlock; size: number }) {
         {block.items.map((p) => (
           <figure key={p.src} className="w-[78%] shrink-0 snap-center">
             <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-black/[0.04]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.src} alt={p.alt} loading="lazy" decoding="async" className="block h-full w-full object-cover" />
+              <FadeImg src={p.src} alt={p.alt} className="absolute inset-0 block h-full w-full object-cover" />
               {p.icon && (
                 <span className="absolute left-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-terra shadow-card-soft">
                   <ItemIconSvg name={p.icon} size={18} />

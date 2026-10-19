@@ -30,6 +30,8 @@ export type FolletoPhoto = {
   caption?: string;
   /** object-position, para que el recorte no corte lo importante. */
   position?: string;
+  /** Relación de aspecto del marco (CSS), default "3 / 2"; "3 / 4" para un retrato. */
+  aspect?: string;
 };
 
 export type ListItem = {
@@ -118,7 +120,7 @@ const CHAPTERS: Draft[] = [
           },
           {
             title: "‘Abdu'l-Bahá (1844–1921)",
-            photo: { src: "/la-fe/abdul-baha.jpg", alt: "Fotografía antigua de ‘Abdu'l-Bahá joven junto a su hermano Mírzá Mihdí", caption: "‘Abdu'l-Bahá (derecha) con su hermano Mírzá Mihdí, en Edirne, c. 1864–1868." },
+            photo: { src: "/la-fe/abdul-baha.jpg", alt: "Fotografía antigua de ‘Abdu'l-Bahá joven junto a su hermano Mírzá Mihdí", caption: "‘Abdu'l-Bahá (derecha) con su hermano Mírzá Mihdí, en Edirne, c. 1864–1868." , aspect: "3 / 4" },
             text: "Hijo mayor de Bahá'u'lláh, designado por Él como intérprete de Sus enseñanzas y centro de Su Alianza. Compartió el destierro de su padre y, liberado en 1908, viajó por Egipto, Europa y América del Norte explicando la Fe. Los bahá'ís lo consideran el ejemplo perfecto de cómo vivir las enseñanzas.",
           },
           {
