@@ -210,11 +210,21 @@ export const IconChevronDown = (p: IconProps) => (
   </Svg>
 );
 
-/** Enseñanza: un libro abierto, compartir la Fe. */
+/** Enseñanza: la estrella de nueve puntas. */
+// Pedido por el usuario el 2026-10-19: la estrella de nueve puntas, en
+// trazo como el resto de la barra. Misma geometría que BahaiStar (radios
+// 10 y 5 sobre el centro 12,12; la primera punta arriba).
+const NINE_STAR_POINTS = Array.from({ length: 9 }, (_, i) => {
+  const outer = ((i * 40 - 90) * Math.PI) / 180;
+  const inner = ((i * 40 + 20 - 90) * Math.PI) / 180;
+  const pt = (r: number, a: number) =>
+    `${(12 + r * Math.cos(a)).toFixed(2)},${(12 + r * Math.sin(a)).toFixed(2)}`;
+  return `${pt(10, outer)} ${pt(5, inner)}`;
+}).join(" ");
+
 export const IconEnsenanza = (p: IconProps) => (
   <Svg {...p}>
-    <path d="M2 6.5A2.5 2.5 0 0 1 4.5 4H9a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H2z" />
-    <path d="M22 6.5A2.5 2.5 0 0 0 19.5 4H15a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h8z" />
+    <polygon points={NINE_STAR_POINTS} />
   </Svg>
 );
 
