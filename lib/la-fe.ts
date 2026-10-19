@@ -203,7 +203,7 @@ const CHAPTERS: Draft[] = [
           {
             title: "Igualdad de la mujer y el hombre",
             icon: "balanza",
-            text: "La humanidad tiene dos alas; mientras una esté más débil que la otra, no puede volar. La educación de las niñas es prioritaria.",
+            text: "La humanidad tiene dos alas; mientras una esté más débil que la otra, no puede volar.",
           },
           {
             title: "Armonía entre la ciencia y la religión",
