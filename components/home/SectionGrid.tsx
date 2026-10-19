@@ -1,10 +1,10 @@
 import Link from "next/link";
 import type { ComponentType } from "react";
 import {
-  IconCalendario,
   IconChat,
   IconMensajes,
   IconOraciones,
+  IconQr,
 } from "../Icons";
 
 type SectionItem = {
@@ -31,24 +31,17 @@ type Props = {
 /**
  * Accesos rápidos en Inicio. No duplica el TabBar (que navega por hubs):
  * surfacea destinos de alta intención o que quedan a 2 toques dentro de
- * un hub (Chat y Comunicados viven en AEL; Fiestas vive en Calendario).
+ * un hub (Chat y Comunicados viven en Institucional; Compartir vive en
+ * Enseñanza). Fiestas se fue de acá el 2026-10-19 para hacerle lugar a
+ * Compartir: los QR son lo que se necesita rápido en una charla.
  */
-export function SectionGrid({
-  badges,
-  isBahai = true,
-  isNational = false,
-}: Props) {
+// `isBahai` e `isNational` siguen en las props (el Inicio los pasa) pero ya
+// no deciden nada: la grilla es la misma para todos desde que Fiestas salió.
+export function SectionGrid({ badges }: Props) {
   const TERRA = "#2A3F8F";
   const AMBER = "#7E44B8";
   const GOLD = "#96790E";
   const GREEN = "#6A8B5F";
-
-  const fiestas: SectionItem = {
-    href: "/fiestas",
-    title: "Fiestas",
-    Icon: IconCalendario,
-    color: GREEN,
-  };
 
   const sections: SectionItem[] = [
     {
@@ -71,8 +64,12 @@ export function SectionGrid({
       color: TERRA,
       hasUnseen: badges?.comunicados_has_unseen ?? false,
     },
-    // Un Amigo/a de la Fe no tiene Fiesta: la grilla queda de tres.
-    ...(isBahai && !isNational ? [fiestas] : []),
+    {
+      href: "/ensenanza/compartir",
+      title: "Compartir",
+      Icon: IconQr,
+      color: GREEN,
+    },
   ];
 
   return (

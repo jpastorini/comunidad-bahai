@@ -8,16 +8,20 @@
 export function ConfirmSubmit({
   message,
   className,
+  formAction,
   children,
 }: {
   message: string;
   className?: string;
+  /** Para el segundo action de un mismo form (eliminar junto a guardar). */
+  formAction?: (formData: FormData) => void | Promise<void>;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="submit"
       className={className}
+      formAction={formAction}
       onClick={(e) => {
         if (!window.confirm(message)) {
           e.preventDefault();

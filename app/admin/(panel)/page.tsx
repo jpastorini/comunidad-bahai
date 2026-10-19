@@ -7,6 +7,7 @@ import {
   IconCalendario,
   IconCheck,
   IconChat,
+  IconEnsenanza,
   IconMensajes,
   IconOraciones,
   IconServicio,
@@ -19,6 +20,7 @@ import {
 } from "@/lib/admin-attention";
 import { requireAdmin } from "@/lib/auth";
 import { getAvailabilityFillStats } from "@/lib/availability-data";
+import { countNewContactRequests } from "@/lib/contact-requests";
 import { getChatDuty } from "@/lib/data";
 import { formatDate, formatMessageDate } from "@/lib/format";
 import { getLocalityPushReach } from "@/lib/push";
@@ -66,7 +68,9 @@ export default async function AdminHomePage({
   const localityId = session.locality.id;
   const isTreasurer = !!session.profile.can_manage_treasury;
 
-  const [tasks, chatDuty, comunicado, feast, week, availability, push, treasury] =
+  const attendsChat = session.profile.can_respond_chat;
+
+  const [tasks, chatDuty, comunicado, feast, week, availability, push, treasury, contacts] =
     await Promise.all([
       getTasksSummary(),
       getChatDuty(session.profile),
@@ -84,6 +88,8 @@ export default async function AdminHomePage({
             localityKind: session.locality.kind ?? "ael",
           })
         : Promise.resolve(null),
+      // Pedidos de contacto del folleto (080), para quien atiende el chat.
+      attendsChat ? countNewContactRequests() : Promise.resolve(0),
     ]);
 
   const tagError = searchParams.error;
@@ -174,6 +180,24 @@ export default async function AdminHomePage({
             cta="Abrir bandeja"
           />
         ))}
+
+        {attendsChat && (
+          <AttentionTile
+            href="/admin/contactos"
+            tone={contacts > 0 ? "warn" : "ok"}
+            Icon={IconEnsenanza}
+            label="Quieren contactarse"
+            value={contacts}
+            hint={
+              contacts === 0
+                ? "Nadie dejó sus datos en el folleto por ahora."
+                : contacts === 1
+                  ? "1 persona espera que la llamen."
+                  : `${contacts} personas esperan que las llamen.`
+            }
+            cta="Ver contactos"
+          />
+        )}
 
         <AttentionTile
           href={feast ? `/admin/fiestas/${feast.feast.id}` : "/admin/fiestas"}

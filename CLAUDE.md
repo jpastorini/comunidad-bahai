@@ -428,7 +428,56 @@ del creyente. Ver la sección "Cajas chicas" más abajo. ·
 **Aportes por Mercado Pago** (migración 079, 2026-10-17): el creyente
 aporta desde `/tesoreria/aportar` con el monto que desea y entra solo al
 libro, con recibo y la comisión como gasto. Ver la sección "Aportes por
-Mercado Pago" más abajo.
+Mercado Pago" más abajo. ·
+**Enseñanza** (migración 080, 2026-10-19): la pestaña que era Servicio pasó
+a ser un hub para compartir la Fe —el folleto público «Qué es la Fe
+Bahá'í», los QR para una charla y el formulario "Quiero contactarme"—;
+Servicio vive en Institucional. Ver la sección "Enseñanza" más abajo.
+
+## Enseñanza: folleto, QR y contacto (migración 080)
+
+Pedido el 2026-10-19 con el objetivo de enseñar mejor la Fe. Tres piezas en
+un hub nuevo, **Enseñanza**, que ocupa la pestaña que era Servicio (no se
+usaba; pasó a Institucional como quinto segmento, `AEL_SEGMENTS`, y su
+ruta a `AEL_ROUTES` en la TabBar). En Accesos rápidos del Inicio, Fiestas
+cedió el lugar a **Compartir**, que es lo que se necesita rápido en una
+charla; Fiestas sigue en el hub Calendario.
+
+- **La Fe** (`/ensenanza`, y PÚBLICO en `/la-fe` sin login): el folleto
+  «Qué es la Fe Bahá'í», seis capítulos con la estructura de bahai.org
+  (una Fe para este tiempo · Bahá'u'lláh y Su Alianza · lo que creemos ·
+  principios · lo que hacemos · la comunidad en Uruguay) y un séptimo con
+  links y contacto. Texto propio en `lib/la-fe.ts` (el de bahai.org es de
+  la Comunidad Internacional y no se copia). ⚠️ **Las citas van por id del
+  corpus** (`public/citas.json`) y se resuelven en `getFolleto()`; ninguna
+  se escribe a mano, y si un id falta el bloque se omite con warning. El
+  reader (`components/ensenanza/FolletoReader.tsx`) muestra un capítulo
+  por pantalla con el capítulo en el hash de la URL, para que un link
+  compartido abra donde corresponde. El MISMO componente y contenido en
+  las dos rutas: lo que practica el creyente es lo que lee el simpatizante.
+- **Compartir** (`/ensenanza/compartir`, `ShareQr.tsx`): un QR grande por
+  vez, fondo blanco pleno, toque para pantalla completa, "Enviar por
+  WhatsApp" con el share nativo. Cuatro: el folleto con `?c=<localidad>`
+  (prefija la comunidad del contacto), bahai.uy, bahai.org, y **la app por
+  el link de invitación para Amigos de la Fe de la comunidad de quien lo
+  muestra** (047): quien lo abre queda incorporado solo y la Asamblea
+  recibe el aviso de alguien nuevo. Ese token lo lee `getFriendsInvitePath()`
+  con service-role porque la RLS de `locality_invites` solo deja leer a la
+  Asamblea y acá lo comparte cualquier creyente; el de creyentes NO se
+  expone por ahí.
+- **Contacto** (`contact_requests`, 080): nombre, teléfono, correo y
+  mensaje. Público desde el folleto (la persona elige la comunidad; la
+  Nacional aparece como "Otra ciudad del Uruguay") y desde el hub con el
+  teléfono prestado (`/ensenanza/contacto`, comunidad fija, `created_by`).
+  **No hay policy de insert**: escribe el servidor con service-role tras
+  validar (`lib/contact-requests.ts`; honeypot `website`). Lo lee y atiende
+  quien tiene `can_respond_chat` en esa comunidad —le llega el push al
+  enviarse (`getChatAdminIds`)— en Comunicación → Contactos
+  (`/admin/contactos`: por atender / atendidos, nota "cómo siguió", link a
+  WhatsApp, eliminar con confirmación) y como tarjeta del Inicio del panel.
+
+⚠️ Hasta que corra la 080, el formulario devuelve "falta aplicar la
+migración 080" y la bandeja lo avisa; el folleto y los QR andan igual.
 
 ## Traspaso, Manual y aviso mensual de cierre (sin migración, 2026-09-30)
 

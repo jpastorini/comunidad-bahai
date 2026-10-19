@@ -209,3 +209,21 @@ export const IconChevronDown = (p: IconProps) => (
     <polyline points="6 9 12 15 18 9" />
   </Svg>
 );
+
+/** Enseñanza: un libro abierto, compartir la Fe. */
+export const IconEnsenanza = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M2 6.5A2.5 2.5 0 0 1 4.5 4H9a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H2z" />
+    <path d="M22 6.5A2.5 2.5 0 0 0 19.5 4H15a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h8z" />
+  </Svg>
+);
+
+/** Código QR, para Compartir. */
+export const IconQr = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3" y="3" width="7" height="7" rx="1" />
+    <rect x="14" y="3" width="7" height="7" rx="1" />
+    <rect x="3" y="14" width="7" height="7" rx="1" />
+    <path d="M14 14h3v3h-3zM20 14h1v1h-1zM14 20h1v1h-1zM18 18h3v3h-3z" />
+  </Svg>
+);

@@ -162,3 +162,34 @@ function toTokens(row: unknown): LocalityInviteTokens {
   const r = row as { token: string; friends_token: string };
   return { token: r.token, friendsToken: r.friends_token };
 }
+
+/**
+ * El camino del link de Amigos de la Fe de una localidad, para que CUALQUIER
+ * creyente lo comparta desde Enseñanza → Compartir (no solo la Asamblea,
+ * que es a quien la RLS de `locality_invites` deja leer). Va con
+ * service-role a propósito: ese link está hecho para repartirse en una
+ * charla, y lo único que hace es incorporar como Amigo/a de la Fe a quien
+ * entra por primera vez. El de creyentes NO se expone por acá.
+ */
+export async function getFriendsInvitePath(
+  localityId: string
+): Promise<string | null> {
+  const admin = createSupabaseAdmin();
+  if (!admin) return null;
+  const { data: existing } = await admin
+    .from("locality_invites")
+    .select("friends_token")
+    .eq("locality_id", localityId)
+    .maybeSingle();
+  if (existing) return `/invitacion/${(existing as { friends_token: string }).friends_token}`;
+  const { data: created, error } = await admin
+    .from("locality_invites")
+    .insert({ locality_id: localityId })
+    .select("friends_token")
+    .single();
+  if (error || !created) {
+    console.error("[getFriendsInvitePath] error:", error);
+    return null;
+  }
+  return `/invitacion/${(created as { friends_token: string }).friends_token}`;
+}

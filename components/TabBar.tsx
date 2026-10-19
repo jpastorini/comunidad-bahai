@@ -9,7 +9,7 @@ import {
   IconBiblioteca,
   IconCalendario,
   IconHome,
-  IconServicio,
+  IconEnsenanza,
 } from "./Icons";
 
 type Tab = {
@@ -25,14 +25,17 @@ type Tab = {
 // llega desde Materiales y desde la tarjeta del Inicio.
 const BIBLIOTECA_ROUTES = ["/oraciones", "/mensajes", "/materiales", "/buscar", "/citas"];
 const CALENDARIO_ROUTES = ["/calendario", "/fiestas", "/dias-sagrados", "/actividades"];
-// Hub AEL: todo lo directo de la Asamblea Espiritual Local.
-const AEL_ROUTES = ["/comunicados", "/boletin-local", "/chat", "/tesoreria"];
+// Hub Institucional: todo lo directo de la Asamblea. Servicio vive acá
+// desde que la pestaña propia pasó a ser Enseñanza (2026-10-19).
+const AEL_ROUTES = ["/comunicados", "/boletin-local", "/chat", "/tesoreria", "/servicio"];
+// Hub Enseñanza: el folleto, los QR para compartir y el contacto.
+const ENSENANZA_ROUTES = ["/ensenanza"];
 
 const TABS: Tab[] = [
   { href: "/", label: "Inicio", Icon: IconHome },
   { href: "/oraciones", label: "Biblioteca", Icon: IconBiblioteca },
   { href: "/calendario", label: "Calendario", Icon: IconCalendario },
-  { href: "/servicio", label: "Servicio", Icon: IconServicio },
+  { href: "/ensenanza", label: "Enseñanza", Icon: IconEnsenanza },
   { href: "/comunicados", label: "Institucional", Icon: IconAEL },
 ];
 
@@ -195,6 +198,6 @@ function resolveActiveHref(pathname: string): string {
   if (BIBLIOTECA_ROUTES.some((r) => pathname.startsWith(r))) return "/oraciones";
   if (CALENDARIO_ROUTES.some((r) => pathname.startsWith(r))) return "/calendario";
   if (AEL_ROUTES.some((r) => pathname.startsWith(r))) return "/comunicados";
-  if (pathname.startsWith("/servicio")) return "/servicio";
+  if (ENSENANZA_ROUTES.some((r) => pathname.startsWith(r))) return "/ensenanza";
   return "/";
 }

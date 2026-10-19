@@ -1,4 +1,5 @@
 import { GoldHeader } from "@/components/GoldHeader";
+import { AEL_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { requireMember } from "@/lib/auth";
 import { getServiceBoard } from "@/lib/service";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -25,10 +26,11 @@ export default async function ServicioPage() {
   return (
     <>
       <GoldHeader
-        title="Servicio"
-        subtitle="Necesidades de la comunidad"
+        title="Institucional"
+        subtitle={session.locality.name}
         backHref="/"
       />
+      <SegmentedNav items={AEL_SEGMENTS} />
       <main className="scroll-area flex-1 px-4 pt-3.5">
         {needs.length === 0 ? (
           <div className="px-4 py-12 text-center">

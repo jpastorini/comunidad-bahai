@@ -119,6 +119,16 @@ export const AEL_SEGMENTS: SegmentItem[] = [
   { href: "/boletin-local", label: "Boletín", prefix: "/boletin-local" },
   { href: "/chat", label: "Chat", prefix: "/chat" },
   { href: "/tesoreria", label: "Tesorería", prefix: "/tesoreria", bahaiOnly: true },
+  // Servicio pasó acá cuando su pestaña se volvió Enseñanza (2026-10-19):
+  // las necesidades las publica la Asamblea, así que es Institucional.
+  { href: "/servicio", label: "Servicio", prefix: "/servicio" },
+];
+
+/** Items del hub Enseñanza: el folleto, los QR y el contacto. */
+export const ENSENANZA_SEGMENTS: SegmentItem[] = [
+  { href: "/ensenanza", label: "La Fe" },
+  { href: "/ensenanza/compartir", label: "Compartir", prefix: "/ensenanza/compartir" },
+  { href: "/ensenanza/contacto", label: "Contacto", prefix: "/ensenanza/contacto" },
 ];
 
 /** Canales del chat: a la Secretaría se le escribe de todo, al tesorero se

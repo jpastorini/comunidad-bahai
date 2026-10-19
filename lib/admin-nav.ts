@@ -75,6 +75,9 @@ export const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/encuestas", label: "Encuestas" },
       { href: "/admin/boletin", label: "Boletín", requires: "bulletin" },
       { href: "/admin/chat", label: "Chat de Secretaría", requires: "chat" },
+      // Quién dejó sus datos en el folleto público de la Fe (080): lo
+      // atiende quien atiende el chat de Secretaría.
+      { href: "/admin/contactos", label: "Contactos", requires: "chat" },
     ],
   },
   {
