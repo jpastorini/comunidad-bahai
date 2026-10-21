@@ -318,7 +318,7 @@ const CHAPTERS: Draft[] = [
 
 /** Links del folleto y de Compartir: los mismos en los dos lugares. */
 export const LA_FE_LINKS = {
-  bahaiOrg: "https://www.bahai.org/es/",
+  bahaiOrg: "https://www.bahai.org/es",
   bahaiUy: "https://www.bahai.uy/",
 } as const;
 

@@ -41,7 +41,7 @@ export default async function EnsenanzaPage() {
                   </li>
                   <li>
                     <a href={LA_FE_LINKS.bahaiOrg} target="_blank" rel="noopener" className="tap block rounded-xl bg-bg px-3.5 py-3">
-                      <div className="text-[13.5px] font-semibold text-dark">bahai.org</div>
+                      <div className="text-[13.5px] font-semibold text-dark">bahai.org/es</div>
                       <div className="text-[12px] text-muted">El sitio internacional, con los Escritos en español</div>
                     </a>
                   </li>

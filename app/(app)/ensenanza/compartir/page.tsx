@@ -35,8 +35,8 @@ export default async function CompartirPage() {
     },
     {
       key: "bahai-org",
-      label: "bahai.org",
-      title: "bahai.org",
+      label: "bahai.org/es",
+      title: "bahai.org/es",
       description: "El sitio internacional, con los Escritos completos en español.",
       url: LA_FE_LINKS.bahaiOrg,
       shareText: "El sitio internacional de la Fe Bahá'í:",
