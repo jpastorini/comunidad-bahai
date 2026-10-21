@@ -60,23 +60,35 @@ export default async function OracionesPage() {
               {group.name}
             </h2>
             <div className="overflow-hidden rounded-2xl bg-card shadow-card-soft">
-              {group.categories.map((cat, i) => (
-                <Link
-                  key={cat.id}
-                  href={`/oraciones/${cat.id}`}
-                  className={`tap flex items-center gap-3 px-4 py-3 ${
-                    i > 0 ? "border-t border-black/[0.05]" : ""
-                  }`}
-                >
-                  <span className="min-w-0 flex-1 text-[14px] font-medium text-dark">
-                    {cat.name}
-                  </span>
-                  <span className="shrink-0 text-[11px] tabular-nums text-muted">
-                    {cat.prayers.length}
-                  </span>
-                  <IconChevronRight size={14} className="shrink-0 text-muted" />
-                </Link>
-              ))}
+              {group.categories.map((cat, i) => {
+                // Con una sola oración (las obligatorias, Naw-Rúz, la Tabla
+                // de Ahmad…) la lista intermedia no aporta nada: se abre la
+                // oración directo y no se muestra el "1".
+                const single = cat.prayers.length === 1 ? cat.prayers[0] : null;
+                return (
+                  <Link
+                    key={cat.id}
+                    href={
+                      single
+                        ? `/oraciones/${cat.id}/${single.id}`
+                        : `/oraciones/${cat.id}`
+                    }
+                    className={`tap flex items-center gap-3 px-4 py-3 ${
+                      i > 0 ? "border-t border-black/[0.05]" : ""
+                    }`}
+                  >
+                    <span className="min-w-0 flex-1 text-[14px] font-medium text-dark">
+                      {cat.name}
+                    </span>
+                    {!single && (
+                      <span className="shrink-0 text-[11px] tabular-nums text-muted">
+                        {cat.prayers.length}
+                      </span>
+                    )}
+                    <IconChevronRight size={14} className="shrink-0 text-muted" />
+                  </Link>
+                );
+              })}
             </div>
           </section>
         ))}

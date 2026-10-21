@@ -31,7 +31,13 @@ export default async function OracionLecturaPage({
       <GoldHeader
         title="Oración"
         subtitle={prayer.section ? `${category.name} · ${prayer.section}` : category.name}
-        backHref={`/oraciones/${category.id}`}
+        // Si la categoría tiene una sola oración, su página redirige acá:
+        // volver tiene que ir a la lista de categorías, no rebotar.
+        backHref={
+          category.prayers.length === 1
+            ? "/oraciones"
+            : `/oraciones/${category.id}`
+        }
       />
       <main className="scroll-area flex-1 px-4 pb-8 pt-4">
         <article className="rounded-2xl bg-card p-5 shadow-card">

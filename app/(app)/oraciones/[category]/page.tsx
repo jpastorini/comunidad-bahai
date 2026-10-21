@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { GoldHeader } from "@/components/GoldHeader";
 import { IconChevronRight } from "@/components/Icons";
 import { requireMember } from "@/lib/auth";
@@ -17,6 +17,11 @@ export default async function CategoriaOracionesPage({
   const found = findCategory(params.category);
   if (!found) notFound();
   const { group, category } = found;
+  // Una categoría con una sola oración se abre directo (la lista de
+  // categorías ya enlaza así; esto cubre los links viejos y el historial).
+  if (category.prayers.length === 1) {
+    redirect(`/oraciones/${category.id}/${category.prayers[0].id}`);
+  }
 
   let lastSection: string | undefined;
 
