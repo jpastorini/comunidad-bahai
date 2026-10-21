@@ -180,10 +180,15 @@ for (let i = bodyStart; i < lines.length; i++) {
   const lineRaw = lines[i];
   const t = norm(lineRaw);
 
-  if (!t) {
-    flushPara();
-    continue;
-  }
+  // Una línea en blanco NO corta el párrafo: en el PDF aparece también
+  // delante de una nota al pie o en un cambio de página en mitad de un
+  // párrafo (la Oración obligatoria larga quedaba partida en "…alcancen /
+  // la entrada de Tu puerta"). Lo que marca el párrafo es la SANGRÍA de la
+  // primera línea (tres espacios), que el PDF usa en todas las oraciones,
+  // muchas veces sin línea en blanco (Difuntos, Mártires, Protección…).
+  if (!t) continue;
+  // Sangría al inicio de la línea (el salto de página \f puede ir adelante).
+  const indented = /^\f?[ \t]{2,}\S/.test(lineRaw);
   // Pies de página / notas (incluye ‡ § usados como marcadores).
   if (/^[*†‡§]/.test(t)) continue;
   // Número de página suelto.
@@ -242,7 +247,8 @@ for (let i = bodyStart; i < lines.length; i++) {
     continue;
   }
 
-  // Línea de cuerpo de oración.
+  // Línea de cuerpo de oración: con sangría empieza un párrafo nuevo.
+  if (indented) flushPara();
   para.push(t);
 }
 flushPrayer(null);
