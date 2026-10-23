@@ -8,9 +8,9 @@ import {
   civilDayNumber,
   excerpt,
   findTopic,
-  getCitaDelDia,
   getCitaDelMes,
 } from "./citas";
+import { getLecturaDelDia } from "./daily-reading";
 import {
   getLocalityAdminIds,
   getLocalityMemberIds,
@@ -231,16 +231,17 @@ async function getOptedInUserIds(
 
 /**
  * "Lectura de hoy": manda la cita del día a quienes no la desactivaron.
- * La cita es la misma que muestra la app (determinística por fecha), así
- * que el aviso y la pantalla nunca se contradicen.
+ * La cita es la misma que muestra la app (la del corpus por fecha, o la
+ * que cargó a mano el admin nacional, 081), así que el aviso y la
+ * pantalla nunca se contradicen.
  */
 export async function sendDailyQuotePush(): Promise<{ recipients: number }> {
   const userIds = await getOptedInUserIds("daily_quote_push_enabled");
   if (userIds.length === 0) return { recipients: 0 };
 
-  const { cita, topic } = getCitaDelDia();
+  const { cita, label } = await getLecturaDelDia();
   await sendPushToUsers(userIds, {
-    title: `Lectura de hoy · ${topic.name}`,
+    title: `Lectura de hoy · ${label}`,
     body: excerpt(cita.text, 160),
     url: "/citas",
     // Un tag por día: si quedó sin leer la de ayer, la reemplaza.

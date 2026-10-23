@@ -292,7 +292,16 @@ misma para toda la comunidad cada día, determinística por fecha — sin tabla
 ni estado, ver `lib/citas.ts`; corpus de 991 citas en `public/citas.json`
 generado por `scripts/build-citas.mjs` desde la compilación "La Fuente de
 Todo Bien") con tarjeta en Inicio, pantalla `/citas` navegable por tema y
-push a las 8:00 · recordatorio opt-in de la **Oración Obligatoria corta** a
+push a las 8:00. **La de mañana se puede reemplazar a mano** (migración
+081, 2026-10-23): Admin Nacional → Lectura de mañana
+(`/admin/nacional/lectura`) guarda texto, referencia y título opcional en
+`daily_reading_overrides`, una fila por fecha civil, que ve todo el país
+en la app y en el aviso. Todo lo que muestra o avisa la Lectura de hoy pasa
+por `getLecturaDelDia()` (`lib/daily-reading.ts`, caché anónimo con tag
+`daily-reading`); `getCitaDelDia()` queda como la cita del corpus. La
+tabla ya admite cualquier fecha: agendar fechas especiales es abrir el
+formulario, que hoy fija mañana en el action. Sin la 081 todo sigue con la
+cita automática · recordatorio opt-in de la **Oración Obligatoria corta** a
 las 13:00, que se prende desde el perfil, el asistente de bienvenida o la
 propia pantalla de la oración (migración 038) ·
 **Tesorería como libro contable** (migración 040, reemplaza al Google
@@ -3034,6 +3043,10 @@ cambia nada.
 
 ## Pendientes conocidos
 
+- **Aplicar la 081 (Lectura de mañana)** y probar: cargar una cita en
+  `/admin/nacional/lectura` y verla al día siguiente en Inicio, `/citas`,
+  Oraciones y el aviso de las 8:00. Después: agendar citas para fechas
+  especiales (la tabla ya lo admite).
 - **Mercado Pago en producción** (079 aplicada y probada el 2026-10-17
   con un vendedor y un comprador de PRUEBA: aporte de $ 500 con recibo,
   comisión de $ 30,45 en "Gastos por transferencia", cuenta "Mercado Libre

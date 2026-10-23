@@ -193,6 +193,8 @@ export const ADMIN_NAV: NavGroup[] = [
     children: [
       { href: "/admin/nacional", label: "Panel", exact: true },
       { href: "/admin/mensajes", label: "Mensajes de la Casa Universal" },
+      // Reemplazar la Lectura de hoy del día siguiente por una cita a mano (081).
+      { href: "/admin/nacional/lectura", label: "Lectura de mañana" },
       { href: "/admin/nacional/materiales", label: "Materiales nacionales" },
       { href: "/admin/nacional/localidades", label: "Localidades" },
       { href: "/admin/nacional/miembros", label: "Creyentes de todo el país" },

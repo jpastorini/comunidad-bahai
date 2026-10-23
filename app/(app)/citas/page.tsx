@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { GoldHeader } from "@/components/GoldHeader";
 import { requireMember } from "@/lib/auth";
-import { civilDateLabel, getCitaDelDia, getCitasData } from "@/lib/citas";
+import { civilDateLabel, getCitasData } from "@/lib/citas";
+import { getLecturaDelDia } from "@/lib/daily-reading";
 import { SharePrayerButton } from "../oraciones/share-button";
 import { backTarget, withVolver } from "./back";
 import { QuoteReader } from "./quote-reader";
@@ -16,7 +17,7 @@ export default async function CitasPage({
   await requireMember("/citas");
 
   const back = backTarget(searchParams?.volver);
-  const { cita, topic } = getCitaDelDia();
+  const { cita, topic, label } = await getLecturaDelDia();
   const data = getCitasData();
   const topics = [...data.topics].sort((a, b) =>
     a.name.localeCompare(b.name, "es")
@@ -33,7 +34,9 @@ export default async function CitasPage({
       <main className="scroll-area flex-1 px-4 pb-8 pt-4">
         <article className="rounded-2xl bg-card p-5 shadow-card-elevated ring-1 ring-gold/15">
           <div className="mb-3 flex items-baseline justify-between gap-2 text-[9.5px] font-semibold uppercase tracking-[1.5px]">
-            <span className="text-gold-dark/70">✦ Lectura de hoy</span>
+            <span className="min-w-0 truncate text-gold-dark/70">
+              ✦ Lectura de hoy{topic ? "" : ` · ${label}`}
+            </span>
             <span className="shrink-0 text-muted/70">{civilDateLabel()}</span>
           </div>
           <QuoteReader text={cita.text} />
@@ -42,17 +45,20 @@ export default async function CitasPage({
           </div>
           <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-black/[0.06] pt-4">
             <SharePrayerButton
-              title={topic.name}
+              title={label}
               body={cita.text}
               reference={cita.reference}
               label="Compartir cita"
             />
-            <Link
-              href={withVolver(`/citas/${topic.id}`, searchParams?.volver)}
-              className="tap inline-flex items-center rounded-xl border border-black/10 px-3.5 py-2 text-[12px] font-semibold text-dark hover:bg-bg"
-            >
-              Más sobre {topic.name}
-            </Link>
+            {/* Una cita cargada a mano no es de ningún tema del corpus. */}
+            {topic && (
+              <Link
+                href={withVolver(`/citas/${topic.id}`, searchParams?.volver)}
+                className="tap inline-flex items-center rounded-xl border border-black/10 px-3.5 py-2 text-[12px] font-semibold text-dark hover:bg-bg"
+              >
+                Más sobre {topic.name}
+              </Link>
+            )}
           </div>
         </article>
 

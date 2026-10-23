@@ -4,7 +4,7 @@ import { GoldHeader } from "@/components/GoldHeader";
 import { IconChevronRight } from "@/components/Icons";
 import { BIBLIOTECA_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { requireMember } from "@/lib/auth";
-import { getCitaDelDia } from "@/lib/citas";
+import { getLecturaDelDia } from "@/lib/daily-reading";
 import { getOraciones } from "@/lib/oraciones";
 
 export const revalidate = 60;
@@ -17,8 +17,8 @@ export const revalidate = 60;
 export default async function OracionesPage() {
   const session = await requireMember("/oraciones");
   const { groups } = getOraciones();
-  // Determinística por fecha, sin consulta: la misma que muestra el Inicio.
-  const { topic } = getCitaDelDia();
+  // La misma que muestra el Inicio (y del mismo caché).
+  const { label } = await getLecturaDelDia();
 
   return (
     <>
@@ -43,7 +43,7 @@ export default async function OracionesPage() {
               Lectura de hoy
             </div>
             <div className="mt-0.5 truncate font-body text-[11.5px] text-muted">
-              {topic.name} · Escritos Sagrados por tema
+              {label} · Escritos Sagrados por tema
             </div>
           </div>
           <IconChevronRight size={14} className="shrink-0 text-muted" />

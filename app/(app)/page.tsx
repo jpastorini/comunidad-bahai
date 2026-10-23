@@ -14,7 +14,8 @@ import {
   getLatestLocalAnnouncement,
   getUpcomingCalendarEvents,
 } from "@/lib/data";
-import { civilDateLabel, getCitaDelDia } from "@/lib/citas";
+import { civilDateLabel } from "@/lib/citas";
+import { getLecturaDelDia } from "@/lib/daily-reading";
 import { getFeaturedPhotos } from "@/lib/event-photos";
 import { getHomeFeed } from "@/lib/feed";
 
@@ -22,7 +23,7 @@ export const revalidate = 60;
 
 export default async function HomePage() {
   const session = await requireMember("/");
-  const [featured, upcoming, badges, feed, featuredPhotos, chatDuty] =
+  const [featured, upcoming, badges, feed, featuredPhotos, chatDuty, lectura] =
     await Promise.all([
       getLatestLocalAnnouncement(),
       getUpcomingCalendarEvents(2),
@@ -32,10 +33,10 @@ export default async function HomePage() {
       // Solo consulta si la persona atiende algún canal; para la
       // comunidad no agrega ninguna ida a Supabase.
       getChatDuty(session.profile),
+      // La cita del día, o la que cargó a mano el admin nacional (081).
+      // Sale del caché: no suma una ida a Supabase por visita.
+      getLecturaDelDia(),
     ]);
-
-  // Cita del día: determinística por fecha, sin consulta a la base.
-  const citaDelDia = getCitaDelDia();
 
   return (
     <>
@@ -60,8 +61,8 @@ export default async function HomePage() {
           />
         )}
         <CitaDelDiaCard
-          cita={citaDelDia.cita}
-          topic={citaDelDia.topic}
+          cita={lectura.cita}
+          label={lectura.label}
           dateLabel={civilDateLabel()}
         />
         <SectionGrid
