@@ -3043,7 +3043,7 @@ cambia nada.
 
 ## Pendientes conocidos
 
-- **Aplicar la 081 (Lectura de mañana)** y probar: cargar una cita en
+- **Probar la Lectura de mañana** (la 081 se aplicó el 2026-10-24): cargar una cita en
   `/admin/nacional/lectura` y verla al día siguiente en Inicio, `/citas`,
   Oraciones y el aviso de las 8:00. Después: agendar citas para fechas
   especiales (la tabla ya lo admite).
