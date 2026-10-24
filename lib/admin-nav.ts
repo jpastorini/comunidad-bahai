@@ -39,6 +39,8 @@ export type NavLeaf = {
    * etiqueta); en un grupo `"all"`, aparecen todas menos las `false`.
    */
   inStructure?: boolean | string;
+  /** Solo con una estructura puesta: una Asamblea no lo tiene (084). */
+  onlyInStructure?: boolean;
 };
 
 export type NavGroup = {
@@ -71,6 +73,16 @@ export const ADMIN_NAV: NavGroup[] = [
     children: [
       { href: "/admin/tareas", label: "Tareas", inStructure: true },
       { href: "/admin/disponibilidad", label: "Reuniones", inStructure: true },
+      // Las actas con su archivo (084), de la institución puesta.
+      { href: "/admin/actas", label: "Actas", inStructure: true },
+      // Lo que una estructura le presenta a su Asamblea (084): informes de
+      // actividad y de Tesorería. La Asamblea los ve en el Registro.
+      {
+        href: "/admin/presentar",
+        label: "Informes a la Asamblea",
+        inStructure: true,
+        onlyInStructure: true,
+      },
       // Los Comités, Departamentos y la Coordinación o Junta de Instituto
       // que creó esta Asamblea, con sus integrantes (082). Con una
       // estructura puesta, la misma pantalla muestra quiénes la integran.
@@ -268,6 +280,7 @@ export function visibleNav(
         (leaf) =>
           canSee(leaf.requires ?? group.requires, profile) &&
           !((isNational || isStructure) && leaf.aelOnly) &&
+          !(!isStructure && leaf.onlyInStructure) &&
           (!isStructure ||
             (group.inStructure === "all"
               ? leaf.inStructure !== false

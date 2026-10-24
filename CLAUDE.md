@@ -542,8 +542,40 @@ en todo el país.
 ⚠️ Sin la 083, la copia del creyente de un recibo de estructura sale con
 el encabezado de una AEL; todo lo demás de la Etapa 2 anda igual.
 
-**Lo que falta (etapas 3 y 4):** "Presentar a la Asamblea" para informes de Tesorería y
-de actividad, y actas con archivo (Etapa 3) · calendario compartido entre
+**Etapa 3, informes presentados y actas (084, 2026-10-24):**
+
+- **`structure_reports`**: lo único de una estructura que ve su Asamblea.
+  Dos clases: **actividad** (título, período, texto y un archivo) y
+  **tesorería**, que NO copia la hoja: apunta a `treasury_reports` y una
+  policy aparte (`treasury_reports_select_presented`) deja leerla a la
+  Asamblea madre mientras esté presentada. `parent_id` lo pone el trigger
+  desde la estructura: nadie elige a quién presentar.
+- **La estructura** (`/admin/presentar`, "Informes a la Asamblea", hoja
+  `onlyInStructure` del menú): borrador → presentar (push a la Asamblea
+  madre) → se puede retirar mientras no esté aprobado. La hoja de
+  Tesorería la presenta solo quien tiene el tag, y tiene que estar
+  emitida.
+- **La Asamblea** la ve en su Registro de informes, bloque "Presentados
+  por las estructuras", y en `/admin/informes/presentados/[id]` registra
+  la reunión que lo aprobó. ⚠️ Aprobar va por `review_structure_report()`
+  (definer): la policy de escritura de la estructura exige `approved_on`
+  nulo en la fila nueva, así que no puede aprobarse sola, y una vez
+  aprobado no lo puede tocar. `/admin/informe/[id]` abre la hoja de otra
+  localidad solo si se la presentaron a la que mira, con el encabezado de
+  quien la emitió.
+- **Actas con archivo** (`/admin/actas`, para Asambleas y estructuras):
+  `assembly_actas` (031) suma `file_path`, `file_name` y `notes`.
+- **Un bucket privado, `institucion-docs`**, para actas
+  (`<localidad>/actas/`) e informes (`<localidad>/informes/`). Se sube
+  desde el navegador con `components/admin/UploadingForm.tsx` (el techo de
+  4,5 MB de Vercel) y el action verifica la carpeta. La Asamblea madre lee
+  el archivo de un informe presentado por una regla de la policy de
+  lectura; el resto, solo la localidad dueña.
+
+⚠️ Hasta que corra la 084, "Informes a la Asamblea" avisa y no presenta, y
+las actas se listan sin poder adjuntar el archivo.
+
+**Lo que falta (Etapa 4):** calendario compartido entre
 las instituciones de una localidad con filtro Locales / Nacionales /
 Ambas, casilla "Mostrar en el calendario de la comunidad" y la categoría
 "Reunión AEL" con nombre genérico (Etapa 4).
@@ -3157,7 +3189,9 @@ cambia nada.
   muestra solo lo suyo, y volver a la app (tiene que caer en su comunidad,
   no en el comité). Con la 083: cargar un aporte en el libro del comité,
   ver el "Recibo interno" del lado del tesorero y en "Mis aportes" del
-  creyente. Siguen las etapas 3 y 4 (ver "Estructuras").
+  creyente. Con la 084: presentar un informe de actividad con archivo
+  desde el comité, verlo y aprobarlo desde la AEL, y subir un acta. Sigue
+  la Etapa 4 (ver "Estructuras").
 - **Probar la Lectura de mañana** (la 081 se aplicó el 2026-10-24): cargar una cita en
   `/admin/nacional/lectura` y verla al día siguiente en Inicio, `/citas`,
   Oraciones y el aviso de las 8:00. Después: agendar citas para fechas

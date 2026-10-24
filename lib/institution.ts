@@ -9,6 +9,15 @@
 import { receiptLocalityName } from "./treasury-format";
 
 /**
+ * Bucket PRIVADO de las actas y los archivos de los informes que las
+ * estructuras presentan (084): `<localidad>/actas/…`, `<localidad>/informes/…`.
+ * Se sube desde el navegador (el techo de 4,5 MB de Vercel) y se lee por
+ * URL firmada emitida en el servidor.
+ */
+export const INSTITUTION_DOCS_BUCKET = "institucion-docs";
+export const MAX_INSTITUTION_FILE_BYTES = 20 * 1024 * 1024;
+
+/**
  * Los datos de quien emite: la ficha legal de una Asamblea (054) o, para
  * una estructura, su nombre y la Asamblea de la que depende.
  */

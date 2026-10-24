@@ -35,13 +35,32 @@ export default async function VerInformePage({
   const supabase = createSupabaseServer();
 
   const report = await getReport(supabase, params.id);
-  if (!report || report.locality_id !== session.locality.id) notFound();
+  if (!report) notFound();
+  // El de otra localidad solo si una estructura se lo presentó a esta
+  // Asamblea (084); la RLS ya no lo devolvería en otro caso, pero el admin
+  // nacional lo lee todo y no tiene por qué abrirlo desde acá.
+  const own = report.locality_id === session.locality.id;
+  if (!own) {
+    const { data: presented } = await supabase
+      .from("structure_reports")
+      .select("id")
+      .eq("treasury_report_id", report.id)
+      .eq("parent_id", session.locality.id)
+      .eq("status", "presentado")
+      .maybeSingle();
+    if (!presented) notFound();
+  }
 
   // Quién emite y quién aprueba: la Asamblea con su nombre registrado, o
-  // la estructura (082) y la Asamblea de la que depende.
-  const legal = await getReceiptLegal(supabase, session.locality.id);
-  const institution = institutionLine(legal, session.locality);
-  const approvedBy = approverTitle(legal, session.locality);
+  // la estructura (082) y la Asamblea de la que depende. Es la de QUIEN
+  // EMITIÓ el informe, que en uno presentado no es la que mira.
+  const emitter = own
+    ? session.locality
+    : ((await supabase.from("localities").select("*").eq("id", report.locality_id).maybeSingle())
+        .data as typeof session.locality | null) ?? session.locality;
+  const legal = await getReceiptLegal(supabase, report.locality_id);
+  const institution = institutionLine(legal, emitter);
+  const approvedBy = approverTitle(legal, emitter);
 
   const shared = {
     title: report.title,
@@ -54,7 +73,7 @@ export default async function VerInformePage({
 
   // Solo el tesorero puede volver al editor; para el resto de la
   // Asamblea el informe es de lectura.
-  const canEdit = session.profile.can_manage_treasury;
+  const canEdit = own && session.profile.can_manage_treasury;
 
   if (report.audience === "balance") {
     // Los datos fiscales del encabezado (nombre registrado, RUT,
@@ -73,7 +92,7 @@ export default async function VerInformePage({
         )}
         <BalanceSheet
           report={shared}
-          localityName={session.locality.name}
+          localityName={emitter.name}
           legal={legal}
           emittedBy={report.editorial.signature?.name ?? null}
         />
@@ -96,7 +115,7 @@ export default async function VerInformePage({
         )}
         <ReportSheet
           report={shared}
-          localityName={session.locality.name}
+          localityName={emitter.name}
           institution={institution}
           approvedBy={approvedBy}
           emittedBy={report.editorial.signature?.name ?? null}
@@ -109,7 +128,7 @@ export default async function VerInformePage({
     <>
       <ReportDeck
         report={shared}
-        localityName={session.locality.name}
+        localityName={emitter.name}
         institution={institution}
       />
       {canEdit && (
