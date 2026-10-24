@@ -4,6 +4,13 @@ import { requireAdmin } from "@/lib/auth";
 import { isNationalLocality, isStructureLocality } from "@/lib/types";
 import { getCalendarKind } from "@/lib/calendar-kinds";
 import { getUnifiedCalendarItems } from "@/lib/data";
+import {
+  familyOf,
+  getInstitutionalItems,
+  getNationalLocalityId,
+  parseCalendarScope,
+  type CalendarScope,
+} from "@/lib/institutional-calendar";
 import type { UnifiedCalendarItem } from "@/lib/data";
 import { ensureYearSeeded } from "@/lib/year-seed";
 import { deleteEventAction } from "./actions";
@@ -28,7 +35,7 @@ type MonthGroup = {
 export default async function AdminCalendarPage({
   searchParams,
 }: {
-  searchParams: { vista?: string; m?: string };
+  searchParams: { vista?: string; m?: string; ambito?: string };
 }) {
   const session = await requireAdmin();
   // Una estructura (082) no siembra nada: los Días Sagrados y las Fiestas
@@ -38,7 +45,43 @@ export default async function AdminCalendarPage({
       seedFeasts: !isNationalLocality(session.locality),
     });
   }
-  const items = await getUnifiedCalendarItems();
+
+  // Lo propio, más lo de las otras instituciones de la comunidad y las
+  // nacionales (085), con el filtro Locales / Nacionales / Ambas.
+  const scope = parseCalendarScope(searchParams?.ambito);
+  const now = new Date();
+  const [own, others, nationalId] = await Promise.all([
+    getUnifiedCalendarItems(),
+    getInstitutionalItems(
+      `${now.getFullYear() - 1}-01-01`,
+      `${now.getFullYear() + 2}-12-31`
+    ),
+    getNationalLocalityId(),
+  ]);
+  const ownFamily = familyOf(session.locality, nationalId);
+  const othersIds = new Set(others.map((i) => i.id));
+  const items = [
+    // Un evento que una estructura compartió con la comunidad llega por
+    // los dos lados: queda el de la otra institución, que dice de quién es.
+    ...own
+      .filter((i) => !othersIds.has(i.id))
+      .map((i) =>
+        i.localityId && i.localityId !== session.locality.id
+          ? { ...i, readOnly: true, family: ownFamily }
+          : { ...i, family: ownFamily }
+      ),
+    ...others,
+  ]
+    .filter(
+      (i) =>
+        scope === "ambas" ||
+        (scope === "locales" ? i.family === "local" : i.family === "nacional")
+    )
+    .sort(
+      (a, b) =>
+        a.year * 10000 + a.month * 100 + a.day - (b.year * 10000 + b.month * 100 + b.day)
+    );
+  const scopeQuery = scope === "ambas" ? "" : `&ambito=${scope}`;
 
   const vista = searchParams?.vista === "lista" ? "lista" : "mes";
 
@@ -64,12 +107,14 @@ export default async function AdminCalendarPage({
         description="La vista centralizada de todo lo que tiene la Asamblea entre manos: eventos, Fiestas, Días Sagrados y reuniones. Si vas a crear un nuevo evento, revisá primero acá para evitar solapamientos."
         actions={
           <>
-            <ViewToggle vista={vista} />
+            <ScopeToggle scope={scope} vista={vista} m={searchParams?.m} />
+            <ViewToggle vista={vista} query={scopeQuery} />
             <Button href="/admin/calendario/nuevo">+ Nuevo evento</Button>
           </>
         }
       />
 
+      {!isStructureLocality(session.locality) && (
       <Banner tone="info">
         Las <strong>Fiestas</strong> se siembran automáticamente — desde acá las
         ves para evitar superposición. Para editar el programa, oraciones,
@@ -77,10 +122,15 @@ export default async function AdminCalendarPage({
         {vista === "mes" ? "haciendo clic en la entrada" : 'desde la columna "Acciones"'}{" "}
         o desde el sidebar "Fiestas de 19 Días".
       </Banner>
+      )}
+      <p className="mt-3 text-[12.5px] text-muted">
+        Con borde punteado, lo de las otras instituciones de la comunidad y las
+        nacionales: se ve para coordinar, lo edita cada una.
+      </p>
 
       {vista === "mes" ? (
         <div className="mt-5">
-          <MonthGrid items={items} month={month} year={year} />
+          <MonthGrid items={items} month={month} year={year} query={scopeQuery} />
         </div>
       ) : groups.length === 0 ? (
         <div className="mt-5 rounded-2xl bg-card px-4 py-12 text-center text-[14px] text-muted shadow-card-soft">
@@ -102,7 +152,44 @@ export default async function AdminCalendarPage({
   );
 }
 
-function ViewToggle({ vista }: { vista: "mes" | "lista" }) {
+/** Locales / Nacionales / Ambas (085). Conserva la vista y el mes. */
+function ScopeToggle({
+  scope,
+  vista,
+  m,
+}: {
+  scope: CalendarScope;
+  vista: "mes" | "lista";
+  m?: string;
+}) {
+  const base = "rounded-[10px] px-3 py-1.5 text-[12px] font-semibold transition";
+  const active = "bg-terra text-white shadow-card-soft";
+  const inactive = "text-muted hover:text-dark";
+  const href = (s: CalendarScope) => {
+    const q = new URLSearchParams();
+    if (vista === "lista") q.set("vista", "lista");
+    if (m) q.set("m", m);
+    if (s !== "ambas") q.set("ambito", s);
+    const qs = q.toString();
+    return qs ? `/admin/calendario?${qs}` : "/admin/calendario";
+  };
+  const options: Array<[CalendarScope, string]> = [
+    ["locales", "Locales"],
+    ["nacionales", "Nacionales"],
+    ["ambas", "Ambas"],
+  ];
+  return (
+    <div className="inline-flex items-center gap-0.5 rounded-xl border border-black/10 bg-card p-1">
+      {options.map(([s, label]) => (
+        <Link key={s} href={href(s)} className={`${base} ${scope === s ? active : inactive}`}>
+          {label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function ViewToggle({ vista, query }: { vista: "mes" | "lista"; query: string }) {
   const base =
     "rounded-[10px] px-3 py-1.5 text-[12px] font-semibold transition";
   const active = "bg-terra text-white shadow-card-soft";
@@ -110,13 +197,13 @@ function ViewToggle({ vista }: { vista: "mes" | "lista" }) {
   return (
     <div className="inline-flex items-center gap-0.5 rounded-xl border border-black/10 bg-card p-1">
       <Link
-        href="/admin/calendario"
+        href={query ? `/admin/calendario?${query.slice(1)}` : "/admin/calendario"}
         className={`${base} ${vista === "mes" ? active : inactive}`}
       >
         Mes
       </Link>
       <Link
-        href="/admin/calendario?vista=lista"
+        href={`/admin/calendario?vista=lista${query}`}
         className={`${base} ${vista === "lista" ? active : inactive}`}
       >
         Lista
@@ -255,6 +342,7 @@ function TitleCell({ item }: { item: UnifiedCalendarItem }) {
         <div className="text-[14px] font-semibold text-dark">{item.title}</div>
         <div className="flex items-center gap-2 text-[10.5px] uppercase tracking-wide text-muted">
           <span>{meta.label}</span>
+          {item.institution && <span className="normal-case">· {item.institution}</span>}
           {item.source === "feast" && item.feastStatus && (
             <FeastStatusPill status={item.feastStatus} />
           )}
@@ -291,6 +379,14 @@ function FeastStatusPill({
 }
 
 function ActionsCell({ item }: { item: UnifiedCalendarItem }) {
+  // De otra institución (085): lo edita la que lo cargó.
+  if (item.readOnly) {
+    return (
+      <div className="text-right text-[11.5px] text-muted">
+        Lo edita {item.institution ?? "otra institución"}
+      </div>
+    );
+  }
   if (item.source === "feast") {
     return (
       <div className="flex items-center justify-end">

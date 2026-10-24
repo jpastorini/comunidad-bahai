@@ -624,6 +624,13 @@ export type CalendarEvent = {
    * y duración.
    */
   is_system_seeded?: boolean | null;
+  /** La institución dueña del evento (012). */
+  locality_id?: string | null;
+  /**
+   * Un evento de una estructura (082) que se muestra también en el
+   * calendario de la comunidad de su Asamblea (085).
+   */
+  community_visible?: boolean | null;
   /** Identificador estable de la siembra (ej. 'holy_naw_ruz_BE183'). */
   system_id?: string | null;
   /**

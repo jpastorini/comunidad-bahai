@@ -575,10 +575,37 @@ el encabezado de una AEL; todo lo demás de la Etapa 2 anda igual.
 ⚠️ Hasta que corra la 084, "Informes a la Asamblea" avisa y no presenta, y
 las actas se listan sin poder adjuntar el archivo.
 
-**Lo que falta (Etapa 4):** calendario compartido entre
-las instituciones de una localidad con filtro Locales / Nacionales /
-Ambas, casilla "Mostrar en el calendario de la comunidad" y la categoría
-"Reunión AEL" con nombre genérico (Etapa 4).
+**Etapa 4, el calendario entre instituciones (085, 2026-10-24):**
+
+- **En el calendario del panel** se ve lo propio y, con borde punteado y
+  sin poder editarse, lo de las otras instituciones de las familias donde
+  la persona tiene rol de Asamblea (la AEL y sus estructuras) y de la
+  familia nacional (la AEN y las suyas). Filtro **Locales / Nacionales /
+  Ambas** (`?ambito=`), que la grilla y la lista conservan al navegar.
+  Una "familia" es `coalesce(parent_id, id)`.
+- ⚠️ **Lo de otras instituciones NO entra por la RLS de
+  `calendar_events`**: sale de `institutional_calendar()` (definer, sin
+  Días Sagrados) y lo lee solo `/admin/calendario`
+  (`lib/institutional-calendar.ts`). Si fuera por RLS, el calendario del
+  creyente, el Inicio del panel y los recordatorios —que leen
+  `calendar_events` confiando en la RLS— empezarían a mostrar las
+  reuniones de los comités.
+- **"Mostrar en el calendario de la comunidad"** (`community_visible`):
+  casilla del evento, solo en una estructura, apagada por defecto. Esa SÍ
+  es una policy de `calendar_events`: lo ven los creyentes de la Asamblea
+  madre, o de todo el país si la estructura es nacional. En el calendario
+  de la Asamblea aparece pero no se edita (`/admin/calendario/[id]` da 404
+  para un evento de otra localidad).
+- En una estructura, la categoría "Reunión AEL" del formulario se llama
+  "Reunión". Las reuniones de la AEL siguen viéndose en el calendario de
+  los creyentes, como siempre (decidido con el usuario el 2026-10-24).
+
+⚠️ Sin la 085 el calendario del panel sigue con lo propio y guardar un
+evento desde una estructura avisa que falta la migración.
+
+**Pendiente posible:** el aviso del día anterior de un evento compartido
+con la comunidad sale solo a los integrantes de la estructura, no a la
+comunidad.
 
 ⚠️ Hasta que corra la 082, la pantalla de Estructuras avisa y no crea
 nada; el resto del cambio funciona igual sin la migración.
@@ -3183,15 +3210,17 @@ cambia nada.
 
 ## Pendientes conocidos
 
-- **Aplicar la 082 y estrenar las Estructuras** (2026-10-24): crear un
+- **Aplicar de la 082 a la 085 y estrenar las Estructuras** (2026-10-24): crear un
   comité desde Asamblea → Estructuras, sumar a alguien que no sea de la
   Asamblea, entrar desde su `/perfil` al panel del comité, ver que el menú
   muestra solo lo suyo, y volver a la app (tiene que caer en su comunidad,
   no en el comité). Con la 083: cargar un aporte en el libro del comité,
   ver el "Recibo interno" del lado del tesorero y en "Mis aportes" del
   creyente. Con la 084: presentar un informe de actividad con archivo
-  desde el comité, verlo y aprobarlo desde la AEL, y subir un acta. Sigue
-  la Etapa 4 (ver "Estructuras").
+  desde el comité, verlo y aprobarlo desde la AEL, y subir un acta. Con
+  la 085: cargar una reunión en el comité y verla punteada en el
+  calendario de la AEL; marcar un evento "Mostrar en el calendario de la
+  comunidad" y verlo como creyente.
 - **Probar la Lectura de mañana** (la 081 se aplicó el 2026-10-24): cargar una cita en
   `/admin/nacional/lectura` y verla al día siguiente en Inicio, `/citas`,
   Oraciones y el aviso de las 8:00. Después: agendar citas para fechas

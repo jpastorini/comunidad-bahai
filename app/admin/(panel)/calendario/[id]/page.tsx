@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
 import { getLocalityAvailability } from "@/lib/availability-data";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import type { CalendarEvent } from "@/lib/types";
+import { isStructureLocality, type CalendarEvent } from "@/lib/types";
 import { AvailabilityMini } from "../AvailabilityMini";
 import { EventAvailabilityAside } from "../EventAvailabilityAside";
 import { EventForm } from "../event-form";
@@ -23,13 +23,17 @@ export default async function EditEventPage({
 
   if (!data) notFound();
   const event = data as CalendarEvent;
+  // Un evento que una estructura compartió con la comunidad (085) se ve
+  // en el calendario de la Asamblea, pero lo edita la estructura.
+  if (event.locality_id && event.locality_id !== session.locality.id) notFound();
+  const structure = isStructureLocality(session.locality);
   const availability = await getLocalityAvailability(session.locality.id);
 
   return (
     <div className="mx-auto max-w-3xl xl:flex xl:max-w-none xl:items-start xl:gap-6">
       <div className="min-w-0 xl:max-w-3xl xl:flex-1">
-        <PageHeader back={{ href: "/admin/calendario", label: "Calendario" }} eyebrow="Vida comunitaria" title="Editar evento" />
-        <EventForm event={event} />
+        <PageHeader back={{ href: "/admin/calendario", label: "Calendario" }} eyebrow={structure ? "Agenda" : "Vida comunitaria"} title="Editar evento" />
+        <EventForm event={event} structure={structure} />
       </div>
       <EventAvailabilityAside
         initialKind={event.kind ?? "actividad_general"}

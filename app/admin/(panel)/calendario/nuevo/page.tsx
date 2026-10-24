@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
+import { isStructureLocality } from "@/lib/types";
 import { getLocalityAvailability } from "@/lib/availability-data";
 import { AvailabilityMini } from "../AvailabilityMini";
 import { EventAvailabilityAside } from "../EventAvailabilityAside";
@@ -12,6 +13,7 @@ export default async function NewEventPage({
 }) {
   const session = await requireAdmin();
   const availability = await getLocalityAvailability(session.locality.id);
+  const structure = isStructureLocality(session.locality);
 
   // Fecha prellenada al llegar desde el "+" de un día en la vista Mes.
   const fecha = searchParams?.fecha;
@@ -21,8 +23,8 @@ export default async function NewEventPage({
   return (
     <div className="mx-auto max-w-3xl xl:flex xl:max-w-none xl:items-start xl:gap-6">
       <div className="min-w-0 xl:max-w-3xl xl:flex-1">
-        <PageHeader back={{ href: "/admin/calendario", label: "Calendario" }} eyebrow="Vida comunitaria" title="Nuevo evento" />
-        <EventForm defaultDate={defaultDate} />
+        <PageHeader back={{ href: "/admin/calendario", label: "Calendario" }} eyebrow={structure ? "Agenda" : "Vida comunitaria"} title="Nuevo evento" />
+        <EventForm defaultDate={defaultDate} structure={structure} />
       </div>
       <EventAvailabilityAside
         initialKind="actividad_general"

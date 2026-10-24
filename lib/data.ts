@@ -156,8 +156,11 @@ export async function getCalendarEvents(): Promise<CalendarEvent[]> {
   const supabase = createSupabaseServer();
   const { data, error } = await supabase
     .from("calendar_events")
+    // `locality_id` dice si el evento es de la institución puesta o de una
+    // estructura que lo compartió con la comunidad (085): ese no se edita
+    // desde acá.
     .select(
-      "id, day, month, year, title, time, color, kind, location, image_url, is_system_seeded"
+      "id, day, month, year, title, time, color, kind, location, image_url, is_system_seeded, locality_id"
     )
     .order("year", { ascending: true })
     .order("month", { ascending: true })
@@ -523,6 +526,14 @@ export type UnifiedCalendarItem = {
   isSystemSeeded: boolean;
   /** Solo para Fiestas; null en eventos del calendario. */
   feastStatus: import("./types").FeastStatus | null;
+  /** De qué institución es, si no es la puesta (082/085). */
+  institution?: string | null;
+  /** Familia local (una AEL y sus estructuras) o nacional (085). */
+  family?: "local" | "nacional";
+  /** De otra institución: se ve, no se edita desde acá. */
+  readOnly?: boolean;
+  /** La institución dueña del evento. */
+  localityId?: string | null;
 };
 
 export async function getUnifiedCalendarItems(): Promise<UnifiedCalendarItem[]> {
@@ -568,6 +579,7 @@ export async function getUnifiedCalendarItems(): Promise<UnifiedCalendarItem[]> 
     image_url: e.image_url ?? null,
     isSystemSeeded: e.is_system_seeded === true,
     feastStatus: null,
+    localityId: e.locality_id ?? null,
   }));
 
   const fromFeasts: UnifiedCalendarItem[] = feasts

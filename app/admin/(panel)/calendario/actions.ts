@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { to24h } from "@/lib/format";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
+import { isStructureLocality } from "@/lib/types";
 
 const BUCKET = "comunicados"; // reuse — public bucket with admin-only write
 
@@ -26,7 +27,7 @@ async function uploadImage(file: File | null): Promise<string | null> {
 }
 
 export async function upsertEventAction(formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const supabase = createSupabaseServer();
 
   const id = formData.get("id") as string | null;
@@ -92,6 +93,12 @@ export async function upsertEventAction(formData: FormData) {
       rawKind === "reunion_ael" ? "reunion_ael" : "actividad_general";
   }
 
+  // Solo una estructura (082) comparte un evento con la comunidad (085):
+  // lo de una Asamblea ya es de su comunidad.
+  if (isStructureLocality(session.locality)) {
+    payload.community_visible = formData.get("community_visible") === "on";
+  }
+
   if (!isProtected && (!date || !payload.title)) {
     setFlashToast({ tone: "error", message: "Faltan campos obligatorios." });
     redirect("/admin/calendario");
@@ -112,7 +119,13 @@ export async function upsertEventAction(formData: FormData) {
 
   setFlashToast(
     error
-      ? { tone: "error", message: `Error: ${error.message}` }
+      ? {
+          tone: "error",
+          message:
+            error.code === "PGRST204" || error.code === "42703"
+              ? "Falta aplicar la migración 085 en la base."
+              : `Error: ${error.message}`,
+        }
       : { tone: "success", message: id ? "Evento actualizado." : "Evento creado." }
   );
 

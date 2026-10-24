@@ -2,6 +2,7 @@ import {
   Banner,
   Button,
   Card,
+  Checkbox,
   DateInput,
   Field,
   Select,
@@ -11,7 +12,13 @@ import {
 import { upsertEventAction } from "./actions";
 import type { CalendarEvent } from "@/lib/types";
 
-type Props = { event?: CalendarEvent; defaultDate?: string };
+type Props = {
+  event?: CalendarEvent;
+  defaultDate?: string;
+  /** Con una estructura puesta (082): la reunión no es "AEL" y el evento
+   *  puede mostrarse en el calendario de la comunidad (085). */
+  structure?: boolean;
+};
 
 const COLORS = [
   { value: "#2A3F8F", label: "Terra (azul)" },
@@ -20,7 +27,7 @@ const COLORS = [
   { value: "#C4A235", label: "Dorado" },
 ];
 
-export function EventForm({ event, defaultDate }: Props) {
+export function EventForm({ event, defaultDate, structure = false }: Props) {
   const date = event
     ? `${event.year}-${String(event.month).padStart(2, "0")}-${String(event.day).padStart(2, "0")}`
     : defaultDate ?? "";
@@ -116,7 +123,7 @@ export function EventForm({ event, defaultDate }: Props) {
               <Field
                 label="Tipo de evento"
                 name="kind"
-                hint="La Reunión AEL usa su color propio"
+                hint={structure ? "La reunión usa su color propio" : "La Reunión AEL usa su color propio"}
               >
                 <Select
                   id="kind"
@@ -124,10 +131,22 @@ export function EventForm({ event, defaultDate }: Props) {
                   defaultValue={event?.kind ?? "actividad_general"}
                 >
                   <option value="actividad_general">Actividad general</option>
-                  <option value="reunion_ael">Reunión AEL</option>
+                  <option value="reunion_ael">{structure ? "Reunión" : "Reunión AEL"}</option>
                 </Select>
               </Field>
             </div>
+
+            {structure && (
+              <div className="mt-4">
+                {/* Apagada por defecto (decidido con el usuario): lo de una
+                    estructura es interno salvo que se diga lo contrario. */}
+                <Checkbox
+                  name="community_visible"
+                  label="Mostrar en el calendario de la comunidad (lo ven los creyentes de la Asamblea de la que depende la estructura)"
+                  defaultChecked={!!event?.community_visible}
+                />
+              </div>
+            )}
           </>
         )}
 

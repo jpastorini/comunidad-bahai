@@ -23,10 +23,13 @@ export function MonthGrid({
   items,
   month,
   year,
+  query = "",
 }: {
   items: UnifiedCalendarItem[];
   month: number;
   year: number;
+  /** Lo que la navegación entre meses tiene que conservar ("&ambito=…"). */
+  query?: string;
 }) {
   const today = new Date();
   const isCurrentMonth =
@@ -55,21 +58,21 @@ export function MonthGrid({
     <div>
       {/* Navegador de mes */}
       <div className="mb-3 flex items-center justify-between gap-2">
-        <NavLink target={prev} year={year} direction="prev" />
+        <NavLink target={prev} year={year} direction="prev" query={query} />
         <div className="flex items-center gap-3">
           <h2 className="font-display text-[18px] font-semibold text-dark">
             {MONTHS_ES_LONG[month - 1]} {year}
           </h2>
           {!isCurrentMonth && (
             <Link
-              href="/admin/calendario"
+              href={query ? `/admin/calendario?${query.slice(1)}` : "/admin/calendario"}
               className="text-[11px] font-semibold text-muted hover:text-terra hover:underline"
             >
               Volver a hoy
             </Link>
           )}
         </div>
-        <NavLink target={next} year={year} direction="next" />
+        <NavLink target={next} year={year} direction="next" query={query} />
       </div>
 
       {/* Grilla */}
@@ -148,6 +151,7 @@ function ItemChip({ item }: { item: UnifiedCalendarItem }) {
   // borde punteado para que el estado no pase desapercibido.
   const isDraftFeast = item.source === "feast" && item.feastStatus === "draft";
   const tooltip = [
+    item.institution ?? undefined,
     item.title,
     item.time,
     item.location ?? undefined,
@@ -155,6 +159,20 @@ function ItemChip({ item }: { item: UnifiedCalendarItem }) {
   ]
     .filter(Boolean)
     .join(" · ");
+  // El de otra institución (085) se ve, no se edita: sin link, con borde
+  // punteado y el nombre de quién es en el tooltip.
+  if (item.readOnly) {
+    return (
+      <span
+        title={tooltip}
+        className="block truncate rounded-md px-1.5 py-1 text-[11px] font-semibold leading-tight"
+        style={{ background: `${item.color}0A`, color: item.color, border: `1px dotted ${item.color}66` }}
+      >
+        {item.title}
+        <span className="ml-1 font-normal opacity-75">{item.institution}</span>
+      </span>
+    );
+  }
   return (
     <Link
       href={item.adminHref}
@@ -176,10 +194,12 @@ function NavLink({
   target,
   year,
   direction,
+  query,
 }: {
   target: { month: number; year: number };
   year: number;
   direction: "prev" | "next";
+  query: string;
 }) {
   const chevron =
     direction === "prev" ? (
@@ -197,7 +217,7 @@ function NavLink({
   );
   return (
     <Link
-      href={`/admin/calendario?m=${target.year}-${String(target.month).padStart(2, "0")}`}
+      href={`/admin/calendario?m=${target.year}-${String(target.month).padStart(2, "0")}${query}`}
       className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 bg-card px-3 py-2 text-[12px] font-semibold text-terra transition hover:bg-bg"
     >
       {direction === "prev" && (
