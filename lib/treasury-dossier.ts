@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAssemblyData } from "./assembly";
 import { formatDate, formatDateTime } from "./format";
+import { institutionLine } from "./institution";
 import { ASSEMBLY_OFFICE_LABELS, type AssemblyOffice } from "./types";
 import { findingsOf, getDispositions } from "./treasury-audit-server";
 import type { Finding } from "./treasury-audit";
@@ -567,7 +568,7 @@ export async function buildDossierManifest(
     content: csv([["Ejercicio", "Elegida el", "Posición", "Nombre", "Cargo", "Desde", "Hasta"], ...compRows]),
   });
   if (statutesUrl) files.push({ path: `${folder}/08-asamblea/estatutos.pdf`, kind: "url", url: statutesUrl });
-  const registeredName = legal.registeredName || `Asamblea Espiritual Local de los Bahá'ís de ${opts.localityName}`;
+  const registeredName = institutionLine(legal, { name: opts.localityName });
   files.push({
     path: `${folder}/08-asamblea/ficha-legal.txt`,
     kind: "text",

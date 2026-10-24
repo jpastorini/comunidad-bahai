@@ -4,7 +4,7 @@ import { currentMembers, getAssemblyData } from "./assembly";
 import { findBudgetForYear } from "./budget-lookup";
 import { activeMembers, getLocalityMembers } from "./memberships";
 import { getCashBoxes, getCashReports, getLastCounts } from "./treasury-cash";
-import { todayISO } from "./treasury-ledger";
+import { getContributorRoster, todayISO } from "./treasury-ledger";
 import { treasuryYearEnd, treasuryYearForDate, treasuryYearStart } from "./treasury-year";
 import type {
   AuditAttachment,
@@ -16,6 +16,7 @@ import type {
   AuditGoal,
   AuditInput,
   AuditLegal,
+  AuditLocalityKind,
   AuditReport,
   Finding,
 } from "./treasury-audit";
@@ -69,7 +70,7 @@ export type LoadedAudit = {
 
 export async function loadAuditInput(
   supabase: SupabaseClient,
-  locality: { id: string; name: string; kind: "ael" | "nacional" },
+  locality: { id: string; name: string; kind: AuditLocalityKind },
   options: LoadAuditOptions = {}
 ): Promise<LoadedAudit> {
   const today = todayISO();
@@ -190,20 +191,14 @@ export async function loadAuditInput(
     .filter((m) => m.can_manage_treasury)
     .map((m) => m.id);
 
-  // El universo del buscador de contribuyentes, igual que el del libro:
-  // el padrón de la comunidad en una AEL, todo el país en la Nacional
-  // (058), porque al Fondo Nacional gira gente de cualquier localidad.
-  let roster: Array<{ id: string; full_name: string | null }> = members.map((m) => ({
-    id: m.id,
-    full_name: m.full_name,
-  }));
-  if (locality.kind === "nacional") {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, full_name")
-      .is("disabled_at", null);
-    roster = (data ?? []) as Array<{ id: string; full_name: string | null }>;
-  }
+  // El universo del buscador de contribuyentes, el MISMO que el del libro
+  // (`getContributorRoster`): el padrón de la comunidad en una AEL, todo
+  // el país en la Nacional (058), la comunidad madre en una estructura (082).
+  const roster = await getContributorRoster(
+    supabase,
+    locality.id,
+    locality.kind === "nacional"
+  );
 
   const assemblyData = await getAssemblyData(supabase, locality.id, bahaiYear);
   const assembly = assemblyData.term

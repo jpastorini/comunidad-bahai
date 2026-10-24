@@ -64,6 +64,12 @@ export type MyReceipt = {
   fund_name: string | null;
   subcategory_name: string | null;
   locality_name: string | null;
+  /** La localidad del asiento y, si es una estructura (082), la Asamblea
+   *  de la que depende. Desde la 083; antes, ausentes. */
+  locality_id?: string | null;
+  locality_kind?: string | null;
+  parent_locality_name?: string | null;
+  parent_locality_kind?: string | null;
   treasurer_name: string | null;
   /** Datos fiscales de la Asamblea (054), los mismos que imprime el
    *  tesorero. Nulos hasta que la ficha legal esté cargada. */

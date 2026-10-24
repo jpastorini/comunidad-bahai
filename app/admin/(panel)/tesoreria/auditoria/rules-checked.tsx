@@ -1,4 +1,4 @@
-import { RULE_GROUPS, ruleApplies, type Severity } from "@/lib/treasury-audit";
+import { RULE_GROUPS, ruleApplies, type AuditLocalityKind, type Severity } from "@/lib/treasury-audit";
 
 type RuleState =
   | { kind: "ok" }
@@ -25,7 +25,7 @@ export function RulesChecked({
   dispatchedCodes,
   failedCodes,
 }: {
-  kind: "ael" | "nacional";
+  kind: AuditLocalityKind;
   /** code → cuántos pendientes y de qué gravedad. */
   pendingCodes: Map<string, { n: number; severity: Severity }>;
   dispatchedCodes: Set<string>;

@@ -1,6 +1,7 @@
 "use client";
 
 import { BahaiStar } from "@/components/BahaiStar";
+import { approverTitle, institutionLine, type InstitutionLegal } from "@/lib/institution";
 import {
   fmtAmount,
   fmtLongDate,
@@ -54,11 +55,8 @@ import {
  * Igual que las otras dos, no lleva ningún nombre de contribuyente.
  */
 
-export type BalanceLegal = {
-  registeredName: string | null;
-  rut: string | null;
-  address: string | null;
-};
+/** La ficha legal de la Asamblea, o la de una estructura (082). */
+export type BalanceLegal = InstitutionLegal;
 
 export function BalanceSheet({
   report,
@@ -76,7 +74,7 @@ export function BalanceSheet({
   const bal = ed.balance;
   const rate = bal ? parseRate(bal.rateUsd) : null;
   const statutory = s.from.endsWith("-04-18") && s.to.endsWith("-04-17");
-  const title = legal.registeredName || `Asamblea Espiritual Local de los Bahá'ís de ${localityName}`;
+  const title = institutionLine(legal, { name: localityName });
   const legalLine = [legal.rut ? `RUT ${legal.rut}` : null, legal.address]
     .filter(Boolean)
     .join(" · ");
@@ -234,7 +232,7 @@ export function BalanceSheet({
         {/* ─── Aprobación y firmas ──────────────────────────────── */}
         <section className="cb-approval mt-8 border-t-2 border-gold pt-4">
           <h2 className="mb-3 font-display text-[15px] font-semibold text-dark">
-            Aprobado por la Asamblea Espiritual Local
+            Aprobado por la {approverTitle(legal, {})}
           </h2>
           <div className="grid gap-3 text-[12.5px] sm:grid-cols-2">
             <FillLine label="En su reunión del" value={ed.approval?.meetingDate} />

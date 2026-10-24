@@ -5,6 +5,7 @@ import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/treasury-ledger";
 import { getTreasuryProgress } from "@/lib/treasury-progress";
+import { isStructureLocality } from "@/lib/types";
 import { treasuryYearForDate, treasuryYearStart } from "@/lib/treasury-year";
 
 /**
@@ -68,7 +69,11 @@ export default async function ProgresoPage({
         </Card>
       ) : (
         <>
-          <ProgressBoard data={data} localityName={session.locality.name} />
+          <ProgressBoard
+            data={data}
+            localityName={session.locality.name}
+            institution={isStructureLocality(session.locality) ? session.locality.name : null}
+          />
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
             {hasPrevious && previous ? (

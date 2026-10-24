@@ -51,10 +51,18 @@ export type ReportSheetData = {
 export function ReportSheet({
   report,
   localityName,
+  institution,
+  approvedBy,
   emittedBy,
 }: {
   report: ReportSheetData;
   localityName: string;
+  /** La línea de quién emite (`institutionLine`): el nombre registrado de
+   *  la Asamblea, o la estructura con la Asamblea de la que depende (082). */
+  institution?: string | null;
+  /** Quién la aprueba (`approverTitle`): la Asamblea, o la madre de la
+   *  estructura, que es a quien se le presenta. */
+  approvedBy?: string | null;
   /** Quién emite la hoja: el tesorero. Sale del perfil, no del editorial. */
   emittedBy?: string | null;
 }) {
@@ -92,7 +100,7 @@ export function ReportSheet({
                 <p className="mt-0.5 text-[13px] text-muted">{report.subtitle}</p>
               )}
               <p className="mt-2 text-[12.5px] leading-relaxed text-dark">
-                Asamblea Espiritual Local de los Bahá'ís de {localityName}
+                {institution ?? `Asamblea Espiritual Local de los Bahá'ís de ${localityName}`}
               </p>
             </div>
             <BahaiStar size={40} color="#C4A235" />
@@ -205,7 +213,7 @@ export function ReportSheet({
         )}
 
         {/* ─── Aprobación ───────────────────────────────────────── */}
-        <Approval editorial={ed} emittedBy={emittedBy} />
+        <Approval editorial={ed} emittedBy={emittedBy} approvedBy={approvedBy} />
       </article>
     </div>
   );
@@ -794,9 +802,11 @@ function renderBudgetTable(
 function Approval({
   editorial,
   emittedBy,
+  approvedBy,
 }: {
   editorial: ReportEditorial;
   emittedBy?: string | null;
+  approvedBy?: string | null;
 }) {
   const appr = editorial.approval;
   const signature = editorial.signature;
@@ -804,7 +814,7 @@ function Approval({
   return (
     <section className="cb-approval mt-8 border-t-2 border-gold pt-4">
       <h2 className="mb-3 font-display text-[15px] font-semibold text-dark">
-        Visto y aprobado por la Asamblea Espiritual Local
+        Visto y aprobado por la {approvedBy ?? "Asamblea Espiritual Local"}
       </h2>
       <div className="grid gap-3 text-[12.5px] sm:grid-cols-2">
         <FillLine label="En su reunión del" value={appr?.meetingDate} />

@@ -508,11 +508,41 @@ en todo el país.
   por persona). Ahora el consolidado busca por quiénes integran la
   institución.
 
-**Lo que falta (etapas 2 a 4):** recibo interno sin RUT con serie propia,
-el nombre de la institución en vez de "Asamblea Espiritual Local" en los
-~12 documentos de Tesorería, auditoría sin las reglas fiscales y de
-balance, buscador de contribuyentes con los creyentes de la comunidad
-madre (Etapa 2) · "Presentar a la Asamblea" para informes de Tesorería y
+**Etapa 2, la Tesorería de una estructura (083, 2026-10-24):**
+
+- **Quién emite lo dice UN helper**, `lib/institution.ts` (puro: lo usan
+  el recibo de cliente y los PDF del servidor): `institutionLine()` es la
+  línea de encabezado —nombre registrado de la Asamblea, o "Comité X ·
+  Asamblea Espiritual Local de los Bahá'ís de Y", o el nombre de siempre
+  sin ficha—, `approverTitle()` quién aprueba (la madre, en una
+  estructura) y `assemblyTitle()` el nombre de una Asamblea sin ficha,
+  que en la Nacional ya no dice "Local". El Libro de Caja (hoja y PDF), la
+  hoja interna, el deck, el balance, el Progreso, el acta de traspaso y el
+  legajo pasan por ahí. ⚠️ Si un documento nuevo imprime quién lo emite,
+  que use estos helpers y no el texto a mano.
+- **`getReceiptLegal()` sabe de estructuras**: devuelve su nombre,
+  `internal: true` y `dependsOn` (la Asamblea madre), sin RUT. El recibo
+  dice **"Recibo interno"**, el renglón de la firma "Tesorero/a" y el pie
+  "Comprobante interno, sin valor fiscal". La serie es propia sin hacer
+  nada: `next_receipt_number()` ya numera por localidad.
+- **La copia del creyente** sale de `my_receipt()`, que devolvía solo el
+  nombre de la localidad; la 083 suma su id y tipo y la Asamblea madre,
+  para armar el mismo recibo interno. Un aporte a una estructura aparece
+  en "Mis aportes" como cualquier otro (`my_contributions()` no filtra).
+- **Auditoría**: un alcance nuevo, `appliesTo: "asambleas"`, para
+  SIN_DATOS_FISCALES, SIN_COMPOSICION, TESORERO_SIN_TAG y SIN_ESTATUTOS;
+  las `"ael"` (balance, Fiesta) tampoco corren. La Guía del mes y el
+  tablero sacan Publicar, Compromisos y la carta semestral.
+- **El buscador de contribuyentes** de una estructura ofrece a los
+  creyentes de la comunidad madre (todo el país si es nacional), con
+  service-role porque con la estructura puesta la RLS solo deja ver a sus
+  integrantes. Un solo lugar: `getContributorRoster()`, que usan el
+  catálogo del libro y la auditoría.
+
+⚠️ Sin la 083, la copia del creyente de un recibo de estructura sale con
+el encabezado de una AEL; todo lo demás de la Etapa 2 anda igual.
+
+**Lo que falta (etapas 3 y 4):** "Presentar a la Asamblea" para informes de Tesorería y
 de actividad, y actas con archivo (Etapa 3) · calendario compartido entre
 las instituciones de una localidad con filtro Locales / Nacionales /
 Ambas, casilla "Mostrar en el calendario de la comunidad" y la categoría
@@ -3125,7 +3155,9 @@ cambia nada.
   comité desde Asamblea → Estructuras, sumar a alguien que no sea de la
   Asamblea, entrar desde su `/perfil` al panel del comité, ver que el menú
   muestra solo lo suyo, y volver a la app (tiene que caer en su comunidad,
-  no en el comité). Siguen las etapas 2 a 4 (ver "Estructuras").
+  no en el comité). Con la 083: cargar un aporte en el libro del comité,
+  ver el "Recibo interno" del lado del tesorero y en "Mis aportes" del
+  creyente. Siguen las etapas 3 y 4 (ver "Estructuras").
 - **Probar la Lectura de mañana** (la 081 se aplicó el 2026-10-24): cargar una cita en
   `/admin/nacional/lectura` y verla al día siguiente en Inicio, `/citas`,
   Oraciones y el aviso de las 8:00. Después: agendar citas para fechas

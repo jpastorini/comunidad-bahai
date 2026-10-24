@@ -44,11 +44,16 @@ type Slide = { key: string; node: React.ReactNode };
 export function ReportDeck({
   report,
   localityName,
+  institution,
 }: {
   report: ReportDeckData;
   localityName: string;
+  /** Quién presenta (`institutionLine`). Sin esto, la AEL de la localidad;
+   *  una estructura (082) lo pasa siempre. */
+  institution?: string | null;
 }) {
-  const slides = useMemo(() => buildSlides(report, localityName), [report, localityName]);
+  const line = institution ?? `Asamblea Espiritual Local de los Bahá'ís de ${localityName}`;
+  const slides = useMemo(() => buildSlides(report, line), [report, line]);
   const [index, setIndex] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
   const total = slides.length;
@@ -122,7 +127,7 @@ export function ReportDeck({
       <div className="cb-chrome absolute left-4 top-4 z-20 flex items-center gap-2 sm:left-7 sm:top-6">
         <BahaiStar size={16} color="#C4A235" />
         <span className="hidden text-[11px] font-semibold tracking-[0.06em] text-muted sm:inline">
-          A.E.L. de los Bahá'ís de {localityName}
+          {institution ?? `A.E.L. de los Bahá'ís de ${localityName}`}
         </span>
       </div>
       <div className="cb-chrome absolute right-4 top-4 z-20 flex items-center gap-2 sm:right-7 sm:top-6">
@@ -287,13 +292,13 @@ function NavButton({
 
 // ─── Armado de las diapositivas ──────────────────────────────────
 
-function buildSlides(report: ReportDeckData, localityName: string): Slide[] {
+function buildSlides(report: ReportDeckData, institution: string): Slide[] {
   const { snapshot: s, editorial: ed } = report;
   const slides: Slide[] = [];
 
   slides.push({
     key: "cover",
-    node: <Cover report={report} localityName={localityName} />,
+    node: <Cover report={report} institution={institution} />,
   });
 
   slides.push({ key: "summary", node: <Summary report={report} /> });
@@ -574,10 +579,10 @@ function totalByCurrency(rows: ReportBalanceRow[]): ReportMoney[] {
 
 function Cover({
   report,
-  localityName,
+  institution,
 }: {
   report: ReportDeckData;
-  localityName: string;
+  institution: string;
 }) {
   return (
     <div className="mx-auto max-w-3xl text-center">
@@ -599,7 +604,7 @@ function Cover({
         <span className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-gold" />
       </div>
       <p className="mx-auto max-w-[34ch] text-[14px] leading-relaxed text-muted sm:text-[16px]">
-        Asamblea Espiritual Local de los Bahá'ís de {localityName}
+        {institution}
       </p>
       <p className="mt-5 text-[13px] font-bold text-dark sm:text-[15px]">
         Período: <span className="text-gold-dark">{fmtLongDate(report.periodFrom)}</span>{" "}

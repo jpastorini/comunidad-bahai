@@ -1,5 +1,6 @@
 "use client";
 
+import { institutionLine, type InstitutionLegal } from "@/lib/institution";
 import { fmtAmount, fmtLongDate } from "@/lib/treasury-report-content";
 import {
   monthLabel,
@@ -27,11 +28,8 @@ import {
  * su rubro. Es un documento que puede pedir una inspección.
  */
 
-export type CashBookLegal = {
-  registeredName: string | null;
-  rut: string | null;
-  address: string | null;
-};
+/** La ficha legal de la Asamblea, o la de una estructura (082). */
+export type CashBookLegal = InstitutionLegal;
 
 export type CashBookClosing = {
   closedAt: string;
@@ -57,7 +55,7 @@ export function CashBookSheet({
 }) {
   const draft = closing === null;
   const totals = summaryTotals(book.summary);
-  const title = legal.registeredName || `Asamblea Espiritual Local de los Bahá'ís de ${localityName}`;
+  const title = institutionLine(legal, { name: localityName });
 
   return (
     <div className="mx-auto w-full max-w-[820px] text-dark">

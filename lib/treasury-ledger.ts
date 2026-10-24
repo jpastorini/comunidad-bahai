@@ -6,6 +6,9 @@ import {
   type LocalityMember,
 } from "./memberships";
 import { addMoney } from "./treasury-format";
+import { assemblyTitle, type InstitutionLegal } from "./institution";
+import { createSupabaseAdmin } from "./supabase/admin";
+import { isNationalLocality, isStructureLocality, type Locality } from "./types";
 
 /**
  * Libro de Tesorería — capa de datos.
@@ -134,12 +137,64 @@ export function todayISO(now: Date = new Date()): string {
  * perfil). No hace falta ninguna función nueva para esto: la policy de
  * lectura de `profiles` es `using (true)` desde el schema inicial.
  */
+/**
+ * Los creyentes que ofrece el buscador de contribuyentes: el padrón de la
+ * comunidad, o todo el país en la Nacional (058).
+ *
+ * Una estructura (082) no tiene creyentes propios: a un Comité aporta la
+ * gente de la comunidad de la que depende (todo el país, si depende de la
+ * Asamblea Nacional). Ese padrón va con service-role, porque con la
+ * estructura puesta la RLS de `profile_localities` solo deja ver a sus
+ * integrantes. Son solo nombres, los mismos que ve el tesorero de la AEL.
+ */
+export async function getContributorRoster(
+  supabase: SupabaseClient,
+  localityId: string,
+  nationwide = false
+): Promise<LedgerMember[]> {
+  let rosterLocalityId = localityId;
+  let everyone = nationwide;
+
+  if (!everyone) {
+    const { data: loc } = await supabase
+      .from("localities")
+      .select("*")
+      .eq("id", localityId)
+      .maybeSingle();
+    const locality = loc as Locality | null;
+    if (locality && isStructureLocality(locality) && locality.parent_id) {
+      const { data: parent } = await supabase
+        .from("localities")
+        .select("*")
+        .eq("id", locality.parent_id)
+        .maybeSingle();
+      if (parent && isNationalLocality(parent as Locality)) everyone = true;
+      else rosterLocalityId = locality.parent_id;
+    }
+  }
+
+  if (everyone) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .is("disabled_at", null)
+      .order("full_name");
+    return (data ?? []) as LedgerMember[];
+  }
+
+  const client =
+    rosterLocalityId === localityId ? supabase : createSupabaseAdmin() ?? supabase;
+  return activeMembers(await getLocalityMembers(client, rosterLocalityId)).map(
+    (m): LedgerMember => ({ id: m.id, full_name: m.full_name })
+  );
+}
+
 export async function getLedgerCatalog(
   supabase: SupabaseClient,
   localityId: string,
   opts: { nationwide?: boolean } = {}
 ): Promise<LedgerCatalog> {
-  const [accounts, funds, categories, subcategories, contributors, roster] =
+  const [accounts, funds, categories, subcategories, contributors, members] =
     await Promise.all([
       supabase
         .from("treasury_accounts")
@@ -164,14 +219,9 @@ export async function getLedgerCatalog(
       // Los creyentes activos de la comunidad, por MEMBRESÍA (056): es
       // la misma lista de /admin/miembros, e incluye a quien pertenece
       // acá aunque ande con el sombrero de otra comunidad. En la
-      // Tesorería nacional, todo el país (058).
-      opts.nationwide
-        ? supabase
-            .from("profiles")
-            .select("id, full_name")
-            .is("disabled_at", null)
-            .order("full_name")
-        : getLocalityMembers(supabase, localityId),
+      // Tesorería nacional, todo el país (058); en una estructura, la
+      // comunidad de la que depende (082).
+      getContributorRoster(supabase, localityId, opts.nationwide),
     ]);
 
   return {
@@ -180,11 +230,7 @@ export async function getLedgerCatalog(
     categories: (categories.data ?? []) as TreasuryCategory[],
     subcategories: (subcategories.data ?? []) as TreasurySubcategory[],
     contributors: (contributors.data ?? []) as TreasuryContributor[],
-    members: opts.nationwide
-      ? ((roster as { data?: LedgerMember[] | null }).data ?? [])
-      : activeMembers(roster as LocalityMember[]).map(
-          (m): LedgerMember => ({ id: m.id, full_name: m.full_name })
-        ),
+    members,
   };
 }
 
@@ -526,17 +572,35 @@ export function receiptDisplayName(
   return entry.receipt_name?.trim() || entry.contributor_name || "(sin nombre)";
 }
 
-/** Los datos fiscales que van impresos en el recibo (Res. DGI 688/992). */
-export type ReceiptLegal = {
-  registeredName: string | null;
-  rut: string | null;
-  address: string | null;
-};
+/** Los datos fiscales que van impresos en el recibo (Res. DGI 688/992),
+ *  o los de una estructura (082), que emite recibos internos. */
+export type ReceiptLegal = InstitutionLegal;
 
 export async function getReceiptLegal(
   supabase: SupabaseClient,
   localityId: string
 ): Promise<ReceiptLegal> {
+  // Una estructura no tiene ficha legal: es la Asamblea de la que depende
+  // la entidad registrada, y sus recibos son internos.
+  const { data: loc } = await supabase
+    .from("localities")
+    .select("*")
+    .eq("id", localityId)
+    .maybeSingle();
+  const locality = loc as Locality | null;
+  if (locality && isStructureLocality(locality)) {
+    const { data: parent } = locality.parent_id
+      ? await supabase.from("localities").select("*").eq("id", locality.parent_id).maybeSingle()
+      : { data: null };
+    return {
+      registeredName: locality.name,
+      rut: null,
+      address: null,
+      internal: true,
+      dependsOn: parent ? assemblyTitle(parent as Locality) : null,
+    };
+  }
+
   const { data } = await supabase
     .from("assembly_records")
     .select("registered_name, rut, fiscal_address")

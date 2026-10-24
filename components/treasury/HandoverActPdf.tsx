@@ -1,5 +1,6 @@
 import React from "react";
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { institutionLine } from "@/lib/institution";
 import { monthLabel } from "@/lib/treasury-cashbook";
 import type { HandoverData } from "@/lib/treasury-handover";
 import { fmtAmount, fmtLongDate } from "@/lib/treasury-report-content";
@@ -66,7 +67,7 @@ export function HandoverActPdf({
   witness: string;
   notes: string;
 }) {
-  const title = data.legal.registeredName || `Asamblea Espiritual Local de los Bahá'ís de ${localityName}`;
+  const title = institutionLine(data.legal, { name: localityName });
   const legalLine = [data.legal.rut ? `RUT ${data.legal.rut}` : null, data.legal.address].filter(Boolean).join(" · ");
   const open = data.closings.openMonths;
 
@@ -181,9 +182,15 @@ export function HandoverActPdf({
           "Legajo del ejercicio (ZIP generado desde la aplicación, con libro, Libro de Caja, recibos, comprobantes, extractos y auditoría).",
           "Libro de tapas duras con las hojas del Libro de Caja pegadas hasta el último mes cerrado.",
           "Comprobantes en papel que no estén digitalizados, y recibos impresos pendientes de entregar.",
-          "Acceso a las cuentas: BROU (firmas autorizadas), Prex, Mercado Pago; claves de DGI y BPS de la Asamblea.",
+          // Una estructura (082) no tiene RUT ni composición propia: el
+          // permiso de Tesorería lo da la Asamblea en Estructuras.
+          data.legal.internal
+            ? "Acceso a las cuentas: BROU (firmas autorizadas), Prex, Mercado Pago."
+            : "Acceso a las cuentas: BROU (firmas autorizadas), Prex, Mercado Pago; claves de DGI y BPS de la Asamblea.",
           "Firma escaneada del Tesorero/a entrante cargada en Recibo y medios de pago.",
-          "Permiso de Tesorería asignado al entrante y retirado al saliente; cambio registrado en Datos de la Asamblea con fecha.",
+          data.legal.internal
+            ? "Permiso de Tesorería asignado al entrante y retirado al saliente, pedido a la Asamblea (Asamblea → Estructuras)."
+            : "Permiso de Tesorería asignado al entrante y retirado al saliente; cambio registrado en Datos de la Asamblea con fecha.",
         ].map((t) => (
           <View key={t} style={s.check}>
             <View style={s.box} />

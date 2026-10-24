@@ -403,11 +403,18 @@ export async function getTreasuryGuide(
       note: `Toca en ${monthLabel(monthKeyOf(today)).toLowerCase()}.`,
     });
   }
-  steps.forEach((st, i) => {
+  // Una estructura (082) no le comparte el estado del Fondo a ninguna
+  // comunidad, no recibe compromisos ni escribe la carta semestral: sus
+  // pasos son los del libro.
+  const ownSteps =
+    opts.localityKind === "estructura"
+      ? steps.filter((st) => !["publicar", "compromisos", "carta"].includes(st.key))
+      : steps;
+  ownSteps.forEach((st, i) => {
     st.order = i + 1;
   });
 
-  return { month, monthLabel: label, steps };
+  return { month, monthLabel: label, steps: ownSteps };
 }
 
 /** Los pasos del cambio de tesorero: no dependen de ningún mes. */

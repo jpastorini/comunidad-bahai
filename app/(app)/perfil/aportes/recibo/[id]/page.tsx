@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { GoldHeader } from "@/components/GoldHeader";
 import { requireBahai } from "@/lib/auth";
+import { assemblyTitle } from "@/lib/institution";
 import { getMyReceipt } from "@/lib/my-contributions";
 import { receiptAssets } from "@/lib/receipt-assets";
 import { loadSignatureImage } from "@/lib/receipt-settings";
@@ -61,11 +62,28 @@ export default async function MiReciboPage({
           hasLogo={hasLogo}
           signatureUrl={signatureUrl}
           theme={receipt.theme}
-          legal={{
-            registeredName: receipt.registered_name ?? null,
-            rut: receipt.rut ?? null,
-            address: receipt.fiscal_address ?? null,
-          }}
+          legal={
+            // Un aporte a una estructura (082, datos desde la 083) lleva
+            // recibo interno: su nombre y la Asamblea de la que depende.
+            receipt.locality_kind === "estructura"
+              ? {
+                  registeredName: receipt.locality_name ?? null,
+                  rut: null,
+                  address: null,
+                  internal: true,
+                  dependsOn: receipt.parent_locality_name
+                    ? assemblyTitle({
+                        name: receipt.parent_locality_name,
+                        kind: receipt.parent_locality_kind,
+                      })
+                    : null,
+                }
+              : {
+                  registeredName: receipt.registered_name ?? null,
+                  rut: receipt.rut ?? null,
+                  address: receipt.fiscal_address ?? null,
+                }
+          }
           voided={Boolean(receipt.voided_at)}
         />
       </main>

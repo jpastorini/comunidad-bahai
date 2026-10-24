@@ -5,6 +5,7 @@ import { ReportDeck } from "@/components/treasury/ReportDeck";
 import { ReportSheet } from "@/components/treasury/ReportSheet";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { approverTitle, institutionLine } from "@/lib/institution";
 import { getReceiptLegal } from "@/lib/treasury-ledger";
 import { getReport } from "@/lib/treasury-reports";
 
@@ -36,6 +37,12 @@ export default async function VerInformePage({
   const report = await getReport(supabase, params.id);
   if (!report || report.locality_id !== session.locality.id) notFound();
 
+  // Quién emite y quién aprueba: la Asamblea con su nombre registrado, o
+  // la estructura (082) y la Asamblea de la que depende.
+  const legal = await getReceiptLegal(supabase, session.locality.id);
+  const institution = institutionLine(legal, session.locality);
+  const approvedBy = approverTitle(legal, session.locality);
+
   const shared = {
     title: report.title,
     subtitle: report.subtitle,
@@ -52,7 +59,6 @@ export default async function VerInformePage({
   if (report.audience === "balance") {
     // Los datos fiscales del encabezado (nombre registrado, RUT,
     // domicilio). La ficha legal la lee cualquier admin de la localidad.
-    const legal = await getReceiptLegal(supabase, session.locality.id);
     return (
       <div className="min-h-dvh bg-bg px-4 py-6 sm:px-8">
         {canEdit && (
@@ -91,6 +97,8 @@ export default async function VerInformePage({
         <ReportSheet
           report={shared}
           localityName={session.locality.name}
+          institution={institution}
+          approvedBy={approvedBy}
           emittedBy={report.editorial.signature?.name ?? null}
         />
       </div>
@@ -99,7 +107,11 @@ export default async function VerInformePage({
 
   return (
     <>
-      <ReportDeck report={shared} localityName={session.locality.name} />
+      <ReportDeck
+        report={shared}
+        localityName={session.locality.name}
+        institution={institution}
+      />
       {canEdit && (
         <Link
           href={`/admin/tesoreria/informes/${report.id}`}

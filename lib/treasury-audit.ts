@@ -56,8 +56,16 @@ export type Severity = "alta" | "media" | "baja";
 /** Contra qué se mide el hallazgo. */
 export type AuditBasis = "MEC" | "DGI" | "ESTATUTOS" | "INTERNO";
 
-/** En qué clase de comunidad corre la regla. */
-export type AuditScope = "ael" | "nacional" | "ambas";
+/**
+ * En qué clase de comunidad corre la regla. "ambas" incluye a las
+ * estructuras (082), que llevan el mismo libro; "asambleas" las deja
+ * afuera: lo que sale de la ficha legal, la composición o los estatutos
+ * es de la Asamblea, no de un Comité que emite recibos internos.
+ */
+export type AuditScope = "ael" | "nacional" | "asambleas" | "ambas";
+
+/** La clase de comunidad que se audita. */
+export type AuditLocalityKind = "ael" | "nacional" | "estructura";
 
 export type Finding = {
   /** La clase de problema. Estable para siempre. */
@@ -188,7 +196,7 @@ export type AuditAssembly = {
 } | null;
 
 export type AuditInput = {
-  locality: { id: string; name: string; kind: "ael" | "nacional" };
+  locality: { id: string; name: string; kind: AuditLocalityKind };
   /** Rango auditado. */
   from: string;
   to: string;
@@ -1641,6 +1649,7 @@ const G: Rule[] = [
     label: "Los recibos salen sin datos fiscales",
     severity: "alta",
     basis: "DGI",
+    appliesTo: "asambleas",
     run(ctx) {
       const missing: string[] = [];
       if (!ctx.legal) missing.push("no hay ficha legal cargada");
@@ -1668,6 +1677,7 @@ const G: Rule[] = [
     label: "El ejercicio no tiene cargada la Asamblea",
     severity: "media",
     basis: "ESTATUTOS",
+    appliesTo: "asambleas",
     run(ctx) {
       if (!ctx.assembly || ctx.assembly.members.length === 0) {
         return [
@@ -1707,6 +1717,7 @@ const G: Rule[] = [
     label: "El Tesorero declarado no opera el libro",
     severity: "media",
     basis: "INTERNO",
+    appliesTo: "asambleas",
     run(ctx) {
       // ⚠️ El tag es de la MEMBRESÍA de esta comunidad (055), no del
       // sombrero puesto: el cargador lo trae de `profile_localities`.
@@ -1748,6 +1759,7 @@ const G: Rule[] = [
     label: "No hay copia de los estatutos",
     severity: "baja",
     basis: "INTERNO",
+    appliesTo: "asambleas",
     run(ctx) {
       if (ctx.legal && !blank(ctx.legal.statutes_path)) return [];
       return [
@@ -2106,9 +2118,11 @@ export const RULE_GROUPS: Array<{ letter: string; title: string; rules: Rule[] }
 export const RULES: Rule[] = RULE_GROUPS.flatMap((g) => g.rules);
 
 /** ¿Corre esta regla en esta clase de comunidad? */
-export function ruleApplies(rule: Rule, kind: "ael" | "nacional"): boolean {
+export function ruleApplies(rule: Rule, kind: AuditLocalityKind): boolean {
   const scope = rule.appliesTo ?? "ambas";
-  return scope === "ambas" || scope === kind;
+  if (scope === "ambas") return true;
+  if (scope === "asambleas") return kind !== "estructura";
+  return scope === kind;
 }
 
 /**

@@ -76,7 +76,8 @@ export default async function ReciboPage({
         </div>
       )}
 
-      {!legal.rut && (
+      {/* Una estructura (082) emite recibos internos: sin RUT a propósito. */}
+      {!legal.rut && !legal.internal && (
         <div className="mb-4">
           <Banner tone="info">
             El recibo sale sin RUT ni domicilio fiscal. Cargalos en{" "}

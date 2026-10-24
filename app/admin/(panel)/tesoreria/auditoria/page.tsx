@@ -3,7 +3,7 @@ import { TREASURY_HELP } from "@/lib/treasury-help";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { RULES, ruleApplies, runAudit } from "@/lib/treasury-audit";
+import { RULES, ruleApplies, runAudit, type AuditLocalityKind } from "@/lib/treasury-audit";
 import {
   getDispositions,
   getRecentAudits,
@@ -35,7 +35,9 @@ export default async function AuditoriaPage({
   ensureTreasuryTag(session.profile);
   const supabase = createSupabaseServer();
 
-  const kind = session.locality.kind === "nacional" ? "nacional" : "ael";
+  // La clase de comunidad decide qué reglas corren (una estructura, 082,
+  // no corre las de la ficha legal ni las del estatuto de una AEL).
+  const kind: AuditLocalityKind = session.locality.kind ?? "ael";
   const asked = Number(searchParams?.year);
   const { input, years } = await loadAuditInput(
     supabase,
@@ -112,6 +114,13 @@ export default async function AuditoriaPage({
             Estás auditando la <strong>Comunidad Nacional</strong>. Las reglas que
             salen del estatuto de una Asamblea Local o de la Fiesta de los 19 Días
             quedan apagadas: el estatuto de la AEN es otro y todavía no lo leímos.
+          </Banner>
+        )}
+        {kind === "estructura" && (
+          <Banner tone="info">
+            Estás auditando <strong>{session.locality.name}</strong>. Sus recibos son
+            internos, así que no corren las reglas de datos fiscales, composición,
+            estatutos ni las del balance y la Fiesta: son de la Asamblea.
           </Banner>
         )}
       </div>

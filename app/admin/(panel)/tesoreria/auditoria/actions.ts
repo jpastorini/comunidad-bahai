@@ -102,7 +102,7 @@ export async function saveAuditRunAction(formData: FormData): Promise<Result> {
     {
       id: session.locality.id,
       name: session.locality.name,
-      kind: session.locality.kind === "nacional" ? "nacional" : "ael",
+      kind: session.locality.kind ?? "ael",
     },
     { bahaiYear }
   );

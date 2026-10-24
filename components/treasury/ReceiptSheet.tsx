@@ -6,15 +6,14 @@ import {
   receiptPalette,
   type ReceiptTheme,
 } from "@/lib/receipt-theme";
+import type { InstitutionLegal } from "@/lib/institution";
 import { formatMoney } from "@/lib/treasury-format";
 
 /** Los datos fiscales de la Asamblea que la DGI pide en un recibo
- *  (Res. 688/992 num. 22): nombre registrado, RUT y domicilio fiscal. */
-export type ReceiptLegalProps = {
-  registeredName: string | null;
-  rut: string | null;
-  address: string | null;
-};
+ *  (Res. 688/992 num. 22): nombre registrado, RUT y domicilio fiscal. Una
+ *  estructura (082) emite recibos INTERNOS: su nombre y la Asamblea de la
+ *  que depende, sin RUT. */
+export type ReceiptLegalProps = InstitutionLegal;
 
 export type ReceiptSheetProps = {
   receiptNumber: number | null;
@@ -99,13 +98,15 @@ export const ReceiptSheet = forwardRef<HTMLDivElement, ReceiptSheetProps>(
     ref
   ) {
     const c = receiptPalette(theme);
+    const internal = !!legal?.internal;
 
-    const legalLine = [
-      legal?.rut ? `RUT ${legal.rut}` : null,
-      legal?.address ?? null,
-    ]
-      .filter(Boolean)
-      .join(" · ");
+    // En un recibo interno, debajo del nombre va de quién depende la
+    // estructura: es la Asamblea, no el Comité, la entidad registrada.
+    const legalLine = internal
+      ? legal?.dependsOn ?? ""
+      : [legal?.rut ? `RUT ${legal.rut}` : null, legal?.address ?? null]
+          .filter(Boolean)
+          .join(" · ");
 
     return (
       <>
@@ -202,7 +203,9 @@ export const ReceiptSheet = forwardRef<HTMLDivElement, ReceiptSheetProps>(
               }}
             >
               <span>
-                <strong className="mr-1 uppercase tracking-[0.06em]">Recibo</strong>
+                <strong className="mr-1 uppercase tracking-[0.06em]">
+                  {internal ? "Recibo interno" : "Recibo"}
+                </strong>
                 N.° <strong>{receiptNumber ?? "—"}</strong>
               </span>
               <span>
@@ -265,7 +268,7 @@ export const ReceiptSheet = forwardRef<HTMLDivElement, ReceiptSheetProps>(
                     className="text-[10px] uppercase tracking-[0.06em]"
                     style={{ color: c.label_ }}
                   >
-                    {treasurerTitle?.trim() || DEFAULT_TREASURER_TITLE}
+                    {treasurerTitle?.trim() || (internal ? "Tesorero/a" : DEFAULT_TREASURER_TITLE)}
                   </span>
                   <span className="text-[12px] italic" style={{ color: c.signName }}>
                     {treasurerName}
@@ -288,8 +291,9 @@ export const ReceiptSheet = forwardRef<HTMLDivElement, ReceiptSheetProps>(
                 Las contribuciones a los fondos bahá&apos;ís son voluntarias y
                 estrictamente confidenciales.
                 <br />
-                Comprobante emitido por el sistema de Tesorería de la Asamblea.
-                Numeración correlativa única.
+                {internal
+                  ? "Comprobante interno, sin valor fiscal. Numeración correlativa propia."
+                  : "Comprobante emitido por el sistema de Tesorería de la Asamblea. Numeración correlativa única."}
               </p>
             </footer>
 

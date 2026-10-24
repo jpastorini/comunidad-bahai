@@ -38,10 +38,13 @@ import { fmtDayMonth, fmtLongDate } from "@/lib/treasury-report-content";
 export function ProgressBoard({
   data,
   localityName,
+  institution,
   compact = false,
 }: {
   data: ProgressData;
   localityName?: string;
+  /** Quién lleva el libro, si no es una AEL: una estructura (082). */
+  institution?: string | null;
   /** Versión para el celular de la comunidad: menos texto de apoyo. */
   compact?: boolean;
 }) {
@@ -60,7 +63,9 @@ export function ProgressBoard({
         Ejercicio {data.bahaiYear} E.B., de Riḍván a Riḍván:{" "}
         {fmtLongDate(data.from)} al {fmtLongDate(data.to)} · cifras al{" "}
         {fmtLongDate(data.asOf)}
-        {localityName && ` · Asamblea Espiritual Local de ${localityName}`}
+        {institution
+          ? ` · ${institution}`
+          : localityName && ` · Asamblea Espiritual Local de ${localityName}`}
       </p>
     </div>
   );

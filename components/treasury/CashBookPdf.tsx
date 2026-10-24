@@ -7,6 +7,7 @@ import {
   type CashbookSheet,
 } from "@/lib/treasury-cashbook";
 import { fmtAmount, fmtLongDate } from "@/lib/treasury-report-content";
+import { institutionLine } from "@/lib/institution";
 import type { CashBookClosing, CashBookLegal } from "./CashBookSheet";
 
 /**
@@ -114,7 +115,7 @@ export function CashBookPdf({
 }) {
   const draft = closing === null;
   const totals = summaryTotals(book.summary);
-  const title = legal.registeredName || `Asamblea Espiritual Local de los Bahá'ís de ${localityName}`;
+  const title = institutionLine(legal, { name: localityName });
   const legalLine = [legal.rut ? `RUT ${legal.rut}` : null, legal.address].filter(Boolean).join(" · ");
 
   const header = (sheet: string) => (
