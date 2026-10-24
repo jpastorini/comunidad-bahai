@@ -129,6 +129,10 @@ export async function updateSession(request: NextRequest) {
     requestHeaders.set("x-user-id", user.id);
     requestHeaders.set("x-user-email", user.email);
     requestHeaders.set("x-profile", JSON.stringify(profile));
+    // La ruta, para los layouts, que Next no se la da: el del panel la
+    // usa para acotar lo que ve una estructura (082) y requireMember para
+    // volver al mismo lugar después de devolverle a alguien su comunidad.
+    requestHeaders.set("x-pathname", path);
 
     // Reconstruimos la respuesta para que los headers actualizados del
     // request lleguen al RSC, preservando las cookies ya encoladas.

@@ -58,10 +58,13 @@ export async function resolveInviteToken(
 
   const { data: locality } = await supabase
     .from("localities")
-    .select("id, name, is_active")
+    .select("id, name, is_active, kind")
     .eq("id", row.locality_id)
     .maybeSingle();
-  if (!locality || !(locality as { is_active: boolean }).is_active) return null;
+  // Una estructura (082) no tiene link de invitación: la integra quien
+  // nombra la Asamblea.
+  const loc = locality as { is_active: boolean; kind?: string } | null;
+  if (!loc || !loc.is_active || loc.kind === "estructura") return null;
 
   return {
     localityId: (locality as { id: string }).id,

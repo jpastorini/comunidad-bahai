@@ -191,7 +191,26 @@ export const ROLE_LABELS: Record<Profile["role"], string> = {
   admin: "Miembro Asamblea Local",
 };
 
-export type LocalityKind = "ael" | "nacional";
+export type LocalityKind = "ael" | "nacional" | "estructura";
+
+/**
+ * Los cuatro tipos de estructura (082). Se comportan igual —decisión del
+ * usuario—: el tipo es una etiqueta para decir qué es.
+ */
+export type StructureType =
+  | "comite"
+  | "departamento"
+  | "coordinacion_instituto"
+  | "junta_instituto";
+
+export const STRUCTURE_TYPE_LABELS: Record<StructureType, string> = {
+  comite: "Comité",
+  departamento: "Departamento",
+  coordinacion_instituto: "Coordinación de Instituto",
+  junta_instituto: "Junta de Instituto",
+};
+
+export const STRUCTURE_TYPES = Object.keys(STRUCTURE_TYPE_LABELS) as StructureType[];
 
 export type Locality = {
   id: string;
@@ -203,17 +222,33 @@ export type Locality = {
   /**
    * 'ael' = una Asamblea Espiritual Local. 'nacional' = la Comunidad
    * Nacional (056), el tenant de la AEN: hereda todo menos la Fiesta de
-   * los 19 Días, que se celebra en la comunidad local.
+   * los 19 Días, que se celebra en la comunidad local. 'estructura' = un
+   * Comité, Departamento, Coordinación o Junta de Instituto (082): una
+   * institución sin creyentes que cuelga de una Asamblea.
    */
   kind: LocalityKind;
+  /** La Asamblea que creó la estructura (082). NULL en una Asamblea. */
+  parent_id?: string | null;
+  structure_type?: StructureType | null;
   created_at: string;
 };
 
 /** ¿Es la Comunidad Nacional? Tolera la fila sin `kind` (pre-056). */
 export function isNationalLocality(
-  locality: { kind?: LocalityKind | null } | null | undefined
+  locality: { kind?: LocalityKind | string | null } | null | undefined
 ): boolean {
   return locality?.kind === "nacional";
+}
+
+/**
+ * ¿Es una estructura (082)? No tiene creyentes: en el panel ve solo
+ * reuniones, tareas, calendario y Tesorería, y nunca aparece donde
+ * alguien elige su comunidad.
+ */
+export function isStructureLocality(
+  locality: { kind?: LocalityKind | string | null } | null | undefined
+): boolean {
+  return locality?.kind === "estructura";
 }
 
 // ─── Datos de la Asamblea (052) ─────────────────────────────────────

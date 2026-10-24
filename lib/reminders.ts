@@ -558,7 +558,11 @@ export async function sendSemiannualLetterReminders(): Promise<{ sent: number; e
   const month = today.slice(5, 7);
   if (today.slice(8, 10) !== "01" || (month !== "03" && month !== "10")) return { sent: 0 };
 
-  const { data: locs, error } = await supabase.from("localities").select("id, name");
+  // Una estructura (082) no tiene comunidad a la que escribirle.
+  const { data: locs, error } = await supabase
+    .from("localities")
+    .select("id, name")
+    .neq("kind", "estructura");
   if (error) return { sent: 0, error: error.message };
 
   let sent = 0;

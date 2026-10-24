@@ -7,7 +7,12 @@ import {
   createSupabaseServer,
   isSupabaseConfigured,
 } from "./supabase/server";
-import { isNationalLocality, type Locality, type Profile } from "./types";
+import {
+  isNationalLocality,
+  isStructureLocality,
+  type Locality,
+  type Profile,
+} from "./types";
 
 export type AdminSession = {
   user: { id: string; email: string };
@@ -107,6 +112,25 @@ async function loadLocality(
   return locality;
 }
 
+/**
+ * Una estructura (082) se tiene puesta solo en el panel: no tiene
+ * creyentes, y con ella puesta el Inicio, los Comunicados y la Tesorería
+ * del creyente le apuntarían al comité. Si alguien entra a la app así,
+ * va a /comunidad/volver, que le devuelve su comunidad y lo trae de
+ * vuelta adonde iba. Esa pantalla cambia el sombrero recién al montarse
+ * en el navegador, así que un prefetch no lo cambia por accidente.
+ */
+function leaveStructureHat(locality: Locality, fallbackPath: string): void {
+  if (!isStructureLocality(locality)) return;
+  let next = fallbackPath;
+  try {
+    next = headers().get("x-pathname") ?? fallbackPath;
+  } catch {
+    // sin headers: vuelve al destino que pidió la página
+  }
+  redirect(`/comunidad/volver?next=${encodeURIComponent(next)}`);
+}
+
 // ── Funciones públicas ────────────────────────────────────────────
 
 /**
@@ -131,6 +155,7 @@ export async function requireMember(
       redirect(`/seleccionar-localidad?next=${encodeURIComponent(redirectTo)}`);
     }
     const locality = await loadLocality(cached.profile.locality_id, redirectTo);
+    leaveStructureHat(locality, redirectTo);
     return {
       user: { id: cached.userId, email: cached.email },
       profile: cached.profile,
@@ -164,6 +189,7 @@ export async function requireMember(
   }
 
   const locality = await loadLocality(profile.locality_id, redirectTo);
+  leaveStructureHat(locality, redirectTo);
 
   return {
     user: { id: user.id, email: user.email ?? "" },

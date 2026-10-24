@@ -33,6 +33,12 @@ export type NavLeaf = {
    * No es un nivel más de navegación: no se pliega ni tiene ruta.
    */
   section?: string;
+  /**
+   * Con una estructura puesta (082). En un grupo `inStructure: "some"`,
+   * la hoja aparece solo si lo dice (`true`, o un texto que reemplaza la
+   * etiqueta); en un grupo `"all"`, aparecen todas menos las `false`.
+   */
+  inStructure?: boolean | string;
 };
 
 export type NavGroup = {
@@ -44,16 +50,31 @@ export type NavGroup = {
   requires?: NavRequirement;
   /** El grupo Nacional se pinta en dorado, el resto en terra. */
   tone?: "terra" | "gold";
+  /**
+   * Qué ve una estructura (082). Es una lista de lo que SÍ, no de lo que
+   * no: una estructura no tiene creyentes, y una pantalla nueva del panel
+   * no tiene por qué aparecerle hasta que alguien lo decida. Sin esto, el
+   * grupo no se muestra.
+   */
+  inStructure?: "some" | "all";
+  /** El nombre del grupo con una estructura puesta. */
+  structureLabel?: string;
 };
 
 export const ADMIN_NAV: NavGroup[] = [
-  { key: "inicio", label: "Inicio", href: "/admin" },
+  { key: "inicio", label: "Inicio", href: "/admin", inStructure: "all" },
   {
     key: "asamblea",
     label: "Asamblea",
+    inStructure: "some",
+    structureLabel: "Reuniones y tareas",
     children: [
-      { href: "/admin/tareas", label: "Tareas" },
-      { href: "/admin/disponibilidad", label: "Reuniones" },
+      { href: "/admin/tareas", label: "Tareas", inStructure: true },
+      { href: "/admin/disponibilidad", label: "Reuniones", inStructure: true },
+      // Los Comités, Departamentos y la Coordinación o Junta de Instituto
+      // que creó esta Asamblea, con sus integrantes (082). Con una
+      // estructura puesta, la misma pantalla muestra quiénes la integran.
+      { href: "/admin/estructuras", label: "Estructuras", inStructure: "Integrantes" },
       // Registro de solo lectura de los informes emitidos: lo aprueba la
       // Asamblea, así que va acá y no dentro de Tesorería.
       // Se llama "Registro" y no "Informes de Tesorería" porque el grupo
@@ -83,8 +104,10 @@ export const ADMIN_NAV: NavGroup[] = [
   {
     key: "comunidad",
     label: "Vida comunitaria",
+    inStructure: "some",
+    structureLabel: "Agenda",
     children: [
-      { href: "/admin/calendario", label: "Calendario" },
+      { href: "/admin/calendario", label: "Calendario", inStructure: true },
       { href: "/admin/fiestas", label: "Fiestas de 19 Días", aelOnly: true },
       { href: "/admin/sugerencias", label: "Sugerencias" },
       { href: "/admin/actividades", label: "Actividades" },
@@ -105,6 +128,10 @@ export const ADMIN_NAV: NavGroup[] = [
     key: "tesoreria",
     label: "Tesorería",
     requires: "treasury",
+    // Una estructura lleva su libro igual que una Asamblea (082), menos lo
+    // que mira a la comunidad: el chat con los creyentes, Publicar, los
+    // compromisos y los aportes por Mercado Pago.
+    inStructure: "all",
     // Cuatro bloques por frecuencia de uso, pensados para un tesorero que
     // recién agarra el cargo: lo de todos los días arriba, lo que se
     // configura una vez abajo. Un ítem por pantalla principal; las
@@ -127,7 +154,7 @@ export const ADMIN_NAV: NavGroup[] = [
         match: ["/admin/tesoreria/recibo"],
         section: "Todos los días",
       },
-      { href: "/admin/tesoreria/chat", label: "Mensajes", section: "Todos los días" },
+      { href: "/admin/tesoreria/chat", label: "Mensajes", section: "Todos los días", inStructure: false },
       // El extracto de la plataforma contra el libro de esa cuenta (061).
       {
         href: "/admin/tesoreria/conciliacion",
@@ -144,9 +171,9 @@ export const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/tesoreria/auditoria", label: "Auditoría", section: "Cada mes" },
       // Calcular y compartir el estado del Fondo (066): lo ÚNICO que la
       // comunidad ve de la Tesorería, en la app y en la Fiesta.
-      { href: "/admin/tesoreria/publicar", label: "Publicar", section: "Cada mes" },
+      { href: "/admin/tesoreria/publicar", label: "Publicar", section: "Cada mes", inStructure: false },
       // Quién declaró un compromiso mensual y cómo viene el mes (063).
-      { href: "/admin/tesoreria/compromisos", label: "Compromisos", section: "Cada mes" },
+      { href: "/admin/tesoreria/compromisos", label: "Compromisos", section: "Cada mes", inStructure: false },
       // ── El ejercicio ──
       // Presupuesto y metas son un solo ítem: las metas se editan en una
       // subpantalla del presupuesto (/metas prende este ítem).
@@ -179,7 +206,7 @@ export const ADMIN_NAV: NavGroup[] = [
       },
       // La cuenta de Mercado Pago con que cobra la comunidad y los aportes
       // que entran solos al libro desde la app (079).
-      { href: "/admin/tesoreria/mercadopago", label: "Mercado Pago", section: "Ajustes" },
+      { href: "/admin/tesoreria/mercadopago", label: "Mercado Pago", section: "Ajustes", inStructure: false },
       // Cargar un ejercicio entero desde la planilla con que se llevaba
       // antes (062).
       { href: "/admin/tesoreria/libro/importar", label: "Importar", section: "Ajustes" },
@@ -189,6 +216,7 @@ export const ADMIN_NAV: NavGroup[] = [
     key: "nacional",
     label: "Admin Nacional",
     requires: "national",
+    inStructure: "all",
     tone: "gold",
     children: [
       { href: "/admin/nacional", label: "Panel", exact: true },
@@ -226,21 +254,56 @@ export function visibleNav(
   localityKind: LocalityKind = "ael"
 ): NavGroup[] {
   const isNational = localityKind === "nacional";
+  const isStructure = localityKind === "estructura";
   const out: NavGroup[] = [];
   for (const group of ADMIN_NAV) {
     if (group.requires && !canSee(group.requires, profile)) continue;
+    if (isStructure && !group.inStructure) continue;
     if (!group.children) {
       if (canSee(undefined, profile)) out.push(group);
       continue;
     }
-    const children = group.children.filter(
-      (leaf) =>
-        canSee(leaf.requires ?? group.requires, profile) &&
-        !(isNational && leaf.aelOnly)
-    );
-    if (children.length > 0) out.push({ ...group, children });
+    const children = group.children
+      .filter(
+        (leaf) =>
+          canSee(leaf.requires ?? group.requires, profile) &&
+          !((isNational || isStructure) && leaf.aelOnly) &&
+          (!isStructure ||
+            (group.inStructure === "all"
+              ? leaf.inStructure !== false
+              : !!leaf.inStructure))
+      )
+      .map((leaf) =>
+        isStructure && typeof leaf.inStructure === "string"
+          ? { ...leaf, label: leaf.inStructure }
+          : leaf
+      );
+    if (children.length > 0) {
+      out.push({
+        ...group,
+        label: isStructure ? group.structureLabel ?? group.label : group.label,
+        children,
+      });
+    }
   }
   return out;
+}
+
+/**
+ * ¿Puede una estructura (082) abrir esta ruta del panel? Lo que no está en
+ * su menú no está para ella, aunque llegue por URL: el layout del panel la
+ * manda al Inicio. Las subpantallas (nuevo, editar, un recibo) cuelgan del
+ * prefijo de su hoja, así que pasan solas.
+ */
+export function structureAllowsPath(profile: Profile, pathname: string): boolean {
+  // /admin/tesoreria solo redirige al Libro.
+  if (pathname === "/admin/tesoreria") return true;
+  const groups = visibleNav(profile, "estructura");
+  return groups.some((group) =>
+    group.children
+      ? group.children.some((leaf) => leafHits(leaf, pathname))
+      : group.href === pathname
+  );
 }
 
 function leafHits(leaf: NavLeaf, pathname: string): boolean {

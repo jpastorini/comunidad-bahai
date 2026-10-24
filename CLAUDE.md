@@ -441,7 +441,85 @@ Mercado Pago" más abajo. ·
 **Enseñanza** (migración 080, 2026-10-19): la pestaña que era Servicio pasó
 a ser un hub para compartir la Fe —el folleto público «Qué es la Fe
 Bahá'í», los QR para una charla y el formulario "Quiero contactarme"—;
-Servicio vive en Institucional. Ver la sección "Enseñanza" más abajo.
+Servicio vive en Institucional. Ver la sección "Enseñanza" más abajo. ·
+**Estructuras** (migración 082, 2026-10-24, Etapa 1 de 4): Comités,
+Departamentos, Coordinación y Junta de Instituto, creados por la AEN o una
+AEL, con su propio panel y sin creyentes. Ver la sección "Estructuras" más
+abajo.
+
+## Estructuras: Comités, Departamentos e Instituto (migración 082)
+
+Pedido el 2026-10-24. Decidido con el usuario: los cuatro tipos se
+comportan igual (el tipo es una etiqueta); la Asamblea que crea la
+estructura es la que nombra y saca integrantes; todos los integrantes
+tienen cuenta; la estructura **no** comparte su interior con la Asamblea
+madre, le **presenta informes**; sus recibos son **internos, sin RUT**.
+
+**Una estructura es una fila más de `localities`**, con `kind =
+'estructura'`, `parent_id` (la AEL o la Comunidad Nacional) y
+`structure_type`. Es el camino de la Comunidad Nacional (056): hereda sin
+construir nada el libro, los cierres, las tareas, el calendario y la
+grilla de reuniones, porque ya son por localidad. Los integrantes tienen
+una membresía con `role='admin'` (es lo que les abre el panel) y el tag de
+Tesorería quien la lleve. El nombre es único dentro de cada Asamblea, no
+en todo el país.
+
+- **Asamblea → Estructuras** (`/admin/estructuras`, `lib/structures.ts`):
+  crear, editar, desactivar, sumar y quitar integrantes, dar o quitar la
+  Tesorería. Una AEL nombra a creyentes de su comunidad; la AEN, a
+  cualquiera del país. Escribe con **service-role**: la RLS de
+  `profile_localities` solo deja tocar la localidad PUESTA, y la Asamblea
+  madre nunca tiene puesta a su estructura; el permiso lo chequea el
+  action. Con una estructura puesta, la misma ruta es "Integrantes" (solo
+  lectura).
+- **El menú es una lista de lo que SÍ** (`inStructure` en `ADMIN_NAV`):
+  Inicio, Tareas, Reuniones, Integrantes, Calendario y Tesorería sin
+  Mensajes, Publicar, Compromisos ni Mercado Pago. Lo que no está en el
+  menú tampoco se abre por URL: el layout del panel lo manda al Inicio
+  con `structureAllowsPath()`, leyendo la ruta del header `x-pathname`
+  que pone el middleware. ⚠️ Una pantalla nueva del panel NO le aparece a
+  una estructura hasta marcarla. El Inicio del panel saca Fiesta,
+  comunicado, alcance del push, chat y contactos; el tablero de Tesorería
+  saca Publicar, Compromisos y la carta semestral.
+- ⚠️ **Una estructura se tiene puesta solo en el panel.** El sombrero es
+  uno para toda la app, y con un comité puesto el Inicio del creyente, los
+  Comunicados y "Aportar" le apuntarían al comité. `requireMember` manda
+  a `/comunidad/volver`, que llama a `return_to_community()` (la Asamblea
+  madre si la persona es de ella, si no su comunidad más vieja) y vuelve
+  a la ruta pedida. El cambio lo hace el cliente **al montarse**, no el
+  servidor al renderizar: si no, un prefetch de un link a la app desde el
+  panel le sacaría la estructura a quien está trabajando. Por lo mismo,
+  `switchLocalityAction` usa `getOptionalMember` y no `requireMember`.
+- **Se entra desde `/perfil`**: cada estructura que la persona integra es
+  un botón que la pone y abre `/admin`. Es la única puerta para quien no
+  es de su Asamblea. El selector de comunidad del perfil ya no las lista;
+  el del panel sí (son membresías con rol admin).
+- **La base no deja caer el sombrero en una estructura** (082): sumarse a
+  una no se lo pone a quien no tenía, y si se borra la membresía puesta se
+  prefiere una comunidad. `join_locality()` las rechaza y
+  `move_membership()` nunca las borra ni muda a alguien a una.
+- **Filtradas de**: la lista de primer ingreso y de mudanza, el formulario
+  de contacto del folleto, los links de invitación, las pantallas de
+  `/admin/nacional`, la carta semestral. No siembran Fiestas ni Días
+  Sagrados. El aviso de cierre del día 5 sí les llega (llevan libro).
+- **La grilla de disponibilidad pasó a ser de la persona** (082): antes
+  quedaba atada al sombrero con que se cargó, y quien estaba en dos
+  instituciones no podía cargarla desde la segunda (el índice único es
+  por persona). Ahora el consolidado busca por quiénes integran la
+  institución.
+
+**Lo que falta (etapas 2 a 4):** recibo interno sin RUT con serie propia,
+el nombre de la institución en vez de "Asamblea Espiritual Local" en los
+~12 documentos de Tesorería, auditoría sin las reglas fiscales y de
+balance, buscador de contribuyentes con los creyentes de la comunidad
+madre (Etapa 2) · "Presentar a la Asamblea" para informes de Tesorería y
+de actividad, y actas con archivo (Etapa 3) · calendario compartido entre
+las instituciones de una localidad con filtro Locales / Nacionales /
+Ambas, casilla "Mostrar en el calendario de la comunidad" y la categoría
+"Reunión AEL" con nombre genérico (Etapa 4).
+
+⚠️ Hasta que corra la 082, la pantalla de Estructuras avisa y no crea
+nada; el resto del cambio funciona igual sin la migración.
 
 ## Enseñanza: folleto, QR y contacto (migración 080)
 
@@ -3043,6 +3121,11 @@ cambia nada.
 
 ## Pendientes conocidos
 
+- **Aplicar la 082 y estrenar las Estructuras** (2026-10-24): crear un
+  comité desde Asamblea → Estructuras, sumar a alguien que no sea de la
+  Asamblea, entrar desde su `/perfil` al panel del comité, ver que el menú
+  muestra solo lo suyo, y volver a la app (tiene que caer en su comunidad,
+  no en el comité). Siguen las etapas 2 a 4 (ver "Estructuras").
 - **Probar la Lectura de mañana** (la 081 se aplicó el 2026-10-24): cargar una cita en
   `/admin/nacional/lectura` y verla al día siguiente en Inicio, `/citas`,
   Oraciones y el aviso de las 8:00. Después: agendar citas para fechas

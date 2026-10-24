@@ -60,15 +60,17 @@ export async function getLocalityAvailability(
   const supabase = createSupabaseServer();
 
   // Por MEMBRESÍA (056): el rol de Asamblea es el de ESTA comunidad, no
-  // el del sombrero que la persona tenga puesto.
-  const [roster, slotsRes] = await Promise.all([
-    getLocalityMembers(supabase, localityId),
-    supabase
-      .from("availability_slots")
-      .select("user_id, weekday, hour, level")
-      .eq("locality_id", localityId)
-      .is("event_date", null),
-  ]);
+  // el del sombrero que la persona tenga puesto. Y la grilla es de la
+  // PERSONA (082), no de la localidad con que la cargó: se busca por
+  // quiénes integran esta institución, así la misma grilla sirve en su
+  // AEL, en la Nacional y en cada estructura.
+  const roster = await getLocalityMembers(supabase, localityId);
+  const adminIds = roster.filter((m) => m.role === "admin").map((m) => m.id);
+  const slotsRes = await supabase
+    .from("availability_slots")
+    .select("user_id, weekday, hour, level")
+    .in("user_id", adminIds)
+    .is("event_date", null);
 
   const members: AvailabilityMember[] = roster
     .filter((m) => m.role === "admin")
@@ -107,21 +109,19 @@ export async function getAvailabilityFillStats(
 ): Promise<{ filled: number; total: number; missing: string[] }> {
   if (!isSupabaseConfigured()) return { filled: 0, total: 0, missing: [] };
   const supabase = createSupabaseServer();
-  const [roster, slotsRes] = await Promise.all([
-    // Con nombre, para que el Inicio del panel diga a QUIÉN falta: un
-    // "5 de 9" solo no le dice a nadie a quién recordarle. Por
-    // membresía y con el rol de esta comunidad (056).
-    getLocalityMembers(supabase, localityId),
-    supabase
-      .from("availability_slots")
-      .select("user_id")
-      .eq("locality_id", localityId)
-      .is("event_date", null),
-  ]);
+  // Con nombre, para que el Inicio del panel diga a QUIÉN falta: un
+  // "5 de 9" solo no le dice a nadie a quién recordarle. Por membresía y
+  // con el rol de esta comunidad (056); la grilla, por persona (082).
+  const roster = await getLocalityMembers(supabase, localityId);
+  const members = activeMembers(roster).filter((m) => m.role === "admin");
+  const slotsRes = await supabase
+    .from("availability_slots")
+    .select("user_id")
+    .in("user_id", members.map((m) => m.id))
+    .is("event_date", null);
   const filled = new Set(
     ((slotsRes.data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)
   );
-  const members = activeMembers(roster).filter((m) => m.role === "admin");
   const missing = members
     .filter((m) => !filled.has(m.id))
     .map((m) => m.full_name?.trim() || "Sin nombre");

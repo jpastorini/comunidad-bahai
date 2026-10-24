@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { cache } from "react";
 import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
+import type { LocalityKind, StructureType } from "./types";
 
 /**
  * Una comunidad a la que la persona pertenece (migración 055).
@@ -16,12 +17,23 @@ export type Membership = {
   role: "member" | "admin";
   /** Es la comunidad que la persona tiene puesta ahora. */
   isActive: boolean;
+  /** AEL, Comunidad Nacional o estructura (082). */
+  kind: LocalityKind;
+  structureType: StructureType | null;
+  /** La localidad está activa (`localities.is_active`). */
+  enabled: boolean;
 };
 
 type Row = {
   locality_id: string;
   role: "member" | "admin";
-  localities: { name: string; city: string | null } | null;
+  localities: {
+    name: string;
+    city: string | null;
+    kind?: LocalityKind | null;
+    structure_type?: StructureType | null;
+    is_active?: boolean | null;
+  } | null;
 };
 
 /**
@@ -41,7 +53,9 @@ export const getMyMemberships = cache(
     const supabase = createSupabaseServer();
     const { data, error } = await supabase
       .from("profile_localities")
-      .select("locality_id, role, localities(name, city)")
+      // `localities(*)` y no la lista de columnas: `structure_type` existe
+      // recién desde la 082, y pedirla antes rompería el selector entero.
+      .select("locality_id, role, localities(*)")
       .eq("profile_id", userId);
 
     if (error) {
@@ -56,6 +70,9 @@ export const getMyMemberships = cache(
         city: r.localities?.city ?? null,
         role: r.role,
         isActive: r.locality_id === activeLocalityId,
+        kind: r.localities?.kind ?? "ael",
+        structureType: r.localities?.structure_type ?? null,
+        enabled: r.localities?.is_active ?? true,
       }))
       .sort((a, b) =>
         a.isActive === b.isActive

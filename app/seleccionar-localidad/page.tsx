@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { BahaiStar } from "@/components/BahaiStar";
 import { createSupabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
-import { isNationalLocality, type Locality } from "@/lib/types";
+import { isNationalLocality, isStructureLocality, type Locality } from "@/lib/types";
 import { selectLocalityAction } from "./actions";
 
 export const revalidate = 60;
@@ -63,7 +63,9 @@ export default async function SeleccionarLocalidadPage({
   // La Comunidad Nacional (056) no va mezclada con las Asambleas
   // Locales: es una respuesta distinta —"no pertenezco a ninguna"— y
   // mezclarla haría que alguien la eligiera creyendo que es su ciudad.
-  const list = all.filter((l) => !isNationalLocality(l));
+  // Las estructuras (082) tampoco: no son una comunidad a la que uno
+  // pertenece, las integra quien nombra la Asamblea.
+  const list = all.filter((l) => !isNationalLocality(l) && !isStructureLocality(l));
   const national = all.find((l) => isNationalLocality(l)) ?? null;
   const error = searchParams.error ? ERROR_COPY[searchParams.error] : null;
   // En modo cambio, la elección crea una SOLICITUD (no cambia directo).

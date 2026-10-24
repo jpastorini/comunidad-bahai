@@ -8,6 +8,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import {
   CONDITION_LABELS,
   ROLE_LABELS,
+  STRUCTURE_TYPE_LABELS,
   type EventPhoto,
   type LocalityChangeRequest,
 } from "@/lib/types";
@@ -36,9 +37,15 @@ export default async function ProfilePage() {
 
   // Comunidades a las que pertenece (055). Con una sola —el caso de
   // todo el mundo hoy— la tarjeta de abajo no cambia en nada.
-  const memberships = await getMyMemberships(
+  const allMemberships = await getMyMemberships(
     session.user.id,
     session.locality.id
+  );
+  // Las estructuras (082) no son comunidades: no se ofrecen para cambiar
+  // la app del creyente, sino como entrada a su panel.
+  const memberships = allMemberships.filter((m) => m.kind !== "estructura");
+  const structures = allMemberships.filter(
+    (m) => m.kind === "estructura" && m.role === "admin" && m.enabled
   );
 
   // Avatar de Google (de la metadata de auth.users), por si el usuario
@@ -156,6 +163,40 @@ export default async function ProfilePage() {
             </div>
             <IconChevronRight size={14} className="text-white/80" />
           </Link>
+        )}
+
+        {/* Las estructuras que integra (082): cada una abre su panel. Es la
+            única puerta para quien no es de la Asamblea de su comunidad, y
+            pone la estructura recién al tocar, para trabajar en ella. */}
+        {structures.length > 0 && (
+          <div className="mb-5 flex flex-col gap-2">
+            {structures.map((m) => (
+              <form key={m.localityId} action={switchLocalityAction}>
+                <input type="hidden" name="locality_id" value={m.localityId} />
+                <input type="hidden" name="redirect_to" value="/admin" />
+                <button
+                  type="submit"
+                  className="tap flex w-full items-center justify-between rounded-2xl bg-terra-grad px-4 py-3.5 text-left shadow-card-elevated"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25">
+                      <BahaiStar size={18} color="#fff" />
+                    </span>
+                    <span>
+                      <span className="block text-[13.5px] font-semibold text-white">
+                        {m.name}
+                      </span>
+                      <span className="block text-[11px] text-white/75">
+                        {m.structureType ? STRUCTURE_TYPE_LABELS[m.structureType] : "Estructura"} ·
+                        abrir su panel
+                      </span>
+                    </span>
+                  </span>
+                  <IconChevronRight size={14} className="text-white/80" />
+                </button>
+              </form>
+            ))}
+          </div>
         )}
 
         {/* Datos de cuenta */}

@@ -24,6 +24,9 @@ export default async function LocalidadesPage() {
   const { data } = await supabase
     .from("localities")
     .select("*")
+    // Las estructuras (082) las crea y gestiona cada Asamblea en
+    // Asamblea → Estructuras; editarlas acá las convertiría en AEL.
+    .neq("kind", "estructura")
     .order("name");
   const localities = (data ?? []) as Locality[];
 

@@ -35,7 +35,13 @@ export default async function NacionalMiembrosPage() {
       // lista se reordene tras un UPDATE y descoordine los inputs.
       .order("id", { ascending: true })
       .limit(100),
-    supabase.from("localities").select("id, name, is_active, kind").order("name"),
+    // Sin estructuras (082): la "comunidad principal" de alguien es una
+    // Asamblea; a una estructura se la suma su Asamblea.
+    supabase
+      .from("localities")
+      .select("id, name, is_active, kind")
+      .neq("kind", "estructura")
+      .order("name"),
   ]);
 
   const profiles = (profilesRaw ?? []) as Profile[];

@@ -481,20 +481,28 @@ export async function getTreasuryAttention(
   opts: { userId: string; localityId: string; localityKind: string; today?: string }
 ): Promise<TreasuryAttention> {
   const today = opts.today ?? todayISO();
+  // Una estructura (082) no le comparte el estado del Fondo a ninguna
+  // comunidad, no recibe compromisos ni escribe la carta semestral.
+  const community = opts.localityKind !== "estructura";
   const [closing, audit, reconciliation, publication, receipts, commitments, cash, dismissed] =
     await Promise.all([
       safe("cierre", closingItem(supabase, today)),
       safe("auditoria", auditItem(supabase, today)),
       safe("conciliacion", reconciliationItem(supabase, today)),
-      safe("publicar", publicationItem(supabase, opts.localityId, opts.localityKind, today)),
+      community
+        ? safe("publicar", publicationItem(supabase, opts.localityId, opts.localityKind, today))
+        : Promise.resolve(null),
       safe("recibos", receiptsItem(supabase)),
-      safe("compromisos", commitmentsItem(supabase, opts.localityId, today)),
+      community
+        ? safe("compromisos", commitmentsItem(supabase, opts.localityId, today))
+        : Promise.resolve(null),
       safe("cajas", cashItems(supabase, today)),
       getDismissedKeys(supabase, opts.userId, opts.localityId),
     ]);
 
   // Orden: lo grave primero; a igual tono, el orden del ciclo del mes.
-  const all = [closing, audit, ...(cash ?? []), reconciliation, publication, receipts, commitments, letterItem(today)].filter(
+  const letter = community ? letterItem(today) : null;
+  const all = [closing, audit, ...(cash ?? []), reconciliation, publication, receipts, commitments, letter].filter(
     (x): x is TreasuryAttentionItem => x !== null
   );
   const rank = (t: AttentionTone) => (t === "alert" ? 0 : 1);

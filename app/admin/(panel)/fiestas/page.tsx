@@ -4,7 +4,7 @@ import { Banner, DataTable, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
 import { celebrationDateFor, getBahaiMonth } from "@/lib/bahai-calendar";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { isNationalLocality, type FeastStatus } from "@/lib/types";
+import { isNationalLocality, isStructureLocality, type FeastStatus } from "@/lib/types";
 import { ensureYearSeeded } from "@/lib/year-seed";
 
 type FeastRow = {
@@ -29,7 +29,10 @@ export default async function AdminFiestasPage() {
 
   // La Comunidad Nacional no celebra Fiesta de 19 Días (056): el menú
   // ya no muestra la pantalla, y quien llegue por URL vuelve al panel.
-  if (isNationalLocality(session.locality)) redirect("/admin");
+  // Una estructura (082) tampoco.
+  if (isNationalLocality(session.locality) || isStructureLocality(session.locality)) {
+    redirect("/admin");
+  }
   const seedResult = await ensureYearSeeded(localityId);
 
   // Traer las Fiestas de esa localidad ordenadas cronológicamente.

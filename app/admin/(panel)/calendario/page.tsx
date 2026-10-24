@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Banner, Button, DataTable, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
-import { isNationalLocality } from "@/lib/types";
+import { isNationalLocality, isStructureLocality } from "@/lib/types";
 import { getCalendarKind } from "@/lib/calendar-kinds";
 import { getUnifiedCalendarItems } from "@/lib/data";
 import type { UnifiedCalendarItem } from "@/lib/data";
@@ -31,9 +31,13 @@ export default async function AdminCalendarPage({
   searchParams: { vista?: string; m?: string };
 }) {
   const session = await requireAdmin();
-  await ensureYearSeeded(session.locality.id, new Date(), {
-    seedFeasts: !isNationalLocality(session.locality),
-  });
+  // Una estructura (082) no siembra nada: los Días Sagrados y las Fiestas
+  // ya están en el calendario de la Asamblea de la que depende.
+  if (!isStructureLocality(session.locality)) {
+    await ensureYearSeeded(session.locality.id, new Date(), {
+      seedFeasts: !isNationalLocality(session.locality),
+    });
+  }
   const items = await getUnifiedCalendarItems();
 
   const vista = searchParams?.vista === "lista" ? "lista" : "mes";

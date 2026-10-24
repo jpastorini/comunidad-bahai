@@ -22,11 +22,13 @@ export async function selectLocalityAction(formData: FormData) {
   // Verifica que la localidad destino exista y esté activa.
   const { data: locality } = await supabase
     .from("localities")
-    .select("id, is_active, name")
+    .select("id, is_active, name, kind")
     .eq("id", locality_id)
     .maybeSingle();
 
-  if (!locality || !locality.is_active) {
+  // Una estructura (082) no se elige ni se pide: la integra quien nombra
+  // la Asamblea.
+  if (!locality || !locality.is_active || locality.kind === "estructura") {
     redirect("/seleccionar-localidad?error=missing");
   }
 

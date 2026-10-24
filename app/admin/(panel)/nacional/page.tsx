@@ -10,7 +10,11 @@ export default async function AdminNacionalPage() {
   const supabase = createSupabaseServer();
 
   const [localities, profiles] = await Promise.all([
-    supabase.from("localities").select("*", { count: "exact", head: true }),
+    // Las estructuras (082) no son localidades: las gestiona cada Asamblea.
+    supabase
+      .from("localities")
+      .select("*", { count: "exact", head: true })
+      .neq("kind", "estructura"),
     supabase.from("profiles").select("*", { count: "exact", head: true }),
   ]);
 

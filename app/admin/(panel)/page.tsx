@@ -27,7 +27,7 @@ import { getLocalityPushReach } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getTreasuryAttention } from "@/lib/treasury-attention";
 import { TreasuryAttentionBoard } from "@/components/admin/TreasuryAttention";
-import type { ChatTopic, FeastStatus } from "@/lib/types";
+import { isStructureLocality, type ChatTopic, type FeastStatus } from "@/lib/types";
 
 /**
  * Inicio del panel como tablero de ATENCIÓN. Cada tarjeta responde a una
@@ -68,17 +68,23 @@ export default async function AdminHomePage({
   const localityId = session.locality.id;
   const isTreasurer = !!session.profile.can_manage_treasury;
 
-  const attendsChat = session.profile.can_respond_chat;
+  // Una estructura (082) no tiene creyentes: ni chat, ni comunicados, ni
+  // Fiesta, ni alcance del push. Su Inicio son tareas, agenda, reuniones
+  // y, para quien la lleva, la Tesorería.
+  const isStructure = isStructureLocality(session.locality);
+  const attendsChat = session.profile.can_respond_chat && !isStructure;
 
   const [tasks, chatDuty, comunicado, feast, week, availability, push, treasury, contacts] =
     await Promise.all([
       getTasksSummary(),
-      getChatDuty(session.profile),
-      getLatestComunicadoWithReads(localityId),
-      getNextFeast(),
+      isStructure ? Promise.resolve([]) : getChatDuty(session.profile),
+      isStructure ? Promise.resolve(null) : getLatestComunicadoWithReads(localityId),
+      isStructure ? Promise.resolve(null) : getNextFeast(),
       getWeekAhead(7),
       getAvailabilityFillStats(localityId),
-      getLocalityPushReach(localityId),
+      isStructure
+        ? Promise.resolve({ withPush: 0, total: 0 })
+        : getLocalityPushReach(localityId),
       // Solo para quien tiene el tag: la RLS del libro no le devolvería
       // nada a otro, pero tampoco hay por qué hacer las consultas.
       isTreasurer
@@ -142,7 +148,7 @@ export default async function AdminHomePage({
           href="/admin/tareas"
           tone={tasksTone}
           Icon={IconCheck}
-          label="Tareas de la Asamblea"
+          label={isStructure ? "Tareas" : "Tareas de la Asamblea"}
           value={tasks.pending}
           hint={
             tasks.pending === 0
@@ -199,6 +205,7 @@ export default async function AdminHomePage({
           />
         )}
 
+        {!isStructure && (
         <AttentionTile
           href={feast ? `/admin/fiestas/${feast.feast.id}` : "/admin/fiestas"}
           tone={feastTone}
@@ -220,6 +227,7 @@ export default async function AdminHomePage({
           }
           cta={feast?.feast.status === "draft" ? "Preparar y publicar" : "Ver la Fiesta"}
         />
+        )}
       </div>
 
       {/* Fila 2: listas cortas. La semana, el último comunicado, la Asamblea. */}
@@ -265,6 +273,7 @@ export default async function AdminHomePage({
           )}
         </Card>
 
+        {!isStructure && (
         <Card>
           <CardTitle
             Icon={IconMensajes}
@@ -303,6 +312,7 @@ export default async function AdminHomePage({
             </div>
           )}
         </Card>
+        )}
 
         <Card>
           <CardTitle
@@ -332,11 +342,14 @@ export default async function AdminHomePage({
             </p>
           ) : (
             availability.total > 0 && (
-              <p className="mt-2 text-[13px] text-muted">Toda la Asamblea cargó la suya.</p>
+              <p className="mt-2 text-[13px] text-muted">
+                {isStructure ? "Todos cargaron la suya." : "Toda la Asamblea cargó la suya."}
+              </p>
             )
           )}
         </Card>
 
+        {!isStructure && (
         <Card>
           <CardTitle
             Icon={IconBell}
@@ -364,6 +377,7 @@ export default async function AdminHomePage({
                 : "A menos de dos tercios les llega la notificación. En Uso de la app se ve quién no la tiene."}
           </p>
         </Card>
+        )}
       </div>
 
       {/* Fila 3: crear. Los atajos de siempre, sin la tarjeta de permisos
@@ -371,11 +385,17 @@ export default async function AdminHomePage({
       <Card className="mt-4">
         <h2 className="font-display text-[18px] font-semibold text-dark">Crear</h2>
         <div className="mt-3 flex flex-wrap gap-2">
-          <CreateLink href="/admin/comunicados/nuevo" Icon={IconMensajes} label="Comunicado" />
+          {!isStructure && (
+            <CreateLink href="/admin/comunicados/nuevo" Icon={IconMensajes} label="Comunicado" />
+          )}
           <CreateLink href="/admin/calendario/nuevo" Icon={IconCalendario} label="Evento" />
-          <CreateLink href="/admin/actividades/nueva" Icon={IconActividades} label="Actividad" />
+          {!isStructure && (
+            <CreateLink href="/admin/actividades/nueva" Icon={IconActividades} label="Actividad" />
+          )}
           <CreateLink href="/admin/tareas/nueva" Icon={IconCheck} label="Tarea" />
-          <CreateLink href="/admin/servicio/nueva" Icon={IconServicio} label="Necesidad de servicio" />
+          {!isStructure && (
+            <CreateLink href="/admin/servicio/nueva" Icon={IconServicio} label="Necesidad de servicio" />
+          )}
         </div>
       </Card>
     </>

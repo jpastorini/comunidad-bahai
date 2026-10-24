@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireMember } from "@/lib/auth";
+import { getOptionalMember, requireMember } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 
@@ -211,7 +211,10 @@ export async function removeAvatarAction(): Promise<Result> {
  * viendo los comunicados y el calendario de la anterior.
  */
 export async function switchLocalityAction(formData: FormData) {
-  await requireMember();
+  // getOptionalMember y no requireMember: este action también se usa desde
+  // el panel con una estructura puesta (082), y requireMember la sacaría
+  // de ahí antes de cambiar adonde la persona pidió.
+  if (!(await getOptionalMember())) redirect("/login");
   const supabase = createSupabaseServer();
   const localityId = (formData.get("locality_id") as string) || "";
   // A dónde volver: el panel si el cambio se hizo desde el panel, la app

@@ -72,10 +72,12 @@ export async function submitContactRequest(input: ContactInput): Promise<Contact
 
   const { data: locality } = await admin
     .from("localities")
-    .select("id, name, is_active")
+    .select("id, name, is_active, kind")
     .eq("id", input.localityId)
     .maybeSingle();
-  if (!locality || !(locality as { is_active: boolean }).is_active) {
+  // Una estructura (082) no recibe contactos: no tiene comunidad.
+  const loc = locality as { is_active: boolean; kind?: string } | null;
+  if (!loc || !loc.is_active || loc.kind === "estructura") {
     return { ok: false, error: "Esa comunidad no existe.", field: "locality" };
   }
 
@@ -157,6 +159,8 @@ export async function getContactLocalities(): Promise<
     .from("localities")
     .select("id, name, kind")
     .eq("is_active", true)
+    // Las estructuras (082) no son comunidades que alguien pueda elegir.
+    .neq("kind", "estructura")
     .order("name");
   return (data ?? []) as Array<{ id: string; name: string; kind: string }>;
 }
