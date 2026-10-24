@@ -3210,7 +3210,7 @@ cambia nada.
 
 ## Pendientes conocidos
 
-- **Aplicar de la 082 a la 085 y estrenar las Estructuras** (2026-10-24): crear un
+- **Estrenar las Estructuras** (de la 082 a la 085 aplicadas el 2026-10-24): crear un
   comité desde Asamblea → Estructuras, sumar a alguien que no sea de la
   Asamblea, entrar desde su `/perfil` al panel del comité, ver que el menú
   muestra solo lo suyo, y volver a la app (tiene que caer en su comunidad,
