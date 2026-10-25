@@ -57,3 +57,6 @@ public/worker-*.js.map
 public/swe-worker-*.js
 public/swe-worker-*.js.map
 public/fallback-*.js
+
+# Planillas e informes de auditoría de ejercicios anteriores: datos con nombres, nunca al repo
+auditoriasNacionalPasadas/
