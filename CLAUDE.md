@@ -3331,7 +3331,7 @@ cambia nada.
 
 ## Pendientes conocidos
 
-- **Aplicar la 088 y estrenar los ayudantes**: nombrar a alguien que no
+- **Estrenar los ayudantes** (la 088 se aplicó el 2026-10-25): nombrar a alguien que no
   sea de la Asamblea (por ejemplo Fotos y Calendario, con un "hasta"),
   entrar con esa cuenta desde "Panel de ayudante" en `/perfil`, ver que el
   menú muestra solo eso y que otra ruta del panel rebota, y cargar algo.
