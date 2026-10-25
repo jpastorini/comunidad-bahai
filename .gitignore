@@ -60,3 +60,7 @@ public/fallback-*.js
 
 # Planillas e informes de auditoría de ejercicios anteriores: datos con nombres, nunca al repo
 auditoriasNacionalPasadas/
+
+# Cartas a la comunidad y ajustes puntuales del libro: llevan cifras o nombres, el repo es público
+carta-semestral-*
+supabase/ajustes/
