@@ -3,7 +3,7 @@
  * la configuración del consent screen de Google. Centralizados acá para
  * que cambiarlos sea un solo renglón.
  *
- * Si más adelante migrás a un dominio propio, actualizá `appUrl` y, en
+ * Si cambia el dominio, actualizá `appUrl` y, en
  * Google Cloud Console, el "authorized domain".
  */
 export const LEGAL = {
@@ -13,7 +13,7 @@ export const LEGAL = {
   /** Contacto de privacidad / soporte. */
   contactEmail: "jpastorini@gmail.com",
   /** URL pública de la app (sin barra final). */
-  appUrl: "https://mvdbahai.vercel.app",
+  appUrl: "https://mvd.bahai.uy",
   /** Última actualización del texto legal. */
   lastUpdated: "30 de mayo de 2026",
 } as const;

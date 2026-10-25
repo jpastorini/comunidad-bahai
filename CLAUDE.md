@@ -104,6 +104,18 @@ Para evitarlo:
 - **Calendario Badí':** fechas oficiales en `lib/bahai-calendar.ts`
   (Fiestas y Días Sagrados por año BE). Auto-siembra en `lib/year-seed.ts`,
   corre al abrir `/admin/calendario` y `/admin/fiestas`.
+- **Dominio: `mvd.bahai.uy`** (2026-10-25; antes `mvdbahai.vercel.app`,
+  que queda como redirect 308). La app arma todos sus links con
+  `window.location.origin` o el host del request; lo único escrito a mano
+  es `LEGAL.appUrl` (`lib/legal.ts`). Cambiar de dominio NO es solo DNS:
+  hay que actualizar Supabase (Auth → URL Configuration: Site URL y
+  Redirect URLs, o el link mágico manda al dominio viejo) y Google Cloud
+  (JavaScript origins del cliente OAuth y Authorized domains del consent
+  screen). ⚠️ Para el navegador cada dominio es otro sitio: sesión,
+  PWA instalada, suscripción push y `localStorage` no viajan. Todos
+  vuelven a entrar, reinstalan y reactivan los avisos (las hojas de
+  instalación y de avisos lo piden solas); quien deja el ícono viejo
+  recibe los avisos repetidos.
 
 ---
 
