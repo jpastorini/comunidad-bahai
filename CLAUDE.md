@@ -442,10 +442,52 @@ Mercado Pago" más abajo. ·
 a ser un hub para compartir la Fe —el folleto público «Qué es la Fe
 Bahá'í», los QR para una charla y el formulario "Quiero contactarme"—;
 Servicio vive en Institucional. Ver la sección "Enseñanza" más abajo. ·
-**Estructuras** (migración 082, 2026-10-24, Etapa 1 de 4): Comités,
+**Estructuras** (migraciones 082 a 085, 2026-10-24): Comités,
 Departamentos, Coordinación y Junta de Instituto, creados por la AEN o una
 AEL, con su propio panel y sin creyentes. Ver la sección "Estructuras" más
-abajo.
+abajo. ·
+**Zonas y agrupaciones** (migración 086, 2026-10-25): el mapa del país,
+País → 3 zonas electorales → 20 agrupaciones. Ver la sección "Zonas y
+agrupaciones" más abajo.
+
+## Zonas y agrupaciones (migración 086)
+
+Decidido con el usuario el 2026-10-25. País → **3 zonas electorales**
+(Zona 1, 2, 3) → **20 agrupaciones**: los 19 departamentos con Canelones
+partido en **Canelones Este** y **Canelones Oeste**. **Sin localidades**:
+son muchas y no hacen falta. Solo vale el mapa vigente; no se guarda cómo
+estaba antes. Hoy la zona es solo para agrupar; más adelante puede servir
+para la Convención (delegados por zona).
+
+- **Son territorio, no instituciones.** No son filas de `localities`, no
+  tienen panel ni integrantes: `electoral_zones` y `agrupaciones`
+  (`zone_id`), sembradas en la migración, legibles por cualquiera (el
+  primer ingreso las ofrece antes de que la persona pertenezca a nada),
+  escritas solo por el admin nacional. Datos en `lib/territory.ts`.
+- **Una Asamblea Local está en una agrupación** (`localities.agrupacion_id`).
+  La 086 ubicó por el nombre las que pudo; las de Canelones y el resto,
+  y qué agrupación va en cada zona, los asigna la AEN a mano en Admin
+  Nacional → **Zonas y agrupaciones** (`/admin/nacional/territorio`).
+- **La agrupación de una persona** es la de su Asamblea Local si tiene
+  una; si no —la MAYORÍA del país, que pertenece a la Comunidad Nacional—
+  la que eligió (`profiles.agrupacion_id`), **opcional** ("Prefiero no
+  decirlo" es el default). Una sola regla, en `person_agrupacion()`
+  (SQL) y `getEffectiveAgrupaciones()` (TS, para un padrón entero). Se
+  elige en el primer ingreso, junto a "No pertenezco a una Asamblea
+  Local", y en `/perfil`; la AEN la carga o corrige desde la ficha en
+  Creyentes con la Comunidad Nacional puesta. Es columna personal, no
+  privilegiada: `profiles_update_self` no se toca.
+- **El padrón de la Comunidad Nacional** (`/admin/miembros` con la AEN
+  puesta) filtra por zona, agrupación o "sin agrupación".
+
+**Lo que falta (Etapa B):** las estructuras de agrupación —alcance local /
+agrupación / nacional (la Junta de Instituto solo nacional), las crea la
+AEN, toman integrantes de la agrupación, y su calendario lo ven las
+instituciones y, con la casilla, los creyentes de la agrupación—, y el
+filtro del calendario Locales / Agrupación / Nacionales.
+
+⚠️ Sin la 086 la pantalla del mapa avisa, el primer ingreso y el perfil no
+ofrecen agrupación y el padrón no muestra el filtro.
 
 ## Estructuras: Comités, Departamentos e Instituto (migración 082)
 
@@ -3210,6 +3252,9 @@ cambia nada.
 
 ## Pendientes conocidos
 
+- **Aplicar la 086 y asignar el mapa** (2026-10-25): en Admin Nacional →
+  Zonas y agrupaciones, cada agrupación a su zona y cada Asamblea Local a
+  su agrupación (las de Canelones seguro quedan sin asignar).
 - **Estrenar las Estructuras** (de la 082 a la 085 aplicadas el 2026-10-24): crear un
   comité desde Asamblea → Estructuras, sumar a alguien que no sea de la
   Asamblea, entrar desde su `/perfil` al panel del comité, ver que el menú

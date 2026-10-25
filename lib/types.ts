@@ -143,6 +143,12 @@ export type Profile = {
   full_name: string | null;
   /** URL pública del avatar. Puede ser de Google o subido manualmente. */
   avatar_url: string | null;
+  /**
+   * La agrupación que eligió la persona (086), opcional. Cuenta solo si no
+   * es de una Asamblea Local: ahí manda la de su Asamblea
+   * (`person_agrupacion()`).
+   */
+  agrupacion_id?: string | null;
   role: "member" | "admin";
   can_respond_chat: boolean;
   can_manage_treasury: boolean;
@@ -229,6 +235,8 @@ export type Locality = {
   kind: LocalityKind;
   /** La Asamblea que creó la estructura (082). NULL en una Asamblea. */
   parent_id?: string | null;
+  /** En qué agrupación está una Asamblea Local (086). */
+  agrupacion_id?: string | null;
   structure_type?: StructureType | null;
   created_at: string;
 };

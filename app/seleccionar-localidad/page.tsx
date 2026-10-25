@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { BahaiStar } from "@/components/BahaiStar";
 import { createSupabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
+import { getTerritory } from "@/lib/territory";
 import { isNationalLocality, isStructureLocality, type Locality } from "@/lib/types";
 import { selectLocalityAction } from "./actions";
 
@@ -27,11 +28,11 @@ export default async function SeleccionarLocalidadPage({
     redirect("/login?next=/seleccionar-localidad");
   }
 
-  const { data: localities } = await supabase
-    .from("localities")
-    .select("*")
-    .eq("is_active", true)
-    .order("name");
+  const [{ data: localities }, territory] = await Promise.all([
+    supabase.from("localities").select("*").eq("is_active", true).order("name"),
+    // Las agrupaciones (086), para quien no pertenece a una Asamblea Local.
+    getTerritory(supabase),
+  ]);
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -169,6 +170,29 @@ export default async function SeleccionarLocalidadPage({
                 <input type="hidden" name="locality_id" value={national.id} />
                 {searchParams.next && (
                   <input type="hidden" name="next" value={searchParams.next} />
+                )}
+                {/* La agrupación (086), opcional y en el mismo paso, antes
+                    del botón: es lo que acerca a la gente sin Asamblea a
+                    las estructuras de su agrupación. "Prefiero no decirlo"
+                    es la opción por defecto. */}
+                {territory.agrupaciones.length > 0 && (
+                  <label className="mb-2.5 block">
+                    <span className="mb-1 block text-[11.5px] text-muted">
+                      ¿En qué agrupación vivís? Opcional; la cambiás desde tu perfil.
+                    </span>
+                    <select
+                      name="agrupacion_id"
+                      defaultValue=""
+                      className="w-full rounded-xl border border-black/10 bg-card px-3 py-2.5 text-[13.5px] text-dark"
+                    >
+                      <option value="">Prefiero no decirlo</option>
+                      {territory.agrupaciones.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 )}
                 <button
                   type="submit"

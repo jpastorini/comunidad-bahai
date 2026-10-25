@@ -14,9 +14,11 @@ import { requireAdmin } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { getOrCreateLocalityInvite } from "@/lib/invites";
 import { getLocalityMembers, type LocalityMember } from "@/lib/memberships";
+import { getEffectiveAgrupaciones, getTerritory } from "@/lib/territory";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import {
   CONDITION_LABELS,
+  isNationalLocality,
   ROLE_LABELS,
   type LocalityChangeRequest,
   type Profile,
@@ -25,6 +27,7 @@ import {
   decideLocalityChangeAction,
   regenerateInviteAction,
   setMemberDisabledAction,
+  setMemberAgrupacionAction,
   updateMemberAction,
 } from "./actions";
 import { ConfirmSubmit } from "./confirm-submit";
@@ -69,6 +72,18 @@ export default async function AdminMiembrosPage({
       locality_id: session.locality.id,
     })) as unknown as Profile[];
   const activeProfiles = profiles.filter((p) => !p.disabled_at);
+
+  // La agrupación de cada uno (086), solo en el padrón de la Comunidad
+  // Nacional: es donde está la mayoría del país y donde sirve filtrar por
+  // zona o agrupación. En una AEL todos son de la misma.
+  const national = isNationalLocality(session.locality);
+  const [territory, people] = national
+    ? await Promise.all([
+        getTerritory(supabase),
+        getEffectiveAgrupaciones(activeProfiles.map((p) => p.id)),
+      ])
+    : [null, null];
+  const agrById = new Map((territory?.agrupaciones ?? []).map((a) => [a.id, a]));
   const disabledProfiles = profiles.filter((p) => p.disabled_at);
   const pendingRequests = (requestRows ?? []) as LocalityChangeRequest[];
 
@@ -157,6 +172,11 @@ export default async function AdminMiembrosPage({
       <ScrollToHash />
       <MembersList
         initialFilter={searchParams.filtro}
+        territory={
+          territory && !territory.missing
+            ? { zones: territory.zones, agrupaciones: territory.agrupaciones }
+            : undefined
+        }
         items={activeProfiles.map((p) => {
           const m = p as unknown as LocalityMember;
           const isNew = now - new Date(m.created_at).getTime() <= NEW_DAYS * 864e5;
@@ -171,17 +191,31 @@ export default async function AdminMiembrosPage({
             bulletin: p.can_manage_bulletin,
             createdAt: m.created_at,
             lastSeenAt: m.last_seen_at,
+            agrupacionId: people?.effective.get(p.id) ?? null,
+            zoneId: agrById.get(people?.effective.get(p.id) ?? "")?.zone_id ?? null,
             card: (
               <MemberCard
                 // La key incluye los campos editables: si el server devuelve
                 // datos nuevos tras guardar, la tarjeta se remonta y los
                 // inputs no controlados (nombre, rol, checkboxes) reflejan
                 // el valor real.
-                key={`${p.id}:${p.full_name}:${p.role}:${p.is_bahai}:${p.can_respond_chat}:${p.can_manage_treasury}:${p.can_manage_bulletin}`}
+                key={`${p.id}:${p.full_name}:${p.role}:${p.is_bahai}:${p.can_respond_chat}:${p.can_manage_treasury}:${p.can_manage_bulletin}:${people?.own.get(p.id) ?? ""}`}
                 profile={p}
                 joinedAt={m.created_at}
                 lastSeenAt={m.last_seen_at}
                 isNew={isNew}
+                agrupacion={
+                  territory && people && !territory.missing
+                    ? {
+                        options: territory.agrupaciones,
+                        own: people.own.get(p.id) ?? null,
+                        effectiveName: agrById.get(people.effective.get(p.id) ?? "")?.name ?? null,
+                        fromAssembly:
+                          !!people.effective.get(p.id) &&
+                          people.effective.get(p.id) !== people.own.get(p.id),
+                      }
+                    : undefined
+                }
                 isMe={p.id === session.user.id}
                 contact={
                   <ContactButtons
@@ -282,6 +316,7 @@ function MemberCard({
   lastSeenAt,
   isNew,
   contact,
+  agrupacion,
 }: {
   profile: Profile;
   isMe: boolean;
@@ -289,6 +324,13 @@ function MemberCard({
   joinedAt: string;
   lastSeenAt: string | null;
   isNew: boolean;
+  /** Solo en la Comunidad Nacional (086). */
+  agrupacion?: {
+    options: Array<{ id: string; name: string }>;
+    own: string | null;
+    effectiveName: string | null;
+    fromAssembly: boolean;
+  };
 }) {
   return (
     <Card>
@@ -384,6 +426,48 @@ function MemberCard({
           </p>
         )}
       </form>
+
+      {/* La agrupación (086), solo en el padrón de la Comunidad Nacional:
+          la mayoría del país no tiene Asamblea Local y la Asamblea
+          Nacional puede cargarla o corregirla. Form aparte, como el de
+          deshabilitar. */}
+      {agrupacion && (
+        <form
+          action={setMemberAgrupacionAction}
+          className="mt-3 flex flex-wrap items-center gap-2 border-t border-black/[0.06] pt-3"
+        >
+          <input type="hidden" name="id" value={profile.id} />
+          <span className="text-[11.5px] text-muted">Agrupación</span>
+          {agrupacion.fromAssembly ? (
+            <span className="text-[12.5px] font-medium text-dark">
+              {agrupacion.effectiveName}{" "}
+              <span className="text-[11.5px] font-normal text-muted">(por su Asamblea Local)</span>
+            </span>
+          ) : (
+            <>
+              <select
+                name="agrupacion_id"
+                defaultValue={agrupacion.own ?? ""}
+                aria-label="Agrupación"
+                className="min-w-0 rounded-lg border border-black/10 bg-card px-2.5 py-1.5 text-[12.5px] text-dark"
+              >
+                <option value="">Sin agrupación</option>
+                {agrupacion.options.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="tap rounded-lg border border-black/10 bg-card px-3 py-1.5 text-[12px] font-semibold text-dark hover:bg-bg"
+              >
+                Guardar
+              </button>
+            </>
+          )}
+        </form>
+      )}
 
       {/* Deshabilitar — form separado (no se puede anidar dentro del de
           edición). No se ofrece sobre la propia cuenta. */}

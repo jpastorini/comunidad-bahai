@@ -19,8 +19,9 @@ import { cookies } from "next/headers";
 import { PushToggle } from "@/components/PushToggle";
 import { DevotionalToggle } from "@/components/DevotionalToggle";
 import { getMyMemberships } from "@/lib/memberships";
+import { getTerritory } from "@/lib/territory";
 import { getCashBoxes } from "@/lib/treasury-cash";
-import { switchLocalityAction } from "./actions";
+import { switchLocalityAction, updateMyAgrupacionAction } from "./actions";
 import { AvatarEditor } from "./avatar-editor";
 import { MyPhotosSection } from "./my-photos";
 import { NameForm } from "./name-form";
@@ -47,6 +48,14 @@ export default async function ProfilePage() {
   const structures = allMemberships.filter(
     (m) => m.kind === "estructura" && m.role === "admin" && m.enabled
   );
+
+  // La agrupación (086): la de su Asamblea Local si es de una (la más
+  // vieja, igual que `person_agrupacion()`), si no la que eligió.
+  const territory = await getTerritory(supabase);
+  const aelAgrupacion =
+    allMemberships.find((m) => m.kind === "ael" && m.agrupacionId)?.agrupacionId ?? null;
+  const agrupacionName = (id: string) =>
+    territory.agrupaciones.find((a) => a.id === id)?.name ?? "—";
 
   // Avatar de Google (de la metadata de auth.users), por si el usuario
   // quiere volver a la foto de Google después de subir una manual.
@@ -349,6 +358,44 @@ export default async function ProfilePage() {
           {session.locality.city && (
             <div className="mt-0.5 font-body text-[11px] text-muted">
               {session.locality.city} · {session.locality.country}
+            </div>
+          )}
+
+          {/* La agrupación (086). Quien es de una Asamblea Local la tiene
+              por su Asamblea; quien no, la elige o la deja vacía. */}
+          {territory.agrupaciones.length > 0 && (
+            <div className="mt-3 border-t border-black/[0.06] pt-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                Agrupación
+              </div>
+              {aelAgrupacion ? (
+                <p className="mt-0.5 font-body text-[13px] text-dark">
+                  {agrupacionName(aelAgrupacion)}
+                  <span className="ml-1 text-[11.5px] text-muted">(la de tu Asamblea Local)</span>
+                </p>
+              ) : (
+                <form action={updateMyAgrupacionAction} className="mt-1.5 flex gap-2">
+                  <select
+                    name="agrupacion_id"
+                    defaultValue={session.profile.agrupacion_id ?? ""}
+                    aria-label="Tu agrupación"
+                    className="min-w-0 flex-1 rounded-xl border border-black/10 bg-bg px-3 py-2 text-[13px] text-dark"
+                  >
+                    <option value="">Prefiero no decirlo</option>
+                    {territory.agrupaciones.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="submit"
+                    className="tap shrink-0 rounded-xl bg-terra px-3.5 py-2 text-[12.5px] font-semibold text-white"
+                  >
+                    Guardar
+                  </button>
+                </form>
+              )}
             </div>
           )}
 

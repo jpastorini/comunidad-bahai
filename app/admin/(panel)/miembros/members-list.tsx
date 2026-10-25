@@ -17,7 +17,16 @@ export type MemberListItem = {
   bulletin: boolean;
   createdAt: string;
   lastSeenAt: string | null;
+  /** Agrupación efectiva y su zona (086); solo en la Comunidad Nacional. */
+  agrupacionId?: string | null;
+  zoneId?: string | null;
   card: ReactNode;
+};
+
+/** Zonas y agrupaciones para filtrar el padrón de la Comunidad Nacional. */
+export type MemberTerritory = {
+  zones: Array<{ id: string; name: string }>;
+  agrupaciones: Array<{ id: string; name: string }>;
 };
 
 const MEMBER_FILTERS = {
@@ -57,11 +66,16 @@ const NEW_MEMBER_DAYS = 30;
 export function MembersList({
   items,
   initialFilter,
+  territory,
 }: {
   items: MemberListItem[];
   /** `?filtro=` de la URL; el push de alguien nuevo llega con "nuevos". */
   initialFilter?: string;
+  /** Con esto aparece el filtro por zona y agrupación (086). */
+  territory?: MemberTerritory;
 }) {
+  // "" todos · "none" sin agrupación · "z:<id>" una zona · "a:<id>" una agrupación
+  const [place, setPlace] = useState("");
   const start: MemberFilter =
     initialFilter && initialFilter in MEMBER_FILTERS
       ? (initialFilter as MemberFilter)
@@ -80,6 +94,12 @@ export function MembersList({
     items
       .filter((it) => matchesFilter(it, filter, now))
       .filter((it) => {
+        if (!place) return true;
+        if (place === "none") return !it.agrupacionId;
+        if (place.startsWith("z:")) return it.zoneId === place.slice(2);
+        return it.agrupacionId === place.slice(2);
+      })
+      .filter((it) => {
         if (words.length === 0) return true;
         const text = normalize(`${it.name} ${it.email}`);
         return words.every((w) => text.includes(w));
@@ -91,7 +111,11 @@ export function MembersList({
 
   return (
     <>
-      <div className="mb-3 grid gap-2 md:grid-cols-[1fr,230px,200px]">
+      <div
+        className={`mb-3 grid gap-2 ${
+          territory ? "md:grid-cols-[1fr,200px,190px,190px]" : "md:grid-cols-[1fr,230px,200px]"
+        }`}
+      >
         <label className="flex items-center gap-2 rounded-xl border border-black/10 bg-card px-3.5 py-2 focus-within:border-gold/60">
           <IconSearch size={15} className="shrink-0 text-muted" />
           <input
@@ -130,6 +154,30 @@ export function MembersList({
             </option>
           ))}
         </Select>
+        {territory && (
+          <Select
+            value={place}
+            onChange={(e) => setPlace(e.target.value)}
+            aria-label="Zona o agrupación"
+          >
+            <option value="">Todo el país</option>
+            <option value="none">Sin agrupación</option>
+            <optgroup label="Zona electoral">
+              {territory.zones.map((z) => (
+                <option key={z.id} value={`z:${z.id}`}>
+                  {z.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Agrupación">
+              {territory.agrupaciones.map((a) => (
+                <option key={a.id} value={`a:${a.id}`}>
+                  {a.name}
+                </option>
+              ))}
+            </optgroup>
+          </Select>
+        )}
         <Select
           value={sort}
           onChange={(e) => setSort(e.target.value as Sort)}
@@ -147,12 +195,13 @@ export function MembersList({
         {visible.size === items.length
           ? `${items.length} ${items.length === 1 ? "persona" : "personas"}`
           : `${visible.size} de ${items.length}`}
-        {(query || filter !== "todos") && (
+        {(query || filter !== "todos" || place) && (
           <button
             type="button"
             onClick={() => {
               setQuery("");
               setFilter("todos");
+              setPlace("");
             }}
             className="ml-2 font-semibold text-terra hover:underline"
           >

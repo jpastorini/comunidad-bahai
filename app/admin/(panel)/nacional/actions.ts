@@ -211,3 +211,52 @@ export async function updateMemberLocalityAction(formData: FormData) {
   revalidatePath("/admin/miembros");
   redirect("/admin/nacional/miembros");
 }
+
+// ── Zonas y agrupaciones (086) ───────────────────────────────────
+/**
+ * Guarda el mapa entero de una vez: la zona de cada agrupación
+ * (`zone_<id>`) y la agrupación de cada Asamblea Local (`agr_<id>`). Solo
+ * se escribe lo que cambió, comparando con el valor que vino en la
+ * pantalla (`prev_zone_<id>`, `prev_agr_<id>`).
+ */
+export async function saveTerritoryAction(formData: FormData) {
+  await requireNationalAdmin();
+  const supabase = createSupabaseServer();
+  const back = "/admin/nacional/territorio";
+  const changed: string[] = [];
+
+  for (const [key, raw] of formData.entries()) {
+    const value = (raw as string) || null;
+    if (key.startsWith("zone_")) {
+      const id = key.slice(5);
+      if ((formData.get(`prev_zone_${id}`) || null) === value) continue;
+      const { error } = await supabase.from("agrupaciones").update({ zone_id: value }).eq("id", id);
+      if (error) {
+        setFlashToast({ tone: "error", message: `No se pudo guardar: ${error.message}` });
+        redirect(back);
+      }
+      changed.push(id);
+    } else if (key.startsWith("agr_")) {
+      const id = key.slice(4);
+      if ((formData.get(`prev_agr_${id}`) || null) === value) continue;
+      const { error } = await supabase
+        .from("localities")
+        .update({ agrupacion_id: value })
+        .eq("id", id);
+      if (error) {
+        setFlashToast({ tone: "error", message: `No se pudo guardar: ${error.message}` });
+        redirect(back);
+      }
+      // La localidad se sirve desde el Data Cache (getLocality).
+      revalidateTag(localityTag(id));
+      changed.push(id);
+    }
+  }
+
+  setFlashToast({
+    tone: "success",
+    message: changed.length === 0 ? "No había cambios." : "Mapa guardado.",
+  });
+  revalidatePath(back);
+  redirect(back);
+}

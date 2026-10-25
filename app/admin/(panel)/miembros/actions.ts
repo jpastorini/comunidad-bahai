@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { isNationalLocality } from "@/lib/types";
 import { setFlashToast } from "@/lib/toast";
 
 export async function updateMemberAction(formData: FormData) {
@@ -304,4 +306,44 @@ export async function decideLocalityChangeAction(formData: FormData) {
   });
   revalidatePath("/admin/miembros");
   redirect("/admin/miembros");
+}
+
+/**
+ * La Asamblea Nacional carga o corrige la agrupación de alguien de la
+ * Comunidad Nacional (086). Es la misma columna que la persona elige en
+ * su perfil (`profiles.agrupacion_id`); se escribe con service-role
+ * porque la policy de `profiles` solo deja tocar la propia fila. Si la
+ * persona además es de una Asamblea Local, manda la de esa Asamblea.
+ */
+export async function setMemberAgrupacionAction(formData: FormData) {
+  const session = await requireAdmin();
+  const back = "/admin/miembros";
+  if (!isNationalLocality(session.locality)) redirect(back);
+
+  const id = (formData.get("id") as string) || "";
+  const value = (formData.get("agrupacion_id") as string) || null;
+
+  // Solo a alguien de la Comunidad Nacional: la RLS de membresías deja ver
+  // las de la comunidad puesta.
+  const supabase = createSupabaseServer();
+  const { data: membership } = await supabase
+    .from("profile_localities")
+    .select("profile_id")
+    .eq("profile_id", id)
+    .eq("locality_id", session.locality.id)
+    .maybeSingle();
+  const admin = createSupabaseAdmin();
+  if (!membership || !admin) {
+    setFlashToast({ tone: "error", message: "No se pudo guardar la agrupación." });
+    redirect(back);
+  }
+
+  const { error } = await admin.from("profiles").update({ agrupacion_id: value }).eq("id", id);
+  setFlashToast(
+    error
+      ? { tone: "error", message: `No se pudo guardar: ${error.message}` }
+      : { tone: "success", message: "Agrupación guardada." }
+  );
+  revalidatePath(back);
+  redirect(`${back}#m-${id}`);
 }

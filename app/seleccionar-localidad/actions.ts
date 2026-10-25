@@ -62,6 +62,17 @@ export async function selectLocalityAction(formData: FormData) {
       redirect("/seleccionar-localidad");
     }
 
+    // La agrupación que eligió quien no es de una Asamblea Local (086).
+    // Opcional: un fallo no frena el ingreso, la puede cargar en su perfil.
+    const agrupacionId = (formData.get("agrupacion_id") as string) || "";
+    if (agrupacionId && locality.kind === "nacional") {
+      const { error: agrError } = await supabase
+        .from("profiles")
+        .update({ agrupacion_id: agrupacionId })
+        .eq("id", user.id);
+      if (agrError) console.error("[seleccionar-localidad] agrupación:", agrError.message);
+    }
+
     // La Asamblea se entera enseguida: quien entra sin invitación queda
     // como Amigo/a de la Fe (default de la 070) hasta que lo habilite.
     await notifyNewMember(locality_id, user.id, "joined");

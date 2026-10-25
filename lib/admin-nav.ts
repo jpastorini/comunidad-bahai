@@ -237,6 +237,9 @@ export const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/nacional/lectura", label: "Lectura de mañana" },
       { href: "/admin/nacional/materiales", label: "Materiales nacionales" },
       { href: "/admin/nacional/localidades", label: "Localidades" },
+      // El mapa del país (086): qué agrupación va en cada zona electoral y
+      // en qué agrupación está cada Asamblea Local.
+      { href: "/admin/nacional/territorio", label: "Zonas y agrupaciones" },
       { href: "/admin/nacional/miembros", label: "Creyentes de todo el país" },
     ],
   },

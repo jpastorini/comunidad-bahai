@@ -242,3 +242,25 @@ export async function switchLocalityAction(formData: FormData) {
   revalidatePath("/", "layout");
   redirect(back);
 }
+
+/**
+ * La agrupación que elige quien no es de una Asamblea Local (086). Es una
+ * preferencia personal y opcional: vacía la borra. A quien es de una
+ * Asamblea Local no se le pregunta, porque manda la de su Asamblea.
+ */
+export async function updateMyAgrupacionAction(formData: FormData) {
+  const session = await requireMember("/perfil");
+  const supabase = createSupabaseServer();
+  const value = (formData.get("agrupacion_id") as string) || null;
+  const { error } = await supabase
+    .from("profiles")
+    .update({ agrupacion_id: value })
+    .eq("id", session.user.id);
+  setFlashToast(
+    error
+      ? { tone: "error", message: `No se pudo guardar: ${error.message}` }
+      : { tone: "success", message: value ? "Agrupación guardada." : "Agrupación quitada." }
+  );
+  revalidatePath("/perfil");
+  redirect("/perfil");
+}

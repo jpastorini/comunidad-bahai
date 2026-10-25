@@ -22,6 +22,8 @@ export type Membership = {
   structureType: StructureType | null;
   /** La localidad está activa (`localities.is_active`). */
   enabled: boolean;
+  /** En qué agrupación está (086); null si no la tiene o falta la 086. */
+  agrupacionId: string | null;
 };
 
 type Row = {
@@ -33,6 +35,7 @@ type Row = {
     kind?: LocalityKind | null;
     structure_type?: StructureType | null;
     is_active?: boolean | null;
+    agrupacion_id?: string | null;
   } | null;
 };
 
@@ -73,6 +76,7 @@ export const getMyMemberships = cache(
         kind: r.localities?.kind ?? "ael",
         structureType: r.localities?.structure_type ?? null,
         enabled: r.localities?.is_active ?? true,
+        agrupacionId: r.localities?.agrupacion_id ?? null,
       }))
       .sort((a, b) =>
         a.isActive === b.isActive
