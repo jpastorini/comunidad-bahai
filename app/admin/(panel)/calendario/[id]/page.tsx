@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { getLocalityAvailability } from "@/lib/availability-data";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { isStructureLocality, type CalendarEvent } from "@/lib/types";
@@ -13,7 +13,7 @@ export default async function EditEventPage({
 }: {
   params: { id: string };
 }) {
-  const session = await requireAdmin();
+  const session = await requirePermission("calendario");
   const supabase = createSupabaseServer();
   const { data } = await supabase
     .from("calendar_events")
@@ -27,7 +27,11 @@ export default async function EditEventPage({
   // en el calendario de la Asamblea, pero lo edita la estructura.
   if (event.locality_id && event.locality_id !== session.locality.id) notFound();
   const structure = isStructureLocality(session.locality);
-  const availability = await getLocalityAvailability(session.locality.id);
+  // La disponibilidad de la Asamblea es suya: un ayudante (088) no la ve.
+  const availability =
+    session.profile.role === "admin"
+      ? await getLocalityAvailability(session.locality.id)
+      : null;
 
   return (
     <div className="mx-auto max-w-3xl xl:flex xl:max-w-none xl:items-start xl:gap-6">
@@ -35,12 +39,14 @@ export default async function EditEventPage({
         <PageHeader back={{ href: "/admin/calendario", label: "Calendario" }} eyebrow={structure ? "Agenda" : "Vida comunitaria"} title="Editar evento" />
         <EventForm event={event} structure={structure} />
       </div>
-      <EventAvailabilityAside
-        initialKind={event.kind ?? "actividad_general"}
-        className="hidden xl:sticky xl:top-6 xl:block xl:w-[340px] xl:shrink-0"
-      >
-        <AvailabilityMini data={availability} />
-      </EventAvailabilityAside>
+      {availability && (
+        <EventAvailabilityAside
+          initialKind={event.kind ?? "actividad_general"}
+          className="hidden xl:sticky xl:top-6 xl:block xl:w-[340px] xl:shrink-0"
+        >
+          <AvailabilityMini data={availability} />
+        </EventAvailabilityAside>
+      )}
     </div>
   );
 }

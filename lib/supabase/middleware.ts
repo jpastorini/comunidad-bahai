@@ -123,7 +123,23 @@ export async function updateSession(request: NextRequest) {
     .eq("id", user.id)
     .maybeSingle();
 
+  // Ayudantes de la Asamblea (088): quien no es de la Asamblea entra al
+  // panel solo si tiene algún nombramiento vigente en la comunidad puesta.
+  // La consulta corre SOLO en ese caso (no-admin pidiendo /admin), así que
+  // ni la Asamblea ni la navegación del creyente pagan nada. Sin la 088,
+  // el tag viejo del Boletín sigue valiendo.
+  let delegations: string[] | null = null;
+  if (isAdminRoute && profile && profile.role !== "admin" && !profile.disabled_at) {
+    const { data, error } = await supabase.rpc("my_delegations");
+    delegations = error
+      ? profile.can_manage_bulletin
+        ? ["boletin"]
+        : []
+      : ((data as string[] | null) ?? []);
+  }
+
   if (profile) {
+    if (delegations) requestHeaders.set("x-delegations", JSON.stringify(delegations));
     // Los Server Components leen estos headers con headers().get()
     // y evitan repetir auth.getUser() + profiles query.
     requestHeaders.set("x-user-id", user.id);
@@ -159,12 +175,10 @@ export async function updateSession(request: NextRequest) {
 
   // ── Protección de rutas /admin/* ───────────────────────────────
   if (isAdminRoute) {
-    // Excepción acotada: un editor designado del Boletín local
-    // (can_manage_bulletin) puede entrar SOLO a /admin/boletin aunque
-    // no sea admin de Asamblea.
-    const isBulletinEditorAllowed =
-      path.startsWith("/admin/boletin") && profile?.can_manage_bulletin;
-    if ((!profile || profile.role !== "admin") && !isBulletinEditorAllowed) {
+    // Un ayudante (088) entra al panel; qué secciones abre lo deciden el
+    // layout del panel y el guard de cada página.
+    const isHelper = (delegations?.length ?? 0) > 0;
+    if ((!profile || profile.role !== "admin") && !isHelper) {
       // Ya está logueado pero no es admin: lo mandamos a su app de
       // comunidad en vez de a una pantalla de login confusa.
       return NextResponse.redirect(new URL("/", request.url));

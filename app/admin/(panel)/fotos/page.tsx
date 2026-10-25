@@ -1,5 +1,5 @@
 import { Banner, DataTable, PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { getAdminPhotos, MAX_FEATURED_PER_EVENT, type AdminPhoto } from "@/lib/event-photos";
 import { formatMessageDate } from "@/lib/format";
 import { deletePhotoAction } from "./actions";
@@ -8,7 +8,7 @@ import { PhotoToggles } from "./photo-toggles";
 export const revalidate = 60;
 
 export default async function AdminFotosPage() {
-  const session = await requireAdmin();
+  const session = await requirePermission("fotos");
   const photos = await getAdminPhotos(session.locality.id);
 
   const featuredCount = photos.filter((p) => p.featured).length;

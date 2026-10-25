@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Banner, Card, PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import {
   getFeast,
@@ -24,7 +24,7 @@ export default async function EditFeastPage({
 }: {
   params: { id: string };
 }) {
-  await requireAdmin();
+  await requirePermission("fiestas");
 
   const [feast, locations, prayers, news] = await Promise.all([
     getFeast(params.id),

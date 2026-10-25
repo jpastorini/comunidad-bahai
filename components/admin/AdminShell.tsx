@@ -5,10 +5,11 @@ import { CommunitySwitcher } from "@/components/CommunitySwitcher";
 import type { Membership } from "@/lib/memberships";
 import { SidebarContent } from "./Sidebar";
 import { Toaster } from "@/components/Toaster";
-import type { Locality, Profile } from "@/lib/types";
+import type { PanelProfile } from "@/lib/delegations";
+import type { Locality } from "@/lib/types";
 
 type Props = {
-  profile: Profile;
+  profile: PanelProfile;
   locality?: Locality;
   /** Comunidades donde esta persona tiene rol de Asamblea (058-b). */
   memberships?: Membership[];

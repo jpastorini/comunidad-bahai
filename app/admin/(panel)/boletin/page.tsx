@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { ShareBulletinButton } from "@/components/ShareBulletinButton";
-import { requirePanelAccess } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { getAdminBulletins } from "@/lib/bulletins";
 import { formatDate } from "@/lib/format";
 import type { Bulletin } from "@/lib/types";
@@ -9,7 +9,7 @@ import { ConfirmSubmit } from "../miembros/confirm-submit";
 import { deleteBulletinAction } from "./actions";
 
 export default async function AdminBoletinPage() {
-  const session = await requirePanelAccess();
+  const session = await requirePermission("boletin");
   const bulletins = await getAdminBulletins(session.locality.id);
 
   const drafts = bulletins.filter((b) => b.status === "draft");

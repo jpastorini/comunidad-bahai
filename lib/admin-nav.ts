@@ -1,3 +1,9 @@
+import {
+  isHelper,
+  permissionAvailable,
+  type PanelProfile,
+  type Permission,
+} from "@/lib/delegations";
 import type { LocalityKind, Profile } from "@/lib/types";
 
 /**
@@ -13,7 +19,11 @@ import type { LocalityKind, Profile } from "@/lib/types";
  * (por ejemplo, el hub viejo de /admin/tesoreria/informes/... no debe
  * prender "Informes de Tesorería" del grupo Asamblea, que es /admin/informes).
  */
-export type NavRequirement = "chat" | "treasury" | "bulletin" | "national";
+export type NavRequirement = "chat" | "treasury" | "national";
+
+// Un ayudante (088) ve SOLO las hojas con `perm` que le encargaron. Es una
+// lista de lo que sí, como el menú de una estructura: una pantalla nueva
+// no se le aparece a un ayudante hasta que alguien le ponga su permiso.
 
 export type NavLeaf = {
   href: string;
@@ -41,6 +51,8 @@ export type NavLeaf = {
   inStructure?: boolean | string;
   /** Solo con una estructura puesta: una Asamblea no lo tiene (084). */
   onlyInStructure?: boolean;
+  /** El permiso que la abre para un ayudante (088). */
+  perm?: Permission;
 };
 
 export type NavGroup = {
@@ -102,15 +114,15 @@ export const ADMIN_NAV: NavGroup[] = [
     key: "comunicacion",
     label: "Comunicación",
     children: [
-      { href: "/admin/comunicados", label: "Comunicados" },
+      { href: "/admin/comunicados", label: "Comunicados", perm: "comunicados" },
       // Una encuesta ES un comunicado con pregunta (051), pero para quien
       // la arma es otra cosa: tiene su pantalla, pensada desde la pregunta.
-      { href: "/admin/encuestas", label: "Encuestas" },
-      { href: "/admin/boletin", label: "Boletín", requires: "bulletin" },
-      { href: "/admin/chat", label: "Chat de Secretaría", requires: "chat" },
+      { href: "/admin/encuestas", label: "Encuestas", perm: "comunicados" },
+      { href: "/admin/boletin", label: "Boletín", perm: "boletin" },
+      { href: "/admin/chat", label: "Chat de Secretaría", requires: "chat", perm: "secretaria" },
       // Quién dejó sus datos en el folleto público de la Fe (080): lo
       // atiende quien atiende el chat de Secretaría.
-      { href: "/admin/contactos", label: "Contactos", requires: "chat" },
+      { href: "/admin/contactos", label: "Contactos", requires: "chat", perm: "contactos" },
     ],
   },
   {
@@ -119,13 +131,13 @@ export const ADMIN_NAV: NavGroup[] = [
     inStructure: "some",
     structureLabel: "Agenda",
     children: [
-      { href: "/admin/calendario", label: "Calendario", inStructure: true },
-      { href: "/admin/fiestas", label: "Fiestas de 19 Días", aelOnly: true },
-      { href: "/admin/sugerencias", label: "Sugerencias" },
-      { href: "/admin/actividades", label: "Actividades" },
-      { href: "/admin/servicio", label: "Servicio" },
-      { href: "/admin/materiales", label: "Materiales" },
-      { href: "/admin/fotos", label: "Fotos" },
+      { href: "/admin/calendario", label: "Calendario", inStructure: true, perm: "calendario" },
+      { href: "/admin/fiestas", label: "Fiestas de 19 Días", aelOnly: true, perm: "fiestas" },
+      { href: "/admin/sugerencias", label: "Sugerencias", perm: "fiestas" },
+      { href: "/admin/actividades", label: "Actividades", perm: "actividades" },
+      { href: "/admin/servicio", label: "Servicio", perm: "servicio" },
+      { href: "/admin/materiales", label: "Materiales", perm: "materiales" },
+      { href: "/admin/fotos", label: "Fotos", perm: "fotos" },
     ],
   },
   {
@@ -246,16 +258,12 @@ export const ADMIN_NAV: NavGroup[] = [
 ];
 
 export function canSee(req: NavRequirement | undefined, profile: Profile): boolean {
-  // Un editor designado del Boletín (role='member' + can_manage_bulletin)
-  // entra al panel pero solo ve su sección; el resto exige rol admin.
   const isAdminRole = profile.role === "admin";
   switch (req) {
     case "chat":
       return isAdminRole && !!profile.can_respond_chat;
     case "treasury":
       return isAdminRole && !!profile.can_manage_treasury;
-    case "bulletin":
-      return isAdminRole || !!profile.can_manage_bulletin;
     case "national":
       return !!profile.is_national_admin;
     default:
@@ -265,11 +273,12 @@ export function canSee(req: NavRequirement | undefined, profile: Profile): boole
 
 /** Grupos y hojas visibles para este perfil; grupos sin hijos visibles se van. */
 export function visibleNav(
-  profile: Profile,
+  profile: PanelProfile,
   localityKind: LocalityKind = "ael"
 ): NavGroup[] {
   const isNational = localityKind === "nacional";
   const isStructure = localityKind === "estructura";
+  if (isHelper(profile)) return helperNav(profile, isNational);
   const out: NavGroup[] = [];
   for (const group of ADMIN_NAV) {
     if (group.requires && !canSee(group.requires, profile)) continue;
@@ -303,6 +312,46 @@ export function visibleNav(
     }
   }
   return out;
+}
+
+/** El menú de un ayudante: solo las hojas de sus permisos, sin Inicio. */
+function helperNav(profile: PanelProfile, isNational: boolean): NavGroup[] {
+  const perms = new Set(profile.delegations ?? []);
+  const out: NavGroup[] = [];
+  for (const group of ADMIN_NAV) {
+    const children = (group.children ?? []).filter(
+      (leaf) =>
+        leaf.perm &&
+        perms.has(leaf.perm) &&
+        permissionAvailable(leaf.perm, isNational) &&
+        !(isNational && leaf.aelOnly)
+    );
+    if (children.length > 0) out.push({ ...group, children });
+  }
+  return out;
+}
+
+/**
+ * ¿Puede un ayudante (088) abrir esta ruta? Lo que no está en su menú no
+ * está para él, aunque llegue por URL: el layout lo manda a su primera
+ * sección (`helperHome`). Las subpantallas cuelgan del prefijo de su hoja.
+ */
+export function helperAllowsPath(
+  profile: PanelProfile,
+  pathname: string,
+  localityKind: LocalityKind = "ael"
+): boolean {
+  return helperNav(profile, localityKind === "nacional").some((group) =>
+    (group.children ?? []).some((leaf) => leafHits(leaf, pathname))
+  );
+}
+
+/** Adónde entra un ayudante al abrir el panel: su primera sección. */
+export function helperHome(
+  profile: PanelProfile,
+  localityKind: LocalityKind = "ael"
+): string | null {
+  return helperNav(profile, localityKind === "nacional")[0]?.children?.[0]?.href ?? null;
 }
 
 /**

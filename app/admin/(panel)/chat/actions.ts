@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import {
-  ensureChatTag,
   ensureTreasuryTag,
   requireAdmin,
+  requirePermission,
   type AdminSession,
 } from "@/lib/auth";
 import { contactBlockedReason } from "@/lib/chat-contact";
@@ -34,9 +34,10 @@ function parseTopic(value: unknown): ChatTopic {
  * misma regla en la base (migración 045); esto es el guard de la pantalla.
  */
 async function requireTopicAccess(topic: ChatTopic): Promise<AdminSession> {
+  // Secretaría también la atiende un ayudante (088); Tesorería, nunca.
+  if (topic === "secretaria") return requirePermission("secretaria");
   const session = await requireAdmin();
-  if (topic === "tesoreria") ensureTreasuryTag(session.profile);
-  else ensureChatTag(session.profile);
+  ensureTreasuryTag(session.profile);
   return session;
 }
 

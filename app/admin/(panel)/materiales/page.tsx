@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button, DataTable, PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { deleteMaterialAction } from "./actions";
 import type { StudyMaterial } from "@/lib/types";
@@ -14,7 +14,7 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 export default async function AdminMaterialesPage() {
-  const session = await requireAdmin();
+  const session = await requirePermission("materiales");
   const supabase = createSupabaseServer();
   // Solo materiales de ESTA localidad. Los nacionales se gestionan en
   // Admin Nacional → Materiales (nacionales).

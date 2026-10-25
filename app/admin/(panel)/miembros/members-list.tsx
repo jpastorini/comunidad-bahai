@@ -14,7 +14,8 @@ export type MemberListItem = {
   isBahai: boolean;
   chat: boolean;
   treasury: boolean;
-  bulletin: boolean;
+  /** Ayudante de la Asamblea con algún permiso vigente (088). */
+  helper: boolean;
   createdAt: string;
   lastSeenAt: string | null;
   /** Agrupación efectiva y su zona (086); solo en la Comunidad Nacional. */
@@ -37,7 +38,7 @@ const MEMBER_FILTERS = {
   amigos: "Amigos de la Fe",
   chat: "Atienden el chat",
   tesoreria: "Editan Tesorería",
-  boletin: "Editan el Boletín",
+  ayudantes: "Ayudantes de la Asamblea",
   ausentes: "No entran hace un mes o más",
 } as const;
 type MemberFilter = keyof typeof MEMBER_FILTERS;
@@ -254,8 +255,8 @@ function matchesFilter(it: MemberListItem, f: MemberFilter, now: number): boolea
       return it.chat;
     case "tesoreria":
       return it.treasury;
-    case "boletin":
-      return it.bulletin;
+    case "ayudantes":
+      return it.helper;
     case "ausentes":
       return !it.lastSeenAt || now - new Date(it.lastSeenAt).getTime() > 30 * DAY;
   }

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { to24h } from "@/lib/format";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
@@ -27,7 +27,7 @@ async function uploadImage(file: File | null): Promise<string | null> {
 }
 
 export async function upsertEventAction(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("calendario");
   const supabase = createSupabaseServer();
 
   const id = formData.get("id") as string | null;
@@ -135,7 +135,7 @@ export async function upsertEventAction(formData: FormData) {
 }
 
 export async function deleteEventAction(formData: FormData) {
-  await requireAdmin();
+  await requirePermission("calendario");
   const supabase = createSupabaseServer();
   const id = formData.get("id") as string;
   if (id) {

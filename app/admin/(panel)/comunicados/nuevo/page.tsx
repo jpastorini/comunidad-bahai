@@ -1,10 +1,10 @@
 import { FormShell, PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { isNationalLocality } from "@/lib/types";
 import { ComunicadoForm } from "../comunicado-form";
 
 export default async function NewComunicadoPage() {
-  const session = await requireAdmin();
+  const session = await requirePermission("comunicados");
   const national = isNationalLocality(session.locality);
 
   return (

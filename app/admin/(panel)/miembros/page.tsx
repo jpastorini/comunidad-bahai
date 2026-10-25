@@ -1,6 +1,7 @@
 import {
   Card,
   Checkbox,
+  DateInput,
   Field,
   PageHeader,
   Select,
@@ -11,6 +12,8 @@ import {
   contactTopics,
 } from "@/components/admin/chat/ContactButtons";
 import { requireAdmin } from "@/lib/auth";
+import { PERMISSIONS, permissionsSentence } from "@/lib/delegations";
+import { getLocalityHelpers, type HelperAssignment } from "@/lib/delegations-server";
 import { formatDate } from "@/lib/format";
 import { getOrCreateLocalityInvite } from "@/lib/invites";
 import { getLocalityMembers, type LocalityMember } from "@/lib/memberships";
@@ -27,6 +30,7 @@ import {
   decideLocalityChangeAction,
   regenerateInviteAction,
   setMemberDisabledAction,
+  setHelperAction,
   setMemberAgrupacionAction,
   updateMemberAction,
 } from "./actions";
@@ -61,6 +65,10 @@ export default async function AdminMiembrosPage({
       .order("created_at", { ascending: true }),
     getOrCreateLocalityInvite(session.locality.id),
   ]);
+
+  // Los ayudantes de la Asamblea (088): creyentes que no la integran con
+  // algunas secciones del panel encargadas.
+  const helpers = await getLocalityHelpers(supabase, session.locality.id);
 
   // El orden, la búsqueda y los filtros los hace `MembersList` en el
   // navegador. Antes había un tope de 100: con un buscador, alguien que
@@ -111,7 +119,7 @@ export default async function AdminMiembrosPage({
       <PageHeader
         eyebrow="Creyentes"
         title="Creyentes"
-        description="Gestiona el rol de cada creyente y los permisos especiales."
+        description="Gestiona el rol de cada creyente, los permisos especiales y quiénes ayudan a la Asamblea."
       />
 
       {pendingRequests.length > 0 && (
@@ -188,7 +196,7 @@ export default async function AdminMiembrosPage({
             isBahai: p.is_bahai,
             chat: p.can_respond_chat,
             treasury: p.can_manage_treasury,
-            bulletin: p.can_manage_bulletin,
+            helper: (helpers.byProfile.get(p.id)?.active.length ?? 0) > 0,
             createdAt: m.created_at,
             lastSeenAt: m.last_seen_at,
             agrupacionId: people?.effective.get(p.id) ?? null,
@@ -199,8 +207,13 @@ export default async function AdminMiembrosPage({
                 // datos nuevos tras guardar, la tarjeta se remonta y los
                 // inputs no controlados (nombre, rol, checkboxes) reflejan
                 // el valor real.
-                key={`${p.id}:${p.full_name}:${p.role}:${p.is_bahai}:${p.can_respond_chat}:${p.can_manage_treasury}:${p.can_manage_bulletin}:${people?.own.get(p.id) ?? ""}`}
+                key={`${p.id}:${p.full_name}:${p.role}:${p.is_bahai}:${p.can_respond_chat}:${p.can_manage_treasury}:${people?.own.get(p.id) ?? ""}:${helpers.byProfile.get(p.id)?.perms.join(",") ?? ""}:${helpers.byProfile.get(p.id)?.until ?? ""}`}
                 profile={p}
+                helper={{
+                  assignment: helpers.byProfile.get(p.id) ?? null,
+                  missing: helpers.missing,
+                  national,
+                }}
                 joinedAt={m.created_at}
                 lastSeenAt={m.last_seen_at}
                 isNew={isNew}
@@ -317,8 +330,10 @@ function MemberCard({
   isNew,
   contact,
   agrupacion,
+  helper,
 }: {
   profile: Profile;
+  helper: { assignment: HelperAssignment | null; missing: boolean; national: boolean };
   isMe: boolean;
   contact: React.ReactNode;
   joinedAt: string;
@@ -404,11 +419,6 @@ function MemberCard({
                 label="Puede editar Tesorería"
                 defaultChecked={profile.can_manage_treasury}
               />
-              <Checkbox
-                name="can_manage_bulletin"
-                label="Puede editar el Boletín local"
-                defaultChecked={profile.can_manage_bulletin}
-              />
             </div>
             <div className="flex justify-end pt-2">
               <button
@@ -426,6 +436,12 @@ function MemberCard({
           </p>
         )}
       </form>
+
+      {/* Ayudante de la Asamblea (088): solo para un creyente que no la
+          integra. Form aparte, como el de la agrupación. */}
+      {profile.role !== "admin" && profile.is_bahai && (
+        <HelperForm profileId={profile.id} {...helper} />
+      )}
 
       {/* La agrupación (086), solo en el padrón de la Comunidad Nacional:
           la mayoría del país no tiene Asamblea Local y la Asamblea
@@ -525,5 +541,89 @@ function DisabledMemberCard({ profile }: { profile: Profile }) {
         </form>
       </div>
     </Card>
+  );
+}
+
+/**
+ * El nombramiento como ayudante de la Asamblea (088), plegado para no
+ * alargar cada ficha: el resumen dice si lo es y de qué. Las casillas son
+ * la lista entera (desmarcar saca) y el "hasta" vale para todas.
+ */
+function HelperForm({
+  profileId,
+  assignment,
+  missing,
+  national,
+}: {
+  profileId: string;
+  assignment: HelperAssignment | null;
+  missing: boolean;
+  national: boolean;
+}) {
+  const active = assignment?.active ?? [];
+  const expired = (assignment?.perms.length ?? 0) > 0 && active.length === 0;
+  const groups = Array.from(new Set(PERMISSIONS.map((p) => p.group)));
+  return (
+    <details className="group mt-3 border-t border-black/[0.06] pt-3">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 text-[12px]">
+        <span className="font-semibold text-dark">Ayudante de la Asamblea</span>
+        {active.length > 0 ? (
+          <span className="text-muted">
+            · {permissionsSentence(active)}
+            {assignment?.until ? ` · hasta el ${formatDate(assignment.until)}` : ""}
+          </span>
+        ) : expired ? (
+          <span className="text-amber">· venció el {formatDate(assignment?.until ?? "")}</span>
+        ) : (
+          <span className="text-muted">· no</span>
+        )}
+        <span className="ml-auto text-[11px] font-semibold text-terra group-open:hidden">
+          {active.length > 0 ? "Cambiar" : "Nombrar"}
+        </span>
+      </summary>
+      {missing ? (
+        <p className="mt-2 text-[12px] text-amber">
+          Falta aplicar la migración 088 para nombrar ayudantes.
+        </p>
+      ) : (
+        <form action={setHelperAction} className="mt-3 grid gap-3">
+          <input type="hidden" name="id" value={profileId} />
+          <p className="text-[11.5px] text-muted">
+            Puede usar en el panel solo lo que marques, y lo que publique sale directo.
+            Al nombrarlo le llega un aviso.
+          </p>
+          <div className="grid gap-3 md:grid-cols-3">
+            {groups.map((g) => (
+              <div key={g} className="grid content-start gap-2">
+                <div className="text-[10.5px] font-semibold uppercase tracking-wide text-muted">
+                  {g}
+                </div>
+                {PERMISSIONS.filter((p) => p.group === g && !(national && p.aelOnly)).map((p) => (
+                  <Checkbox
+                    key={p.key}
+                    name="perm"
+                    value={p.key}
+                    label={p.label}
+                    title={p.hint}
+                    defaultChecked={assignment?.perms.includes(p.key) ?? false}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <Field label="Hasta (opcional)" name="until">
+              <DateInput name="until" defaultValue={assignment?.until ?? ""} />
+            </Field>
+            <button
+              type="submit"
+              className="tap ml-auto rounded-xl bg-terra px-4 py-2 text-[13px] font-semibold text-white shadow-card-soft"
+            >
+              Guardar
+            </button>
+          </div>
+        </form>
+      )}
+    </details>
   );
 }

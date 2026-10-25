@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/admin/ui";
 import { ShareBulletinButton } from "@/components/ShareBulletinButton";
-import { requirePanelAccess } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { compileBulletinCandidates, getBulletin } from "@/lib/bulletins";
 import { saveBulletinAction } from "../actions";
 import { BulletinEditor } from "../editor";
@@ -11,7 +11,7 @@ export default async function EditarBoletinPage({
 }: {
   params: { id: string };
 }) {
-  const session = await requirePanelAccess();
+  const session = await requirePermission("boletin");
   const [bulletin, candidates] = await Promise.all([
     getBulletin(params.id),
     compileBulletinCandidates(session.locality.id),

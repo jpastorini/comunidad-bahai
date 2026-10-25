@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Banner, DataTable, PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { celebrationDateFor, getBahaiMonth } from "@/lib/bahai-calendar";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { isNationalLocality, isStructureLocality, type FeastStatus } from "@/lib/types";
@@ -23,7 +23,7 @@ const WEEKDAYS_ES = [
   "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado",
 ];
 export default async function AdminFiestasPage() {
-  const session = await requireAdmin();
+  const session = await requirePermission("fiestas");
   const localityId = session.locality.id;
   const supabase = createSupabaseServer();
 

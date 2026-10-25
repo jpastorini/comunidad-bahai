@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Banner, Button, DataTable, PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { formatDate, formatMessageDate } from "@/lib/format";
 import { getReadCountsForMessages } from "@/lib/message-reads";
 import { getPollCountsForMessages, getPollsForMessages } from "@/lib/polls";
@@ -17,7 +17,7 @@ type Row = { message: Message; poll: MessagePoll };
  * quien las arma: una pregunta, su estado y cuántos votaron.
  */
 export default async function AdminEncuestasPage() {
-  const session = await requireAdmin();
+  const session = await requirePermission("comunicados");
   const supabase = createSupabaseServer();
   const { data } = await supabase
     .from("messages")

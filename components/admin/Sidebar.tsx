@@ -17,7 +17,8 @@ import { BahaiStar } from "@/components/BahaiStar";
 import { CommunitySwitcher } from "@/components/CommunitySwitcher";
 import { activeLeaf, visibleNav, type NavGroup } from "@/lib/admin-nav";
 import type { Membership } from "@/lib/memberships";
-import { ROLE_LABELS, type Locality, type Profile } from "@/lib/types";
+import { isHelper, type PanelProfile } from "@/lib/delegations";
+import { ROLE_LABELS, type Locality } from "@/lib/types";
 
 /** Un ícono por grupo (no por pantalla): siete distintos, sin repetir. */
 const GROUP_ICONS: Record<string, typeof IconMensajes> = {
@@ -52,7 +53,7 @@ function writeOpen(keys: string[]) {
 }
 
 type Props = {
-  profile: Profile;
+  profile: PanelProfile;
   locality?: Locality;
   /** Comunidades donde esta persona tiene rol de Asamblea (058-b). */
   memberships?: Membership[];
@@ -174,9 +175,9 @@ export function SidebarContent({
               Tesorería
             </span>
           )}
-          {profile.can_manage_bulletin && (
+          {isHelper(profile) && (
             <span className="rounded bg-terra/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-terra">
-              Boletín
+              Ayudante
             </span>
           )}
         </div>

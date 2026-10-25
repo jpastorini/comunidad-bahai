@@ -3,6 +3,7 @@ import { BahaiStar } from "@/components/BahaiStar";
 import { GoldHeader } from "@/components/GoldHeader";
 import { IconChevronRight, IconTesoreria } from "@/components/Icons";
 import { requireMember } from "@/lib/auth";
+import { isPermission, permissionsSentence, type Permission } from "@/lib/delegations";
 import { cancelLocalityChangeAction } from "@/app/seleccionar-localidad/actions";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import {
@@ -48,6 +49,18 @@ export default async function ProfilePage() {
   const structures = allMemberships.filter(
     (m) => m.kind === "estructura" && m.role === "admin" && m.enabled
   );
+
+  // Ayudante de la Asamblea (088): sus secciones del panel en la comunidad
+  // puesta. Sin la migración, el tag viejo del Boletín sigue valiendo.
+  let helperPerms: Permission[] = [];
+  if (session.profile.role !== "admin") {
+    const { data, error } = await supabase.rpc("my_delegations");
+    helperPerms = error
+      ? session.profile.can_manage_bulletin
+        ? ["boletin"]
+        : []
+      : ((data as string[] | null) ?? []).filter(isPermission);
+  }
 
   // La agrupación (086): la de su Asamblea Local si es de una (la más
   // vieja, igual que `person_agrupacion()`), si no la que eligió.
@@ -167,6 +180,29 @@ export default async function ProfilePage() {
                 </div>
                 <div className="text-[11px] text-white/75">
                   Gestionar {session.locality.name}
+                </div>
+              </div>
+            </div>
+            <IconChevronRight size={14} className="text-white/80" />
+          </Link>
+        )}
+
+        {/* Ayudante de la Asamblea (088): el panel con solo sus secciones. */}
+        {helperPerms.length > 0 && (
+          <Link
+            href="/admin"
+            className="tap mb-5 flex items-center justify-between rounded-2xl bg-terra-grad px-4 py-3.5 shadow-card-elevated"
+          >
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25">
+                <BahaiStar size={18} color="#fff" />
+              </span>
+              <div>
+                <div className="text-[13.5px] font-semibold text-white">
+                  Panel de ayudante
+                </div>
+                <div className="text-[11px] text-white/75">
+                  {permissionsSentence(helperPerms)}
                 </div>
               </div>
             </div>

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 
@@ -12,7 +12,7 @@ import { setFlashToast } from "@/lib/toast";
  * durante la Fiesta y las captura todas juntas.
  */
 export async function bulkInsertSuggestionsAction(formData: FormData) {
-  await requireAdmin();
+  await requirePermission("fiestas");
   const supabase = createSupabaseServer();
 
   const feast_id = formData.get("feast_id") as string;
@@ -62,7 +62,7 @@ export async function bulkInsertSuggestionsAction(formData: FormData) {
  * para que el form re-aparezca con foco listo para la siguiente.
  */
 export async function quickAddSuggestionAction(formData: FormData) {
-  await requireAdmin();
+  await requirePermission("fiestas");
   const supabase = createSupabaseServer();
 
   const feast_id = formData.get("feast_id") as string;
@@ -94,7 +94,7 @@ export async function quickAddSuggestionAction(formData: FormData) {
 
 /** Marca o desmarca una sugerencia como "tratada por la Asamblea". */
 export async function toggleSuggestionReviewedAction(formData: FormData) {
-  await requireAdmin();
+  await requirePermission("fiestas");
   const supabase = createSupabaseServer();
 
   const id = formData.get("id") as string;
@@ -111,7 +111,7 @@ export async function toggleSuggestionReviewedAction(formData: FormData) {
 }
 
 export async function deleteSuggestionAction(formData: FormData) {
-  await requireAdmin();
+  await requirePermission("fiestas");
   const supabase = createSupabaseServer();
   const id = formData.get("id") as string;
   if (id) {

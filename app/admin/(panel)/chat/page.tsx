@@ -5,13 +5,12 @@ import {
 } from "@/components/admin/chat/ConversationList";
 import { Banner, PageHeader } from "@/components/admin/ui";
 import { PushToggle } from "@/components/PushToggle";
-import { ensureChatTag, requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { chatFailure } from "@/lib/chat-errors";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 export default async function AdminChatListPage() {
-  const session = await requireAdmin();
-  ensureChatTag(session.profile);
+  const session = await requirePermission("secretaria");
   const supabase = createSupabaseServer();
 
   // Una sola RPC agrega por creyente (último mensaje + sin leer), filtrando

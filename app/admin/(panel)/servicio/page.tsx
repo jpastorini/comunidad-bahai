@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button, DataTable, PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { deleteNeedAction } from "./actions";
 
@@ -19,7 +19,7 @@ type Row = {
 };
 
 export default async function AdminServicioPage() {
-  await requireAdmin();
+  await requirePermission("servicio");
   const supabase = createSupabaseServer();
 
   const { data: needs } = await supabase

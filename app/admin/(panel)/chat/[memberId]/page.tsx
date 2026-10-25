@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Conversation } from "@/components/admin/chat/Conversation";
 import { ContactReachNote } from "@/components/admin/chat/ContactReachNote";
 import { Banner, PageHeader } from "@/components/admin/ui";
-import { ensureChatTag, requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { contactBlockedReason, getContactReach } from "@/lib/chat-contact";
 import { chatFailure } from "@/lib/chat-errors";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -14,8 +14,7 @@ export default async function ConversationPage({
 }: {
   params: { memberId: string };
 }) {
-  const session = await requireAdmin();
-  ensureChatTag(session.profile);
+  const session = await requirePermission("secretaria");
   const supabase = createSupabaseServer();
 
   const { data: member, error: memberError } = await supabase

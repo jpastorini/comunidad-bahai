@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { savePoll } from "@/lib/polls-admin";
 import { getAllMemberIds, getLocalityMemberIds, sendPushToUsers } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -31,7 +31,7 @@ async function uploadAttachment(
 }
 
 export async function upsertComunicadoAction(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("comunicados");
   const supabase = createSupabaseServer();
 
   const id = formData.get("id") as string | null;
@@ -160,7 +160,7 @@ export async function upsertComunicadoAction(formData: FormData) {
 }
 
 export async function deleteComunicadoAction(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("comunicados");
   const supabase = createSupabaseServer();
   const id = formData.get("id") as string;
   if (id) {
@@ -194,7 +194,7 @@ export async function deleteComunicadoAction(formData: FormData) {
  * de ahí nadie vota y la tarjeta muestra el total final a todo el mundo.
  */
 export async function setPollClosedAction(formData: FormData) {
-  await requireAdmin();
+  await requirePermission("comunicados");
   const pollId = formData.get("poll_id") as string;
   const messageId = formData.get("message_id") as string;
   const close = formData.get("close") === "1";

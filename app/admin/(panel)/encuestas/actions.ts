@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { civilDateISO } from "@/lib/citas";
 import { savePoll } from "@/lib/polls-admin";
 import { getLocalityMemberIds, sendPushToUsers } from "@/lib/push";
@@ -20,7 +20,7 @@ import type { MessageAudience } from "@/lib/types";
  * En la tarjeta de la app la pregunta no se repite (ver `hideQuestion`).
  */
 export async function upsertEncuestaAction(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("comunicados");
   const supabase = createSupabaseServer();
 
   const id = (formData.get("id") as string | null) || null;
@@ -107,7 +107,7 @@ export async function upsertEncuestaAction(formData: FormData) {
 
 /** Borra la encuesta y el comunicado que la lleva (cascade). */
 export async function deleteEncuestaAction(formData: FormData) {
-  await requireAdmin();
+  await requirePermission("comunicados");
   const supabase = createSupabaseServer();
   const id = formData.get("id") as string;
   if (id) {

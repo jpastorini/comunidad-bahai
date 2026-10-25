@@ -1,11 +1,11 @@
 import { PageHeader } from "@/components/admin/ui";
-import { requirePanelAccess } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { compileBulletinCandidates } from "@/lib/bulletins";
 import { saveBulletinAction } from "../actions";
 import { BulletinEditor } from "../editor";
 
 export default async function NuevoBoletinPage() {
-  const session = await requirePanelAccess();
+  const session = await requirePermission("boletin");
   const candidates = await compileBulletinCandidates(session.locality.id);
 
   const defaultTitle = `Boletín de ${session.locality.name}`;

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Banner, Button, DataTable, PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { isNationalLocality, isStructureLocality } from "@/lib/types";
 import { getCalendarKind } from "@/lib/calendar-kinds";
 import { getUnifiedCalendarItems } from "@/lib/data";
@@ -38,7 +38,7 @@ export default async function AdminCalendarPage({
 }: {
   searchParams: { vista?: string; m?: string; ambito?: string };
 }) {
-  const session = await requireAdmin();
+  const session = await requirePermission("calendario");
   // Una estructura (082) no siembra nada: los Días Sagrados y las Fiestas
   // ya están en el calendario de la Asamblea de la que depende.
   if (!isStructureLocality(session.locality)) {

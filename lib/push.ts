@@ -1,5 +1,6 @@
 import "server-only";
 import webpush from "web-push";
+import { getDelegateIds } from "./delegations-server";
 import { getLocalityMembers } from "./memberships";
 import { createSupabaseAdmin } from "./supabase/admin";
 import type { ChatTopic } from "./types";
@@ -178,10 +179,12 @@ export async function getChatAdminIds(
   // Los tags también son de la membresía (056): el tesorero nacional
   // atiende el chat de la Comunidad Nacional y no el de su AEL.
   const members = await getLocalityMembers(supabase, localityId);
-  return members
+  const ids = members
     .filter((m) =>
       topic === "tesoreria" ? m.can_manage_treasury : m.can_respond_chat
     )
-    .map((m) => m.id)
-    .filter((id) => id !== excludeUserId);
+    .map((m) => m.id);
+  // La Secretaría también la atiende un ayudante (088); la Tesorería no.
+  if (topic === "secretaria") ids.push(...(await getDelegateIds(localityId, "secretaria")));
+  return Array.from(new Set(ids)).filter((id) => id !== excludeUserId);
 }

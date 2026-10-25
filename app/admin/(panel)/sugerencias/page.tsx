@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Banner, Button, Card, PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import {
@@ -27,7 +27,7 @@ export default async function AdminSugerenciasPage({
 }: {
   searchParams: { filter?: string; feast?: string };
 }) {
-  await requireAdmin();
+  await requirePermission("fiestas");
   const supabase = createSupabaseServer();
 
   const filter: Filter =

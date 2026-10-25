@@ -448,7 +448,69 @@ AEL, con su propio panel y sin creyentes. Ver la sección "Estructuras" más
 abajo. ·
 **Zonas y agrupaciones** (migraciones 086 y 087, 2026-10-25): el mapa del país,
 País → 3 zonas electorales → 20 agrupaciones. Ver la sección "Zonas y
-agrupaciones" más abajo.
+agrupaciones" más abajo. ·
+**Ayudantes de la Asamblea** (migración 088, 2026-10-25): permisos sobre
+secciones del panel para creyentes que no integran la Asamblea, con
+vigencia opcional. Ver la sección "Ayudantes de la Asamblea" más abajo.
+
+## Ayudantes de la Asamblea (migración 088)
+
+Pedido el 2026-10-25: las Asambleas nombran ayudantes o asistentes que no
+la integran, y la única forma de darles algo era el tag del Boletín, una
+excepción escrita a mano en el middleware. Decidido con el usuario: se
+delega **Vida comunitaria** (Calendario, Fiestas —con Sugerencias—,
+Actividades, Servicio, Materiales, Fotos), **Comunicación** (Comunicados
+con Encuestas, Boletín, Contactos) y el **chat de Secretaría**; la
+Tesorería, Creyentes, Datos de la Asamblea, Actas y Estructuras **no**. El
+nombramiento lleva un **"hasta" opcional** y lo que publica un ayudante
+**sale directo**, push incluido.
+
+- **El modelo** es `delegations`: una fila por (persona, comunidad,
+  permiso), con `until`, `granted_by` y `granted_at`. El catálogo vive en
+  `lib/delegations.ts` (puro; tiene que coincidir con el check de la
+  columna) y el helper SQL es `has_perm(uid, perm)`: vigente, en la
+  comunidad PUESTA, creyente y no deshabilitado. Vencer es comparar la
+  fecha al leer (día civil de Montevideo), sin cron. Solo creyentes (pasar
+  a Amigo/a borra los nombramientos, trigger) y nunca en una estructura.
+- ⚠️ **Las policies de la Asamblea no se tocaron.** A cada tabla delegable
+  se le SUMÓ una policy `*_delegate` con `has_perm`; Postgres combina las
+  permisivas con OR. Si una sección delegable empieza a escribir en una
+  tabla nueva, esa tabla necesita su policy para el ayudante o el
+  ayudante va a ver un error de RLS. El Boletín no tiene policy propia:
+  `has_bulletin_tag()` pasó a incluir `has_perm(uid, 'boletin')`, y la 088
+  convirtió los tags `can_manage_bulletin` en nombramientos (la columna
+  queda en false, sin uso).
+- **Entrar al panel**: el middleware consulta `my_delegations()` SOLO
+  para quien no es de la Asamblea y pide `/admin` (ni la Asamblea ni el
+  creyente pagan la consulta) y pasa los permisos en el header
+  `x-delegations`, que `lib/auth.ts` suma al perfil (`PanelProfile`).
+  `requirePanelAccess()` abre el shell; **cada sección delegable se
+  protege con `requirePermission("<permiso>")`**, que deja pasar a la
+  Asamblea (con `can_respond_chat` para Secretaría y Contactos) o al
+  ayudante. Las demás siguen con `requireAdmin()`.
+- **El menú del ayudante es una lista de lo que sí** (`perm` en las hojas
+  de `ADMIN_NAV`, `helperNav()`), y lo que no está ahí no se abre por URL:
+  el layout lo manda a su primera sección (`helperAllowsPath`,
+  `helperHome`), también desde el Inicio del panel, que es un tablero de la
+  Asamblea. ⚠️ Una pantalla nueva en una sección delegable que no cuelgue
+  del `href` de su hoja necesita su `match`, o el ayudante rebota. En la
+  Comunidad Nacional no se encargan Fiestas (no hay) ni Comunicados (con
+  ese sombrero hablan al país, 057): `aelOnly` en el catálogo.
+- **Se nombra desde la ficha en Creyentes** (bloque plegado "Ayudante de
+  la Asamblea", `setHelperAction`): casillas por grupo y un "hasta" para
+  todo. Al nombrarlo le llega un push; se entra desde "Panel de ayudante"
+  en `/perfil`. La lista de Creyentes filtra "Ayudantes de la Asamblea" y
+  el sidebar del panel le pone la chapita "Ayudante".
+- **Los avisos**: `getChatAdminIds()` suma a los ayudantes de Secretaría
+  (nunca a Tesorería) y el aviso de un contacto nuevo va a quien tiene el
+  tag de chat más los ayudantes de Contactos (`getDelegateIds()`,
+  `lib/delegations-server.ts`).
+- Un ayudante de Calendario no ve la disponibilidad de la Asamblea al
+  costado del formulario de un evento.
+
+⚠️ Hasta que corra la 088, el panel sigue igual que antes (el tag del
+Boletín sigue valiendo por el fallback de `my_delegations`) y la ficha
+avisa que falta la migración para nombrar ayudantes.
 
 ## Zonas y agrupaciones (migración 086)
 
@@ -1341,9 +1403,9 @@ Tres reglas de comportamiento (`components/admin/Sidebar.tsx`):
   no por pantalla (`GROUP_ICONS`).
 
 Los permisos siguen en `canSee()`: Tesorería con `can_manage_treasury`,
-Chat con `can_respond_chat`, Nacional con `is_national_admin`; un editor
-de Boletín con `role='member'` ve solo Comunicación → Boletín. Un grupo
-sin hijos visibles no se muestra.
+Chat con `can_respond_chat`, Nacional con `is_national_admin`; un
+ayudante (088) ve solo las hojas con el `perm` que le encargaron. Un
+grupo sin hijos visibles no se muestra.
 
 Para agregar una pantalla: una hoja en `ADMIN_NAV`, y en la página
 `<PageHeader eyebrow="<nombre del grupo>" ...>`. El **eyebrow es siempre
@@ -3269,6 +3331,13 @@ cambia nada.
 
 ## Pendientes conocidos
 
+- **Aplicar la 088 y estrenar los ayudantes**: nombrar a alguien que no
+  sea de la Asamblea (por ejemplo Fotos y Calendario, con un "hasta"),
+  entrar con esa cuenta desde "Panel de ayudante" en `/perfil`, ver que el
+  menú muestra solo eso y que otra ruta del panel rebota, y cargar algo.
+  Quedan abiertos: los checks ✓✓ de "recibido" del chat no los mueve un
+  ayudante de Secretaría (`mark_chat_delivered` va por membresía) y la
+  tarjeta de chat del Inicio de la app exige rol de Asamblea.
 - **Asignar el mapa** (086 y 087 aplicadas el 2026-10-25): en Admin Nacional →
   Zonas y agrupaciones, cada agrupación a su zona y cada Asamblea Local a
   su agrupación (las de Canelones seguro quedan sin asignar).

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { FormShell, PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { StudyMaterial } from "@/lib/types";
 import { MaterialForm } from "../material-form";
@@ -12,7 +12,7 @@ export default async function EditMaterialPage({
 }: {
   params: { id: string };
 }) {
-  await requireAdmin();
+  await requirePermission("materiales");
   const supabase = createSupabaseServer();
   const { data } = await supabase
     .from("study_materials")

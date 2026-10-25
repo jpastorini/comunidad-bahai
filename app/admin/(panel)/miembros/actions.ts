@@ -3,9 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
+import {
+  isPermission,
+  permissionAvailable,
+  permissionsSentence,
+  type Permission,
+} from "@/lib/delegations";
+import { todayMontevideo } from "@/lib/delegations-server";
+import { sendPushToUsers } from "@/lib/push";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { isNationalLocality } from "@/lib/types";
+import { isNationalLocality, isStructureLocality } from "@/lib/types";
 import { setFlashToast } from "@/lib/toast";
 
 export async function updateMemberAction(formData: FormData) {
@@ -18,14 +26,12 @@ export async function updateMemberAction(formData: FormData) {
   const payload: {
     can_respond_chat: boolean;
     can_manage_treasury: boolean;
-    can_manage_bulletin: boolean;
     full_name: string | null;
     role?: "member" | "admin";
     is_bahai?: boolean;
   } = {
     can_respond_chat: formData.get("can_respond_chat") === "on",
     can_manage_treasury: formData.get("can_manage_treasury") === "on",
-    can_manage_bulletin: formData.get("can_manage_bulletin") === "on",
     full_name: (formData.get("full_name") as string) || null,
   };
 
@@ -49,8 +55,7 @@ export async function updateMemberAction(formData: FormData) {
       !payload.is_bahai &&
       (payload.role === "admin" ||
         payload.can_respond_chat ||
-        payload.can_manage_treasury ||
-        payload.can_manage_bulletin)
+        payload.can_manage_treasury)
     ) {
       setFlashToast({
         tone: "error",
@@ -93,7 +98,6 @@ export async function updateMemberAction(formData: FormData) {
         locality_id: session.locality.id,
         can_respond_chat: payload.can_respond_chat,
         can_manage_treasury: payload.can_manage_treasury,
-        can_manage_bulletin: payload.can_manage_bulletin,
         // El rol viaja solo cuando NO es tu propia ficha (ver arriba).
         ...(payload.role ? { role: payload.role } : {}),
       },
@@ -113,6 +117,118 @@ export async function updateMemberAction(formData: FormData) {
 
   revalidatePath("/admin/miembros");
   redirect("/admin/miembros");
+}
+
+/**
+ * Nombra (o saca) a un creyente como ayudante de la Asamblea (088): qué
+ * secciones del panel puede usar y hasta cuándo. Las casillas son la lista
+ * entera: lo que no viene marcado se saca. Un solo "hasta" para todo.
+ */
+export async function setHelperAction(formData: FormData) {
+  const session = await requireAdmin();
+  const supabase = createSupabaseServer();
+  const id = formData.get("id") as string;
+  if (!id) redirect("/admin/miembros");
+
+  const done = (tone: "success" | "error", message: string): never => {
+    setFlashToast({ tone, message });
+    revalidatePath("/admin/miembros");
+    redirect("/admin/miembros");
+  };
+
+  if (isStructureLocality(session.locality)) {
+    done("error", "Una estructura no nombra ayudantes: elige a sus integrantes.");
+  }
+
+  // Lo que no existe en la Comunidad Nacional no se encarga ahí (aelOnly).
+  const national = isNationalLocality(session.locality);
+  const perms = Array.from(new Set(formData.getAll("perm").filter(isPermission))).filter(
+    (p) => permissionAvailable(p, national)
+  );
+  const untilRaw = String(formData.get("until") ?? "").trim();
+  const until = /^\d{4}-\d{2}-\d{2}$/.test(untilRaw) ? untilRaw : null;
+  if (until && perms.length > 0 && until < todayMontevideo()) {
+    done("error", "Esa fecha ya pasó: el nombramiento quedaría vencido.");
+  }
+
+  const { data: person } = await supabase
+    .from("profiles")
+    .select("full_name, is_bahai")
+    .eq("id", id)
+    .maybeSingle();
+  if (perms.length > 0 && person && !person.is_bahai) {
+    done(
+      "error",
+      "Un Amigo/a de la Fe no puede ser ayudante de la Asamblea. Marcalo como creyente primero."
+    );
+  }
+
+  const { data: current, error: readError } = await supabase
+    .from("delegations")
+    .select("permission")
+    .eq("profile_id", id)
+    .eq("locality_id", session.locality.id);
+  if (readError) {
+    done(
+      "error",
+      readError.code === "42P01" || readError.code === "PGRST205"
+        ? "Falta aplicar la migración 088 en la base."
+        : `Error: ${readError.message}`
+    );
+  }
+  const had = new Set((current ?? []).map((r) => r.permission as Permission));
+  const removed = Array.from(had).filter((p) => !perms.includes(p));
+  const kept = perms.filter((p) => had.has(p));
+  const added = perms.filter((p) => !had.has(p));
+  const mine = () => ({ profile_id: id, locality_id: session.locality.id });
+
+  if (removed.length > 0) {
+    const { error } = await supabase
+      .from("delegations")
+      .delete()
+      .match(mine())
+      .in("permission", removed);
+    if (error) done("error", `Error: ${error.message}`);
+  }
+  if (kept.length > 0) {
+    // Cambiar el "hasta" no cambia quién lo nombró ni cuándo.
+    const { error } = await supabase
+      .from("delegations")
+      .update({ until })
+      .match(mine())
+      .in("permission", kept);
+    if (error) done("error", `Error: ${error.message}`);
+  }
+  if (added.length > 0) {
+    const { error } = await supabase.from("delegations").insert(
+      added.map((permission) => ({
+        ...mine(),
+        permission,
+        until,
+        granted_by: session.user.id,
+      }))
+    );
+    if (error) done("error", `Error: ${error.message}`);
+
+    // Un push que falla no deshace el nombramiento.
+    await sendPushToUsers([id], {
+      title: "Te nombraron ayudante de la Asamblea",
+      body: `${session.locality.name}: ${permissionsSentence(added)}. Lo abrís desde tu perfil.`,
+      url: "/perfil",
+      tag: "helper-granted",
+    });
+  }
+
+  const name = person?.full_name?.split(" ")[0] || "La persona";
+  const untilText = until ? ` hasta el ${until.split("-").reverse().join("/")}` : "";
+  done(
+    "success",
+    perms.length > 0
+      ? `${name} es ayudante: ${permissionsSentence(perms)}${untilText}.`
+      : had.size > 0
+        ? `${name} ya no es ayudante.`
+        : "Sin cambios."
+  );
 }
 
 /**

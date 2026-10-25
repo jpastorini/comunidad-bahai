@@ -1,6 +1,7 @@
 import "server-only";
 import { createSupabaseAdmin } from "./supabase/admin";
 import { createSupabaseServer, isSupabaseConfigured } from "./supabase/server";
+import { getDelegateIds } from "./delegations-server";
 import { getChatAdminIds, sendPushToUsers } from "./push";
 
 /**
@@ -98,7 +99,16 @@ export async function submitContactRequest(input: ContactInput): Promise<Contact
     return { ok: false, error: "No se pudo enviar. Probá de nuevo en un rato." };
   }
 
-  const ids = await getChatAdminIds(input.localityId);
+  // Los contactos los atiende quien atiende la Secretaría (sin contar a
+  // sus ayudantes, que tienen el chat y no esto) más los ayudantes de
+  // Contactos (088).
+  const [chat, chatHelpers, contactHelpers] = await Promise.all([
+    getChatAdminIds(input.localityId),
+    getDelegateIds(input.localityId, "secretaria"),
+    getDelegateIds(input.localityId, "contactos"),
+  ]);
+  const tagHolders = chat.filter((id) => !chatHelpers.includes(id));
+  const ids = Array.from(new Set([...tagHolders, ...contactHelpers]));
   await sendPushToUsers(ids, {
     title: "Alguien quiere contactarse",
     body: `${name} dejó sus datos desde el folleto de la Fe${phone ? ` · ${phone}` : ""}`,

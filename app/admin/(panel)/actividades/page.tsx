@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button, DataTable, PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { formatActivityWhen } from "@/lib/format";
 import { deleteActivityAction } from "./actions";
@@ -14,7 +14,7 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 export default async function AdminActividadesPage() {
-  await requireAdmin();
+  await requirePermission("actividades");
   const supabase = createSupabaseServer();
   const { data } = await supabase
     .from("activities")

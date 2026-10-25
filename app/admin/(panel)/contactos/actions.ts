@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { ensureChatTag, requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 /**
@@ -10,8 +10,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
  * acá solo se repite el guard en palabras.
  */
 export async function setContactStatusAction(formData: FormData): Promise<void> {
-  const session = await requireAdmin();
-  ensureChatTag(session.profile);
+  const session = await requirePermission("contactos");
   const id = String(formData.get("id") ?? "");
   const status = String(formData.get("status") ?? "");
   if (!id || (status !== "nuevo" && status !== "atendido")) return;
@@ -31,8 +30,7 @@ export async function setContactStatusAction(formData: FormData): Promise<void> 
 }
 
 export async function saveContactNotesAction(formData: FormData): Promise<void> {
-  const session = await requireAdmin();
-  ensureChatTag(session.profile);
+  const session = await requirePermission("contactos");
   const id = String(formData.get("id") ?? "");
   const notes = String(formData.get("notes") ?? "").trim().slice(0, 2000);
   if (!id) return;
@@ -46,8 +44,7 @@ export async function saveContactNotesAction(formData: FormData): Promise<void> 
 }
 
 export async function deleteContactAction(formData: FormData): Promise<void> {
-  const session = await requireAdmin();
-  ensureChatTag(session.profile);
+  const session = await requirePermission("contactos");
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   const supabase = createSupabaseServer();

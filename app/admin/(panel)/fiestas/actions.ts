@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 import { getBahaiMonth } from "@/lib/bahai-calendar";
@@ -39,7 +39,7 @@ async function uploadFile(
 
 // ─── Crear / editar Fiesta ─────────────────────────────────────
 export async function upsertFeastAction(formData: FormData) {
-  await requireAdmin();
+  await requirePermission("fiestas");
   const supabase = createSupabaseServer();
 
   const id = formData.get("id") as string | null;
@@ -293,7 +293,7 @@ async function persistNews(formData: FormData, feastId: string): Promise<string 
 //   published   → in_progress (iniciar Fiesta)
 //   in_progress → published   (volver a publicada)
 export async function setFeastStatusAction(formData: FormData) {
-  await requireAdmin();
+  await requirePermission("fiestas");
   const id = formData.get("id") as string;
   const requested = formData.get("new_status") as string;
   const valid = ["draft", "published", "in_progress"] as const;
@@ -347,7 +347,7 @@ export async function toggleFeastStatusAction(formData: FormData) {
 
 // ─── Cargar plantilla en una Fiesta existente ──────────────────
 export async function loadTemplateAction(formData: FormData) {
-  await requireAdmin();
+  await requirePermission("fiestas");
   const id = formData.get("id") as string;
   const supabase = createSupabaseServer();
 
@@ -402,7 +402,7 @@ export async function loadTemplateAction(formData: FormData) {
 
 // ─── Borrar Fiesta ─────────────────────────────────────────────
 export async function deleteFeastAction(formData: FormData) {
-  await requireAdmin();
+  await requirePermission("fiestas");
   const id = formData.get("id") as string;
   const supabase = createSupabaseServer();
   const { error } = await supabase.from("feasts").delete().eq("id", id);
@@ -417,7 +417,7 @@ export async function deleteFeastAction(formData: FormData) {
 
 // ─── Marcar sugerencia como revisada ───────────────────────────
 export async function toggleSuggestionReviewedAction(formData: FormData) {
-  await requireAdmin();
+  await requirePermission("fiestas");
   const id = formData.get("id") as string;
   const feastId = formData.get("feast_id") as string;
   const reviewed = formData.get("reviewed") === "on";

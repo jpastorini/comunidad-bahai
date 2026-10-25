@@ -8,7 +8,7 @@ import {
 import { PollReportSection } from "@/components/admin/comunicados/PollReportSection";
 import { ReadReportRefresher } from "@/components/admin/comunicados/ReadReportRefresher";
 import { Banner, Button, Card, PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { formatDateTime, formatMessageDate } from "@/lib/format";
 import {
   formatSinceDays,
@@ -32,7 +32,7 @@ export default async function ComunicadoLecturaPage({
 }: {
   params: { id: string };
 }) {
-  const session = await requireAdmin();
+  const session = await requirePermission("comunicados");
   const supabase = createSupabaseServer();
   const { data } = await supabase
     .from("messages")

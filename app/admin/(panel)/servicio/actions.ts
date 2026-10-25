@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 
 export async function upsertNeedAction(formData: FormData) {
-  await requireAdmin();
+  await requirePermission("servicio");
   const supabase = createSupabaseServer();
 
   const id = formData.get("id") as string | null;
@@ -38,7 +38,7 @@ export async function upsertNeedAction(formData: FormData) {
 }
 
 export async function deleteNeedAction(formData: FormData) {
-  await requireAdmin();
+  await requirePermission("servicio");
   const supabase = createSupabaseServer();
   const id = formData.get("id") as string;
   if (id) {

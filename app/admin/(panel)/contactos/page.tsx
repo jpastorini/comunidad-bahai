@@ -1,6 +1,6 @@
 import { Banner, Button, PageHeader } from "@/components/admin/ui";
 import { ConfirmSubmit } from "../miembros/confirm-submit";
-import { ensureChatTag, requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { whatsappLink } from "@/lib/commitment-whatsapp";
 import { getContactRequests, type ContactRequest } from "@/lib/contact-requests";
 import { formatDateTime } from "@/lib/format";
@@ -19,8 +19,7 @@ import {
  * siguió, y eliminar para lo que fue broma o error.
  */
 export default async function ContactosPage() {
-  const session = await requireAdmin();
-  ensureChatTag(session.profile);
+  const session = await requirePermission("contactos");
   const { rows, schemaMissing } = await getContactRequests();
   const nuevos = rows.filter((r) => r.status === "nuevo");
   const atendidos = rows.filter((r) => r.status === "atendido");

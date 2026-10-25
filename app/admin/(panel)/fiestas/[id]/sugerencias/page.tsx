@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { QuickForm } from "./quick-form";
 import {
@@ -15,7 +15,7 @@ export default async function FeastQuickSuggestionsPage({
 }: {
   params: { id: string };
 }) {
-  await requireAdmin();
+  await requirePermission("fiestas");
   const supabase = createSupabaseServer();
 
   const { data: feast } = await supabase

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Banner, Button, DataTable, PageHeader } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { getReadCountsForMessages } from "@/lib/message-reads";
 import { getPollCountsForMessages } from "@/lib/polls";
 import { getLocalityPushReach } from "@/lib/push";
@@ -11,7 +11,7 @@ import { isNationalLocality } from "@/lib/types";
 import { deleteComunicadoAction } from "./actions";
 
 export default async function AdminComunicadosPage() {
-  const session = await requireAdmin();
+  const session = await requirePermission("comunicados");
   const supabase = createSupabaseServer();
   // 057: la Asamblea Nacional gestiona los comunicados nacionales; una
   // Asamblea Local, los suyos. Es la misma pantalla y lo que cambia es

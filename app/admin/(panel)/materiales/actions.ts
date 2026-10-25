@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 
@@ -28,7 +28,7 @@ async function uploadAttachment(
 }
 
 export async function upsertMaterialAction(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requirePermission("materiales");
   const supabase = createSupabaseServer();
 
   const id = formData.get("id") as string | null;
@@ -105,7 +105,7 @@ export async function upsertMaterialAction(formData: FormData) {
 }
 
 export async function deleteMaterialAction(formData: FormData) {
-  await requireAdmin();
+  await requirePermission("materiales");
   const supabase = createSupabaseServer();
   const id = formData.get("id") as string;
   if (id) {

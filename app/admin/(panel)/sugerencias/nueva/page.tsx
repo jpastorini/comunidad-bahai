@@ -8,7 +8,7 @@ import {
   Select,
   TextInput,
 } from "@/components/admin/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { BulkRows } from "./bulk-rows";
 import { bulkInsertSuggestionsAction } from "../actions";
@@ -18,7 +18,7 @@ export default async function NewSuggestionsPage({
 }: {
   searchParams: { feast?: string };
 }) {
-  await requireAdmin();
+  await requirePermission("fiestas");
   const supabase = createSupabaseServer();
 
   // Trae todas las Fiestas para el selector, más recientes primero.

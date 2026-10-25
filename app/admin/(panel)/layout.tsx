@@ -1,7 +1,8 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { structureAllowsPath } from "@/lib/admin-nav";
+import { helperAllowsPath, helperHome, structureAllowsPath } from "@/lib/admin-nav";
+import { hasPermission, isHelper } from "@/lib/delegations";
 import { isStructureLocality } from "@/lib/types";
 import { ChatNotifier } from "@/components/ChatNotifier";
 import { requirePanelAccess } from "@/lib/auth";
@@ -16,10 +17,19 @@ export default async function PanelLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Admin local o editor designado del Boletín. Cada página del panel
-  // sigue auto-protegida (requireAdmin / ensure*Tag), así que esto solo
+  // La Asamblea o un ayudante (088). Cada página del panel sigue
+  // auto-protegida (requireAdmin / requirePermission), así que esto solo
   // abre el shell, no las secciones.
   const session = await requirePanelAccess();
+
+  // Un ayudante ve solo sus secciones, y el Inicio del panel (un tablero
+  // de la Asamblea) lo manda a la primera.
+  if (isHelper(session.profile)) {
+    const path = headers().get("x-pathname");
+    if (path && !helperAllowsPath(session.profile, path, session.locality.kind)) {
+      redirect(helperHome(session.profile, session.locality.kind) ?? "/");
+    }
+  }
 
   // Una estructura (082) ve solo lo de su menú; lo demás del panel habla
   // de creyentes que no tiene. El middleware deja la ruta en x-pathname.
@@ -39,7 +49,7 @@ export default async function PanelLayout({
   ).filter((m) => m.role === "admin" && (m.enabled || m.isActive));
 
   const chatTopics: ChatTopic[] = [];
-  if (session.profile.can_respond_chat) chatTopics.push("secretaria");
+  if (hasPermission(session.profile, "secretaria")) chatTopics.push("secretaria");
   if (session.profile.can_manage_treasury) chatTopics.push("tesoreria");
 
   return (

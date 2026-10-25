@@ -8,6 +8,12 @@ import {
   isSupabaseConfigured,
 } from "./supabase/server";
 import {
+  hasPermission,
+  permissionAvailable,
+  type PanelProfile,
+  type Permission,
+} from "./delegations";
+import {
   isNationalLocality,
   isStructureLocality,
   type Locality,
@@ -16,7 +22,8 @@ import {
 
 export type AdminSession = {
   user: { id: string; email: string };
-  profile: Profile;
+  /** Con `delegations` si es un ayudante (088), no la Asamblea. */
+  profile: PanelProfile;
   locality: Locality;
 };
 
@@ -40,17 +47,22 @@ export type NationalAdminSession = {
 function getProfileFromHeaders(): {
   userId: string;
   email: string;
-  profile: Profile;
+  profile: PanelProfile;
 } | null {
   try {
     const h = headers();
     const profileJson = h.get("x-profile");
     const userId = h.get("x-user-id");
     if (!profileJson || !userId) return null;
+    const profile = JSON.parse(profileJson) as PanelProfile;
+    // Los nombramientos de un ayudante (088): el middleware los pone solo
+    // para quien no es de la Asamblea y entra a /admin.
+    const delegations = h.get("x-delegations");
+    if (delegations) profile.delegations = JSON.parse(delegations) as Permission[];
     return {
       userId,
       email: h.get("x-user-email") ?? "",
-      profile: JSON.parse(profileJson) as Profile,
+      profile,
     };
   } catch {
     return null;
@@ -301,18 +313,18 @@ export async function requireAdmin(): Promise<AdminSession> {
 }
 
 /**
- * Acceso al shell del panel: admin local O editor designado del Boletín
- * (`can_manage_bulletin`). Lo usan el layout del panel y las pantallas de
- * /admin/boletin — el resto de las páginas del panel siguen auto-protegidas
- * con requireAdmin, así que un editor de boletín no-admin solo puede usar
- * esa sección (el middleware además le bloquea las otras rutas /admin).
+ * Acceso al shell del panel: la Asamblea (rol admin) o un ayudante con
+ * algún nombramiento vigente en la comunidad puesta (088). Lo usa el layout
+ * del panel; cada sección se protege además con requirePermission (las
+ * delegables) o requireAdmin (las que solo son de la Asamblea).
  */
 export async function requirePanelAccess(): Promise<AdminSession> {
   if (!isSupabaseConfigured()) {
     redirect("/login?error=no-supabase");
   }
 
-  const qualifies = (p: Profile) => p.role === "admin" || p.can_manage_bulletin;
+  const qualifies = (p: PanelProfile) =>
+    p.role === "admin" || (p.delegations?.length ?? 0) > 0;
 
   // ── Fast path ─────────────────────────────────────────────────
   const cached = getProfileFromHeaders();
@@ -341,13 +353,22 @@ export async function requirePanelAccess(): Promise<AdminSession> {
     redirect("/login?next=%2Fadmin");
   }
 
-  const { data: profile } = await supabase
+  const { data: row } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
+  const profile = row as PanelProfile | null;
+  if (profile && profile.role !== "admin") {
+    const { data, error } = await supabase.rpc("my_delegations");
+    profile.delegations = error
+      ? profile.can_manage_bulletin
+        ? ["boletin"]
+        : []
+      : ((data as Permission[] | null) ?? []);
+  }
 
-  if (!profile || !qualifies(profile as Profile)) {
+  if (!profile || !qualifies(profile)) {
     redirect("/");
   }
 
@@ -359,9 +380,26 @@ export async function requirePanelAccess(): Promise<AdminSession> {
 
   return {
     user: { id: user.id, email: user.email ?? "" },
-    profile: profile as Profile,
+    profile,
     locality,
   };
+}
+
+/**
+ * Guard de una sección que se puede delegar (088): la Asamblea (con el tag
+ * de chat para Secretaría y Contactos) o un ayudante con ese permiso. A
+ * quien no lo tiene lo devuelve al Inicio del panel, que a un ayudante lo
+ * manda a su primera sección.
+ */
+export async function requirePermission(perm: Permission): Promise<AdminSession> {
+  const session = await requirePanelAccess();
+  const helperOutOfPlace =
+    session.profile.role !== "admin" &&
+    !permissionAvailable(perm, isNationalLocality(session.locality));
+  if (!hasPermission(session.profile, perm) || helperOutOfPlace) {
+    redirect("/admin?error=sin-permiso");
+  }
+  return session;
 }
 
 /**

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { deleteEventPhotoAction } from "@/components/gallery/photo-actions";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { MAX_FEATURED_PER_EVENT } from "@/lib/event-photos";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
@@ -14,7 +14,7 @@ export async function setPhotoFeaturedAction(
   photoId: string,
   featured: boolean
 ): Promise<ToggleResult> {
-  const session = await requireAdmin();
+  const session = await requirePermission("fotos");
   const supabase = createSupabaseServer();
 
   const { data: photo } = await supabase
@@ -59,7 +59,7 @@ export async function setPhotoNationalAction(
   photoId: string,
   national: boolean
 ): Promise<ToggleResult> {
-  const session = await requireAdmin();
+  const session = await requirePermission("fotos");
   const supabase = createSupabaseServer();
 
   const { data: photo } = await supabase

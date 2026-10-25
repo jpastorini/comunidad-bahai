@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requirePanelAccess } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { sanitizeBulletinContent } from "@/lib/bulletins";
 import { getLocalityMemberIds, sendPushToUsers } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -22,7 +22,7 @@ function revalidateBulletins() {
  * re-notifica).
  */
 export async function saveBulletinAction(formData: FormData) {
-  const session = await requirePanelAccess();
+  const session = await requirePermission("boletin");
   const supabase = createSupabaseServer();
 
   const id = (formData.get("id") as string) || null;
@@ -119,7 +119,7 @@ export async function saveBulletinAction(formData: FormData) {
 }
 
 export async function deleteBulletinAction(formData: FormData) {
-  const session = await requirePanelAccess();
+  const session = await requirePermission("boletin");
   const supabase = createSupabaseServer();
 
   const id = formData.get("id") as string;
