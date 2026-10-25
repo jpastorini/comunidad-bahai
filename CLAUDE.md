@@ -3269,7 +3269,7 @@ cambia nada.
 
 ## Pendientes conocidos
 
-- **Aplicar la 087 y asignar el mapa** (la 086 se aplicó el 2026-10-25): en Admin Nacional →
+- **Asignar el mapa** (086 y 087 aplicadas el 2026-10-25): en Admin Nacional →
   Zonas y agrupaciones, cada agrupación a su zona y cada Asamblea Local a
   su agrupación (las de Canelones seguro quedan sin asignar).
 - **Estrenar las Estructuras** (de la 082 a la 085 aplicadas el 2026-10-24): crear un
