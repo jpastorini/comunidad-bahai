@@ -142,7 +142,7 @@ export function EventForm({ event, defaultDate, structure = false }: Props) {
                     estructura es interno salvo que se diga lo contrario. */}
                 <Checkbox
                   name="community_visible"
-                  label="Mostrar en el calendario de la comunidad (lo ven los creyentes de la Asamblea de la que depende la estructura)"
+                  label="Mostrar en el calendario de la comunidad (lo ven los creyentes de la Asamblea de la que depende la estructura; si es de agrupación, los de esa agrupación; si es nacional, todo el país)"
                   defaultChecked={!!event?.community_visible}
                 />
               </div>

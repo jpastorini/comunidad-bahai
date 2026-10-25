@@ -529,7 +529,7 @@ export type UnifiedCalendarItem = {
   /** De qué institución es, si no es la puesta (082/085). */
   institution?: string | null;
   /** Familia local (una AEL y sus estructuras) o nacional (085). */
-  family?: "local" | "nacional";
+  family?: "local" | "agrupacion" | "nacional";
   /** De otra institución: se ve, no se edita desde acá. */
   readOnly?: boolean;
   /** La institución dueña del evento. */

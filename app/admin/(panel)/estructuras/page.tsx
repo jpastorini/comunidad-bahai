@@ -9,6 +9,7 @@ import {
   type StructureWithMembers,
 } from "@/lib/structures";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { getEffectiveAgrupaciones, getTerritory, type Agrupacion } from "@/lib/territory";
 import {
   isNationalLocality,
   isStructureLocality,
@@ -36,11 +37,19 @@ export default async function EstructurasPage() {
     return <OwnStructure locality={session.locality} />;
   }
 
-  const [{ structures, schemaMissing }, candidates] = await Promise.all([
+  const national = isNationalLocality(session.locality);
+  const [{ structures, schemaMissing }, candidates, territory] = await Promise.all([
     getChildStructures(session.locality.id),
     getStructureCandidates(session.locality),
+    // Las agrupaciones (086): la AEN crea estructuras de agrupación (087).
+    national ? getTerritory(createSupabaseServer()) : Promise.resolve(null),
   ]);
-  const national = isNationalLocality(session.locality);
+  const agrupaciones = territory && !territory.missing ? territory.agrupaciones : [];
+  // De qué agrupación es cada candidato, para ofrecer primero a los de la
+  // agrupación de la estructura.
+  const candidateAgr = agrupaciones.length
+    ? (await getEffectiveAgrupaciones(candidates.map((c) => c.id))).effective
+    : new Map<string, string>();
 
   return (
     <>
@@ -69,6 +78,8 @@ export default async function EstructurasPage() {
               structure={s}
               parent={session.locality}
               candidates={candidates}
+              agrupaciones={agrupaciones}
+              candidateAgr={candidateAgr}
             />
           ))}
         </div>
@@ -96,6 +107,17 @@ export default async function EstructurasPage() {
               <TypeSelect />
             </Field>
           </div>
+          {agrupaciones.length > 0 && (
+            <div className="mt-4">
+              <Field
+                label="Alcance"
+                name="agrupacion_id"
+                hint="Una estructura de agrupación toma integrantes de esa agrupación y su calendario lo ven las instituciones de ahí. La Junta de Instituto es solo nacional."
+              >
+                <ScopeSelect agrupaciones={agrupaciones} />
+              </Field>
+            </div>
+          )}
           <div className="mt-5 flex justify-end">
             <Button type="submit" disabled={schemaMissing}>
               Crear estructura
@@ -122,6 +144,28 @@ function TypeSelect({ defaultValue }: { defaultValue?: string | null }) {
   );
 }
 
+/** Nacional, o una de las 20 agrupaciones (087). */
+function ScopeSelect({
+  agrupaciones,
+  defaultValue,
+}: {
+  agrupaciones: Agrupacion[];
+  defaultValue?: string | null;
+}) {
+  return (
+    <Select name="agrupacion_id" defaultValue={defaultValue ?? ""}>
+      <option value="">Nacional</option>
+      <optgroup label="De agrupación">
+        {agrupaciones.map((a) => (
+          <option key={a.id} value={a.id}>
+            Agrupación {a.name}
+          </option>
+        ))}
+      </optgroup>
+    </Select>
+  );
+}
+
 function memberName(m: LocalityMember): string {
   return m.full_name?.trim() || m.email || "Sin nombre";
 }
@@ -130,21 +174,30 @@ function StructureCard({
   structure,
   parent,
   candidates,
+  agrupaciones,
+  candidateAgr,
 }: {
   structure: StructureWithMembers;
   parent: Locality;
   candidates: StructureCandidate[];
+  agrupaciones: Agrupacion[];
+  candidateAgr: Map<string, string>;
 }) {
   const { locality, members } = structure;
   const memberIds = new Set(members.map((m) => m.id));
   const available = candidates.filter((c) => !memberIds.has(c.id));
+  // En una estructura de agrupación (087), primero los de esa agrupación;
+  // después el resto del país, porque mucha gente no la declaró.
+  const agrupacion = agrupaciones.find((a) => a.id === locality.agrupacion_id) ?? null;
+  const fromAgr = agrupacion ? available.filter((c) => candidateAgr.get(c.id) === agrupacion.id) : [];
+  const others = agrupacion ? available.filter((c) => candidateAgr.get(c.id) !== agrupacion.id) : available;
 
   return (
     <Card>
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[10px] font-semibold uppercase tracking-[1.5px] text-gold-dark">
-            {structureTypeLabel(locality.structure_type, parent)}
+            {structureTypeLabel(locality.structure_type, parent, agrupacion?.name)}
           </div>
           <div className="font-display text-[20px] font-semibold text-dark">{locality.name}</div>
           <div className="mt-0.5 text-[12px] text-muted">
@@ -212,11 +265,30 @@ function StructureCard({
               <option value="" disabled>
                 {available.length === 0 ? "No queda nadie para sumar" : "Elegí un creyente…"}
               </option>
-              {available.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
+              {agrupacion ? (
+                <>
+                  <optgroup label={`De la agrupación ${agrupacion.name}`}>
+                    {fromAgr.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Del resto del país (queda en esta agrupación)">
+                    {others.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                </>
+              ) : (
+                available.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))
+              )}
             </Select>
           </Field>
         </div>
@@ -242,6 +314,13 @@ function StructureCard({
               <TypeSelect defaultValue={locality.structure_type} />
             </Field>
           </div>
+          {agrupaciones.length > 0 && (
+            <div className="mt-3">
+              <Field label="Alcance" name="agrupacion_id">
+                <ScopeSelect agrupaciones={agrupaciones} defaultValue={locality.agrupacion_id} />
+              </Field>
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <Checkbox
               name="is_active"
@@ -259,13 +338,17 @@ function StructureCard({
 /** Con una estructura puesta: quiénes la integran y de quién depende. */
 async function OwnStructure({ locality }: { locality: Locality }) {
   const supabase = createSupabaseServer();
-  const [members, parentRes] = await Promise.all([
+  const [members, parentRes, agrRes] = await Promise.all([
     getLocalityMembers(supabase, locality.id),
     locality.parent_id
       ? supabase.from("localities").select("*").eq("id", locality.parent_id).maybeSingle()
       : Promise.resolve({ data: null }),
+    locality.agrupacion_id
+      ? supabase.from("agrupaciones").select("name").eq("id", locality.agrupacion_id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
   const parent = (parentRes.data as Locality | null) ?? null;
+  const agrupacionName = (agrRes.data as { name: string } | null)?.name ?? null;
   const list = activeMembers(members);
 
   return (
@@ -273,7 +356,7 @@ async function OwnStructure({ locality }: { locality: Locality }) {
       <PageHeader
         eyebrow="Reuniones y tareas"
         title="Integrantes"
-        description={`${structureTypeLabel(locality.structure_type, parent)}${
+        description={`${structureTypeLabel(locality.structure_type, parent, agrupacionName)}${
           parent ? ` de ${parent.name}` : ""
         }. Los integrantes los nombra la Asamblea que creó la estructura.`}
       />

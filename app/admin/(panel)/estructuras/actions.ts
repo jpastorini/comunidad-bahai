@@ -8,6 +8,7 @@ import { isStructureCandidate, isStructuresSchemaMissing } from "@/lib/structure
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { setFlashToast } from "@/lib/toast";
 import {
+  isNationalLocality,
   isStructureLocality,
   STRUCTURE_TYPES,
   type Locality,
@@ -51,7 +52,25 @@ function fail(message: string): never {
 function dbError(code: string | undefined, message: string): never {
   if (isStructuresSchemaMissing(code)) fail("Falta aplicar la migración 082 en la base.");
   if (code === "23505") fail("Ya hay una estructura con ese nombre en esta Asamblea.");
+  // El guardián de `localities` (087) habla en mayúsculas al principio.
+  if (message.startsWith("AGRUPACION_INVALIDA:")) fail(message.split(": ").slice(1).join(": "));
   fail(`No se pudo guardar: ${message}`);
+}
+
+/**
+ * El alcance (087): vacío es nacional; un id es una agrupación. Solo la
+ * AEN crea estructuras de agrupación, y nunca la Junta de Instituto; el
+ * guardián de la base lo vuelve a chequear.
+ */
+function readAgrupacion(
+  formData: FormData,
+  parent: Locality,
+  type: StructureType
+): string | null {
+  const value = ((formData.get("agrupacion_id") as string) || "").trim() || null;
+  if (!value || !isNationalLocality(parent)) return null;
+  if (type === "junta_instituto") fail("La Junta de Instituto es solo nacional.");
+  return value;
 }
 
 function readType(formData: FormData): StructureType {
@@ -87,6 +106,7 @@ export async function createStructureAction(formData: FormData) {
     kind: "estructura",
     parent_id: session.locality.id,
     structure_type: type,
+    agrupacion_id: readAgrupacion(formData, session.locality, type),
     city: session.locality.city,
     country: session.locality.country,
     is_active: true,
@@ -108,7 +128,12 @@ export async function updateStructureAction(formData: FormData) {
 
   const { error } = await admin
     .from("localities")
-    .update({ name, structure_type: type, is_active: formData.get("is_active") === "on" })
+    .update({
+      name,
+      structure_type: type,
+      is_active: formData.get("is_active") === "on",
+      agrupacion_id: readAgrupacion(formData, session.locality, type),
+    })
     .eq("id", id);
   if (error) dbError(error.code, error.message);
 
@@ -143,6 +168,19 @@ export async function addStructureMemberAction(formData: FormData) {
     { onConflict: "profile_id,locality_id" }
   );
   if (error) fail(`No se pudo sumar: ${error.message}`);
+
+  // Integrar una estructura de agrupación (087) dice dónde está la
+  // persona: si no tenía agrupación (ni por su Asamblea ni elegida), queda
+  // en esa. Si ya tenía una, no se toca.
+  if (structure.agrupacion_id) {
+    const { data: current } = await admin.rpc("person_agrupacion", { p_profile: profileId });
+    if (!current) {
+      await admin
+        .from("profiles")
+        .update({ agrupacion_id: structure.agrupacion_id })
+        .eq("id", profileId);
+    }
+  }
 
   // El aviso lleva al perfil: ahí está la entrada al panel de la
   // estructura. El panel directo la echaría si tiene su comunidad puesta.

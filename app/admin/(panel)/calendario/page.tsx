@@ -9,6 +9,7 @@ import {
   getInstitutionalItems,
   getNationalLocalityId,
   parseCalendarScope,
+  SCOPE_FAMILY,
   type CalendarScope,
 } from "@/lib/institutional-calendar";
 import type { UnifiedCalendarItem } from "@/lib/data";
@@ -75,7 +76,7 @@ export default async function AdminCalendarPage({
     .filter(
       (i) =>
         scope === "ambas" ||
-        (scope === "locales" ? i.family === "local" : i.family === "nacional")
+        i.family === SCOPE_FAMILY[scope]
     )
     .sort(
       (a, b) =>
@@ -175,8 +176,9 @@ function ScopeToggle({
   };
   const options: Array<[CalendarScope, string]> = [
     ["locales", "Locales"],
+    ["agrupacion", "Agrupación"],
     ["nacionales", "Nacionales"],
-    ["ambas", "Ambas"],
+    ["ambas", "Todas"],
   ];
   return (
     <div className="inline-flex items-center gap-0.5 rounded-xl border border-black/10 bg-card p-1">

@@ -31,12 +31,17 @@ export function isStructuresSchemaMissing(code: string | null | undefined): bool
   return code === "42703" || code === "23514" || code === "PGRST204";
 }
 
-/** "Comité", o "Comité · Nacional" cuando lo creó la Asamblea Nacional. */
+/**
+ * "Comité", "Comité · Nacional", o "Comité · Agrupación Salto" para una
+ * estructura de agrupación (087).
+ */
 export function structureTypeLabel(
   type: StructureType | null | undefined,
-  parent?: Pick<Locality, "kind"> | null
+  parent?: Pick<Locality, "kind"> | null,
+  agrupacionName?: string | null
 ): string {
   const base = type ? STRUCTURE_TYPE_LABELS[type] : "Estructura";
+  if (agrupacionName) return `${base} · Agrupación ${agrupacionName}`;
   return parent && isNationalLocality(parent) ? `${base} · Nacional` : base;
 }
 

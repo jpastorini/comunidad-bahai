@@ -446,7 +446,7 @@ Servicio vive en Institucional. Ver la sección "Enseñanza" más abajo. ·
 Departamentos, Coordinación y Junta de Instituto, creados por la AEN o una
 AEL, con su propio panel y sin creyentes. Ver la sección "Estructuras" más
 abajo. ·
-**Zonas y agrupaciones** (migración 086, 2026-10-25): el mapa del país,
+**Zonas y agrupaciones** (migraciones 086 y 087, 2026-10-25): el mapa del país,
 País → 3 zonas electorales → 20 agrupaciones. Ver la sección "Zonas y
 agrupaciones" más abajo.
 
@@ -480,11 +480,28 @@ para la Convención (delegados por zona).
 - **El padrón de la Comunidad Nacional** (`/admin/miembros` con la AEN
   puesta) filtra por zona, agrupación o "sin agrupación".
 
-**Lo que falta (Etapa B):** las estructuras de agrupación —alcance local /
-agrupación / nacional (la Junta de Instituto solo nacional), las crea la
-AEN, toman integrantes de la agrupación, y su calendario lo ven las
-instituciones y, con la casilla, los creyentes de la agrupación—, y el
-filtro del calendario Locales / Agrupación / Nacionales.
+**Etapa B, estructuras de agrupación (087, 2026-10-25):**
+
+- **Una estructura de agrupación es una estructura de la AEN con
+  `agrupacion_id`**, sin tipo nuevo: le presenta informes a la AEN, su
+  recibo dice que depende de la AEN y todo lo de las 082–085 sigue igual.
+  El guardián de `localities` exige que solo la AEN la cree y que no sea
+  la Junta de Instituto (solo nacional). Una estructura de una AEL no
+  lleva agrupación: la suya es la de su AEL.
+- **Al crearla**, la AEN elige el alcance (Nacional o una agrupación) en
+  Asamblea → Estructuras. Los candidatos salen agrupados: primero los de
+  esa agrupación y después el resto del país (mucha gente no la
+  declaró); sumar a alguien sin agrupación lo deja en esa.
+- **El calendario tiene tres familias**: local (una AEL y sus
+  estructuras), agrupación, nacional (la AEN y sus estructuras
+  nacionales). `institutional_calendar()` se reescribió: una estructura de
+  agrupación la ven las instituciones de su agrupación y la AEN, y ella ve
+  a las instituciones locales de su agrupación. Una AEL NO ve a otra AEL
+  de su agrupación (no se pidió). El filtro del panel es Locales /
+  Agrupación / Nacionales / Todas (`SCOPE_FAMILY`).
+- **"Mostrar en el calendario de la comunidad"** de una estructura de
+  agrupación llega a los creyentes de esa agrupación
+  (`person_agrupacion()`), no a todo el país.
 
 ⚠️ Sin la 086 la pantalla del mapa avisa, el primer ingreso y el perfil no
 ofrecen agrupación y el padrón no muestra el filtro.
@@ -3252,7 +3269,7 @@ cambia nada.
 
 ## Pendientes conocidos
 
-- **Aplicar la 086 y asignar el mapa** (2026-10-25): en Admin Nacional →
+- **Aplicar la 087 y asignar el mapa** (la 086 se aplicó el 2026-10-25): en Admin Nacional →
   Zonas y agrupaciones, cada agrupación a su zona y cada Asamblea Local a
   su agrupación (las de Canelones seguro quedan sin asignar).
 - **Estrenar las Estructuras** (de la 082 a la 085 aplicadas el 2026-10-24): crear un

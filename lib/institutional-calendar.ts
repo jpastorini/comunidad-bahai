@@ -16,17 +16,27 @@ import type { Locality } from "./types";
  * Se ven, no se editan: cada institución edita los suyos.
  */
 
-export type CalendarScope = "locales" | "nacionales" | "ambas";
+/** Locales, de agrupación (087), nacionales o todas. */
+export type CalendarScope = "locales" | "agrupacion" | "nacionales" | "ambas";
+
+export type CalendarFamily = "local" | "agrupacion" | "nacional";
+
+/** Qué familia muestra cada botón del filtro ("ambas" muestra todas). */
+export const SCOPE_FAMILY: Record<Exclude<CalendarScope, "ambas">, CalendarFamily> = {
+  locales: "local",
+  agrupacion: "agrupacion",
+  nacionales: "nacional",
+};
 
 export function parseCalendarScope(raw: string | undefined): CalendarScope {
-  return raw === "locales" || raw === "nacionales" ? raw : "ambas";
+  return raw === "locales" || raw === "agrupacion" || raw === "nacionales" ? raw : "ambas";
 }
 
 type Row = {
   id: string;
   locality_id: string;
   institution: string;
-  family: "local" | "nacional";
+  family: CalendarFamily;
   day: number;
   month: number;
   year: number;
@@ -90,12 +100,14 @@ export async function getNationalLocalityId(): Promise<string | null> {
   return (data as { id: string } | null)?.id ?? null;
 }
 
-/** La familia de la institución puesta: la nacional si su raíz es la AEN. */
+/** La familia de la institución puesta: local, de agrupación (087) o nacional. */
 export function familyOf(
-  locality: Pick<Locality, "kind" | "parent_id">,
+  locality: Pick<Locality, "kind" | "parent_id" | "agrupacion_id">,
   nationalId: string | null
-): "local" | "nacional" {
+): CalendarFamily {
   if (locality.kind === "nacional") return "nacional";
+  // Una estructura de la AEN con agrupación es de agrupación (087).
+  if (locality.kind === "estructura" && locality.agrupacion_id) return "agrupacion";
   if (locality.kind === "estructura" && locality.parent_id && locality.parent_id === nationalId) {
     return "nacional";
   }
