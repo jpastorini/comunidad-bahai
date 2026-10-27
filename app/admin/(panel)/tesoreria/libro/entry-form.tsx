@@ -354,7 +354,16 @@ export function EntryForm({
         />
       )}
 
-      {direction === "ingreso" && (
+      {/* Un contra-asiento positivo devuelve plata de un gasto: no es un
+          aporte, no lleva contribuyente ni recibo. Sin esto el formulario
+          le proponía el próximo número y guardar lo metía en la serie. */}
+      {direction === "ingreso" && entry?.adjusts_entry_id && (
+        <p className="text-[12.5px] text-muted">
+          Contra-asiento: no es un aporte, así que no lleva contribuyente ni recibo.
+        </p>
+      )}
+
+      {direction === "ingreso" && !entry?.adjusts_entry_id && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {/* Lo que eligió el picker viaja en hidden inputs; la action
               resuelve el contribuyente (ver resolveContributor). */}

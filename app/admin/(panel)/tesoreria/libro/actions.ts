@@ -94,10 +94,11 @@ type GuardRow = {
   fund_id: string | null;
   currency: string;
   description: string | null;
+  adjusts_entry_id: string | null;
 };
 
 const GUARD_FIELDS =
-  "id, locality_id, entry_date, amount, receipt_number, receipt_issued, voided_at, transfer_group_id, is_opening_balance, account_id, subcategory_id, category_id, fund_id, currency, description";
+  "id, locality_id, entry_date, amount, receipt_number, receipt_issued, voided_at, transfer_group_id, is_opening_balance, account_id, subcategory_id, category_id, fund_id, currency, description, adjusts_entry_id";
 
 async function loadGuardRow(
   supabase: ServerClient,
@@ -160,9 +161,11 @@ export async function saveEntryAction(formData: FormData): Promise<SaveResult> {
       `${monthLabel(monthKeyOf(entryDate))} está cerrado. Cargá el movimiento con fecha del mes abierto o revertí el original con un contra-asiento.`
     );
   }
+  let isAdjustment = false;
   if (id) {
     const current = await loadGuardRow(supabase, id);
     if (!current) return failSave("El movimiento ya no existe.");
+    isAdjustment = !!current.adjusts_entry_id;
     if (current.voided_at) return failSave("El movimiento está anulado y no se puede modificar.");
     if (current.receipt_issued) {
       return failSave(
@@ -197,8 +200,10 @@ export async function saveEntryAction(formData: FormData): Promise<SaveResult> {
   if (receiptRaw && Number.isNaN(receiptNumber)) {
     return failSave("El número de recibo tiene que ser un número.");
   }
-  // Todo aporte lleva recibo (DGI: numeración correlativa). Un gasto no.
-  const isContribution = amount > 0;
+  // Todo aporte lleva recibo (DGI: numeración correlativa). Un gasto no,
+  // y un contra-asiento tampoco: el de un gasto entra positivo (la
+  // devolución de un proveedor) y no es un aporte de nadie.
+  const isContribution = amount > 0 && !isAdjustment;
   let autoNumbered = false;
   if (isContribution && receiptNumber === null) {
     try {
