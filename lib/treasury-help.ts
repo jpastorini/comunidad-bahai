@@ -55,7 +55,7 @@ export const TREASURY_HELP = {
     catalogo:
       "Las cuentas (dónde está la plata), los fondos (de quién es), las categorías y los rubros (en qué se usa) con que se carga el libro. Quitar elimina lo que nunca se usó y desactiva lo que sí: el historial no se pierde.",
     recibo:
-      "Cómo sale el comprobante de contribución: quién firma (sale solo de la composición de la Asamblea), la firma escaneada y el color. Y los medios de pago que la comunidad ve en «Cómo aportar».",
+      "Cómo sale el comprobante de contribución: quién firma (sale solo de la composición de la Asamblea), la firma —dibujada o de una foto— y el color. Y los medios de pago que la comunidad ve en «Cómo aportar».",
     reciboHoja:
       "El recibo de este aporte, para imprimir o compartir por WhatsApp como imagen. Al compartirlo o imprimirlo queda marcado como emitido; un aporte con recibo emitido ya no se edita, se anula.",
     importar:
@@ -100,7 +100,7 @@ export const TREASURY_HELP = {
     nombreTesorero:
       "Dejalo vacío: el nombre sale solo del Tesorero/a declarado en Datos de la Asamblea, con vigencia, así un recibo viejo reimpreso conserva a quien lo firmó. Escribilo acá solo si querés forzar otro.",
     firma:
-      "La firma escaneada, ideal en PNG con fondo transparente. Es de esta comunidad: la Nacional tiene la suya. Sin firma, el renglón queda en blanco para firmar a mano.",
+      "La firma que va impresa en cada recibo. Se dibuja con el dedo o el mouse, o se le saca una foto a la firma en un papel blanco y la app le quita el fondo. Es de esta comunidad: la Nacional tiene la suya. Sin firma, el renglón queda en blanco para firmar a mano.",
     vincularContribuyente:
       "El creyente de la app al que pertenece esta ficha. Desde ese momento ve estos aportes en «Mis aportes», le llega el aviso de cada aporte nuevo con su recibo, y Compromisos lo reconoce. Una persona puede tener más de una ficha (a título personal y por su negocio) apuntando al mismo creyente.",
     fusionarContribuyente:

@@ -2958,6 +2958,16 @@ con la hoja a la vista mientras se toca):
   detalle: la AEN imprimiría la firma del tesorero de Montevideo. Ahora va
   al bucket **privado** `recibo-firmas` (`<locality_id>/firma/<uuid>.png`)
   y se sube **desde el navegador**, por el techo de 4,5 MB de Vercel.
+  **No se sube un archivo** (2026-10-28: casi nadie tiene su firma como
+  PNG): `components/treasury/SignatureCapture.tsx` la **dibuja** con el
+  dedo o el mouse (Pointer Events, `touch-action: none`) o la saca de una
+  **foto de la firma en papel**, a la que le quita el fondo en el
+  navegador comparando cada píxel contra el fondo de su zona (la misma
+  foto muy borrosa: sombras y papel amarillento no cuentan como tinta),
+  con un control "menos / más trazo". Los dos caminos entregan un PNG
+  transparente recortado al trazo. ⚠️ El recorte de la foto busca zonas de
+  tinta conectadas en una grilla gruesa y descarta las chicas; contar
+  píxeles por columna recortaba las firmas de trazo fino.
   ⚠️ Al RENDERIZAR no va por URL firmada sino inlineada como `data:` URI
   (`loadSignatureImage`), y eso no es una optimización: el botón
   "Compartir por WhatsApp" captura la hoja con `html-to-image`, que para

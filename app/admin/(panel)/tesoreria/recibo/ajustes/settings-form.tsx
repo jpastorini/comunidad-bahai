@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { TREASURY_HELP } from "@/lib/treasury-help";
 import { Button, Field, TextInput } from "@/components/admin/ui";
 import { ReceiptSheet } from "@/components/treasury/ReceiptSheet";
+import { SignatureCapture } from "@/components/treasury/SignatureCapture";
 import {
   DEFAULT_TREASURER_TITLE,
   RECEIPT_PALETTES,
@@ -18,15 +19,15 @@ import {
 } from "@/lib/receipt-settings";
 import { saveReceiptSettingsAction } from "./actions";
 
-const ACCEPT = "image/png,image/jpeg,image/webp";
-
 /**
  * Los ajustes del recibo, con la hoja a la vista mientras se tocan.
  *
- * Es un componente de cliente por dos razones: la firma se sube desde el
- * navegador directo al bucket (igual que los estatutos, por el techo de
- * 4,5 MB de Vercel; ver actions.ts), y elegir un color sin ver el papel
- * es elegir a ciegas — la vista previa es la mitad de la función.
+ * Es un componente de cliente por tres razones: la firma se dibuja o se
+ * limpia de una foto en el navegador (SignatureCapture: casi nadie tiene
+ * su firma como PNG), se sube desde el navegador directo al bucket (igual
+ * que los estatutos, por el techo de 4,5 MB de Vercel; ver actions.ts), y
+ * elegir un color sin ver el papel es elegir a ciegas — la vista previa es
+ * la mitad de la función.
  */
 export function ReceiptSettingsForm({
   settings,
@@ -72,6 +73,8 @@ export function ReceiptSettingsForm({
   const [uploaded, setUploaded] = useState<{ path: string; fileName: string } | null>(
     null
   );
+  /** La firma dibujada o sacada de una foto, todavía sin subir. */
+  const [pending, setPending] = useState<File | null>(null);
 
   // El blob local de la vista previa hay que soltarlo o queda colgado.
   const blobRef = useRef<string | null>(null);
@@ -137,17 +140,12 @@ export function ReceiptSettingsForm({
     setError(null);
 
     const fd = new FormData(form);
-    const file = fd.get("signature");
-    fd.delete("signature");
+    const file = removing ? null : pending;
 
-    if (file instanceof File && file.size > 0) {
-      if (!ACCEPT.split(",").includes(file.type)) {
-        setError("La firma tiene que ser PNG, JPG o WEBP.");
-        return;
-      }
+    if (file) {
       if (file.size > MAX_SIGNATURE_BYTES) {
         setError(
-          `La imagen supera los ${Math.round(MAX_SIGNATURE_BYTES / (1024 * 1024))} MB. Recortá la firma antes de subirla.`
+          `La firma supera los ${Math.round(MAX_SIGNATURE_BYTES / (1024 * 1024))} MB. Probá con una foto más cerca.`
         );
         return;
       }
@@ -217,25 +215,26 @@ export function ReceiptSettingsForm({
         </Field>
 
         <Field
-          label="Firma escaneada"
+          label="Firma del Tesorero/a"
           help={TREASURY_HELP.fields.firma}
           name="signature"
           hint={
             settings?.signature_path
-              ? "Subir otra reemplaza a la actual. PNG con fondo transparente es lo que mejor queda."
-              : "PNG, JPG o WEBP, hasta 2 MB. Un PNG con fondo transparente es lo que mejor queda."
+              ? "Ya hay una firma guardada: dibujar o fotografiar otra la reemplaza al guardar."
+              : "Dibujala acá o sacale una foto a la firma en papel. Se ve en el recibo de al lado antes de guardar."
           }
         >
-          <input
-            id="signature"
-            name="signature"
-            type="file"
-            accept={ACCEPT}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
+          <SignatureCapture
+            disabled={busy !== null}
+            onChange={(f) => {
+              setPending(f);
               if (f) showLocal(f);
+              else {
+                if (blobRef.current) URL.revokeObjectURL(blobRef.current);
+                blobRef.current = null;
+                setPreview(signatureUrl);
+              }
             }}
-            className="block w-full text-[13px] text-dark file:mr-3 file:rounded-lg file:border-0 file:bg-terra/10 file:px-3 file:py-2 file:text-[12px] file:font-semibold file:text-terra"
           />
         </Field>
 
@@ -256,7 +255,7 @@ export function ReceiptSettingsForm({
           </div>
         )}
 
-        {(settings?.signature_path || uploaded) && (
+        {(settings?.signature_path || uploaded || pending) && (
           <label className="flex items-center gap-2 text-[12.5px] text-dark">
             <input
               type="checkbox"
