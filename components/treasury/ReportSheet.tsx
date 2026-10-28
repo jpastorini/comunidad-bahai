@@ -2,6 +2,7 @@
 
 import { Fragment } from "react";
 import { BahaiStar } from "@/components/BahaiStar";
+import { SharePdfButton } from "@/components/treasury/SharePdfButton";
 import { categoryMeta } from "@/lib/budget";
 import {
   fmtAmount,
@@ -54,8 +55,11 @@ export function ReportSheet({
   institution,
   approvedBy,
   emittedBy,
+  reportId,
 }: {
   report: ReportSheetData;
+  /** Con id, la barra suma "Enviar por WhatsApp" (el PDF de la hoja). */
+  reportId?: string;
   localityName: string;
   /** La línea de quién emite (`institutionLine`): el nombre registrado de
    *  la Asamblea, o la estructura con la Asamblea de la que depende (082). */
@@ -76,6 +80,7 @@ export function ReportSheet({
 
       {/* Barra de acciones: no se imprime. */}
       <div className="cb-noprint mb-4 flex flex-wrap items-center justify-end gap-2">
+        {reportId && <SharePdfButton reportId={reportId} title={report.title} />}
         <button
           type="button"
           onClick={() => window.print()}

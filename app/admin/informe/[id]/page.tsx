@@ -3,11 +3,7 @@ import { notFound } from "next/navigation";
 import { BalanceSheet } from "@/components/treasury/BalanceSheet";
 import { ReportDeck } from "@/components/treasury/ReportDeck";
 import { ReportSheet } from "@/components/treasury/ReportSheet";
-import { requireAdmin } from "@/lib/auth";
-import { createSupabaseServer } from "@/lib/supabase/server";
-import { approverTitle, institutionLine } from "@/lib/institution";
-import { getReceiptLegal } from "@/lib/treasury-ledger";
-import { getReport } from "@/lib/treasury-reports";
+import { loadViewableReport } from "@/lib/treasury-report-view";
 
 /**
  * El informe a pantalla completa. Vive FUERA del grupo (panel) a
@@ -21,8 +17,8 @@ import { getReport } from "@/lib/treasury-reports";
  *
  * Acceso: NO exige el tag de Tesorería, porque un informe interno lo
  * tiene que poder abrir cualquier miembro de la Asamblea para aprobarlo.
- * Quién ve qué lo decide la RLS (migración 043): si la fila no es
- * visible para este usuario, la query vuelve vacía y esto es un 404.
+ * La regla vive en loadViewableReport(), que comparte con el PDF de la
+ * hoja interna.
  */
 export const dynamic = "force-dynamic";
 
@@ -31,45 +27,9 @@ export default async function VerInformePage({
 }: {
   params: { id: string };
 }) {
-  const session = await requireAdmin();
-  const supabase = createSupabaseServer();
-
-  const report = await getReport(supabase, params.id);
-  if (!report) notFound();
-  // El de otra localidad solo si una estructura se lo presentó a esta
-  // Asamblea (084); la RLS ya no lo devolvería en otro caso, pero el admin
-  // nacional lo lee todo y no tiene por qué abrirlo desde acá.
-  const own = report.locality_id === session.locality.id;
-  if (!own) {
-    const { data: presented } = await supabase
-      .from("structure_reports")
-      .select("id")
-      .eq("treasury_report_id", report.id)
-      .eq("parent_id", session.locality.id)
-      .eq("status", "presentado")
-      .maybeSingle();
-    if (!presented) notFound();
-  }
-
-  // Quién emite y quién aprueba: la Asamblea con su nombre registrado, o
-  // la estructura (082) y la Asamblea de la que depende. Es la de QUIEN
-  // EMITIÓ el informe, que en uno presentado no es la que mira.
-  const emitter = own
-    ? session.locality
-    : ((await supabase.from("localities").select("*").eq("id", report.locality_id).maybeSingle())
-        .data as typeof session.locality | null) ?? session.locality;
-  const legal = await getReceiptLegal(supabase, report.locality_id);
-  const institution = institutionLine(legal, emitter);
-  const approvedBy = approverTitle(legal, emitter);
-
-  const shared = {
-    title: report.title,
-    subtitle: report.subtitle,
-    periodFrom: report.period_from,
-    periodTo: report.period_to,
-    snapshot: report.snapshot,
-    editorial: report.editorial,
-  };
+  const view = await loadViewableReport(params.id);
+  if (!view) notFound();
+  const { session, report, own, emitter, legal, institution, approvedBy, shared } = view;
 
   // Solo el tesorero puede volver al editor; para el resto de la
   // Asamblea el informe es de lectura.
@@ -119,6 +79,7 @@ export default async function VerInformePage({
           institution={institution}
           approvedBy={approvedBy}
           emittedBy={report.editorial.signature?.name ?? null}
+          reportId={report.id}
         />
       </div>
     );

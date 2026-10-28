@@ -2,6 +2,7 @@ import Link from "next/link";
 import { TREASURY_HELP } from "@/lib/treasury-help";
 import { Banner, Card, PageHeader } from "@/components/admin/ui";
 import { CopyLinkButton } from "@/components/treasury/CopyLinkButton";
+import { SharePdfButton } from "@/components/treasury/SharePdfButton";
 import { ShareReportButton } from "@/components/treasury/ShareReportButton";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -176,6 +177,10 @@ function ReportCard({ report: r }: { report: TreasuryReport }) {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {r.status === "published" && r.audience === "internos" && (
+            // La hoja del acta también viaja como PDF por WhatsApp.
+            <SharePdfButton reportId={r.id} title={r.title} />
+          )}
           {r.status === "published" &&
             (interno ? (
               // Link interno: exige login y lo filtra la RLS. Nunca el

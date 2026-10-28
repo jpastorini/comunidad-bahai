@@ -1,15 +1,9 @@
-import fs from "node:fs";
-import path from "node:path";
 import { createElement, type ReactElement } from "react";
 import { NextResponse } from "next/server";
 import { notFound, redirect } from "next/navigation";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
-import {
-  BOOKLET_FONT_FILES,
-  FeastBooklet,
-  registerBookletFonts,
-  type BookletFontSources,
-} from "@/components/feast/FeastBooklet";
+import { FeastBooklet, registerBookletFonts } from "@/components/feast/FeastBooklet";
+import { pdfFontSources } from "@/lib/pdf-fonts";
 import { feastProgramFileName } from "@/lib/feast-program";
 import { loadFeastProgram } from "@/lib/feast-program-server";
 
@@ -31,21 +25,6 @@ export const runtime = "nodejs";
 // tope por defecto de la función (10 s en Hobby) queda justo.
 export const maxDuration = 60;
 
-/**
- * Las TTF viven en public/fonts. En local y en Vercel (gracias a
- * outputFileTracingIncludes) están en el filesystem; si no estuvieran,
- * se piden por URL a la propia app, que las sirve como estático.
- */
-function fontSources(origin: string): BookletFontSources {
-  const dir = path.join(process.cwd(), "public", "fonts");
-  const out = {} as BookletFontSources;
-  for (const name of BOOKLET_FONT_FILES) {
-    const local = path.join(dir, `${name}.ttf`);
-    out[name] = fs.existsSync(local) ? local : `${origin}/fonts/${name}.ttf`;
-  }
-  return out;
-}
-
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -55,7 +34,7 @@ export async function GET(
   if (res.kind === "not-started") redirect(`/fiestas/${params.id}`);
 
   const origin = new URL(request.url).origin;
-  const fonts = fontSources(origin);
+  const fonts = pdfFontSources(origin);
 
   try {
     registerBookletFonts(fonts);

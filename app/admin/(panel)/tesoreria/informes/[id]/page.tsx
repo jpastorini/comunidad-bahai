@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { Button, PageHeader } from "@/components/admin/ui";
+import { SharePdfButton } from "@/components/treasury/SharePdfButton";
 import { ShareReportButton } from "@/components/treasury/ShareReportButton";
 import { currentAssemblyYear, getAssemblyData, officerOf } from "@/lib/assembly";
 import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
@@ -56,6 +57,9 @@ export default async function EditarInformePage({
                 interno se pasa por la ruta del panel. */}
             {report.status === "published" && report.audience === "comunidad" && (
               <ShareReportButton token={report.share_token} title={report.title} />
+            )}
+            {report.audience === "internos" && (
+              <SharePdfButton reportId={report.id} title={report.title} />
             )}
             <Button variant="secondary" href={`/admin/informe/${report.id}`}>
               {report.audience === "comunidad" ? "Ver deck" : "Ver hoja"}

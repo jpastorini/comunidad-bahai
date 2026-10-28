@@ -46,6 +46,13 @@ const nextConfig = {
         "./node_modules/pdfkit/js/standard-fonts/**",
         "./node_modules/pdfkit/js/data/**",
       ],
+      // La hoja interna de Tesorería en PDF (para WhatsApp): Cormorant y
+      // Outfit, como el folleto de la Fiesta.
+      "/admin/informe/[id]/pdf": [
+        "./public/fonts/**",
+        "./node_modules/pdfkit/js/standard-fonts/**",
+        "./node_modules/pdfkit/js/data/**",
+      ],
       "/admin/tesoreria/traspaso/pdf": [
         "./node_modules/pdfkit/js/standard-fonts/**",
         "./node_modules/pdfkit/js/data/**",

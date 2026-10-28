@@ -2202,6 +2202,23 @@ define quién puede leer el informe.
 es el filtro `.eq("audience", "comunidad")` de `getPublicReport()`: esa
 función usa la service-role key, que ignora la RLS.
 
+**La hoja interna viaja por WhatsApp como PDF** (sin migración,
+2026-10-27): el botón "Enviar por WhatsApp" (`SharePdfButton`, en la hoja,
+en la lista de informes y en el editor) baja `/admin/informe/[id]/pdf` y lo
+pasa al menú de compartir del teléfono como archivo, con el link a la hoja
+en el texto; en la PC lo descarga. Decidido con el usuario frente a
+compartir solo el link al panel: se lee en el chat sin entrar a la app, y
+la hoja no lleva nombres de contribuyentes, así que reenviarla expone
+totales, como el papel que se lleva a la reunión. Sigue sin haber link
+público. El PDF (`components/treasury/ReportSheetPdf.tsx`) es la MISMA hoja
+sección por sección: **si se agrega una sección a `ReportSheet`, va
+también ahí**. El texto va en Cormorant (tiene ḍ, ḥ, Ḥ, ṭ) y las cifras en
+Outfit; Helvetica no sirve (sin ḍ ni signo menos). Un borrador sale con
+marca de agua. Página y PDF comparten el guard, `loadViewableReport()`
+(`lib/treasury-report-view.ts`). En iPhone, si el PDF tarda y Safari ya no
+deja compartir, el botón queda en "Enviar el PDF" y el segundo toque lo
+manda.
+
 `/admin/informe/[id]` renderiza el formato que corresponda y **no exige
 el tag** `can_manage_treasury`, porque un miembro de la Asamblea tiene
 que poder abrir el interno para aprobarlo; quién ve qué lo decide la RLS.
