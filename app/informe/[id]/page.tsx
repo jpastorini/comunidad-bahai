@@ -39,7 +39,10 @@ export default async function InformeComunidadPage({ params }: { params: { id: s
     // y la hoja cae al nombre de la localidad, que es lo que corresponde.
     const legal = await getReceiptLegal(supabase, session.locality.id);
     return (
-      <div className="min-h-dvh bg-bg px-4 py-6 sm:px-8">
+      <div
+        className="min-h-dvh bg-bg px-4 pb-6 sm:px-8"
+        style={{ paddingTop: "calc(var(--safe-top) + 24px)" }}
+      >
         <div className="mx-auto mb-3 max-w-[820px] cb-noprint">
           <Link href="/tesoreria" className="text-[12.5px] font-semibold text-terra hover:underline">
             ← Volver a la Tesorería
@@ -56,14 +59,10 @@ export default async function InformeComunidadPage({ params }: { params: { id: s
   }
 
   return (
-    <>
-      <ReportDeck report={shared} localityName={session.locality.name} />
-      <Link
-        href="/tesoreria"
-        className="fixed bottom-5 left-5 z-40 rounded-xl border border-black/10 bg-card/90 px-3.5 py-2 text-[12px] font-semibold text-dark shadow-card-elevated backdrop-blur hover:bg-bg"
-      >
-        ← Tesorería
-      </Link>
-    </>
+    <ReportDeck
+      report={shared}
+      localityName={session.locality.name}
+      back={{ href: "/tesoreria", label: "Tesorería" }}
+    />
   );
 }

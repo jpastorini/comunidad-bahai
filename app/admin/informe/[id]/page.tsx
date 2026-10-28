@@ -34,22 +34,38 @@ export default async function VerInformePage({
   // Solo el tesorero puede volver al editor; para el resto de la
   // Asamblea el informe es de lectura.
   const canEdit = own && session.profile.can_manage_treasury;
+  // La salida, para TODOS: esta pantalla no tiene el menú del panel y en
+  // la PWA instalada no hay botón atrás. El tesorero vuelve a su taller;
+  // el resto de la Asamblea, al Registro de informes.
+  const back = canEdit
+    ? { href: "/admin/tesoreria/informes", label: "Informes" }
+    : { href: "/admin/informes", label: "Informes" };
+
+  const topBar = (
+    <div className="mx-auto mb-3 flex max-w-[820px] items-center justify-between gap-3 text-[12.5px] font-semibold cb-noprint">
+      <Link href={back.href} className="text-terra hover:underline">
+        ← {back.label}
+      </Link>
+      {canEdit && (
+        <Link
+          href={`/admin/tesoreria/informes/${report.id}`}
+          className="text-terra hover:underline"
+        >
+          Volver al editor
+        </Link>
+      )}
+    </div>
+  );
 
   if (report.audience === "balance") {
     // Los datos fiscales del encabezado (nombre registrado, RUT,
     // domicilio). La ficha legal la lee cualquier admin de la localidad.
     return (
-      <div className="min-h-dvh bg-bg px-4 py-6 sm:px-8">
-        {canEdit && (
-          <div className="mx-auto mb-3 max-w-[820px] cb-noprint">
-            <Link
-              href={`/admin/tesoreria/informes/${report.id}`}
-              className="text-[12.5px] font-semibold text-terra hover:underline"
-            >
-              ← Volver al editor
-            </Link>
-          </div>
-        )}
+      <div
+        className="min-h-dvh bg-bg px-4 pb-6 sm:px-8"
+        style={{ paddingTop: "calc(var(--safe-top) + 24px)" }}
+      >
+        {topBar}
         <BalanceSheet
           report={shared}
           localityName={emitter.name}
@@ -62,17 +78,11 @@ export default async function VerInformePage({
 
   if (report.audience === "internos") {
     return (
-      <div className="min-h-dvh bg-bg px-4 py-6 sm:px-8">
-        {canEdit && (
-          <div className="mx-auto mb-3 max-w-[820px] cb-noprint">
-            <Link
-              href={`/admin/tesoreria/informes/${report.id}`}
-              className="text-[12.5px] font-semibold text-terra hover:underline"
-            >
-              ← Volver al editor
-            </Link>
-          </div>
-        )}
+      <div
+        className="min-h-dvh bg-bg px-4 pb-6 sm:px-8"
+        style={{ paddingTop: "calc(var(--safe-top) + 24px)" }}
+      >
+        {topBar}
         <ReportSheet
           report={shared}
           localityName={emitter.name}
@@ -91,6 +101,7 @@ export default async function VerInformePage({
         report={shared}
         localityName={emitter.name}
         institution={institution}
+        back={back}
       />
       {canEdit && (
         <Link

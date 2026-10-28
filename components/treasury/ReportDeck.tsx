@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BahaiStar } from "@/components/BahaiStar";
 import { categoryMeta } from "@/lib/budget";
@@ -45,12 +46,17 @@ export function ReportDeck({
   report,
   localityName,
   institution,
+  back,
 }: {
   report: ReportDeckData;
   localityName: string;
   /** Quién presenta (`institutionLine`). Sin esto, la AEL de la localidad;
    *  una estructura (082) lo pasa siempre. */
   institution?: string | null;
+  /** La salida del deck. En la PWA instalada no hay botón atrás del
+   *  navegador y esta pantalla no tiene el menú del panel: sin esto, la
+   *  única forma de salir era cerrar la app. */
+  back?: { href: string; label: string };
 }) {
   const line = institution ?? `Asamblea Espiritual Local de los Bahá'ís de ${localityName}`;
   const slides = useMemo(() => buildSlides(report, line), [report, line]);
@@ -124,13 +130,31 @@ export function ReportDeck({
       <style>{DECK_CSS}</style>
 
       {/* Marca de la Asamblea y contador, fijos como en una presentación. */}
-      <div className="cb-chrome absolute left-4 top-4 z-20 flex items-center gap-2 sm:left-7 sm:top-6">
-        <BahaiStar size={16} color="#C4A235" />
+      <div
+        className="cb-chrome absolute left-4 top-4 z-20 flex items-center gap-2 sm:left-7 sm:top-6"
+        style={{ marginTop: "var(--safe-top)" }}
+      >
+        {back && (
+          <Link
+            href={back.href}
+            className="tap mr-1 rounded-full border border-black/[0.07] bg-card/85 px-3 py-1.5 text-[11px] font-semibold text-dark shadow-card-soft backdrop-blur transition-colors hover:bg-bg"
+          >
+            ← {back.label}
+          </Link>
+        )}
+        {/* Con la salida a la vista, en el celular la estrella cede su
+            lugar: arriba a la derecha van tres controles más. */}
+        <span className={back ? "hidden sm:inline-flex" : "inline-flex"}>
+          <BahaiStar size={16} color="#C4A235" />
+        </span>
         <span className="hidden text-[11px] font-semibold tracking-[0.06em] text-muted sm:inline">
           {institution ?? `A.E.L. de los Bahá'ís de ${localityName}`}
         </span>
       </div>
-      <div className="cb-chrome absolute right-4 top-4 z-20 flex items-center gap-2 sm:right-7 sm:top-6">
+      <div
+        className="cb-chrome absolute right-4 top-4 z-20 flex items-center gap-2 sm:right-7 sm:top-6"
+        style={{ marginTop: "var(--safe-top)" }}
+      >
         <ToolButton
           label={fullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
           onClick={toggleFullscreen}
