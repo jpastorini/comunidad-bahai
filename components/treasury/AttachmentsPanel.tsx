@@ -62,10 +62,13 @@ type Props = {
   /** Monto del movimiento, para cuadrar el desglose. */
   entryAmount: number | null;
   currency: string;
+  /** El texto de ayuda cuando no hay nada adjunto (por defecto, el de la
+   *  factura de un gasto). */
+  emptyHint?: string;
 };
 
 export const AttachmentsPanel = forwardRef<AttachmentsHandle, Props>(
-  function AttachmentsPanel({ entryId, entryAmount, currency }, ref) {
+  function AttachmentsPanel({ entryId, entryAmount, currency, emptyHint }, ref) {
     const [saved, setSaved] = useState<SignedAttachment[]>([]);
     const [pending, setPending] = useState<Pending[]>([]);
     const [busy, setBusy] = useState(false);
@@ -270,8 +273,8 @@ export const AttachmentsPanel = forwardRef<AttachmentsHandle, Props>(
 
         {total === 0 ? (
           <p className="text-[11.5px] leading-snug text-muted">
-            Foto o PDF de la factura. Si el gasto junta varias, adjuntá una por
-            cada una y anotales el monto.
+            {emptyHint ??
+              "Foto o PDF de la factura. Si el gasto junta varias, adjuntá una por cada una y anotales el monto."}
           </p>
         ) : (
           <ul className="space-y-2">

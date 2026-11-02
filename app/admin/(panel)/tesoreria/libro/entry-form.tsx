@@ -123,10 +123,13 @@ export function EntryForm({
   );
 
   const amountValue = amountText.trim() ? parseMoney(amountText) : NaN;
-  // Las facturas son del gasto. En un ingreso el comprobante lo emitimos
+  // Las facturas son del gasto. En un aporte el comprobante lo emitimos
   // nosotros, así que el panel solo aparece si ese asiento ya tiene algo
-  // adjunto —para no esconderlo si alguna vez se cargó al revés.
-  const showAttachments = direction === "gasto" || attachmentCount > 0;
+  // adjunto —para no esconderlo si alguna vez se cargó al revés—. Un
+  // contra-asiento sí lo necesita: la nota de crédito o el comprobante de
+  // la devolución del proveedor es su respaldo.
+  const isAdjustment = !!entry?.adjusts_entry_id;
+  const showAttachments = direction === "gasto" || isAdjustment || attachmentCount > 0;
 
   const subcategory = catalog.subcategories.find((s) => s.id === subcategoryId);
   const categoryName = useMemo(() => {
@@ -351,6 +354,11 @@ export function EntryForm({
           entryId={entry?.id ?? null}
           entryAmount={Number.isFinite(amountValue) ? amountValue : null}
           currency={currency}
+          emptyHint={
+            isAdjustment
+              ? "Foto o PDF de la nota de crédito o del comprobante de la devolución."
+              : undefined
+          }
         />
       )}
 
