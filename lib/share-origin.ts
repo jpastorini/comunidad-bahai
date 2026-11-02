@@ -1,7 +1,7 @@
 import { LEGAL } from "./legal";
 
-/** Dominios viejos de la app: un link armado desde ahí sale con el nuevo. */
-const OLD_HOSTS = new Set(["mvdbahai.vercel.app"]);
+/** Dominios viejos de la app: el middleware los redirige al nuevo y un link armado desde ahí sale con el nuevo. */
+export const OLD_HOSTS = new Set(["mvdbahai.vercel.app"]);
 
 /**
  * El origen con que se arma un link para compartir (invitación, QR,
