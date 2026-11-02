@@ -2646,8 +2646,11 @@ Tres módulos puros debajo, con la misma separación que el Libro de Caja:
   no viven en el repo). Ubican las columnas **por nombre de encabezado**
   normalizado, nunca por posición, y si no reconocen el archivo fallan con
   mensaje: un extracto mal leído es peor que ninguno. `detectPlatform()`
-  reconoce Prex, BROU y Mercado Pago; se parsean Prex y BROU, Mercado
-  Pago devuelve "viene en el próximo paso". `cellDate()` acepta el serial
+  reconoce y parsea Prex, BROU y Mercado Pago (desde 2026-11-02:
+  `parseMercadoPago()` lee el informe de cobros "settlement" del Point;
+  la línea es el NETO y `grossAmount` el valor de la compra, así el motor
+  la cierra contra el aporte bruto + el gasto de comisión y retención,
+  igual que la comisión adentro de Prex; la fecha es la de aprobación). `cellDate()` acepta el serial
   de Excel, dd/mm/yyyy e ISO con hora; `cellNumber()` decide el decimal
   por el último separador ("1,600.00", "-5058.26", "1.500,50"). El BROU
   además entrega `memo` (el Asunto) por línea y `closingBalance` (el

@@ -130,7 +130,7 @@ export function ReconcileClient({
             label="Extracto de la plataforma"
             name="file"
             required
-            hint="Prex: Estado de cuenta → Excel · BROU: Saldos y Movimientos → Excel"
+            hint="Prex: Estado de cuenta → Excel · BROU: Saldos y Movimientos → Excel · Mercado Pago: informe de cobros (Excel)"
           >
             <input
               id="file"

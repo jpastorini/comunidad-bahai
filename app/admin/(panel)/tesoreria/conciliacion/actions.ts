@@ -144,7 +144,7 @@ export async function importStatementAction(formData: FormData): Promise<ImportR
   if ("error" in parsed) return failImport(parsed.error);
 
   const warnings = [...parsed.warnings];
-  const platformWord = { prex: /prex/i, brou: /brou/i, mercadopago: /mercado\s*pago|\bmp\b|point|pos\b/i }[
+  const platformWord = { prex: /prex/i, brou: /brou/i, mercadopago: /mercado\s*(pago|libre)|\bmp\b|point|pos\b/i }[
     parsed.platform
   ];
   if (!platformWord.test(accountName)) {

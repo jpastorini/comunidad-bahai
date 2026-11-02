@@ -195,10 +195,7 @@ export function parseStatement(rows: CellMatrix): ParsedStatement | ParseFailure
   }
   if (detected.platform === "prex") return parsePrex(rows, detected.headerRow);
   if (detected.platform === "brou") return parseBrou(rows, detected.headerRow);
-  return {
-    error: `Es un archivo de ${PLATFORM_LABELS[detected.platform]}. Por ahora la conciliación lee Prex y BROU; ${PLATFORM_LABELS[detected.platform]} viene en el próximo paso.`,
-    platform: detected.platform,
-  };
+  return parseMercadoPago(rows, detected.headerRow);
 }
 
 // ─── Prex ──────────────────────────────────────────────────────────────
@@ -300,6 +297,115 @@ export function parsePrex(rows: CellMatrix, headerRow: number): ParsedStatement 
     to: lines[lines.length - 1].date,
     closingBalance: null,
     warnings,
+  };
+}
+
+// ─── Mercado Pago ──────────────────────────────────────────────────────
+
+/**
+ * El informe de cobros de Mercado Pago ("settlement", el que baja la
+ * cuenta del Point): una fila por cobro con ID de operación, medio de
+ * pago, tipo de operación, valor de la compra, comisiones + IVA,
+ * retenciones, monto neto y las fechas de origen, aprobación y liberación
+ * (ISO con -03:00). Los importes vienen como texto ("200.00").
+ *
+ * La regla contable (079): el libro tiene el aporte por el BRUTO y un
+ * gasto por comisión y retención. A la cuenta entra el NETO. Así que la
+ * línea es el neto y `grossAmount` el valor de la compra: es el mismo
+ * caso que la comisión adentro de Prex, y el motor lo cierra contra los
+ * dos asientos. La fecha es la de aprobación, que es la del cobro (la
+ * que tiene el libro); la liberación puede llegar días después con
+ * tarjeta de crédito, y se anota en el memo cuando difiere.
+ */
+export function parseMercadoPago(rows: CellMatrix, headerRow: number): ParsedStatement | ParseFailure {
+  const header = (rows[headerRow] ?? []).map(normalizeHeader);
+  const col = (...starts: string[]) => header.findIndex((h) => starts.some((s) => h.startsWith(s)));
+  const cId = col("id de operacion");
+  const cMethod = col("tipo de medio de pago", "medio de pago");
+  const cType = col("tipo de operacion");
+  const cGross = col("valor de la compra", "valor");
+  const cNet = col("monto neto", "neto");
+  const cApproved = col("fecha de aprobacion");
+  const cOrigin = col("fecha de origen");
+  const cReleased = col("fecha de liberacion");
+  const cPlatform = col("plataforma de cobro");
+  if ((cApproved < 0 && cOrigin < 0) || cNet < 0) {
+    return {
+      error: "El archivo de Mercado Pago no trae la fecha de aprobación y el monto neto de cada cobro.",
+      platform: "mercadopago",
+    };
+  }
+
+  const lines: StatementLine[] = [];
+  const skipped: ParsedStatement["skipped"] = [];
+
+  for (let i = headerRow + 1; i < rows.length; i++) {
+    const r = rows[i] ?? [];
+    const row = i + 1;
+    if (r.every((c) => c == null || String(c).trim() === "")) continue;
+
+    const date = cellDate(r[cApproved >= 0 ? cApproved : cOrigin]) ?? cellDate(r[cOrigin]);
+    const amount = cellNumber(r[cNet]);
+    if (date == null && amount == null) continue;
+    if (date == null || amount == null) {
+      skipped.push({ row, reason: "sin fecha o sin monto neto legible" });
+      continue;
+    }
+    const type = cType >= 0 ? cellText(r[cType]) : "";
+    if (type && /rechaz|cancel|pendiente|en proceso/i.test(type)) {
+      skipped.push({ row, reason: `operación "${type}"` });
+      continue;
+    }
+    if (amount === 0) {
+      skipped.push({ row, reason: "importe cero" });
+      continue;
+    }
+
+    const id = cId >= 0 ? cellText(r[cId]) : "";
+    const gross = cGross >= 0 ? cellNumber(r[cGross]) : null;
+    // Una devolución puede venir con el valor de la compra en positivo y
+    // el neto en negativo: el bruto lleva el signo del neto.
+    const signedGross = gross == null ? null : Math.sign(amount) * Math.abs(gross);
+    const grossAmount =
+      signedGross != null && Math.abs(signedGross - amount) >= 0.005 ? round2(signedGross) : null;
+
+    const released = cReleased >= 0 ? cellDate(r[cReleased]) : null;
+    const description = [
+      type || "Cobro",
+      cMethod >= 0 ? cellText(r[cMethod]) : "",
+      cPlatform >= 0 ? cellText(r[cPlatform]) : "",
+      id ? `operación ${id}` : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+
+    lines.push({
+      key: `L${row}`,
+      row,
+      date,
+      amount: round2(amount),
+      currency: "UYU",
+      description,
+      reference: id || null,
+      grossAmount,
+      status: type || null,
+      memo: released && released !== date ? `Liberado el ${released.split("-").reverse().join("/")}` : null,
+    });
+  }
+
+  if (lines.length === 0) {
+    return { error: "El archivo de Mercado Pago no tiene cobros aprobados.", platform: "mercadopago" };
+  }
+  lines.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.row - b.row));
+
+  return {
+    platform: "mercadopago",
+    lines,
+    skipped,
+    from: lines[0].date,
+    to: lines[lines.length - 1].date,
+    closingBalance: null,
+    warnings: [],
   };
 }
 
