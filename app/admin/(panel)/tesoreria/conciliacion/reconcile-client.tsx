@@ -562,6 +562,7 @@ function FeeGapRow({
           date={m.line.line_date}
           candidates={candidates}
           elsewhere={elsewhere}
+          exclude={m.entries.map((e) => e.id)}
           busy={busy}
           onPick={link}
         />
@@ -770,6 +771,7 @@ function EntryPicker({
   date,
   candidates,
   elsewhere,
+  exclude,
   busy,
   onPick,
 }: {
@@ -779,6 +781,8 @@ function EntryPicker({
   date: string;
   candidates: CandidateEntry[];
   elsewhere: CandidateEntry[];
+  /** Los movimientos que ya están en el par de esta línea. */
+  exclude?: string[];
   busy: boolean;
   onPick: (entryId: string) => void;
 }) {
@@ -789,9 +793,9 @@ function EntryPicker({
   const own = useMemo(
     () =>
       candidates
-        .filter((e) => e.currency === currency && matchesTerms(e, terms))
+        .filter((e) => e.currency === currency && !exclude?.includes(e.id) && matchesTerms(e, terms))
         .sort((a, b) => score(a, target, date) - score(b, target, date)),
-    [candidates, currency, terms, target, date]
+    [candidates, currency, exclude, terms, target, date]
   );
   // Sin búsqueda, de las otras cuentas se muestra solo lo que tiene el
   // importe exacto: es el diagnóstico ("está cargado en otra cuenta") sin
