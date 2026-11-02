@@ -40,7 +40,9 @@ export type ProposalKind =
   | "anulacion"
   | "contra_asiento"
   | "comprobante"
-  | "importar_extracto";
+  | "importar_extracto"
+  /** Las acciones a mano de Conciliación; `fields.op` dice cuál. */
+  | "conciliacion";
 
 export type Proposal = {
   /** El id del tool_use que la pidió: el resultado vuelve con ese id. */

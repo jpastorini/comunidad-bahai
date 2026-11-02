@@ -18,7 +18,13 @@ import {
   type LedgerNames,
 } from "@/lib/treasury-ledger-filters";
 import { addMoney, formatMoney } from "@/lib/treasury-format";
-import { getReconciledEntryIds, getAccountReconciliation } from "@/lib/treasury-statements";
+import {
+  getAccountReconciliation,
+  getReconciledEntryIds,
+  type AccountReconciliation,
+  type LineView,
+  type StoredLine,
+} from "@/lib/treasury-statements";
 import { getTreasuryAttention } from "@/lib/treasury-attention";
 import { getTreasuryGuide } from "@/lib/treasury-guide";
 import { getTreasuryProgress } from "@/lib/treasury-progress";
@@ -177,7 +183,7 @@ export const TOOLS: Anthropic.Tool[] = [
   ),
   tool(
     "conciliacion_de_cuenta",
-    "El estado de la conciliación de una cuenta contra los extractos importados: líneas del extracto sin par, movimientos del libro sin par, cobertura, saldo declarado y movimientos sin par de otras cuentas que podrían ser los que faltan.",
+    "El estado de la conciliación de una cuenta contra los extractos importados: líneas del extracto sin par, movimientos del libro sin par, líneas descartadas con su motivo, lo ya conciliado (los grupos que no cierran primero), los marcados «no pasa por el banco», candidatos para vincular, cobertura, saldo declarado y movimientos sin par de otras cuentas que podrían ser los que faltan. Trae los ids que usan las herramientas proponer_* de conciliación.",
     { cuenta_id: { type: "string", description: "Id de la cuenta." } }
   ),
   tool(
@@ -292,6 +298,45 @@ export const TOOLS: Anthropic.Tool[] = [
       motivo: { type: "string", description: "Por qué se corrige; queda registrado." },
     }
   ),
+  tool(
+    "proponer_vincular_extracto",
+    "Propone vincular a mano una o varias líneas del extracto con uno o varios movimientos del libro de la MISMA cuenta y moneda (una transferencia y su comisión contra una línea, varios cobros del Point contra la canasta). Si una línea estaba descartada, vuelve a contar. Un movimiento cargado en otra cuenta no se vincula: primero se le corrige la cuenta. Los ids salen de conciliacion_de_cuenta. NO escribe hasta que el tesorero confirma.",
+    {
+      lineas_ids: { type: "array", items: { type: "string" }, description: "Ids de las líneas del extracto." },
+      movimientos_ids: { type: "array", items: { type: "string" }, description: "Ids de los movimientos del libro." },
+    }
+  ),
+  tool(
+    "proponer_descartar_linea",
+    "Propone marcar que una línea pendiente del extracto NO corresponde al libro (una devolución, una línea repetida por un cambio de formato, algo de otra cuenta). Deja de pedir movimiento y no suma en el total del extracto. NO escribe hasta que el tesorero confirma.",
+    {
+      linea_id: { type: "string" },
+      motivo: { type: "string", description: "Por qué no corresponde; queda registrado." },
+    }
+  ),
+  tool(
+    "proponer_deshacer_linea",
+    "Propone volver a pendiente una línea del extracto: si estaba descartada, deshace el descarte; si estaba vinculada, suelta el vínculo (un grupo se suelta entero). Los movimientos del libro no se tocan. NO escribe hasta que el tesorero confirma.",
+    { linea_id: { type: "string" } }
+  ),
+  tool(
+    "proponer_marcar_sin_banco",
+    "Propone marcar que un movimiento del libro no pasa ni va a pasar por el banco (un ajuste de saldo, una comisión cargada por error junto con su contra-asiento), para que deje de figurar como pendiente en la conciliación. NO escribe hasta que el tesorero confirma.",
+    {
+      movimiento_id: { type: "string" },
+      motivo: { type: "string", description: "Por qué no pasa por el banco; queda registrado." },
+    }
+  ),
+  tool(
+    "proponer_quitar_sin_banco",
+    "Propone quitarle a un movimiento la marca de «no pasa por el banco»: vuelve a esperar su línea del extracto. NO escribe hasta que el tesorero confirma.",
+    { movimiento_id: { type: "string" } }
+  ),
+  tool(
+    "proponer_recruzar_extracto",
+    "Propone volver a correr el cruce automático del extracto de una cuenta contra el libro, sin importar nada: después de cargar o corregir en el libro lo que faltaba. Los vínculos hechos a mano no se tocan. NO escribe hasta que el tesorero confirma.",
+    { cuenta_id: { type: "string" } }
+  ),
 ];
 
 /** Qué dice la pantalla mientras corre cada herramienta. */
@@ -316,6 +361,12 @@ export const TOOL_LABELS: Record<string, string> = {
   leer_planilla: "Leyendo la planilla",
   proponer_adjuntar_comprobante: "Preparando el comprobante",
   proponer_importar_extracto: "Preparando la importación",
+  proponer_vincular_extracto: "Preparando el vínculo",
+  proponer_descartar_linea: "Preparando el descarte",
+  proponer_deshacer_linea: "Preparando la propuesta",
+  proponer_marcar_sin_banco: "Preparando la marca",
+  proponer_quitar_sin_banco: "Preparando la propuesta",
+  proponer_recruzar_extracto: "Preparando el cruce",
 };
 
 // ─── Utilidades ────────────────────────────────────────────────────────
@@ -613,23 +664,32 @@ async function conciliacion(ctx: ToolContext, input: Input): Promise<ToolOutcome
   if (!accountId) return err("Falta la cuenta.");
   const r = await getAccountReconciliation(ctx.supabase, accountId);
   if (!r) return err("La conciliación todavía no está disponible (falta la migración 061).");
-  const line = (l: (typeof r.pending)[number]) => ({
-    fecha: l.line_date,
-    monto: l.amount,
-    moneda: l.currency,
-    descripcion: l.description,
-    asunto: l.memo,
-    referencia: l.reference,
-  });
+  const LIMIT = 80;
+  // Los grupos que no cierran primero: son los que piden algo.
+  const open = (g: LineView) => Math.abs(g.diff) >= 0.005;
+  const groups = [...r.matched].sort((a, b) => Number(open(b)) - Number(open(a)));
   return ok({
     cobertura_del_extracto: r.coverage,
     saldo_declarado: r.latestBalance,
     totales: r.totals,
     importaciones: r.imports.length,
-    lineas_del_extracto_sin_par: r.pending.map(line),
-    movimientos_del_libro_sin_par: r.pendingEntries,
-    lineas_conciliadas: r.matched.length,
-    lineas_descartadas: r.dismissed.length,
+    lineas_del_extracto_sin_par: r.pending.slice(0, LIMIT).map(storedLineOut),
+    movimientos_del_libro_sin_par: r.pendingEntries.slice(0, LIMIT).map(entryOut),
+    movimientos_posteriores_al_extracto: r.laterEntries.slice(0, LIMIT).map(entryOut),
+    lineas_descartadas: r.dismissed.slice(0, LIMIT).map((l) => ({
+      ...storedLineOut(l),
+      motivo: l.dismiss_reason,
+      descartada_por_el_motor: l.dismissed_auto,
+    })),
+    conciliadas: groups.slice(0, LIMIT).map((g) => ({
+      lineas: g.lines.map(storedLineOut),
+      movimientos: g.entries.map(entryOut),
+      tipo: g.kinds,
+      vinculado_a_mano: g.manual,
+      ...(open(g) ? { diferencia_sin_cerrar: g.diff } : {}),
+    })),
+    no_pasan_por_el_banco: r.offBank.map((o) => ({ ...entryOut(o.entry), motivo: o.reason })),
+    candidatos_para_vincular: r.candidates.slice(0, LIMIT).map(entryOut),
     sin_par_en_otras_cuentas: r.elsewhere.map((e) => ({
       id: e.id,
       fecha: e.entry_date,
@@ -639,8 +699,22 @@ async function conciliacion(ctx: ToolContext, input: Input): Promise<ToolOutcome
       detalle: e.description,
       contribuyente: e.contributor_name,
     })),
+    ...(r.pending.length > LIMIT || r.matched.length > LIMIT || r.dismissed.length > LIMIT
+      ? { aviso: `Las listas se cortaron en ${LIMIT}.` }
+      : {}),
   });
 }
+
+const storedLineOut = (l: StoredLine) => ({
+  id: l.id,
+  fecha: l.line_date,
+  monto: l.amount,
+  moneda: l.currency,
+  descripcion: l.description,
+  asunto: l.memo,
+  referencia: l.reference,
+  ...(l.gross_amount != null && l.gross_amount !== l.amount ? { bruto: l.gross_amount } : {}),
+});
 
 async function auditoria(ctx: ToolContext): Promise<ToolOutcome> {
   const { data, error } = await ctx.supabase
@@ -1107,6 +1181,7 @@ const entryOut = (e: ReconcileEntry) => ({
   rubro: e.rubro,
   detalle: e.description,
   recibo: e.receipt_number,
+  ...(e.voided_at ? { anulado: true } : {}),
 });
 
 async function revisarExtracto(ctx: ToolContext, input: Input): Promise<ToolOutcome> {
@@ -1241,6 +1316,274 @@ async function proponerImportarExtracto(ctx: ToolContext, input: Input, toolUseI
   );
 }
 
+// ─── Conciliación a mano ───────────────────────────────────────────────
+
+const lineLabel = (l: StoredLine) =>
+  `${l.line_date} · ${money(l.amount, l.currency)} · ${l.description}${l.memo ? ` (${l.memo})` : ""}`;
+const recEntryLabel = (e: ReconcileEntry) =>
+  `${e.entry_date} · ${money(e.amount, e.currency)} · ${e.rubro ?? "sin rubro"}` +
+  `${e.description ? ` · ${e.description}` : ""}${e.receipt_number ? ` · recibo ${e.receipt_number}` : ""}` +
+  `${e.voided_at ? " · ANULADO" : ""}`;
+const closes = (diff: number) => Math.abs(diff) < 0.005;
+
+type LineState = {
+  rec: AccountReconciliation;
+  line: StoredLine;
+  state: "pendiente" | "descartada" | "conciliada";
+  group: LineView | null;
+};
+
+/** Dónde está parada una línea del extracto en la conciliación de su cuenta. */
+async function lineState(ctx: ToolContext, lineId: string | null): Promise<LineState | string> {
+  if (!lineId) return "Falta la línea del extracto.";
+  const { data } = await ctx.supabase
+    .from("treasury_statement_lines")
+    .select("account_id")
+    .eq("id", lineId)
+    .maybeSingle();
+  if (!data) return "Esa línea del extracto no existe.";
+  const rec = await getAccountReconciliation(ctx.supabase, data.account_id as string);
+  if (!rec) return "La conciliación todavía no está disponible (falta la migración 061).";
+  const group = rec.matched.find((g) => g.lines.some((l) => l.id === lineId)) ?? null;
+  if (group) return { rec, line: group.lines.find((l) => l.id === lineId)!, state: "conciliada", group };
+  const dismissed = rec.dismissed.find((l) => l.id === lineId);
+  if (dismissed) return { rec, line: dismissed, state: "descartada", group: null };
+  const pending = rec.pending.find((l) => l.id === lineId);
+  if (pending) return { rec, line: pending, state: "pendiente", group: null };
+  return "Esa línea del extracto no existe.";
+}
+
+const idList = (raw: unknown): string[] =>
+  Array.isArray(raw)
+    ? [...new Set(raw.filter((x): x is string => typeof x === "string" && x.length > 0))]
+    : [];
+
+function daysBetween(a: string, b: string): number {
+  return Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86_400_000);
+}
+
+async function proponerVincular(ctx: ToolContext, input: Input, toolUseId: string): Promise<ToolOutcome> {
+  const lineIds = idList(input.lineas_ids).slice(0, 20);
+  const entryIds = idList(input.movimientos_ids).slice(0, 20);
+  if (lineIds.length === 0) return err("Falta al menos una línea del extracto.");
+  if (entryIds.length === 0) return err("Falta al menos un movimiento del libro.");
+
+  const first = await lineState(ctx, lineIds[0]);
+  if (typeof first === "string") return err(first);
+  const { rec } = first;
+  const states: LineState[] = [first];
+  for (const id of lineIds.slice(1)) {
+    const st = await lineState(ctx, id);
+    if (typeof st === "string") return err(st);
+    if (st.line.account_id !== first.line.account_id) {
+      return err("Las líneas son de cuentas distintas: un vínculo es dentro de una cuenta.");
+    }
+    states.push(st);
+  }
+  for (const st of states) {
+    if (st.line.currency !== first.line.currency) return err("Las líneas están en monedas distintas.");
+    if (st.group && closes(st.group.diff)) {
+      return err(`La línea ${lineLabel(st.line)} ya cierra con el libro. Si está mal, proponé deshacerla primero.`);
+    }
+  }
+
+  // Los movimientos: de esta cuenta, vivos, y libres o de un grupo que no cierra.
+  const known = new Map<string, ReconcileEntry>();
+  for (const e of [...rec.pendingEntries, ...rec.laterEntries, ...rec.candidates]) known.set(e.id, e);
+  const closedEntries = new Set<string>();
+  for (const g of rec.matched) {
+    for (const e of g.entries) {
+      if (closes(g.diff)) closedEntries.add(e.id);
+      else known.set(e.id, e);
+    }
+  }
+  const entries: ReconcileEntry[] = [];
+  for (const id of entryIds) {
+    const e = known.get(id);
+    if (e) {
+      if (e.currency !== first.line.currency) return err(`El movimiento ${recEntryLabel(e)} está en otra moneda que la línea.`);
+      entries.push(e);
+      continue;
+    }
+    if (closedEntries.has(id)) {
+      return err("Uno de los movimientos ya cierra contra otra línea del extracto. Si está mal, proponé deshacer esa línea primero.");
+    }
+    if (rec.offBank.some((o) => o.entry.id === id)) {
+      return err("Uno de los movimientos está marcado como que no pasa por el banco: primero proponé quitarle la marca.");
+    }
+    const other = await loadOne(ctx, id);
+    if (!other) return err("Uno de los movimientos no existe.");
+    if (other.voided_at) return err("Uno de los movimientos está anulado: no cierra contra el banco.");
+    if (other.is_opening_balance) return err("Un saldo de apertura no es un movimiento del banco.");
+    if (other.account_id !== first.line.account_id) {
+      return err(
+        "Uno de los movimientos está cargado en otra cuenta del libro. No se vincula así: primero proponé corregirle la cuenta (proponer_correccion, o un contra-asiento si el mes está cerrado) y después el vínculo."
+      );
+    }
+    return err("Uno de los movimientos está lejos de las fechas del extracto: confirmá con buscar_movimientos que sea el correcto.");
+  }
+
+  // Lo que ya tenía el grupo de alguna línea entra en la cuenta.
+  const allLines = new Map<string, StoredLine>();
+  const allEntries = new Map<string, ReconcileEntry>();
+  for (const st of states) {
+    allLines.set(st.line.id, st.line);
+    for (const l of st.group?.lines ?? []) allLines.set(l.id, l);
+    for (const e of st.group?.entries ?? []) allEntries.set(e.id, e);
+  }
+  for (const e of entries) allEntries.set(e.id, e);
+  const lineSum = [...allLines.values()].reduce((acc, l) => addMoney(acc, l.amount), 0);
+  const entrySum = [...allEntries.values()].reduce((acc, e) => addMoney(acc, e.amount), 0);
+  const diff = addMoney(lineSum, -entrySum);
+
+  const lines: ProposalLine[] = [
+    ...[...allLines.values()].map((l) => ({ label: "Extracto", value: lineLabel(l) })),
+    ...entries.map((e) => ({ label: "Libro", value: recEntryLabel(e) })),
+    ...[...allEntries.values()]
+      .filter((e) => !entries.some((x) => x.id === e.id))
+      .map((e) => ({ label: "Ya vinculado", value: recEntryLabel(e) })),
+    {
+      label: "Cierra",
+      value: closes(diff) ? "Sí, las sumas coinciden" : `No: quedan ${money(diff, first.line.currency)} de diferencia`,
+    },
+  ];
+  const warnings: string[] = [];
+  if (!closes(diff)) {
+    warnings.push(
+      diff < 0
+        ? "El libro suma más que el extracto: falta una línea o sobra un movimiento."
+        : "El extracto suma más que el libro: suele ser una comisión cobrada adentro que falta registrar como gasto."
+    );
+  }
+  for (const st of states) {
+    if (st.state === "descartada") warnings.push(`La línea del ${st.line.line_date} estaba descartada: vuelve a contar.`);
+  }
+  if (entries.some((e) => Math.abs(daysBetween(e.entry_date, first.line.line_date)) > DEFAULT_WINDOW_DAYS)) {
+    warnings.push("Hay movimientos con más de tres días de diferencia con el extracto: fijate que sean los correctos.");
+  }
+
+  return proposal(
+    toolUseId,
+    "conciliacion",
+    "Vincular el extracto con el libro",
+    lines,
+    {
+      op: "vincular",
+      lines: JSON.stringify(states.map((st) => st.line.id)),
+      entries: JSON.stringify(entries.map((e) => e.id)),
+    },
+    warnings
+  );
+}
+
+async function proponerDescartarLinea(ctx: ToolContext, input: Input, toolUseId: string): Promise<ToolOutcome> {
+  const reason = s(input.motivo);
+  if (!reason || reason.length < 3) return err("Falta el motivo: queda registrado en la línea.");
+  const st = await lineState(ctx, s(input.linea_id));
+  if (typeof st === "string") return err(st);
+  if (st.state === "descartada") return err("Esa línea ya está descartada.");
+  if (st.state === "conciliada") return err("Esa línea está vinculada al libro: primero proponé deshacerla.");
+  return proposal(
+    toolUseId,
+    "conciliacion",
+    "Marcar que una línea no corresponde al libro",
+    [
+      { label: "Extracto", value: lineLabel(st.line) },
+      { label: "Motivo", value: reason },
+    ],
+    { op: "descartar", line_id: st.line.id, reason },
+    ["La línea deja de pedir un movimiento y no suma en el total del extracto. Se puede deshacer."]
+  );
+}
+
+async function proponerDeshacerLinea(ctx: ToolContext, input: Input, toolUseId: string): Promise<ToolOutcome> {
+  const st = await lineState(ctx, s(input.linea_id));
+  if (typeof st === "string") return err(st);
+  if (st.state === "pendiente") return err("Esa línea ya está pendiente: no hay nada que deshacer.");
+  const lines: ProposalLine[] = [];
+  const warnings: string[] = [];
+  let ids = [st.line.id];
+  if (st.group) {
+    ids = st.group.lines.map((l) => l.id);
+    for (const l of st.group.lines) lines.push({ label: "Extracto", value: lineLabel(l) });
+    for (const e of st.group.entries) lines.push({ label: "Libro", value: recEntryLabel(e) });
+    if (ids.length > 1) warnings.push(`Es un grupo: se sueltan las ${ids.length} líneas juntas.`);
+  } else {
+    lines.push({ label: "Extracto", value: lineLabel(st.line) });
+    if (st.line.dismiss_reason) lines.push({ label: "Se descartó por", value: st.line.dismiss_reason });
+  }
+  warnings.push("Las líneas vuelven a pendientes; los movimientos del libro no se tocan.");
+  return proposal(
+    toolUseId,
+    "conciliacion",
+    st.group ? "Deshacer un vínculo con el libro" : "Volver a pendiente una línea descartada",
+    lines,
+    { op: "deshacer", lines: JSON.stringify(ids) },
+    warnings
+  );
+}
+
+async function proponerMarcaBanco(
+  ctx: ToolContext,
+  input: Input,
+  toolUseId: string,
+  mark: boolean
+): Promise<ToolOutcome> {
+  const e = await loadOne(ctx, s(input.movimiento_id));
+  if (!e) return err("Ese movimiento no existe.");
+  const names = namesOf(await catalogOf(ctx));
+  const lines: ProposalLine[] = [
+    { label: "Movimiento", value: `${e.entry_date} · ${money(e.amount, e.currency)}` },
+    { label: "Cuenta", value: names.accounts.get(e.account_id) ?? "—" },
+    { label: "Rubro", value: names.subcategories.get(e.subcategory_id) ?? "—" },
+  ];
+  if (e.description) lines.push({ label: "Detalle", value: e.description });
+  if (!mark) {
+    return proposal(
+      toolUseId,
+      "conciliacion",
+      "Quitar la marca de «no pasa por el banco»",
+      lines,
+      { op: "quitar_sin_banco", entry_id: e.id },
+      ["El movimiento vuelve a esperar su línea del extracto."]
+    );
+  }
+  const reason = s(input.motivo);
+  if (!reason || reason.length < 3) return err("Falta el motivo: queda registrado.");
+  if (e.voided_at) return err("Un movimiento anulado ya no cuenta para la conciliación.");
+  if (e.is_opening_balance) return err("Un saldo de apertura ya no cuenta para la conciliación.");
+  lines.push({ label: "Motivo", value: reason });
+  return proposal(
+    toolUseId,
+    "conciliacion",
+    "Marcar que un movimiento no pasa por el banco",
+    lines,
+    { op: "sin_banco", entry_id: e.id, reason },
+    ["Deja de figurar como pendiente en la conciliación de la cuenta. Se puede deshacer."]
+  );
+}
+
+async function proponerRecruzar(ctx: ToolContext, input: Input, toolUseId: string): Promise<ToolOutcome> {
+  const cat = await catalogOf(ctx);
+  const account = cat.accounts.find((a) => a.id === s(input.cuenta_id));
+  if (!account) return err("Esa cuenta no está en el catálogo.");
+  const rec = await getAccountReconciliation(ctx.supabase, account.id);
+  if (!rec) return err("La conciliación todavía no está disponible (falta la migración 061).");
+  if (!rec.coverage) return err("Esa cuenta no tiene extractos importados.");
+  return proposal(
+    toolUseId,
+    "conciliacion",
+    "Volver a cruzar el extracto con el libro",
+    [
+      { label: "Cuenta", value: account.name },
+      { label: "Líneas pendientes", value: String(rec.pending.length) },
+      { label: "Movimientos sin par", value: String(rec.pendingEntries.length) },
+    ],
+    { op: "recruzar", account_id: account.id },
+    ["Los vínculos hechos a mano no se tocan."]
+  );
+}
+
 // ─── Despacho ──────────────────────────────────────────────────────────
 
 export async function runTool(
@@ -1291,6 +1634,18 @@ export async function runTool(
         return await proponerAdjuntarComprobante(ctx, input, toolUseId);
       case "proponer_importar_extracto":
         return await proponerImportarExtracto(ctx, input, toolUseId);
+      case "proponer_vincular_extracto":
+        return await proponerVincular(ctx, input, toolUseId);
+      case "proponer_descartar_linea":
+        return await proponerDescartarLinea(ctx, input, toolUseId);
+      case "proponer_deshacer_linea":
+        return await proponerDeshacerLinea(ctx, input, toolUseId);
+      case "proponer_marcar_sin_banco":
+        return await proponerMarcaBanco(ctx, input, toolUseId, true);
+      case "proponer_quitar_sin_banco":
+        return await proponerMarcaBanco(ctx, input, toolUseId, false);
+      case "proponer_recruzar_extracto":
+        return await proponerRecruzar(ctx, input, toolUseId);
       default:
         return err(`No existe la herramienta ${name}.`);
     }

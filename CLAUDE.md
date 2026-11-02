@@ -548,6 +548,21 @@ tarjeta.
   copia en `treasury-receipts` o en `extractos`, por el camino de siempre.
   Si el comprobante falla, el movimiento ya quedó y se avisa.
 
+**Conciliación a mano (sin migración, 2026-11-02).** El asistente decía
+"no tengo herramientas para deshacer un descarte ni para vincular líneas:
+lo tenés que hacer vos". Ahora `conciliacion_de_cuenta` trae los ids y todo
+el estado (descartadas con su motivo, grupos que no cierran primero,
+"no pasa por el banco", candidatos) y hay seis tarjetas, todas
+`kind: "conciliacion"` con `fields.op`: **vincular** (N líneas × M
+movimientos; `execute.ts` arma los pares mínimos que conectan el grupo, la
+primera línea con cada movimiento y cada otra línea con el primero),
+**descartar**, **deshacer** (un grupo se suelta entero), **marcar** y
+**quitar** "no pasa por el banco", y **volver a cruzar**. Ejecutan los
+MISMOS actions de los botones de Conciliación. Un movimiento cargado en
+otra cuenta no se vincula: el asistente propone corregirle la cuenta
+primero. Probado en vivo contra Prex: encontró la línea atada a un recibo
+anulado y un pago con un aporte marcado "no pasa por el banco" por error.
+
 ⚠️ Hasta que corra la 092, adjuntar dice "falta aplicar la migración 092"
 y el asistente sigue andando sin archivos.
 
@@ -3514,7 +3529,8 @@ cambia nada.
 - **Estrenar el asistente** (la 090 se aplicó el 2026-11-02): las lecturas y
   las propuestas se probaron en vivo contra la base con service-role; falta
   CONFIRMAR una tarjeta en producción (necesita la sesión) y ver que el
-  movimiento aparezca en el Libro con su recibo. Con la 092 (archivos):
+  movimiento aparezca en el Libro con su recibo. Con la 092 (archivos,
+  aplicada el 2026-11-02):
   pasarle una factura real y confirmar el gasto con el comprobante, y un
   extracto de Prex o BROU para revisar e importar. Leer un PDF con la Files
   API se probó en vivo; el resto necesita la sesión.

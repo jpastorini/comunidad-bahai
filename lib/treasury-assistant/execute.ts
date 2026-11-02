@@ -7,7 +7,15 @@ import {
   voidEntryAction,
 } from "@/app/admin/(panel)/tesoreria/libro/actions";
 import { uploadAttachmentAction } from "@/app/admin/(panel)/tesoreria/libro/attachment-actions";
-import { importStatementAction } from "@/app/admin/(panel)/tesoreria/conciliacion/actions";
+import {
+  dismissLineAction,
+  importStatementAction,
+  linkLineAction,
+  markOffBankAction,
+  rematchAction,
+  undoLineAction,
+  unmarkOffBankAction,
+} from "@/app/admin/(panel)/tesoreria/conciliacion/actions";
 import { PLATFORM_LABELS } from "@/lib/bank-statements";
 import { getFile, readAsFile } from "./files";
 import type { AttachedFile, Proposal } from "./types";
@@ -60,6 +68,8 @@ export async function executeProposal(
       const warnings = r.warnings.length > 0 ? ` Avisos: ${r.warnings.join(" ")}` : "";
       return { ok: true, message: `${parts.join(", ")}.${warnings}` };
     }
+    case "conciliacion":
+      return executeReconciliation(p.fields);
     case "transferencia": {
       const r = await saveTransferAction(fd);
       return r.ok
@@ -78,6 +88,75 @@ export async function executeProposal(
         ? { ok: true, message: "Contra-asiento registrado con fecha de hoy." }
         : { ok: false, message: r.error ?? "No se pudo revertir." };
     }
+  }
+}
+
+const ids = (raw: string | undefined): string[] => {
+  try {
+    const v = JSON.parse(raw ?? "[]");
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Las acciones a mano de Conciliación, por los mismos actions que los
+ * botones de esa pantalla. Vincular arma un grupo con el mínimo de pares
+ * que lo conecta (la primera línea con cada movimiento, y cada otra línea
+ * con el primer movimiento): la pantalla lo agrupa igual (089).
+ */
+async function executeReconciliation(
+  f: Record<string, string>
+): Promise<{ ok: boolean; message: string }> {
+  const fail = (error: string | null, fallback: string) => ({ ok: false, message: error ?? fallback });
+  switch (f.op) {
+    case "vincular": {
+      const lines = ids(f.lines);
+      const entries = ids(f.entries);
+      if (lines.length === 0 || entries.length === 0) return { ok: false, message: "La propuesta no trae qué vincular." };
+      const pairs: Array<[string, string]> = [
+        ...entries.map((e): [string, string] => [lines[0], e]),
+        ...lines.slice(1).map((l): [string, string] => [l, entries[0]]),
+      ];
+      let done = 0;
+      for (const [line, entry] of pairs) {
+        const r = await linkLineAction(line, entry);
+        if (!r.ok && !r.error?.includes("ya está vinculado")) {
+          const partial = done > 0 ? ` (${done} de ${pairs.length} pares quedaron hechos; revisalo en Conciliación)` : "";
+          return { ok: false, message: `${r.error ?? "No se pudo vincular."}${partial}` };
+        }
+        done++;
+      }
+      return { ok: true, message: "Vinculado en Conciliación." };
+    }
+    case "descartar": {
+      const r = await dismissLineAction(f.line_id, f.reason);
+      return r.ok ? { ok: true, message: "La línea quedó como que no corresponde al libro." } : fail(r.error, "No se pudo descartar.");
+    }
+    case "deshacer": {
+      const r = await undoLineAction(ids(f.lines));
+      return r.ok ? { ok: true, message: "La línea volvió a pendientes." } : fail(r.error, "No se pudo deshacer.");
+    }
+    case "sin_banco": {
+      const r = await markOffBankAction(f.entry_id, f.reason);
+      return r.ok ? { ok: true, message: "Marcado: no pasa por el banco." } : fail(r.error, "No se pudo marcar.");
+    }
+    case "quitar_sin_banco": {
+      const r = await unmarkOffBankAction(f.entry_id);
+      return r.ok ? { ok: true, message: "Se quitó la marca: vuelve a esperar su línea." } : fail(r.error, "No se pudo quitar la marca.");
+    }
+    case "recruzar": {
+      const r = await rematchAction(f.account_id);
+      if (!r.ok) return fail(r.error, "No se pudo cruzar.");
+      const n = r.matchedCount ?? 0;
+      return {
+        ok: true,
+        message: n === 0 ? "Cruce hecho: no apareció ningún par nuevo." : `Cruce hecho: ${n === 1 ? "un par nuevo" : `${n} pares nuevos`}.`,
+      };
+    }
+    default:
+      return { ok: false, message: "Acción de conciliación desconocida." };
   }
 }
 
