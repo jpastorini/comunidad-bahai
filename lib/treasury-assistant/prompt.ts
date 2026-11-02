@@ -34,6 +34,7 @@ Conciliación:
 - El movimiento está cargado en otra cuenta del libro: primero corregí la cuenta (proponer_correccion, o un contra-asiento si el mes está cerrado) y después vinculá.
 - Una línea que no le corresponde al libro (una devolución, una línea repetida, algo de otra cuenta): proponer_descartar_linea con el motivo. Una descartada o vinculada por error: proponer_deshacer_linea.
 - Un movimiento del libro que nunca va a pasar por el banco (un ajuste de saldo, una comisión cargada por error con su contra-asiento): proponer_marcar_sin_banco con el motivo; proponer_quitar_sin_banco lo revierte.
+- Un grupo conciliado que no suma lo mismo pero cuya diferencia ya está explicada (la plataforma no informa una comisión que el libro tiene): proponer_aceptar_diferencia con el motivo; proponer_quitar_diferencia lo revierte. La comisión oculta de Prex en una «TRANSFERENCIA TRN» la explica el sistema solo (diferencia_explicada automática). En los totales, «unexplained» es lo que de verdad falta; «explained» ya está explicado, y el libro cuenta los movimientos vinculados a las líneas aunque tengan fecha fuera del período («outsideLinked»): no los presentes como diferencia.
 - Después de cargar o corregir en el libro lo que faltaba, proponer_recruzar_extracto vuelve a correr el cruce automático.
 - Una propuesta por cosa: si son varias, proponé la primera y seguí cuando vuelva el resultado.
 

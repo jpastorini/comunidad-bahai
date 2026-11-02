@@ -5,27 +5,37 @@ import { ensureTreasuryTag, requireAdmin } from "@/lib/auth";
 import {
   PLATFORM_LABELS,
   assignFingerprints,
+  findKnownLines,
   parseStatement,
   type StatementPlatform,
 } from "@/lib/bank-statements";
 import { readStatementRows } from "@/lib/bank-statements-read";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { formatReceiptDate } from "@/lib/treasury-format";
+import { addMoney, formatReceiptDate } from "@/lib/treasury-format";
 import {
   DEFAULT_WINDOW_DAYS,
+  closestFeeEntry,
+  isHiddenFeeLine,
   reconcile,
   shiftDate,
+  type ReconcileEntry,
 } from "@/lib/treasury-reconcile";
 import {
   STATEMENTS_BUCKET,
   getAccountEntries,
+  getAccountReconciliation,
+  getKnownLines,
   getMatches,
   getOffBankEntryIds,
   getRubroNames,
   getStoredLines,
+  groupAcceptance,
+  groupClosed,
   groupMatches,
   isStatementsSchemaMissing,
   toStatementLine,
+  type StoredLine,
+  type StoredMatch,
 } from "@/lib/treasury-statements";
 
 /**
@@ -161,20 +171,30 @@ export async function importStatementAction(formData: FormData): Promise<ImportR
     warnings.unshift(`El extracto está en pesos y la cuenta elegida es "${accountName}".`);
   }
 
-  // 2. Huellas: qué líneas ya estaban.
+  // 2. Qué líneas ya estaban: por huella, o la misma escrita de otra
+  //    manera (la plataforma cambió el export entre dos importaciones).
   const fingerprints = assignFingerprints(parsed.lines);
-  const { data: existingRows, error: existingError } = await supabase
-    .from("treasury_statement_lines")
-    .select("fingerprint")
-    .eq("account_id", accountId)
-    .in("fingerprint", [...fingerprints.values()]);
+  const { known: knownStored, error: existingError } = await getKnownLines(
+    supabase,
+    accountId,
+    parsed.from,
+    parsed.to
+  );
   if (existingError) {
     if (isStatementsSchemaMissing(existingError)) return failImport(MIGRATION_MSG);
     console.error("[importStatementAction] existing", existingError);
     return failImport(`No pude leer las líneas ya importadas: ${existingError.message}`);
   }
-  const known = new Set(((existingRows ?? []) as Array<{ fingerprint: string }>).map((r) => r.fingerprint));
-  const newLines = parsed.lines.filter((l) => !known.has(fingerprints.get(l.key)!));
+  const known = findKnownLines(parsed.lines, fingerprints, knownStored);
+  const newLines = parsed.lines.filter((l) => !known.has(l.key));
+  const similar = [...known.values()].filter((k) => k.how === "parecida").length;
+  if (similar > 0) {
+    warnings.push(
+      similar === 1
+        ? "Una línea ya estaba importada escrita de otra manera (la plataforma cambió el formato del archivo): se ignoró."
+        : `${similar} líneas ya estaban importadas escritas de otra manera (la plataforma cambió el formato del archivo): se ignoraron.`
+    );
+  }
 
   // 3. El archivo original, como evidencia. Si el bucket falla, la
   //    importación sigue sin archivo y se avisa: las líneas valen igual.
@@ -279,7 +299,6 @@ async function runMatcher(
 ): Promise<{ matchedCount: number; dismissedCount: number; error: string | null }> {
   const stored = await getStoredLines(supabase, accountId);
   const matches = await getMatches(supabase, stored.map((l) => l.id));
-  const lineAmount = new Map(stored.map((l) => [l.id, Number(l.amount)]));
 
   const [rubroOf, offBank] = await Promise.all([getRubroNames(supabase), getOffBankEntryIds(supabase)]);
   const maxDate = stored.reduce((a, l) => (l.line_date > a ? l.line_date : a), "0000-00-00");
@@ -290,15 +309,51 @@ async function runMatcher(
     rubroOf
   );
   if (error) return { matchedCount: 0, dismissedCount: 0, error: `El motor no pudo leer el libro: ${error}` };
-  const entryAmount = new Map(entries.map((e) => [e.id, e.amount]));
+  const entryById = new Map(entries.map((e) => [e.id, e]));
+  const lineById = new Map(stored.map((l) => [l.id, l]));
+  const groups = groupMatches(matches);
+  const linkedEntries = new Set(matches.map((m) => m.entry_id));
 
-  // Los grupos del motor que no suman se vuelven a probar.
+  // La comisión oculta de Prex en un par que ya estaba: la línea TRN cerró
+  // contra la transferencia (sola o a mano) y la comisión quedó suelta. Se
+  // suma al par; la diferencia la acepta `groupAcceptance` sin guardar nada.
+  const feeRows: Array<{ line_id: string; entry_id: string }> = [];
+  for (const g of groups) {
+    if (g.lineIds.length !== 1) continue;
+    const line = lineById.get(g.lineIds[0]);
+    if (!line || !isHiddenFeeLine(toStatementLine(line))) continue;
+    const es = g.entryIds.map((id) => entryById.get(id)).filter((e): e is ReconcileEntry => !!e);
+    const sum = es.reduce((s, e) => addMoney(s, e.amount), 0);
+    if (Math.abs(addMoney(line.amount, -sum)) >= 0.005) continue;
+    const pool = entries.filter((e) => !linkedEntries.has(e.id) && !offBank.has(e.id) && e.currency === line.currency);
+    const fee = closestFeeEntry(line.line_date, pool);
+    if (!fee) continue;
+    linkedEntries.add(fee.entry.id);
+    feeRows.push({ line_id: line.id, entry_id: fee.entry.id });
+  }
+  if (feeRows.length > 0) {
+    const { data: inserted, error: feeError } = await supabase
+      .from("treasury_statement_matches")
+      .insert(feeRows.map((r) => ({ ...r, kind: "comision", matched_by: "motor", matched_by_user: userId })))
+      .select("id, line_id, entry_id, kind, matched_by, created_at");
+    if (feeError) {
+      console.error("[runMatcher] hidden fee", feeError);
+      return { matchedCount: 0, dismissedCount: 0, error: `No pude sumar las comisiones: ${feeError.message}` };
+    }
+    matches.push(...((inserted ?? []) as StoredMatch[]));
+  }
+
+  // Los grupos del motor que no suman, ni tienen la diferencia explicada,
+  // se vuelven a probar.
   const retry = new Set<string>();
   for (const g of groupMatches(matches)) {
     if (g.matches.some((m) => m.matched_by !== "motor")) continue;
-    const lineSum = g.lineIds.reduce((s, id) => s + (lineAmount.get(id) ?? 0), 0);
-    const entrySum = g.entryIds.reduce((s, id) => s + (entryAmount.get(id) ?? 0), 0);
-    if (Math.abs(lineSum - entrySum) >= 0.005) g.matches.forEach((m) => retry.add(m.id));
+    const ls = g.lineIds.map((id) => lineById.get(id)).filter((l): l is StoredLine => !!l);
+    const es = g.entryIds.map((id) => entryById.get(id)).filter((e): e is ReconcileEntry => !!e);
+    const lineSum = ls.reduce((s, l) => addMoney(s, l.amount), 0);
+    const entrySum = es.reduce((s, e) => addMoney(s, e.amount), 0);
+    const diff = addMoney(lineSum, -entrySum);
+    if (!groupClosed({ diff, accepted: groupAcceptance(ls, es, diff) })) g.matches.forEach((m) => retry.add(m.id));
   }
   const kept = matches.filter((m) => !retry.has(m.id));
   const matchedLineIds = new Set(kept.map((m) => m.line_id));
@@ -513,6 +568,71 @@ export async function unmarkOffBankAction(entryId: string): Promise<Result> {
   return okResult;
 }
 
+const ACCEPT_MIGRATION_MSG = "Falta aplicar la migración 093 (diferencia aceptada).";
+const clearAccepted = { accepted_diff: null, accept_reason: null, accepted_by: null, accepted_at: null };
+
+/** El grupo de conciliación al que pertenece una línea, ya calculado. */
+async function groupOfLine(supabase: ReturnType<typeof createSupabaseServer>, lineId: string) {
+  const { data: line } = await supabase
+    .from("treasury_statement_lines")
+    .select("account_id")
+    .eq("id", lineId)
+    .maybeSingle();
+  if (!line) return null;
+  const rec = await getAccountReconciliation(supabase, line.account_id as string);
+  return rec?.matched.find((g) => g.lines.some((l) => l.id === lineId)) ?? null;
+}
+
+/**
+ * La diferencia del grupo está explicada y no hay nada más que cargar ni
+ * vincular (093): el grupo pasa a conciliado y su diferencia figura como
+ * explicada en el total. Se guarda en la primera línea, con el importe de
+ * hoy: si el grupo cambia después, deja de valer sola.
+ */
+export async function acceptGroupDiffAction(lineId: string, reason: string): Promise<Result> {
+  const { session, supabase } = await guard();
+  const text = (reason || "").trim();
+  if (text.length < 3) return failResult("Decí por qué la diferencia está bien: lo va a leer el auditor.");
+  const g = await groupOfLine(supabase, lineId);
+  if (!g) return failResult("Esa línea no está vinculada al libro.");
+  if (Math.abs(g.diff) < 0.005) return failResult("El grupo ya suma lo mismo: no hay diferencia que aceptar.");
+
+  const others = g.lines.slice(1).map((l) => l.id);
+  if (others.length > 0) {
+    const { error } = await supabase.from("treasury_statement_lines").update(clearAccepted).in("id", others);
+    if (error) return failResult(error.code === "42703" ? ACCEPT_MIGRATION_MSG : error.message);
+  }
+  const { error } = await supabase
+    .from("treasury_statement_lines")
+    .update({
+      accepted_diff: g.diff,
+      accept_reason: text.slice(0, 300),
+      accepted_by: session.user.id,
+      accepted_at: new Date().toISOString(),
+    })
+    .eq("id", g.lines[0].id);
+  if (error) {
+    console.error("[acceptGroupDiffAction]", error);
+    return failResult(error.code === "42703" ? ACCEPT_MIGRATION_MSG : error.message);
+  }
+  revalidateAll();
+  return okResult;
+}
+
+/** El grupo vuelve a pedir atención por su diferencia. */
+export async function unacceptGroupDiffAction(lineId: string): Promise<Result> {
+  const { supabase } = await guard();
+  const g = await groupOfLine(supabase, lineId);
+  const ids = g ? g.lines.map((l) => l.id) : [lineId];
+  const { error } = await supabase.from("treasury_statement_lines").update(clearAccepted).in("id", ids);
+  if (error) {
+    console.error("[unacceptGroupDiffAction]", error);
+    return failResult(error.code === "42703" ? ACCEPT_MIGRATION_MSG : error.message);
+  }
+  revalidateAll();
+  return okResult;
+}
+
 /** Vuelve las líneas a pendiente: suelta sus pares y borra el descarte.
  *  Un grupo (089) se deshace entero, con todas sus líneas. */
 export async function undoLineAction(lineId: string | string[]): Promise<Result> {
@@ -535,6 +655,10 @@ export async function undoLineAction(lineId: string | string[]): Promise<Result>
     console.error("[undoLineAction] line", error);
     return failResult(error.message);
   }
+  // La diferencia aceptada era del grupo que se acaba de soltar. Sin la 093
+  // no hay columnas y no hay nada que limpiar.
+  const { error: acceptError } = await supabase.from("treasury_statement_lines").update(clearAccepted).in("id", ids);
+  if (acceptError && acceptError.code !== "42703") console.error("[undoLineAction] accepted", acceptError);
   revalidateAll();
   return okResult;
 }

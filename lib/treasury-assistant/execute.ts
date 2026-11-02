@@ -15,6 +15,8 @@ import {
   rematchAction,
   undoLineAction,
   unmarkOffBankAction,
+  acceptGroupDiffAction,
+  unacceptGroupDiffAction,
 } from "@/app/admin/(panel)/tesoreria/conciliacion/actions";
 import { PLATFORM_LABELS } from "@/lib/bank-statements";
 import { getFile, readAsFile } from "./files";
@@ -145,6 +147,14 @@ async function executeReconciliation(
     case "quitar_sin_banco": {
       const r = await unmarkOffBankAction(f.entry_id);
       return r.ok ? { ok: true, message: "Se quitó la marca: vuelve a esperar su línea." } : fail(r.error, "No se pudo quitar la marca.");
+    }
+    case "aceptar_diferencia": {
+      const r = await acceptGroupDiffAction(f.line_id, f.reason);
+      return r.ok ? { ok: true, message: "Diferencia aceptada: el grupo quedó conciliado." } : fail(r.error, "No se pudo aceptar.");
+    }
+    case "quitar_diferencia": {
+      const r = await unacceptGroupDiffAction(f.line_id);
+      return r.ok ? { ok: true, message: "Se quitó la aceptación: el grupo vuelve a pedir atención." } : fail(r.error, "No se pudo quitar.");
     }
     case "recruzar": {
       const r = await rematchAction(f.account_id);

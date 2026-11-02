@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { StatementLine, StatementPlatform } from "./bank-statements";
+import type { KnownLine, StatementLine, StatementPlatform } from "./bank-statements";
 import { addMoney } from "./treasury-format";
 import {
+  HIDDEN_FEE_REASON,
+  hiddenFeeExplains,
   reconcileTotals,
   shiftDate,
   type CurrencyTotals,
@@ -55,6 +57,10 @@ export type StoredLine = {
   dismissed_by: string | null;
   dismiss_reason: string | null;
   dismissed_auto: boolean;
+  /** La diferencia del grupo que el tesorero aceptó, con su motivo (093).
+   *  Vive en la primera línea del grupo; null sin la 093. */
+  accepted_diff: number | null;
+  accept_reason: string | null;
 };
 
 export type StoredMatchKind = MatchKind | "manual";
@@ -81,7 +87,42 @@ export type LineView = {
   kinds: StoredMatchKind[];
   manual: boolean;
   diff: number;
+  /** La diferencia está explicada y el grupo cuenta como cerrado: la aceptó
+   *  el tesorero (093) o es la comisión oculta de Prex (`auto`). */
+  accepted: GroupAcceptance | null;
 };
+
+export type GroupAcceptance = { amount: number; reason: string; auto: boolean };
+
+const sameMoney = (a: number, b: number) => Math.abs(a - b) < 0.005;
+
+/**
+ * Si la diferencia de un grupo está explicada. La aceptación del tesorero
+ * vale solo mientras la diferencia siga siendo la que aceptó: si después se
+ * vinculó o soltó algo, el grupo vuelve a pedir atención solo. La comisión
+ * oculta de Prex se reconoce sin guardar nada (`hiddenFeeExplains`).
+ */
+export function groupAcceptance(
+  lines: StoredLine[],
+  entries: ReconcileEntry[],
+  diff: number
+): GroupAcceptance | null {
+  if (sameMoney(diff, 0)) return null;
+  const stored = lines.filter((l) => l.accepted_diff != null);
+  const storedSum = stored.reduce((s, l) => addMoney(s, Number(l.accepted_diff)), 0);
+  if (stored.length > 0 && sameMoney(storedSum, diff)) {
+    return { amount: diff, reason: stored.map((l) => l.accept_reason).filter(Boolean).join(" · "), auto: false };
+  }
+  if (hiddenFeeExplains(lines.map(toStatementLine), entries, diff)) {
+    return { amount: diff, reason: HIDDEN_FEE_REASON, auto: true };
+  }
+  return null;
+}
+
+/** Un grupo que no pide nada: suma lo mismo o su diferencia está explicada. */
+export function groupClosed(g: Pick<LineView, "diff" | "accepted">): boolean {
+  return sameMoney(g.diff, 0) || g.accepted != null;
+}
 
 export type AccountReconciliation = {
   imports: StatementImport[];
@@ -186,6 +227,8 @@ const IMPORT_FIELDS =
 
 const LINE_FIELDS =
   "id, account_id, import_id, platform, fingerprint, line_date, amount, currency, description, memo, reference, gross_amount, dismissed_at, dismissed_by, dismiss_reason, dismissed_auto";
+/** Las de la 093: si no corrió, las líneas se leen sin ellas. */
+const ACCEPT_FIELDS = ", accepted_diff, accept_reason";
 
 export async function getImports(
   supabase: SupabaseClient,
@@ -214,21 +257,65 @@ export async function getStoredLines(
   supabase: SupabaseClient,
   accountId?: string
 ): Promise<StoredLine[]> {
-  let q = supabase
-    .from("treasury_statement_lines")
-    .select(LINE_FIELDS)
-    .order("line_date", { ascending: true });
-  if (accountId) q = q.eq("account_id", accountId);
-  const { data, error } = await q;
+  const read = (fields: string) => {
+    let q = supabase.from("treasury_statement_lines").select(fields).order("line_date", { ascending: true });
+    if (accountId) q = q.eq("account_id", accountId);
+    return q;
+  };
+  let { data, error } = await read(LINE_FIELDS + ACCEPT_FIELDS);
+  if (error?.code === "42703") ({ data, error } = await read(LINE_FIELDS));
   if (error) {
     if (!isStatementsSchemaMissing(error)) console.error("[getStoredLines]", error);
     return [];
   }
-  return ((data ?? []) as StoredLine[]).map((l) => ({
+  return ((data ?? []) as unknown as StoredLine[]).map((l) => ({
     ...l,
     amount: Number(l.amount),
     gross_amount: l.gross_amount == null ? null : Number(l.gross_amount),
+    accepted_diff: l.accepted_diff == null ? null : Number(l.accepted_diff),
+    accept_reason: l.accept_reason ?? null,
   }));
+}
+
+/** Las líneas guardadas de la cuenta en [from, to], para reconocer las que
+ *  vuelven en un archivo que se solapa (`findKnownLines`). */
+export async function getKnownLines(
+  supabase: SupabaseClient,
+  accountId: string,
+  from: string,
+  to: string
+): Promise<{ known: KnownLine[]; error: { code?: string; message: string } | null }> {
+  const { data, error } = await supabase
+    .from("treasury_statement_lines")
+    .select("id, fingerprint, line_date, amount, gross_amount, currency, description, reference")
+    .eq("account_id", accountId)
+    .gte("line_date", from)
+    .lte("line_date", to);
+  if (error) return { known: [], error };
+  return {
+    known: (
+      (data ?? []) as Array<{
+        id: string;
+        fingerprint: string;
+        line_date: string;
+        amount: number | string;
+        gross_amount: number | string | null;
+        currency: string;
+        description: string;
+        reference: string | null;
+      }>
+    ).map((r) => ({
+      id: r.id,
+      fingerprint: r.fingerprint,
+      date: r.line_date,
+      amount: Number(r.amount),
+      grossAmount: r.gross_amount == null ? null : Number(r.gross_amount),
+      currency: r.currency,
+      description: r.description,
+      reference: r.reference,
+    })),
+    error: null,
+  };
 }
 
 export async function getMatches(
@@ -449,7 +536,9 @@ export async function getAccountReconciliation(
 
   const [rubroOf, offBankMarks] = await Promise.all([getRubroNames(supabase), getOffBankMarks(supabase)]);
   const upTo = coverage ? shiftDate(coverage.to, CANDIDATE_WINDOW_DAYS) : "9999-12-31";
-  const { entries } = await getAccountEntries(supabase, accountId, upTo, rubroOf);
+  // Todo el libro de la cuenta: un movimiento vinculado puede tener
+  // cualquier fecha (una corrección cargada meses después).
+  const { entries } = await getAccountEntries(supabase, accountId, "9999-12-31", rubroOf);
   const entryById = new Map(entries.map((e) => [e.id, e]));
 
   const pending: StoredLine[] = [];
@@ -458,6 +547,7 @@ export async function getAccountReconciliation(
   // Los movimientos de un grupo que no cierra se siguen ofreciendo para
   // vincular: es como se ata a mano la canasta a su segundo cobro.
   const openEntryIds = new Set<string>();
+  const acceptedBy = new Map<string, number>();
   for (const g of groupMatches(matches)) {
     const ls = g.lineIds
       .map((id) => lineById.get(id))
@@ -468,7 +558,9 @@ export async function getAccountReconciliation(
     const lineSum = ls.reduce((s, l) => addMoney(s, l.amount), 0);
     const sum = es.reduce((s, e) => addMoney(s, e.amount), 0);
     const diff = addMoney(lineSum, -sum);
-    if (Math.abs(diff) >= 0.005) g.entryIds.forEach((id) => openEntryIds.add(id));
+    const accepted = groupAcceptance(ls, es, diff);
+    if (!groupClosed({ diff, accepted })) g.entryIds.forEach((id) => openEntryIds.add(id));
+    if (accepted) acceptedBy.set(ls[0].currency, addMoney(acceptedBy.get(ls[0].currency) ?? 0, accepted.amount));
     matched.push({
       line: ls[0],
       lines: ls,
@@ -476,6 +568,7 @@ export async function getAccountReconciliation(
       kinds: [...new Set(g.matches.map((m) => m.kind))],
       manual: g.matches.some((m) => m.matched_by === "tesorero"),
       diff,
+      accepted,
     });
   }
   matched.sort((a, b) => (a.line.line_date < b.line.line_date ? -1 : a.line.line_date > b.line.line_date ? 1 : 0));
@@ -498,7 +591,7 @@ export async function getAccountReconciliation(
   const pendingEntries = coverage
     ? live.filter((e) => e.entry_date >= coverage.from && e.entry_date <= coverage.to)
     : [];
-  const laterEntries = coverage ? live.filter((e) => e.entry_date > coverage.to) : [];
+  const laterEntries = coverage ? live.filter((e) => e.entry_date > coverage.to && e.entry_date <= upTo) : [];
   const { candidates, elsewhere } = await getCandidates(
     supabase,
     accountId,
@@ -525,11 +618,16 @@ export async function getAccountReconciliation(
   // Una línea descartada no es movimiento de la cuenta: una devolución se
   // cancela con su salida, y una repetida (Prex cambió el export y la
   // misma transferencia volvió con otro importe) contaría dos veces.
+  // Todas las líneas de la cuenta están en la cobertura, así que todo lo
+  // vinculado es "de estas líneas" y no hay vinculados a otro período.
   const totals = coverage
     ? reconcileTotals(lines.filter((l) => !l.dismissed_at).map(toStatementLine), entries, {
         from: coverage.from,
         to: coverage.to,
         statementBalance: latestBalance,
+        linked: matchedEntryIds,
+        offBank: new Set(offBankMarks.keys()),
+        accepted: acceptedBy,
       })
     : [];
 

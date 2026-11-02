@@ -64,6 +64,9 @@ export type ReconcileMatch = {
   /** Solo en `comision`: cuánto falta registrar como gasto si el libro
    *  tiene la transferencia pero no la comisión. */
   missingFee: number | null;
+  /** La diferencia que el par deja a la vista y que ya está explicada: la
+   *  comisión que Prex cobró y no informa (`isHiddenFeeLine`). */
+  acceptedDiff: number | null;
 };
 
 export type ReversedPair = { out: StatementLine; back: StatementLine };
@@ -72,9 +75,19 @@ export type CurrencyTotals = {
   currency: string;
   /** Suma de las líneas del extracto en el período. */
   statementNet: number;
-  /** Suma de los movimientos del libro de esa cuenta en el período. */
+  /** Lo que el libro tiene de esas líneas: los movimientos vinculados a
+   *  ellas, sea cual sea su fecha, más los sueltos con fecha en el período
+   *  (los vinculados a líneas de OTRO período no). */
   ledgerNet: number;
   diff: number;
+  /** La parte de `diff` que ya está explicada: diferencias aceptadas de un
+   *  grupo y movimientos que no pasan por el banco (091). */
+  explained: number;
+  /** diff − explained: lo que de verdad falta resolver. */
+  unexplained: number;
+  /** Movimientos vinculados a líneas del período con fecha fuera de él (una
+   *  corrección cargada hoy de un mes cerrado, un aporte registrado tarde). */
+  outsideLinked: { count: number; amount: number };
   /** Saldo del libro de esa cuenta al último día del extracto. */
   ledgerBalance: number;
   /** El saldo que declara la plataforma, si el archivo lo trae (BROU). */
@@ -115,12 +128,45 @@ export function shiftDate(iso: string, days: number): string {
 const REVERSAL_RE = /devoluci|revers|anulad|rechaz|reintegro/i;
 
 /**
- * Totales por moneda, nunca sumadas entre sí: neto del extracto contra
- * neto del libro en [from, to], saldo del libro a `to` (acumulado, con
- * apertura) y, si la plataforma lo declara, su saldo y la diferencia.
- * Aparte de `reconcile()` porque la pantalla persistida lo necesita sin
- * volver a cruzar nada.
+ * La comisión oculta de Prex. Desde octubre de 2026 el export de Prex dice,
+ * en una transferencia a otro banco ("TRANSFERENCIA TRN"), lo PEDIDO y no lo
+ * debitado: la línea dice −2.000 y salieron 2.044,26. El libro tiene la
+ * transferencia y el gasto de la comisión, así que el par queda con la
+ * comisión de diferencia sin que falte nada. Es un patrón exacto y se acepta
+ * solo: la línea es una salida "transferencia trn" sin importe pedido (el
+ * export viejo sí lo traía, y ahí la comisión cierra por `grossAmount`), y la
+ * diferencia es UN gasto de comisión del grupo. Cualquier otra diferencia la
+ * acepta una persona (093).
  */
+export const HIDDEN_FEE_REASON = "Prex no informa la comisión de las transferencias a otro banco.";
+const HIDDEN_FEE_LINE_RE = /^transferencia trn\b/i;
+const FEE_RE = /comisi|gastos? por transfer/i;
+/** Una comisión por giro no pasa de esto; más grande ya no es "la comisión". */
+const MAX_HIDDEN_FEE = 150;
+
+export function isHiddenFeeLine(l: { amount: number; grossAmount: number | null; description: string }): boolean {
+  return l.amount < 0 && l.grossAmount == null && HIDDEN_FEE_LINE_RE.test(l.description.trim());
+}
+
+export function isFeeEntry(e: Pick<ReconcileEntry, "amount" | "rubro" | "description">): boolean {
+  return e.amount < 0 && -e.amount <= MAX_HIDDEN_FEE && FEE_RE.test(`${e.rubro ?? ""} ${e.description ?? ""}`);
+}
+
+/** La diferencia de un par (líneas − movimientos) es la comisión oculta de
+ *  Prex: una sola línea TRN y un gasto de comisión del grupo por ese monto. */
+export function hiddenFeeExplains(
+  lines: Array<{ amount: number; grossAmount: number | null; description: string }>,
+  entries: Array<Pick<ReconcileEntry, "amount" | "rubro" | "description">>,
+  diff: number
+): boolean {
+  return (
+    lines.length === 1 &&
+    isHiddenFeeLine(lines[0]) &&
+    diff > 0 &&
+    entries.some((e) => isFeeEntry(e) && sameMoney(-e.amount, diff))
+  );
+}
+
 /** Hasta cuántos movimientos se combinan para cerrar un grupo: 2^16
  *  combinaciones es nada; más que eso un día no tiene. */
 const MAX_GROUP_POOL = 16;
@@ -160,30 +206,53 @@ export function subsetSumming(
   return pool.filter((_, i) => chosen & (1 << i));
 }
 
+/**
+ * Totales por moneda, nunca sumadas entre sí. El lado del libro son los
+ * movimientos que corresponden a ESAS líneas, no los que tienen fecha en el
+ * período: un movimiento vinculado a una línea del período cuenta aunque se
+ * haya cargado después (la corrección de un mes cerrado va con fecha de hoy),
+ * y uno con fecha en el período vinculado a una línea de otro extracto no
+ * cuenta. Lo suelto entra por fecha, que es lo único que se sabe de él.
+ */
 export function reconcileTotals(
   lines: StatementLine[],
   allEntries: ReconcileEntry[],
-  opts: { from: string; to: string; statementBalance?: { amount: number; currency: string } | null }
+  opts: {
+    from: string;
+    to: string;
+    statementBalance?: { amount: number; currency: string } | null;
+    /** Movimientos vinculados a `lines`. */
+    linked?: Set<string>;
+    /** Movimientos vinculados a líneas que NO están en `lines`. */
+    linkedElsewhere?: Set<string>;
+    /** Los "no pasa por el banco" (091): su importe está explicado. */
+    offBank?: Set<string>;
+    /** Las diferencias aceptadas de los grupos, por moneda. */
+    accepted?: Map<string, number>;
+  }
 ): CurrencyTotals[] {
   const { from, to } = opts;
+  const linked = opts.linked ?? new Set<string>();
+  const elsewhere = opts.linkedElsewhere ?? new Set<string>();
+  const offBank = opts.offBank ?? new Set<string>();
   const live = allEntries.filter((e) => !e.voided_at);
-  const currencies = new Set<string>([
-    ...lines.map((l) => l.currency),
-    ...live.filter((e) => e.entry_date >= from && e.entry_date <= to).map((e) => e.currency),
-  ]);
+  const inPeriod = (e: ReconcileEntry) => e.entry_date >= from && e.entry_date <= to;
+  const counted = live.filter(
+    (e) => !e.is_opening_balance && (linked.has(e.id) || (inPeriod(e) && !elsewhere.has(e.id)))
+  );
+  const currencies = new Set<string>([...lines.map((l) => l.currency), ...counted.map((e) => e.currency)]);
   return [...currencies].sort().map((currency) => {
     const statementNet = lines
       .filter((l) => l.currency === currency)
       .reduce((s, l) => addMoney(s, l.amount), 0);
-    const ledgerNet = live
-      .filter(
-        (e) =>
-          e.currency === currency &&
-          !e.is_opening_balance &&
-          e.entry_date >= from &&
-          e.entry_date <= to
-      )
+    const mine = counted.filter((e) => e.currency === currency);
+    const ledgerNet = mine.reduce((s, e) => addMoney(s, e.amount), 0);
+    const outside = mine.filter((e) => linked.has(e.id) && !inPeriod(e));
+    const offBankNet = mine
+      .filter((e) => offBank.has(e.id) && !linked.has(e.id))
       .reduce((s, e) => addMoney(s, e.amount), 0);
+    const diff = addMoney(statementNet, -ledgerNet);
+    const explained = addMoney(opts.accepted?.get(currency) ?? 0, -offBankNet);
     const ledgerBalance = live
       .filter((e) => e.currency === currency && e.entry_date <= to)
       .reduce((s, e) => addMoney(s, e.amount), 0);
@@ -193,12 +262,30 @@ export function reconcileTotals(
       currency,
       statementNet,
       ledgerNet,
-      diff: addMoney(statementNet, -ledgerNet),
+      diff,
+      explained,
+      unexplained: addMoney(diff, -explained),
+      outsideLinked: { count: outside.length, amount: outside.reduce((s, e) => addMoney(s, e.amount), 0) },
       ledgerBalance,
       statementBalance,
       balanceDiff: statementBalance == null ? null : addMoney(statementBalance, -ledgerBalance),
     };
   });
+}
+
+/** El gasto de comisión libre más cercano a `date`, dentro de la ventana. */
+export function closestFeeEntry(
+  date: string,
+  pool: ReconcileEntry[],
+  windowDays: number = DEFAULT_WINDOW_DAYS
+): { entry: ReconcileEntry; dayDiff: number } | null {
+  let best: { entry: ReconcileEntry; dayDiff: number } | null = null;
+  for (const e of pool) {
+    if (e.voided_at || e.is_opening_balance || !isFeeEntry(e)) continue;
+    const d = Math.abs(daysBetween(date, e.entry_date));
+    if (d <= windowDays && (!best || d < best.dayDiff)) best = { entry: e, dayDiff: d };
+  }
+  return best;
 }
 
 export function reconcile(
@@ -276,8 +363,30 @@ export function reconcile(
     if (hit) {
       usedLines.add(l.key);
       usedEntries.add(hit.entry.id);
-      matched.push({ line: l, lines: [l], entries: [hit.entry], kind: "exacto", dayDiff: hit.dayDiff, missingFee: null });
+      matched.push({
+        line: l,
+        lines: [l],
+        entries: [hit.entry],
+        kind: "exacto",
+        dayDiff: hit.dayDiff,
+        missingFee: null,
+        acceptedDiff: null,
+      });
     }
+  }
+
+  // 1b. La comisión oculta de Prex: la línea TRN cerró contra la
+  // transferencia y el libro tiene además la comisión de ese giro. Se suma
+  // al par y su diferencia queda aceptada (ver `isHiddenFeeLine`).
+  for (const m of matched) {
+    if (m.kind !== "exacto" || !isHiddenFeeLine(m.line)) continue;
+    const fee = closestFeeEntry(m.line.date, free(m.line), windowDays);
+    if (!fee) continue;
+    usedEntries.add(fee.entry.id);
+    m.entries.push(fee.entry);
+    m.kind = "comision";
+    m.dayDiff = Math.max(m.dayDiff, fee.dayDiff);
+    m.acceptedDiff = -fee.entry.amount;
   }
 
   // 2. Comisión adentro (Prex): el libro tiene lo pedido, y quizá el gasto.
@@ -301,6 +410,7 @@ export function reconcile(
       kind: "comision",
       dayDiff: Math.max(hit.dayDiff, feeHit?.dayDiff ?? 0),
       missingFee: feeHit ? null : Math.abs(fee),
+      acceptedDiff: null,
     });
   }
 
@@ -327,6 +437,7 @@ export function reconcile(
         kind: "suma",
         dayDiff: Math.max(...found.map((e) => Math.abs(daysBetween(l.date, e.entry_date)))),
         missingFee: null,
+        acceptedDiff: null,
       });
     }
   }
@@ -373,6 +484,7 @@ export function reconcile(
       kind: "grupo",
       dayDiff: Math.max(...found.map((e) => Math.abs(daysBetween(date, e.entry_date)))),
       missingFee: null,
+      acceptedDiff: null,
     });
   }
 
@@ -384,17 +496,24 @@ export function reconcile(
     (e) => !usedEntries.has(e.id) && e.entry_date >= from && e.entry_date <= to
   );
 
+  const accepted = new Map<string, number>();
+  for (const m of matched) {
+    if (m.acceptedDiff == null) continue;
+    accepted.set(m.line.currency, addMoney(accepted.get(m.line.currency) ?? 0, m.acceptedDiff));
+  }
   const totals = reconcileTotals(lines, allEntries, {
     from,
     to,
     statementBalance: opts.statementBalance,
+    linked: usedEntries,
+    accepted,
   });
 
   const clean =
     unmatchedLines.length === 0 &&
     unmatchedEntries.length === 0 &&
     matched.every((m) => m.missingFee == null) &&
-    totals.every((t) => sameMoney(t.diff, 0) && (t.balanceDiff == null || sameMoney(t.balanceDiff, 0)));
+    totals.every((t) => sameMoney(t.unexplained, 0) && (t.balanceDiff == null || sameMoney(t.balanceDiff, 0)));
 
   return { from, to, windowDays, matched, reversed, unmatchedLines, unmatchedEntries, totals, clean };
 }

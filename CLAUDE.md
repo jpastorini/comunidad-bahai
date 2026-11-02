@@ -2772,6 +2772,39 @@ original, porque el buscador ofrece todo el período cubierto ± 30 días.
 Sin la 091 marcar avisa "falta aplicar la migración 091" y lo demás sigue
 igual.
 
+**El total compara por vínculo, y las diferencias se explican (093,
+2026-11-02).** Tres cosas pedidas al cerrar la conciliación de Prex:
+
+- **El lado del libro del total son los movimientos de ESAS líneas**
+  (`reconcileTotals`, opción `linked`): los vinculados cuentan con
+  cualquier fecha (una corrección de un mes cerrado va con fecha de hoy) y
+  los sueltos entran por fecha. `outsideLinked` dice cuántos vinieron de
+  fuera del período, y la pantalla lo explica en una línea. Por eso
+  `getAccountReconciliation` lee el libro entero de la cuenta.
+- **Una diferencia puede estar explicada** (`explained`/`unexplained` en
+  los totales; "Todo cerrado" mira `unexplained`). Dos fuentes, las dos en
+  `groupAcceptance()`: la que acepta el tesorero con motivo ("La diferencia
+  está bien…", columnas `accepted_*` de la primera línea del grupo, que
+  valen solo mientras el grupo siga teniendo ESA diferencia), y la
+  **comisión oculta de Prex**, que se reconoce sin guardar nada
+  (`hiddenFeeExplains`): una salida "TRANSFERENCIA TRN" sin importe pedido
+  y un gasto de comisión del grupo (`isFeeEntry`, ≤ 150) por la diferencia.
+  El motor además la ata sola: paso 1b de `reconcile()` para líneas
+  nuevas y, en `runMatcher`, a los pares TRN que ya estaban. Un "no pasa
+  por el banco" con fecha en el período también cuenta como explicado.
+  Un llamador nuevo de `reconcileTotals` tiene que pasar `linked`, o vuelve
+  a comparar por fecha.
+- **Reimportar un período solapado no duplica aunque cambie el formato**
+  (`findKnownLines`, `lib/bank-statements.ts`): primero la huella y
+  después la misma línea escrita de otra manera —misma fecha y moneda,
+  importe igual al importe o al pedido de la otra, y la misma descripción
+  sin números, la misma referencia o la misma primera palabra—, uno a uno.
+  Es el caso del 28/09, que volvió como −17.287 en vez de −17.331,26. Lo
+  usan el import y `revisar_extracto`.
+
+Sin la 093 no se puede aceptar una diferencia a mano ("falta aplicar la
+migración 093"); lo demás, la comisión de Prex incluida, anda igual.
+
 ⚠️ Hasta que corra la 061, la pantalla avisa y no importa
 (`isStatementsSchemaMissing`: 42P01 / 42703 / PGRST205); Cierres y
 Libro siguen andando sin la conciliación, porque las lecturas caen a
@@ -3522,10 +3555,10 @@ cambia nada.
 
 ## Pendientes conocidos
 
-- **Cerrar la diferencia de Cuenta Prex** (la 091 se aplicó el 2026-11-02):
-  importar el extracto de abril–julio, cargar hoy las correcciones,
-  vincularlas a mano a sus líneas originales y marcar el ajuste de
-  apertura (–285,12) "No pasa por el banco".
+- **Aplicar la 093 y cerrar Cuenta Prex**: con el total nuevo la
+  diferencia es $ 44,26, la comisión del giro del 01/06 que está dentro
+  del asiento de $ 11.883. Se cierra con "La diferencia está bien…" en
+  ese grupo.
 - **Estrenar el asistente** (la 090 se aplicó el 2026-11-02): las lecturas y
   las propuestas se probaron en vivo contra la base con service-role; falta
   CONFIRMAR una tarjeta en producción (necesita la sesión) y ver que el

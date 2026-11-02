@@ -601,6 +601,73 @@ export function assignFingerprints(lines: StatementLine[]): Map<string, string> 
   return out;
 }
 
+/** Una línea ya guardada, lo que hace falta para reconocerla al reimportar. */
+export type KnownLine = {
+  id: string;
+  fingerprint: string;
+  date: string;
+  amount: number;
+  grossAmount: number | null;
+  currency: string;
+  description: string;
+  reference: string | null;
+};
+
+/**
+ * Qué líneas del archivo ya estaban importadas. Primero por huella; después,
+ * la misma línea escrita de otra manera, que es lo que pasa cuando la
+ * plataforma cambia el export entre dos importaciones que se solapan: en
+ * octubre de 2026 Prex pasó a informar lo PEDIDO en una transferencia y no
+ * lo debitado (−17.287 en vez de −17.331,26), y la huella cambia.
+ *
+ * "La misma escrita de otra manera" es: misma fecha y moneda, el importe
+ * coincide con el importe o el pedido de la otra, y la descripción es la
+ * misma (sin números ni signos), o la referencia, o al menos la primera
+ * palabra ("Transferencia SPI 25634085" y "TRANSFERENCIA TRN"). Uno a uno:
+ * una línea guardada absorbe a una sola del archivo, así que dos cargas
+ * iguales del mismo día siguen entrando las dos si solo una era conocida.
+ */
+export function findKnownLines(
+  lines: StatementLine[],
+  fingerprints: Map<string, string>,
+  stored: KnownLine[]
+): Map<string, { id: string; how: "huella" | "parecida" }> {
+  const out = new Map<string, { id: string; how: "huella" | "parecida" }>();
+  const claimed = new Set<string>();
+  const byFingerprint = new Map(stored.map((s) => [s.fingerprint, s]));
+  for (const l of lines) {
+    const hit = byFingerprint.get(fingerprints.get(l.key) ?? "");
+    if (hit && !claimed.has(hit.id)) {
+      claimed.add(hit.id);
+      out.set(l.key, { id: hit.id, how: "huella" });
+    }
+  }
+
+  const loose = (s: string) => normalizeHeader(s).replace(/[^a-zñ ]+/g, " ").replace(/\s+/g, " ").trim();
+  const near = (a: number, b: number) => Math.abs(a - b) < 0.005;
+  const amountsOf = (amount: number, gross: number | null) => (gross == null ? [amount] : [amount, gross]);
+  for (const l of lines) {
+    if (out.has(l.key)) continue;
+    const key = loose(l.description);
+    const hit = stored.find((s) => {
+      if (claimed.has(s.id) || s.date !== l.date || s.currency !== l.currency) return false;
+      const mine = amountsOf(l.amount, l.grossAmount);
+      if (!amountsOf(s.amount, s.grossAmount).some((a) => mine.some((b) => near(a, b)))) return false;
+      const other = loose(s.description);
+      return (
+        (l.reference != null && l.reference === s.reference) ||
+        other === key ||
+        (other.split(" ")[0] !== "" && other.split(" ")[0] === key.split(" ")[0])
+      );
+    });
+    if (hit) {
+      claimed.add(hit.id);
+      out.set(l.key, { id: hit.id, how: "parecida" });
+    }
+  }
+  return out;
+}
+
 function fnv1a(s: string): string {
   // Dos acumuladores de 32 bits para bajar la chance de colisión sin
   // BigInt (no hace falta en Node, pero el módulo también corre en el

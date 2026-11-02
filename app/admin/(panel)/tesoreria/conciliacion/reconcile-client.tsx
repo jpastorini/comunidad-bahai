@@ -16,12 +16,14 @@ import type {
   StoredLine,
 } from "@/lib/treasury-statements";
 import {
+  acceptGroupDiffAction,
   deleteImportAction,
   dismissLineAction,
   importStatementAction,
   linkLineAction,
   markOffBankAction,
   rematchAction,
+  unacceptGroupDiffAction,
   undoLineAction,
   unmarkOffBankAction,
   type ImportResult,
@@ -201,14 +203,18 @@ function AccountState({ data: d, account }: { data: AccountReconciliation; accou
   const router = useRouter();
   const platform = d.imports[0]?.platform ?? null;
   const platformLabel = platform ? PLATFORM_LABELS[platform] : "la plataforma";
-  const feeGaps = d.matched.filter((m) => Math.abs(m.diff) >= 0.005);
+  const feeGaps = d.matched.filter((m) => !m.accepted && Math.abs(m.diff) >= 0.005);
   const pendingCount = d.pending.length + feeGaps.length;
   const clean =
     d.coverage != null &&
     pendingCount === 0 &&
     d.pendingEntries.length === 0 &&
-    d.totals.every((t) => Math.abs(t.diff) < 0.005 && (t.balanceDiff == null || Math.abs(t.balanceDiff) < 0.005));
+    d.totals.every(
+      (t) => Math.abs(t.unexplained) < 0.005 && (t.balanceDiff == null || Math.abs(t.balanceDiff) < 0.005)
+    );
   const hasStatementBalance = d.totals.some((t) => t.statementBalance != null);
+  const hasExplained = d.totals.some((t) => Math.abs(t.explained) >= 0.005);
+  const outside = d.totals.filter((t) => t.outsideLinked.count > 0);
 
   if (d.imports.length === 0) {
     return (
@@ -239,13 +245,19 @@ function AccountState({ data: d, account }: { data: AccountReconciliation; accou
 
         {d.totals.length > 0 && (
           <div className="cb-wide mt-4 overflow-x-auto">
-            <table className="w-full min-w-[520px] text-[13px]">
+            <table className={`w-full text-[13px] ${hasExplained ? "min-w-[680px]" : "min-w-[520px]"}`}>
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wider text-muted">
                   <th className="py-1.5 pr-3 font-semibold">Moneda</th>
                   <th className="py-1.5 pr-3 text-right font-semibold">Movimiento en {platformLabel}</th>
                   <th className="py-1.5 pr-3 text-right font-semibold">Movimiento en el libro</th>
                   <th className="py-1.5 pr-3 text-right font-semibold">Diferencia</th>
+                  {hasExplained && (
+                    <>
+                      <th className="py-1.5 pr-3 text-right font-semibold">Explicada</th>
+                      <th className="py-1.5 pr-3 text-right font-semibold">Sin explicar</th>
+                    </>
+                  )}
                   {hasStatementBalance && (
                     <th className="py-1.5 pr-3 text-right font-semibold">Saldo en {platformLabel}</th>
                   )}
@@ -261,9 +273,21 @@ function AccountState({ data: d, account }: { data: AccountReconciliation; accou
                     <td className="py-2 pr-3 font-semibold text-dark">{t.currency}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{signed(t.statementNet)}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{signed(t.ledgerNet)}</td>
-                    <td className={`py-2 pr-3 text-right font-semibold tabular-nums ${diffTone(t.diff)}`}>
+                    <td
+                      className={`py-2 pr-3 text-right font-semibold tabular-nums ${hasExplained ? "text-dark" : diffTone(t.diff)}`}
+                    >
                       {Math.abs(t.diff) < 0.005 ? "—" : signed(t.diff)}
                     </td>
+                    {hasExplained && (
+                      <>
+                        <td className="py-2 pr-3 text-right tabular-nums text-muted">
+                          {Math.abs(t.explained) < 0.005 ? "—" : signed(t.explained)}
+                        </td>
+                        <td className={`py-2 pr-3 text-right font-semibold tabular-nums ${diffTone(t.unexplained)}`}>
+                          {Math.abs(t.unexplained) < 0.005 ? "—" : signed(t.unexplained)}
+                        </td>
+                      </>
+                    )}
                     {hasStatementBalance && (
                       <td className="py-2 pr-3 text-right tabular-nums">
                         {t.statementBalance == null ? "—" : formatMoney(t.statementBalance)}
@@ -280,6 +304,20 @@ function AccountState({ data: d, account }: { data: AccountReconciliation; accou
               </tbody>
             </table>
           </div>
+        )}
+        {outside.map((t) => (
+          <p key={t.currency} className="mt-3 text-[12px] text-muted">
+            El libro incluye {t.outsideLinked.count}{" "}
+            {t.outsideLinked.count === 1 ? "movimiento fechado" : "movimientos fechados"} fuera del período
+            ({signed(t.outsideLinked.amount)} {t.currency}) y vinculados a líneas del extracto: correcciones de un
+            mes cerrado, o algo registrado más tarde. Cuentan acá porque son de esas líneas.
+          </p>
+        ))}
+        {hasExplained && (
+          <p className="mt-3 text-[12px] text-muted">
+            Lo explicado son diferencias aceptadas de un grupo (por ejemplo, la comisión que Prex cobra y no
+            informa) y movimientos que no pasan por el banco. Están en «Cerradas».
+          </p>
         )}
         <p className="mt-3 text-[12px] text-muted">
           {hasStatementBalance && d.latestBalance
@@ -514,7 +552,7 @@ function FeeGapRow({
   elsewhere: CandidateEntry[];
   onChanged: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<null | "link" | "accept">(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, startTransition] = useTransition();
 
@@ -525,7 +563,19 @@ function FeeGapRow({
       const r = await linkLineAction(m.line.id, entryId);
       if (!r.ok) setError(r.error);
       else {
-        setOpen(false);
+        setMode(null);
+        onChanged();
+      }
+    });
+  }
+
+  function accept(reason: string) {
+    setError(null);
+    startTransition(async () => {
+      const r = await acceptGroupDiffAction(m.line.id, reason);
+      if (!r.ok) setError(r.error);
+      else {
+        setMode(null);
         onChanged();
       }
     });
@@ -570,12 +620,45 @@ function FeeGapRow({
           <div className="text-[11px] text-muted">{m.diff < 0 ? "Gasto a registrar" : "Ingreso a registrar"}</div>
         </div>
       </div>
-      <div className="mt-1.5">
-        <button type="button" className={smallBtn} disabled={busy} onClick={() => setOpen(!open)}>
+      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className={smallBtn}
+          disabled={busy}
+          onClick={() => setMode(mode === "link" ? null : "link")}
+        >
           Ya está en el libro: vincular…
         </button>
+        <button
+          type="button"
+          className={smallBtn}
+          disabled={busy}
+          onClick={() => setMode(mode === "accept" ? null : "accept")}
+        >
+          La diferencia está bien…
+        </button>
       </div>
-      {open && (
+      {mode === "accept" && (
+        <form
+          className="mt-2 flex flex-wrap gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            accept(String(new FormData(e.currentTarget).get("reason") || ""));
+          }}
+        >
+          <input
+            name="reason"
+            className={`${inputClass} flex-1 min-w-[220px]`}
+            placeholder="Por qué (ej.: la plataforma no informa la comisión que cobró)"
+            maxLength={300}
+            autoFocus
+          />
+          <Button type="submit" variant="secondary" disabled={busy}>
+            Aceptar {signed(m.diff)}
+          </Button>
+        </form>
+      )}
+      {mode === "link" && (
         <EntryPicker
           currency={m.line.currency}
           target={m.diff}
@@ -635,6 +718,29 @@ function MatchedRow({ view: m, onChanged }: { view: LineView; onChanged: () => v
           Deshacer
         </button>
       </div>
+      {m.accepted && (
+        <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-2 text-[11.5px] text-muted">
+          <span>
+            Diferencia {m.accepted.auto ? "explicada" : "aceptada"}: {signed(m.accepted.amount)} · {m.accepted.reason}
+          </span>
+          {!m.accepted.auto && (
+            <button
+              type="button"
+              className="text-[11.5px] font-semibold text-terra hover:underline disabled:opacity-40"
+              disabled={busy}
+              onClick={() =>
+                startTransition(async () => {
+                  const r = await unacceptGroupDiffAction(m.line.id);
+                  if (!r.ok) setError(r.error);
+                  else onChanged();
+                })
+              }
+            >
+              Quitar
+            </button>
+          )}
+        </div>
+      )}
       {error && <p className="mt-1 text-[12px] text-rose-700">{error}</p>}
     </li>
   );

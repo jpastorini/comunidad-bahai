@@ -33,9 +33,9 @@ import { findingsOf, getDispositions } from "@/lib/treasury-audit-server";
 import { monthKeyOf, monthLabel, previousMonthKey } from "@/lib/treasury-cashbook";
 import { treasuryYearForDate } from "@/lib/treasury-year";
 import { isISODate } from "@/lib/treasury-ledger-filters";
-import { PLATFORM_LABELS, assignFingerprints, parseStatement, type StatementLine } from "@/lib/bank-statements";
+import { PLATFORM_LABELS, assignFingerprints, findKnownLines, parseStatement, type StatementLine } from "@/lib/bank-statements";
 import { readStatementRows } from "@/lib/bank-statements-read";
-import { getAccountEntries, getRubroNames } from "@/lib/treasury-statements";
+import { getAccountEntries, getKnownLines, getRubroNames, groupClosed } from "@/lib/treasury-statements";
 import { DEFAULT_WINDOW_DAYS, reconcile, shiftDate, type ReconcileEntry } from "@/lib/treasury-reconcile";
 import { getFile, readFileBuffer, readSheets, type FileRow } from "./files";
 import type { AttachedFile, Proposal, ProposalKind, ProposalLine } from "./types";
@@ -333,6 +333,19 @@ export const TOOLS: Anthropic.Tool[] = [
     { movimiento_id: { type: "string" } }
   ),
   tool(
+    "proponer_aceptar_diferencia",
+    "Propone aceptar la diferencia de un grupo conciliado que no suma lo mismo, cuando ya está explicada y no hay nada que cargar ni vincular (la plataforma no informa una comisión que el libro sí tiene, un redondeo). El grupo pasa a conciliado y su diferencia figura como explicada en el total. La comisión oculta de Prex en las «TRANSFERENCIA TRN» se acepta sola: no hace falta proponerla. NO escribe hasta que el tesorero confirma.",
+    {
+      linea_id: { type: "string", description: "Una línea del grupo (de conciliacion_de_cuenta)." },
+      motivo: { type: "string", description: "Por qué la diferencia está bien; queda registrado para el auditor." },
+    }
+  ),
+  tool(
+    "proponer_quitar_diferencia",
+    "Propone quitar una diferencia aceptada a mano: el grupo vuelve a pedir atención. NO escribe hasta que el tesorero confirma.",
+    { linea_id: { type: "string" } }
+  ),
+  tool(
     "proponer_recruzar_extracto",
     "Propone volver a correr el cruce automático del extracto de una cuenta contra el libro, sin importar nada: después de cargar o corregir en el libro lo que faltaba. Los vínculos hechos a mano no se tocan. NO escribe hasta que el tesorero confirma.",
     { cuenta_id: { type: "string" } }
@@ -366,6 +379,8 @@ export const TOOL_LABELS: Record<string, string> = {
   proponer_deshacer_linea: "Preparando la propuesta",
   proponer_marcar_sin_banco: "Preparando la marca",
   proponer_quitar_sin_banco: "Preparando la propuesta",
+  proponer_aceptar_diferencia: "Preparando la propuesta",
+  proponer_quitar_diferencia: "Preparando la propuesta",
   proponer_recruzar_extracto: "Preparando el cruce",
 };
 
@@ -666,7 +681,7 @@ async function conciliacion(ctx: ToolContext, input: Input): Promise<ToolOutcome
   if (!r) return err("La conciliación todavía no está disponible (falta la migración 061).");
   const LIMIT = 80;
   // Los grupos que no cierran primero: son los que piden algo.
-  const open = (g: LineView) => Math.abs(g.diff) >= 0.005;
+  const open = (g: LineView) => !groupClosed(g);
   const groups = [...r.matched].sort((a, b) => Number(open(b)) - Number(open(a)));
   return ok({
     cobertura_del_extracto: r.coverage,
@@ -687,6 +702,15 @@ async function conciliacion(ctx: ToolContext, input: Input): Promise<ToolOutcome
       tipo: g.kinds,
       vinculado_a_mano: g.manual,
       ...(open(g) ? { diferencia_sin_cerrar: g.diff } : {}),
+      ...(g.accepted
+        ? {
+            diferencia_explicada: {
+              monto: g.accepted.amount,
+              motivo: g.accepted.reason,
+              automatica: g.accepted.auto,
+            },
+          }
+        : {}),
     })),
     no_pasan_por_el_banco: r.offBank.map((o) => ({ ...entryOut(o.entry), motivo: o.reason })),
     candidatos_para_vincular: r.candidates.slice(0, LIMIT).map(entryOut),
@@ -1150,15 +1174,10 @@ async function statementFile(ctx: ToolContext, input: Input) {
   if (currency === "USD" && /peso/i.test(account.name)) warnings.unshift(`El extracto está en dólares y la cuenta es "${account.name}".`);
   if (currency === "UYU" && /d[oó]lar|usd/i.test(account.name)) warnings.unshift(`El extracto está en pesos y la cuenta es "${account.name}".`);
 
-  // Cuántas líneas ya están importadas (misma huella que Conciliación).
-  const fingerprints = assignFingerprints(parsed.lines);
-  const { data: knownRows } = await ctx.supabase
-    .from("treasury_statement_lines")
-    .select("fingerprint")
-    .eq("account_id", account.id)
-    .in("fingerprint", [...fingerprints.values()]);
-  const known = new Set(((knownRows ?? []) as Array<{ fingerprint: string }>).map((r) => r.fingerprint));
-  const alreadyImported = parsed.lines.filter((l) => known.has(fingerprints.get(l.key)!)).length;
+  // Cuántas líneas ya están importadas: la misma regla que Conciliación al
+  // importar (huella, o la misma línea en el formato de antes).
+  const { known: stored } = await getKnownLines(ctx.supabase, account.id, parsed.from, parsed.to);
+  const alreadyImported = findKnownLines(parsed.lines, assignFingerprints(parsed.lines), stored).size;
 
   return { row, account, parsed, warnings, alreadyImported } as const;
 }
@@ -1382,7 +1401,7 @@ async function proponerVincular(ctx: ToolContext, input: Input, toolUseId: strin
   }
   for (const st of states) {
     if (st.line.currency !== first.line.currency) return err("Las líneas están en monedas distintas.");
-    if (st.group && closes(st.group.diff)) {
+    if (st.group && groupClosed(st.group)) {
       return err(`La línea ${lineLabel(st.line)} ya cierra con el libro. Si está mal, proponé deshacerla primero.`);
     }
   }
@@ -1393,7 +1412,7 @@ async function proponerVincular(ctx: ToolContext, input: Input, toolUseId: strin
   const closedEntries = new Set<string>();
   for (const g of rec.matched) {
     for (const e of g.entries) {
-      if (closes(g.diff)) closedEntries.add(e.id);
+      if (groupClosed(g)) closedEntries.add(e.id);
       else known.set(e.id, e);
     }
   }
@@ -1563,6 +1582,47 @@ async function proponerMarcaBanco(
   );
 }
 
+async function proponerDiferencia(
+  ctx: ToolContext,
+  input: Input,
+  toolUseId: string,
+  accept: boolean
+): Promise<ToolOutcome> {
+  const st = await lineState(ctx, s(input.linea_id));
+  if (typeof st === "string") return err(st);
+  const g = st.group;
+  if (!g) return err("Esa línea no está vinculada al libro: una diferencia es de un grupo conciliado.");
+  const lines: ProposalLine[] = [
+    ...g.lines.map((l) => ({ label: "Extracto", value: lineLabel(l) })),
+    ...g.entries.map((e) => ({ label: "Libro", value: recEntryLabel(e) })),
+    { label: "Diferencia", value: money(g.diff, g.line.currency) },
+  ];
+  if (!accept) {
+    if (!g.accepted || g.accepted.auto) {
+      return err(
+        g.accepted ? "Esa diferencia la explica una regla (la comisión oculta de Prex), no una aceptación a mano." : "Ese grupo no tiene una diferencia aceptada."
+      );
+    }
+    lines.push({ label: "Se había aceptado por", value: g.accepted.reason });
+    return proposal(toolUseId, "conciliacion", "Quitar la diferencia aceptada", lines, { op: "quitar_diferencia", line_id: g.line.id }, [
+      "El grupo vuelve a pedir atención en Conciliación.",
+    ]);
+  }
+  const reason = s(input.motivo);
+  if (!reason || reason.length < 3) return err("Falta el motivo: queda registrado para el auditor.");
+  if (closes(g.diff)) return err("Ese grupo ya suma lo mismo: no hay diferencia que aceptar.");
+  if (g.accepted) return err(`La diferencia ya está ${g.accepted.auto ? "explicada" : "aceptada"}: ${g.accepted.reason}`);
+  lines.push({ label: "Motivo", value: reason });
+  return proposal(
+    toolUseId,
+    "conciliacion",
+    "Aceptar la diferencia de un grupo",
+    lines,
+    { op: "aceptar_diferencia", line_id: g.line.id, reason },
+    ["El grupo pasa a conciliado y la diferencia figura como explicada. Si después cambia el grupo, la aceptación deja de valer sola."]
+  );
+}
+
 async function proponerRecruzar(ctx: ToolContext, input: Input, toolUseId: string): Promise<ToolOutcome> {
   const cat = await catalogOf(ctx);
   const account = cat.accounts.find((a) => a.id === s(input.cuenta_id));
@@ -1644,6 +1704,10 @@ export async function runTool(
         return await proponerMarcaBanco(ctx, input, toolUseId, true);
       case "proponer_quitar_sin_banco":
         return await proponerMarcaBanco(ctx, input, toolUseId, false);
+      case "proponer_aceptar_diferencia":
+        return await proponerDiferencia(ctx, input, toolUseId, true);
+      case "proponer_quitar_diferencia":
+        return await proponerDiferencia(ctx, input, toolUseId, false);
       case "proponer_recruzar_extracto":
         return await proponerRecruzar(ctx, input, toolUseId);
       default:
