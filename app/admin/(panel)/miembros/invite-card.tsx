@@ -1,5 +1,6 @@
 "use client";
 
+import { shareOrigin } from "@/lib/share-origin";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { ConfirmSubmit } from "./confirm-submit";
@@ -34,7 +35,7 @@ export function InviteCard({
   const [showQr, setShowQr] = useState(false);
 
   useEffect(() => {
-    setUrl(`${window.location.origin}${path}`);
+    setUrl(`${shareOrigin()}${path}`);
     setQrDataUrl(null);
     setShowQr(false);
   }, [path]);

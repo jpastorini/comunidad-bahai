@@ -1,5 +1,6 @@
 "use client";
 
+import { shareOrigin } from "@/lib/share-origin";
 import { useState } from "react";
 
 /**
@@ -21,7 +22,7 @@ export function ShareReportButton({
   const [copied, setCopied] = useState(false);
 
   async function share() {
-    const url = `${window.location.origin}/i/${token}`;
+    const url = `${shareOrigin()}/i/${token}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: `Informe de Tesorería · ${title}`, url });

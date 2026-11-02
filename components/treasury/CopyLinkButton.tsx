@@ -1,5 +1,6 @@
 "use client";
 
+import { shareOrigin } from "@/lib/share-origin";
 import { useState } from "react";
 
 /**
@@ -24,7 +25,7 @@ export function CopyLinkButton({
   const [copied, setCopied] = useState(false);
 
   async function copy() {
-    const url = `${window.location.origin}${path}`;
+    const url = `${shareOrigin()}${path}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);

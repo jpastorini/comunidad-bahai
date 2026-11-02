@@ -1,5 +1,6 @@
 "use client";
 
+import { shareOrigin } from "@/lib/share-origin";
 import { useState } from "react";
 
 /**
@@ -20,7 +21,7 @@ export function SharePdfButton({ reportId, title }: { reportId: string; title: s
 
   const text = () =>
     `Informe de Tesorería · ${title} (uso interno de la Asamblea). ` +
-    `También en la app: ${window.location.origin}/admin/informe/${reportId}`;
+    `También en la app: ${shareOrigin()}/admin/informe/${reportId}`;
 
   async function getFile(): Promise<File> {
     if (file) return file;

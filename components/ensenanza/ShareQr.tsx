@@ -1,5 +1,6 @@
 "use client";
 
+import { shareOrigin } from "@/lib/share-origin";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 
@@ -33,7 +34,7 @@ export function ShareQr({ items }: { items: ShareItem[] }) {
   // Las URL relativas se resuelven en el navegador: el QR tiene que
   // apuntar al host real (producción o vista previa), no a uno fijo.
   useEffect(() => {
-    const resolved = items.map((it) => it.url ?? `${window.location.origin}${it.path ?? "/"}`);
+    const resolved = items.map((it) => it.url ?? `${shareOrigin()}${it.path ?? "/"}`);
     setUrls(resolved);
     let alive = true;
     (async () => {
