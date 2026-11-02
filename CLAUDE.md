@@ -3499,7 +3499,7 @@ cambia nada.
 
 ## Pendientes conocidos
 
-- **Aplicar la 091 y cerrar la diferencia de Cuenta Prex** (2026-11-02):
+- **Cerrar la diferencia de Cuenta Prex** (la 091 se aplicó el 2026-11-02):
   importar el extracto de abril–julio, cargar hoy las correcciones,
   vincularlas a mano a sus líneas originales y marcar el ajuste de
   apertura (–285,12) "No pasa por el banco".
