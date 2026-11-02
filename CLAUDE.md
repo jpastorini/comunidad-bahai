@@ -3555,7 +3555,7 @@ cambia nada.
 
 ## Pendientes conocidos
 
-- **Aplicar la 093 y cerrar Cuenta Prex**: con el total nuevo la
+- **Cerrar Cuenta Prex** (la 093 se aplicó el 2026-11-02): con el total nuevo la
   diferencia es $ 44,26, la comisión del giro del 01/06 que está dentro
   del asiento de $ 11.883. Se cierra con "La diferencia está bien…" en
   ese grupo.
