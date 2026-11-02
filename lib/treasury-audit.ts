@@ -697,7 +697,9 @@ const B: Rule[] = [
     basis: "DGI",
     run(ctx) {
       return live(ctx)
-        .filter((e) => e.amount > 0 && isOrdinary(e) && e.receipt_number == null)
+        // Un contra-asiento positivo (054) revierte un gasto —la devolución
+        // de un proveedor—: no es una donación y no lleva recibo.
+        .filter((e) => e.amount > 0 && isOrdinary(e) && !e.adjusts_entry_id && e.receipt_number == null)
         .map((e) => ({
           code: "APORTE_SIN_RECIBO",
           key: `APORTE_SIN_RECIBO:${e.id}`,
