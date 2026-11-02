@@ -96,6 +96,12 @@ export type AccountReconciliation = {
   /** Movimientos del libro de la cuenta, dentro de la cobertura, vivos,
    *  sin par: lo que la plataforma no muestra. */
   pendingEntries: ReconcileEntry[];
+  /** Movimientos sin par posteriores al último extracto (dentro de la
+   *  ventana de candidatos): todavía ninguna línea los cubre. Se listan
+   *  aparte para poder marcar ya el que nunca va a pasar por el banco. */
+  laterEntries: ReconcileEntry[];
+  /** Los marcados "no pasa por el banco" (091), con su motivo. */
+  offBank: Array<{ entry: ReconcileEntry } & OffBankMark>;
   /** Movimientos sin par cerca de la cobertura, para vincular a mano. */
   candidates: CandidateEntry[];
   /** Movimientos sin par de las OTRAS cuentas de la comunidad, en la misma
@@ -244,6 +250,31 @@ export async function getMatches(
   return (data ?? []) as StoredMatch[];
 }
 
+export type OffBankMark = { reason: string; marked_at: string };
+
+/** Los movimientos marcados "no pasa por el banco" (091): un ajuste de
+ *  saldo, una comisión cargada por error junto con su contra-asiento. Para
+ *  la conciliación están resueltos sin línea. Vacío si la 091 no corrió. */
+export async function getOffBankMarks(supabase: SupabaseClient): Promise<Map<string, OffBankMark>> {
+  const { data, error } = await supabase
+    .from("treasury_statement_offbank")
+    .select("entry_id, reason, marked_at");
+  if (error) {
+    if (!isStatementsSchemaMissing(error)) console.error("[getOffBankMarks]", error);
+    return new Map();
+  }
+  return new Map(
+    ((data ?? []) as Array<{ entry_id: string } & OffBankMark>).map((r) => [
+      r.entry_id,
+      { reason: r.reason, marked_at: r.marked_at },
+    ])
+  );
+}
+
+export async function getOffBankEntryIds(supabase: SupabaseClient): Promise<Set<string>> {
+  return new Set((await getOffBankMarks(supabase)).keys());
+}
+
 /** Los movimientos que ya cerraron contra el banco (para la marca del
  *  libro). Vacío si la 061 no corrió. */
 export async function getReconciledEntryIds(supabase: SupabaseClient): Promise<Set<string>> {
@@ -344,7 +375,8 @@ async function getCandidates(
   accountId: string,
   window: { from: string; to: string } | null,
   rubroOf: Map<string, string>,
-  openEntryIds: Set<string> = new Set()
+  openEntryIds: Set<string> = new Set(),
+  excluded: Set<string> = new Set()
 ): Promise<{ candidates: CandidateEntry[]; elsewhere: CandidateEntry[] }> {
   const inWindow = (q: EntriesQuery) =>
     window ? q.gte("entry_date", window.from).lte("entry_date", window.to) : q;
@@ -353,7 +385,9 @@ async function getCandidates(
     selectEntries(supabase, (q) => inWindow(q.neq("account_id", accountId))),
     supabase.from("treasury_accounts").select("id, name"),
   ]);
-  const rows = [...own.entries, ...others.entries].filter((r) => !r.voided_at && !r.is_opening_balance);
+  const rows = [...own.entries, ...others.entries].filter(
+    (r) => !r.voided_at && !r.is_opening_balance && !excluded.has(r.id)
+  );
   if (rows.length === 0) return { candidates: [], elsewhere: [] };
 
   const ids = rows.map((r) => r.id);
@@ -413,7 +447,7 @@ export async function getAccountReconciliation(
   const matchedEntryIds = new Set(matches.map((m) => m.entry_id));
   const lineById = new Map(lines.map((l) => [l.id, l]));
 
-  const rubroOf = await getRubroNames(supabase);
+  const [rubroOf, offBankMarks] = await Promise.all([getRubroNames(supabase), getOffBankMarks(supabase)]);
   const upTo = coverage ? shiftDate(coverage.to, CANDIDATE_WINDOW_DAYS) : "9999-12-31";
   const { entries } = await getAccountEntries(supabase, accountId, upTo, rubroOf);
   const entryById = new Map(entries.map((e) => [e.id, e]));
@@ -455,10 +489,16 @@ export async function getAccountReconciliation(
     }
   }
 
-  const live = entries.filter((e) => !e.voided_at && !e.is_opening_balance && !matchedEntryIds.has(e.id));
+  const offBank = entries
+    .filter((e) => offBankMarks.has(e.id))
+    .map((e) => ({ entry: e, ...(offBankMarks.get(e.id) as OffBankMark) }));
+  const live = entries.filter(
+    (e) => !e.voided_at && !e.is_opening_balance && !matchedEntryIds.has(e.id) && !offBankMarks.has(e.id)
+  );
   const pendingEntries = coverage
     ? live.filter((e) => e.entry_date >= coverage.from && e.entry_date <= coverage.to)
     : [];
+  const laterEntries = coverage ? live.filter((e) => e.entry_date > coverage.to) : [];
   const { candidates, elsewhere } = await getCandidates(
     supabase,
     accountId,
@@ -469,7 +509,8 @@ export async function getAccountReconciliation(
         }
       : null,
     rubroOf,
-    openEntryIds
+    openEntryIds,
+    new Set(offBankMarks.keys())
   );
 
   const withBalance = imports.rows.find((i) => i.closing_balance != null);
@@ -502,6 +543,8 @@ export async function getAccountReconciliation(
     matched,
     dismissed,
     pendingEntries,
+    laterEntries,
+    offBank,
     candidates,
     elsewhere,
   };
@@ -531,7 +574,8 @@ type MonthEntry = {
  * extracto y listarla como "sin extracto" cada mes sería ruido.
  *
  *  · conciliado: hay líneas en el mes, ninguna pendiente, y ningún
- *    movimiento del libro de esa cuenta en el mes quedó sin par.
+ *    movimiento del libro de esa cuenta en el mes quedó sin par (los
+ *    marcados "no pasa por el banco", `offBank`, no cuentan).
  *  · pendiente: hay líneas en el mes y algo quedó suelto de algún lado.
  *  · sin-extracto: ninguna línea cae en el mes (no se importó, o eBROU
  *    no lo cubrió).
@@ -542,7 +586,8 @@ export function monthReconciliation(
   matches: StoredMatch[],
   entries: MonthEntry[],
   accountNames: Map<string, string>,
-  accountsWithImports: Set<string>
+  accountsWithImports: Set<string>,
+  offBank: Set<string> = new Set()
 ): AccountMonthStatus[] {
   const matchedLineIds = new Set(matches.map((m) => m.line_id));
   const matchedEntryIds = new Set(matches.map((m) => m.entry_id));
@@ -558,7 +603,8 @@ export function monthReconciliation(
           inMonth(e.entry_date) &&
           !e.voided_at &&
           !e.is_opening_balance &&
-          !matchedEntryIds.has(e.id)
+          !matchedEntryIds.has(e.id) &&
+          !offBank.has(e.id)
       ).length;
       const status: AccountMonthStatus["status"] =
         monthLines.length === 0

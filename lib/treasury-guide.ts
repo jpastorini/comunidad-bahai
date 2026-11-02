@@ -21,6 +21,7 @@ import { getCashBoxes, getCashReports, getLastCounts } from "./treasury-cash";
 import {
   getImports,
   getMatches,
+  getOffBankEntryIds,
   getStoredLines,
   monthReconciliation,
 } from "./treasury-statements";
@@ -182,15 +183,16 @@ export async function getTreasuryGuide(
     reconNote = "Nunca se importó un extracto.";
   } else {
     const accountsWithImports = new Set(imports.rows.map((i) => i.account_id));
-    const [lines, matches, accountsRes] = await Promise.all([
+    const [lines, matches, offBank, accountsRes] = await Promise.all([
       getStoredLines(supabase),
       getMatches(supabase),
+      getOffBankEntryIds(supabase),
       supabase.from("treasury_accounts").select("id, name"),
     ]);
     const names = new Map(
       ((accountsRes.data ?? []) as { id: string; name: string }[]).map((a) => [a.id, a.name])
     );
-    const statuses = monthReconciliation(month, lines, matches, live, names, accountsWithImports);
+    const statuses = monthReconciliation(month, lines, matches, live, names, accountsWithImports, offBank);
     const open = statuses.filter((s) => s.status !== "conciliado");
     reconStatus = open.length === 0 ? "hecho" : "pendiente";
     reconNote =

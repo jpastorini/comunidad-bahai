@@ -23,6 +23,7 @@ import { todayISO } from "@/lib/treasury-ledger";
 import {
   getImports,
   getMatches,
+  getOffBankEntryIds,
   getStoredLines,
   monthReconciliation,
 } from "@/lib/treasury-statements";
@@ -46,7 +47,7 @@ export default async function CierresPage() {
   const today = todayISO();
   const currentMonth = monthKeyOf(today);
 
-  const [closings, firstMonth, entries, names, statementLines, statementMatches, imports] =
+  const [closings, firstMonth, entries, names, statementLines, statementMatches, imports, offBank] =
     await Promise.all([
       getClosings(supabase),
       getFirstEntryMonth(supabase),
@@ -55,6 +56,7 @@ export default async function CierresPage() {
       getStoredLines(supabase),
       getMatches(supabase),
       getImports(supabase),
+      getOffBankEntryIds(supabase),
     ]);
   const people = await getCloserNames(supabase, closings);
   // Solo las cuentas que alguna vez importaron un extracto (061): Caja
@@ -101,7 +103,8 @@ export default async function CierresPage() {
         statementMatches,
         entries,
         names.accounts,
-        accountsWithImports
+        accountsWithImports,
+        offBank
       ),
     };
   });

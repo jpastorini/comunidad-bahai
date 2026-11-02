@@ -20,6 +20,7 @@ import {
   STATEMENTS_BUCKET,
   getAccountEntries,
   getMatches,
+  getOffBankEntryIds,
   getRubroNames,
   getStoredLines,
   groupMatches,
@@ -280,7 +281,7 @@ async function runMatcher(
   const matches = await getMatches(supabase, stored.map((l) => l.id));
   const lineAmount = new Map(stored.map((l) => [l.id, Number(l.amount)]));
 
-  const rubroOf = await getRubroNames(supabase);
+  const [rubroOf, offBank] = await Promise.all([getRubroNames(supabase), getOffBankEntryIds(supabase)]);
   const maxDate = stored.reduce((a, l) => (l.line_date > a ? l.line_date : a), "0000-00-00");
   const { entries, error } = await getAccountEntries(
     supabase,
@@ -313,7 +314,7 @@ async function runMatcher(
 
   const result = reconcile(
     lines,
-    entries.filter((e) => !matchedEntryIds.has(e.id)),
+    entries.filter((e) => !matchedEntryIds.has(e.id) && !offBank.has(e.id)),
     { from, to }
   );
 
@@ -456,6 +457,57 @@ export async function dismissLineAction(lineId: string, reason: string): Promise
   if (error) {
     console.error("[dismissLineAction]", error);
     return failResult(isStatementsSchemaMissing(error) ? MIGRATION_MSG : error.message);
+  }
+  revalidateAll();
+  return okResult;
+}
+
+/** El movimiento del libro no pasa ni va a pasar por el banco (091): un
+ *  ajuste de saldo, o una comisión cargada por error junto con su
+ *  contra-asiento. Con motivo, como el descarte de una línea. */
+export async function markOffBankAction(entryId: string, reason: string): Promise<Result> {
+  const { session, supabase } = await guard();
+  const text = (reason || "").trim();
+  if (text.length < 3) return failResult("Decí por qué este movimiento no pasa por el banco.");
+
+  const { data: entry } = await supabase
+    .from("treasury_entries")
+    .select("id, voided_at, is_opening_balance")
+    .eq("id", entryId)
+    .maybeSingle();
+  if (!entry) return failResult("Ese movimiento no existe.");
+  if (entry.voided_at) return failResult("Un movimiento anulado ya no cuenta para la conciliación.");
+  if (entry.is_opening_balance) return failResult("Un saldo de apertura ya no cuenta para la conciliación.");
+
+  const { data: linked } = await supabase
+    .from("treasury_statement_matches")
+    .select("id")
+    .eq("entry_id", entryId)
+    .limit(1);
+  if ((linked ?? []).length > 0) {
+    return failResult("El movimiento está vinculado a una línea del extracto: primero deshacé el vínculo.");
+  }
+
+  const { error } = await supabase.from("treasury_statement_offbank").insert({
+    entry_id: entryId,
+    reason: text.slice(0, 300),
+    marked_by: session.user.id,
+  });
+  if (error) {
+    if (error.code === "23505") return failResult("Ese movimiento ya está marcado.");
+    console.error("[markOffBankAction]", error);
+    return failResult(isStatementsSchemaMissing(error) ? "Falta aplicar la migración 091." : error.message);
+  }
+  revalidateAll();
+  return okResult;
+}
+
+export async function unmarkOffBankAction(entryId: string): Promise<Result> {
+  const { supabase } = await guard();
+  const { error } = await supabase.from("treasury_statement_offbank").delete().eq("entry_id", entryId);
+  if (error) {
+    console.error("[unmarkOffBankAction]", error);
+    return failResult(isStatementsSchemaMissing(error) ? "Falta aplicar la migración 091." : error.message);
   }
   revalidateAll();
   return okResult;

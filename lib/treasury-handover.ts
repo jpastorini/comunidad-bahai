@@ -14,7 +14,7 @@ import { monthKeyOf, monthKeysBetween, monthLabel, monthRange, previousMonthKey 
 import { closedMonthKeys, getClosings, getFirstEntryMonth } from "./treasury-closings";
 import { getReceiptLegal, type ReceiptLegal } from "./treasury-ledger";
 import { getCurrentPublication } from "./treasury-publications";
-import { getImports, getMatches, getStoredLines, monthReconciliation } from "./treasury-statements";
+import { getImports, getMatches, getOffBankEntryIds, getStoredLines, monthReconciliation } from "./treasury-statements";
 import { treasuryYearForDate } from "./treasury-year";
 
 /**
@@ -160,13 +160,17 @@ export async function getHandoverData(
   // Conciliación del mes anterior al acta, por cuenta con extracto.
   const reconciliation: HandoverData["reconciliation"] = [];
   if (!imports.missing && imports.rows.length > 0) {
-    const [lines, matches] = await Promise.all([getStoredLines(supabase), getMatches(supabase)]);
+    const [lines, matches, offBank] = await Promise.all([
+      getStoredLines(supabase),
+      getMatches(supabase),
+      getOffBankEntryIds(supabase),
+    ]);
     const withImports = new Set(imports.rows.map((i) => i.account_id));
     const range = monthRange(prevMonth);
     const monthEntries = entries
       .filter((e) => e.entry_date >= range.from && e.entry_date <= range.to)
       .map((e) => ({ id: e.id, account_id: e.account_id, entry_date: e.entry_date, voided_at: e.voided_at, is_opening_balance: e.is_opening_balance }));
-    for (const st of monthReconciliation(prevMonth, lines, matches, monthEntries, accountName, withImports)) {
+    for (const st of monthReconciliation(prevMonth, lines, matches, monthEntries, accountName, withImports, offBank)) {
       reconciliation.push({ account: st.accountName, month: monthLabel(prevMonth), status: st.status, pending: st.pendingLines + st.pendingEntries });
     }
   }

@@ -38,6 +38,7 @@ import {
   STATEMENTS_BUCKET,
   getImports,
   getMatches,
+  getOffBankEntryIds,
   getReconciledEntryIds,
   getStoredLines,
   monthReconciliation,
@@ -436,7 +437,11 @@ export async function buildDossierManifest(
       ]),
     });
     // Conciliado por cuenta y mes, la misma regla que Cierres.
-    const [lines, matches] = await Promise.all([getStoredLines(supabase), getMatches(supabase)]);
+    const [lines, matches, offBank] = await Promise.all([
+      getStoredLines(supabase),
+      getMatches(supabase),
+      getOffBankEntryIds(supabase),
+    ]);
     const accountsWithImports = new Set(imports.rows.map((i) => i.account_id));
     const monthEntries = entries.map((e) => ({
       id: e.id,
@@ -447,7 +452,7 @@ export async function buildDossierManifest(
     }));
     const recRows: Array<Array<string | number>> = [];
     for (const m of months) {
-      for (const st of monthReconciliation(m, lines, matches, monthEntries, names.accounts, accountsWithImports)) {
+      for (const st of monthReconciliation(m, lines, matches, monthEntries, names.accounts, accountsWithImports, offBank)) {
         recRows.push([monthLabel(m), st.accountName, st.status, st.pendingLines, st.pendingEntries]);
       }
     }

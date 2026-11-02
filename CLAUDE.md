@@ -2699,6 +2699,27 @@ importar. Un movimiento de un grupo que no cierra se sigue ofreciendo
 para vincular a mano. Sin la 089 todo sigue como antes, salvo que vincular
 un movimiento ya usado falla por la constraint vieja.
 
+**No pasa por el banco (091, 2026-11-02).** Lo simétrico del descarte de
+una línea: un MOVIMIENTO del libro que nunca va a tener línea en el
+extracto (un ajuste de saldo, una comisión cargada por error junto con su
+contra-asiento). Pedido al conciliar Prex, con los meses cerrados: las
+correcciones van con fecha de hoy y el ajuste del saldo de apertura
+quedaba reclamado para siempre. Tabla aparte,
+`treasury_statement_offbank` (entry_id, motivo obligatorio), y no
+columnas en `treasury_entries`, porque el guardián de la 054 congela los
+meses cerrados. Un marcado no lo toma el motor, no se ofrece para
+vincular y no cuenta como pendiente en `monthReconciliation()` (parámetro
+`offBank`, que pasan Cierres, el tablero, la Guía, el traspaso y el
+legajo: ⚠️ un llamador nuevo tiene que pasarlo o el mes sale pendiente).
+En la pantalla, "No pasa por el banco…" en cada movimiento sin par,
+también en la lista nueva "Cargados después del último extracto", y se
+deshace desde Cerradas. El Libro no lo muestra con "banco ✓": no cerró
+contra el banco. Una corrección de un mes cerrado que SÍ es plata del
+banco (un aporte que faltaba) no se marca: se vincula a mano a la línea
+original, porque el buscador ofrece todo el período cubierto ± 30 días.
+Sin la 091 marcar avisa "falta aplicar la migración 091" y lo demás sigue
+igual.
+
 ⚠️ Hasta que corra la 061, la pantalla avisa y no importa
 (`isStatementsSchemaMissing`: 42P01 / 42703 / PGRST205); Cierres y
 Libro siguen andando sin la conciliación, porque las lecturas caen a
@@ -3441,7 +3462,11 @@ cambia nada.
 
 ## Pendientes conocidos
 
-- **Aplicar la 090 y estrenar el asistente** (2026-11-02): las lecturas y
+- **Aplicar la 091 y cerrar la diferencia de Cuenta Prex** (2026-11-02):
+  importar el extracto de abril–julio, cargar hoy las correcciones,
+  vincularlas a mano a sus líneas originales y marcar el ajuste de
+  apertura (–285,12) "No pasa por el banco".
+- **Estrenar el asistente** (la 090 se aplicó el 2026-11-02): las lecturas y
   las propuestas se probaron en vivo contra la base con service-role; falta
   CONFIRMAR una tarjeta en producción (necesita la sesión) y ver que el
   movimiento aparezca en el Libro con su recibo.

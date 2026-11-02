@@ -20,8 +20,10 @@ import {
   dismissLineAction,
   importStatementAction,
   linkLineAction,
+  markOffBankAction,
   rematchAction,
   undoLineAction,
+  unmarkOffBankAction,
   type ImportResult,
 } from "./actions";
 
@@ -330,27 +332,42 @@ function AccountState({ data: d, account }: { data: AccountReconciliation; accou
         <SectionTitle
           title={`En el libro y no en ${platformLabel}`}
           count={d.pendingEntries.length}
-          hint="Movimientos del libro en esa cuenta, dentro del período cubierto, que la plataforma no muestra: cargados dos veces, en otra cuenta, o con la fecha corrida. Se resuelven desde el libro, o vinculando la línea correcta acá arriba."
+          hint="Movimientos del libro en esa cuenta, dentro del período cubierto, que la plataforma no muestra: cargados dos veces, en otra cuenta, o con la fecha corrida. Se resuelven desde el libro, o vinculando la línea correcta acá arriba. Un ajuste de saldo, o una comisión cargada por error junto con su contra-asiento, nunca va a estar en el extracto: se marca «No pasa por el banco»."
         />
         {d.pendingEntries.length === 0 ? (
           <Empty>Todo lo del libro aparece en la plataforma.</Empty>
         ) : (
           <ul className="mt-3 divide-y divide-black/5">
             {d.pendingEntries.map((e) => (
-              <li key={e.id} className="py-2.5">
-                <EntryLine entry={e} />
-              </li>
+              <PendingEntryRow key={e.id} entry={e} onChanged={() => router.refresh()} />
             ))}
           </ul>
         )}
+        {d.laterEntries.length > 0 && (
+          <details className="mt-3 border-t border-black/5 pt-3">
+            <summary className="cursor-pointer text-[13px] font-semibold text-dark">
+              Cargados después del último extracto ({d.laterEntries.length})
+            </summary>
+            <p className="mt-1 text-[12px] text-muted">
+              Todavía no hay extracto que los cubra; se van a cruzar al importar el próximo. Si alguno nunca va a
+              estar en el banco, ya se puede marcar.
+            </p>
+            <ul className="mt-2 divide-y divide-black/5">
+              {d.laterEntries.map((e) => (
+                <PendingEntryRow key={e.id} entry={e} onChanged={() => router.refresh()} />
+              ))}
+            </ul>
+          </details>
+        )}
       </Card>
 
-      {(d.matched.length > 0 || d.dismissed.length > 0) && (
+      {(d.matched.length > 0 || d.dismissed.length > 0 || d.offBank.length > 0) && (
         <Card>
           <details>
             <summary className="cursor-pointer text-[14px] font-semibold text-dark">
               Cerradas ({d.matched.length})
               {d.dismissed.length > 0 && ` · descartadas (${d.dismissed.length})`}
+              {d.offBank.length > 0 && ` · no pasan por el banco (${d.offBank.length})`}
             </summary>
             <ul className="mt-3 divide-y divide-black/5">
               {d.matched.map((m) => (
@@ -358,6 +375,9 @@ function AccountState({ data: d, account }: { data: AccountReconciliation; accou
               ))}
               {d.dismissed.map((l) => (
                 <DismissedRow key={l.id} line={l} onChanged={() => router.refresh()} />
+              ))}
+              {d.offBank.map((o) => (
+                <OffBankRow key={o.entry.id} entry={o.entry} reason={o.reason} onChanged={() => router.refresh()} />
               ))}
             </ul>
           </details>
@@ -646,6 +666,92 @@ function RematchButton({ accountId, onChanged }: { accountId: string; onChanged:
       </button>
       {note && <span className="text-[12px] text-muted">{note}</span>}
     </span>
+  );
+}
+
+/** Un movimiento del libro sin línea: se corrige en el Libro o, si nunca
+ *  va a estar en el extracto, se marca con motivo (091). */
+function PendingEntryRow({ entry, onChanged }: { entry: ReconcileEntry; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, startTransition] = useTransition();
+  return (
+    <li className="py-2.5">
+      <EntryLine entry={entry} />
+      <div className="mt-1.5">
+        <button type="button" className={smallBtn} disabled={busy} onClick={() => setOpen(!open)}>
+          No pasa por el banco…
+        </button>
+      </div>
+      {open && (
+        <form
+          className="mt-2 flex flex-wrap gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const reason = String(new FormData(e.currentTarget).get("reason") || "");
+            setError(null);
+            startTransition(async () => {
+              const r = await markOffBankAction(entry.id, reason);
+              if (!r.ok) setError(r.error);
+              else {
+                setOpen(false);
+                onChanged();
+              }
+            });
+          }}
+        >
+          <input
+            name="reason"
+            className={`${inputClass} flex-1 min-w-[220px]`}
+            placeholder="Por qué (ej.: ajuste del saldo de apertura, comisión que no se cobró y su contra-asiento)"
+            maxLength={300}
+            autoFocus
+          />
+          <Button type="submit" variant="secondary" disabled={busy}>
+            Marcar
+          </Button>
+        </form>
+      )}
+      {error && <p className="mt-1.5 text-[12px] text-rose-700">{error}</p>}
+    </li>
+  );
+}
+
+function OffBankRow({
+  entry,
+  reason,
+  onChanged,
+}: {
+  entry: ReconcileEntry;
+  reason: string;
+  onChanged: () => void;
+}) {
+  const [busy, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <li className="py-2.5 text-[12.5px]">
+      <EntryLine entry={entry} />
+      <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-2 text-[11.5px] text-muted">
+        <span>
+          No pasa por el banco: <span className="italic">{reason}</span>
+        </span>
+        <button
+          type="button"
+          className="text-[11.5px] font-semibold text-terra hover:underline disabled:opacity-40"
+          disabled={busy}
+          onClick={() =>
+            startTransition(async () => {
+              const r = await unmarkOffBankAction(entry.id);
+              if (!r.ok) setError(r.error);
+              else onChanged();
+            })
+          }
+        >
+          Deshacer
+        </button>
+      </div>
+      {error && <p className="mt-1 text-[12px] text-rose-700">{error}</p>}
+    </li>
   );
 }
 

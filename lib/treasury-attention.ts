@@ -19,6 +19,7 @@ import { getCurrentPublication } from "./treasury-publications";
 import {
   getImports,
   getMatches,
+  getOffBankEntryIds,
   getStoredLines,
   monthReconciliation,
 } from "./treasury-statements";
@@ -214,9 +215,10 @@ async function reconciliationItem(
   if (closedMonthKeys(closings).includes(month)) return null;
 
   const range = monthRange(month);
-  const [lines, matches, entriesRes, accountsRes] = await Promise.all([
+  const [lines, matches, offBank, entriesRes, accountsRes] = await Promise.all([
     getStoredLines(supabase),
     getMatches(supabase),
+    getOffBankEntryIds(supabase),
     supabase
       .from("treasury_entries")
       .select("id, account_id, entry_date, voided_at, is_opening_balance")
@@ -233,7 +235,8 @@ async function reconciliationItem(
     matches,
     (entriesRes.data ?? []) as EntryLite[],
     names,
-    accountsWithImports
+    accountsWithImports,
+    offBank
   ).filter((s) => s.status !== "conciliado");
   if (statuses.length === 0) return null;
 
