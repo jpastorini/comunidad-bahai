@@ -522,8 +522,11 @@ export async function getAccountReconciliation(
       }
     : null;
 
+  // Una línea descartada no es movimiento de la cuenta: una devolución se
+  // cancela con su salida, y una repetida (Prex cambió el export y la
+  // misma transferencia volvió con otro importe) contaría dos veces.
   const totals = coverage
-    ? reconcileTotals(lines.map(toStatementLine), entries, {
+    ? reconcileTotals(lines.filter((l) => !l.dismissed_at).map(toStatementLine), entries, {
         from: coverage.from,
         to: coverage.to,
         statementBalance: latestBalance,

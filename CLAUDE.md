@@ -2810,6 +2810,14 @@ Lo que se aprendió de los tres archivos reales (2026-09-21):
   "Transacciones"): Estado, Fecha (serial de Excel), Detalle, Importe,
   Importe (formateado), Moneda ("Peso uruguayo (UYU) $"), sin columnas de
   origen. `parsePrex()` lee los dos; la moneda pasa por `prexCurrency()`.
+  ⚠️ **El export nuevo esconde la comisión de las transferencias a otro
+  banco** ("TRANSFERENCIA TRN"): el giro del 28/9 salió en el export viejo
+  como −17.331,26 (origen 17.287) y en el nuevo como −17.287. El Importe
+  nuevo es lo pedido, no lo debitado (44,26 por giro en 2026), así que la
+  suma del extracto no da el saldo de la app y la comisión cargada en el
+  libro queda sin línea. Las dos versiones de una misma transferencia
+  tienen huellas distintas y entran dos veces: se descarta la repetida, y
+  las descartadas no suman en los totales (2026-11-02).
 - **BROU**: la pantalla "Saldos y Movimientos" de eBROU guardada como XLS
   (BIFF viejo, generado con WPS): encabezado en la fila ~33 con Fecha
   (serial de Excel), Descripción, Número de documento, Asunto (lo que
