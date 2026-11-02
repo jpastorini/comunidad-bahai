@@ -169,7 +169,8 @@ export function detectPlatform(
   for (let i = 0; i < limit; i++) {
     const h = (rows[i] ?? []).map(normalizeHeader);
     const has = (name: string) => h.includes(name);
-    if (has("fecha") && has("descripcion") && has("importe") && has("estado")) {
+    // Prex cambió el export en 2026-10: "Descripción" pasó a "Detalle".
+    if (has("fecha") && (has("descripcion") || has("detalle")) && has("importe") && has("estado")) {
       return { platform: "prex", headerRow: i };
     }
     if (has("fecha") && has("descripcion") && has("debito") && has("credito")) {
@@ -207,12 +208,17 @@ export function parseStatement(rows: CellMatrix): ParsedStatement | ParseFailure
  * Origen, Importe Origen, Moneda, Importe, Estado. `Importe` es lo que
  * movió la cuenta (con signo) y `Importe Origen` lo pedido; difieren
  * cuando la comisión viene adentro. Solo cuentan las líneas confirmadas.
+ *
+ * Desde octubre de 2026 Prex exporta otra disposición: Estado, Fecha
+ * (serial de Excel), Detalle, Importe, Importe (formateado), Moneda, sin
+ * las columnas de origen y con la moneda en palabras ("Peso uruguayo
+ * (UYU) $"). Las dos se leen con este mismo parser.
  */
 export function parsePrex(rows: CellMatrix, headerRow: number): ParsedStatement | ParseFailure {
   const header = (rows[headerRow] ?? []).map(normalizeHeader);
   const col = (name: string) => header.indexOf(name);
   const cDate = col("fecha");
-  const cDesc = col("descripcion");
+  const cDesc = col("descripcion") >= 0 ? col("descripcion") : col("detalle");
   const cCur = col("moneda");
   const cAmt = col("importe");
   const cCurOrig = col("moneda origen");
@@ -248,13 +254,13 @@ export function parsePrex(rows: CellMatrix, headerRow: number): ParsedStatement 
       skipped.push({ row, reason: "importe cero" });
       continue;
     }
-    const currency = (cCur >= 0 ? cellText(r[cCur]).toUpperCase() : "") || "UYU";
+    const currency = (cCur >= 0 ? prexCurrency(cellText(r[cCur])) : "") || "UYU";
     const description = cellText(r[cDesc]);
 
     let grossAmount: number | null = null;
     if (cAmtOrig >= 0) {
       const orig = cellNumber(r[cAmtOrig]);
-      const origCur = cCurOrig >= 0 ? cellText(r[cCurOrig]).toUpperCase() : currency;
+      const origCur = cCurOrig >= 0 ? prexCurrency(cellText(r[cCurOrig])) : currency;
       if (orig != null && origCur === currency && Math.abs(orig - amount) >= 0.005) {
         grossAmount = orig;
       }
@@ -295,6 +301,17 @@ export function parsePrex(rows: CellMatrix, headerRow: number): ParsedStatement 
     closingBalance: null,
     warnings,
   };
+}
+
+/** La moneda de Prex como código: "UYU" tal cual, o "Peso uruguayo (UYU) $"
+ *  / "Dólar estadounidense (USD) U$S" del export nuevo. */
+export function prexCurrency(text: string): string {
+  const t = text.trim();
+  const code = t.match(/\(([A-Za-z]{3})\)/);
+  if (code) return code[1].toUpperCase();
+  if (/d[oó]lar|usd|u\$s/i.test(t)) return "USD";
+  if (/peso|uyu/i.test(t)) return "UYU";
+  return t.toUpperCase();
 }
 
 // ─── BROU ──────────────────────────────────────────────────────────────

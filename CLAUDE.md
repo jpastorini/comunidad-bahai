@@ -2680,7 +2680,10 @@ Lo que se aprendió de los tres archivos reales (2026-09-21):
   cuando la comisión va adentro (5.014 pedidos → 5.058,26 cobrados). La
   referencia es la tira de dígitos de la descripción. Una transferencia
   rechazada aparece como salida + "DEVOLUCIÓN TRANSFERENCIA" + salida de
-  nuevo.
+  nuevo. **En octubre de 2026 Prex cambió el export** (hoja
+  "Transacciones"): Estado, Fecha (serial de Excel), Detalle, Importe,
+  Importe (formateado), Moneda ("Peso uruguayo (UYU) $"), sin columnas de
+  origen. `parsePrex()` lee los dos; la moneda pasa por `prexCurrency()`.
 - **BROU**: la pantalla "Saldos y Movimientos" de eBROU guardada como XLS
   (BIFF viejo, generado con WPS): encabezado en la fila ~33 con Fecha
   (serial de Excel), Descripción, Número de documento, Asunto (lo que
