@@ -30,7 +30,7 @@ export default async function AsistentePage({
         eyebrow="Tesorería"
         title="Asistente"
         help={TREASURY_HELP.screens.asistente}
-        description="Preguntale lo que necesites saber del libro o pedile que registre algo. Nada se escribe hasta que lo confirmás."
+        description="Preguntale lo que necesites saber del libro, pasale un extracto, una factura o una planilla para que lo cruce con el libro, o pedile que registre algo. Nada se escribe hasta que lo confirmás."
       />
       {threads === null ? (
         <Banner tone="warning">Falta aplicar la migración 090 para usar el asistente.</Banner>
@@ -42,6 +42,8 @@ export default async function AsistentePage({
           threadId={thread?.id ?? null}
           initialItems={thread ? toDisplay(thread) : []}
           threads={threads}
+          localityId={session.locality.id}
+          userId={session.user.id}
         />
       )}
     </>

@@ -27,7 +27,12 @@ import { findingsOf, getDispositions } from "@/lib/treasury-audit-server";
 import { monthKeyOf, monthLabel, previousMonthKey } from "@/lib/treasury-cashbook";
 import { treasuryYearForDate } from "@/lib/treasury-year";
 import { isISODate } from "@/lib/treasury-ledger-filters";
-import type { Proposal, ProposalKind, ProposalLine } from "./types";
+import { PLATFORM_LABELS, assignFingerprints, parseStatement, type StatementLine } from "@/lib/bank-statements";
+import { readStatementRows } from "@/lib/bank-statements-read";
+import { getAccountEntries, getRubroNames } from "@/lib/treasury-statements";
+import { DEFAULT_WINDOW_DAYS, reconcile, shiftDate, type ReconcileEntry } from "@/lib/treasury-reconcile";
+import { getFile, readFileBuffer, readSheets, type FileRow } from "./files";
+import type { AttachedFile, Proposal, ProposalKind, ProposalLine } from "./types";
 
 export type { Proposal } from "./types";
 
@@ -71,6 +76,13 @@ export type ToolOutcome =
 const OPTIONAL = new WeakSet<object>();
 const nullable = (type: string, description: string) => {
   const schema = { type, description };
+  OPTIONAL.add(schema);
+  return schema;
+};
+
+/** Una lista opcional de ids de archivos adjuntos. */
+const FILE_IDS = (description: string) => {
+  const schema = { type: "array", items: { type: "string" }, description };
   OPTIONAL.add(schema);
   return schema;
 };
@@ -174,6 +186,24 @@ export const TOOLS: Anthropic.Tool[] = [
     {}
   ),
   tool(
+    "revisar_extracto",
+    "Cruza un extracto ADJUNTO en la conversación (Prex, BROU o Mercado Pago) contra los movimientos del libro de una cuenta, con el mismo motor de Conciliación, SIN importar nada: qué cerró, qué está en el extracto y no en el libro, qué está en el libro y no en el extracto, totales y saldo. Dice además cuántas líneas ya estaban importadas.",
+    {
+      archivo_id: { type: "string", description: "Id del archivo adjunto." },
+      cuenta_id: { type: "string", description: "La cuenta del libro de ese extracto (del catálogo)." },
+    }
+  ),
+  tool(
+    "leer_planilla",
+    "Lee las filas de una planilla ADJUNTA en la conversación (Excel o CSV), como texto: para comparar a mano con el libro una planilla que no es un extracto (un ejercicio viejo, una lista de compromisos). Devuelve las hojas y un tramo de filas.",
+    {
+      archivo_id: { type: "string", description: "Id del archivo adjunto." },
+      hoja: nullable("string", "Nombre de la hoja; null = la primera."),
+      desde_fila: nullable("integer", "Primera fila, desde 1; null = 1."),
+      filas: nullable("integer", "Cuántas filas (por defecto 150, máximo 400)."),
+    }
+  ),
+  tool(
     "compromisos_del_mes",
     "El informe de compromisos con el Fondo de un mes civil: quién tiene compromiso, cuánto aportó, quién no, quién aportó sin compromiso.",
     { mes: nullable("string", "YYYY-MM; null = el mes pasado.") }
@@ -195,6 +225,9 @@ export const TOOLS: Anthropic.Tool[] = [
       ...CONTRIBUTOR_PROPS,
       nombre_en_recibo: nullable("string", "Seudónimo para el recibo (\"Familia Pérez\"); null = el nombre del contribuyente."),
       cantidad_aportes: nullable("integer", "Cuántos aportes agrupa la línea (la canasta de la Fiesta); null = 1 o sin contar."),
+      comprobantes: FILE_IDS(
+        "Ids de imágenes o PDF adjuntos en la conversación (la factura, la captura del giro) que quedan colgados del movimiento como comprobantes al confirmarlo."
+      ),
     }
   ),
   tool(
@@ -236,6 +269,22 @@ export const TOOLS: Anthropic.Tool[] = [
     }
   ),
   tool(
+    "proponer_adjuntar_comprobante",
+    "Propone colgar una o más imágenes o PDF adjuntos en la conversación como comprobantes de un movimiento que YA está en el libro (típicamente un gasto sin comprobante). NO escribe hasta que el tesorero confirma.",
+    {
+      movimiento_id: { type: "string" },
+      archivos: { type: "array", items: { type: "string" }, description: "Ids de los archivos adjuntos." },
+    }
+  ),
+  tool(
+    "proponer_importar_extracto",
+    "Propone importar a Conciliación un extracto adjunto en la conversación (Prex, BROU o Mercado Pago), en la cuenta indicada: guarda sus líneas, las que ya estaban no se duplican, y el motor las cruza con el libro. Primero revisalo con revisar_extracto. NO escribe hasta que el tesorero confirma.",
+    {
+      archivo_id: { type: "string", description: "Id del archivo adjunto." },
+      cuenta_id: { type: "string", description: "La cuenta del libro de ese extracto." },
+    }
+  ),
+  tool(
     "proponer_contra_asiento",
     "Propone revertir un movimiento con un contra-asiento con fecha de hoy (la forma de corregir algo de un mes CERRADO). Después, si hace falta, se propone el movimiento correcto aparte. NO escribe hasta que el tesorero confirma.",
     {
@@ -263,6 +312,10 @@ export const TOOL_LABELS: Record<string, string> = {
   proponer_transferencia: "Preparando la transferencia",
   proponer_anulacion: "Preparando la anulación",
   proponer_contra_asiento: "Preparando el contra-asiento",
+  revisar_extracto: "Cruzando el extracto con el libro",
+  leer_planilla: "Leyendo la planilla",
+  proponer_adjuntar_comprobante: "Preparando el comprobante",
+  proponer_importar_extracto: "Preparando la importación",
 };
 
 // ─── Utilidades ────────────────────────────────────────────────────────
@@ -759,7 +812,11 @@ async function proponerMovimiento(ctx: ToolContext, input: Input, toolUseId: str
   if (s(input.detalle)) lines.push({ label: "Detalle", value: s(input.detalle)! });
   if (kind === "ingreso") lines.push({ label: "Recibo", value: "el próximo de la serie" });
 
-  return proposal(
+  const receipts = await receiptFiles(ctx, input.comprobantes);
+  if (typeof receipts === "string") return err(receipts);
+  if (receipts.length > 0) lines.push({ label: "Comprobante", value: receipts.map((f) => f.name).join(", ") });
+
+  return withFiles(receipts, proposal(
     toolUseId,
     "movimiento",
     kind === "ingreso" ? "Registrar un aporte" : "Registrar un gasto",
@@ -779,7 +836,7 @@ async function proponerMovimiento(ctx: ToolContext, input: Input, toolUseId: str
       ...(who ? who.fields : {}),
     },
     warnings
-  );
+  ));
 }
 
 async function loadOne(ctx: ToolContext, id: string | null): Promise<TreasuryEntry | null> {
@@ -969,6 +1026,221 @@ async function proponerSobreUno(
   );
 }
 
+// ─── Archivos adjuntos (092) ───────────────────────────────────────────
+
+/** Le pone a una propuesta los archivos que usa. */
+function withFiles(files: AttachedFile[], out: ToolOutcome): ToolOutcome {
+  if (out.type === "proposal" && files.length > 0) out.proposal.files = files;
+  return out;
+}
+
+const asAttached = (row: FileRow): AttachedFile => ({ id: row.id, name: row.file_name, kind: row.kind });
+
+/**
+ * Los comprobantes que pidió el modelo: tienen que ser imágenes o PDF de
+ * las conversaciones de esta persona (la RLS de la 092 no devuelve otros).
+ * Devuelve el error en palabras si alguno no sirve.
+ */
+async function receiptFiles(ctx: ToolContext, raw: unknown): Promise<AttachedFile[] | string> {
+  const ids = Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string" && x.length > 0) : [];
+  const out: AttachedFile[] = [];
+  for (const id of [...new Set(ids)].slice(0, 5)) {
+    const row = await getFile(ctx.supabase, id);
+    if (!row) return `El archivo ${id} no está en la conversación.`;
+    if (row.kind === "planilla") return `"${row.file_name}" es una planilla: un comprobante es una imagen o un PDF.`;
+    out.push(asAttached(row));
+  }
+  return out;
+}
+
+/** Un extracto adjunto, ya leído. */
+async function statementFile(ctx: ToolContext, input: Input) {
+  const row = await getFile(ctx.supabase, s(input.archivo_id));
+  if (!row) return { error: "Ese archivo no está en la conversación." } as const;
+  if (row.kind !== "planilla") return { error: `"${row.file_name}" no es una planilla: un extracto es el Excel que exporta la plataforma.` } as const;
+  const cat = await catalogOf(ctx);
+  const account = cat.accounts.find((a) => a.id === s(input.cuenta_id));
+  if (!account) return { error: "Esa cuenta no está en el catálogo." } as const;
+  const parsed = parseStatement(readStatementRows(await readFileBuffer(ctx.supabase, row)));
+  if ("error" in parsed) return { error: parsed.error } as const;
+
+  // Los mismos avisos que da Conciliación al importar: no bloquean.
+  const warnings = [...parsed.warnings];
+  const platformWord = { prex: /prex/i, brou: /brou/i, mercadopago: /mercado\s*(pago|libre)|\bmp\b|point|pos\b/i }[
+    parsed.platform
+  ];
+  if (!platformWord.test(account.name)) {
+    warnings.unshift(`El archivo es de ${PLATFORM_LABELS[parsed.platform]} y la cuenta elegida es "${account.name}".`);
+  }
+  const currency = parsed.lines[0]?.currency ?? "UYU";
+  if (currency === "USD" && /peso/i.test(account.name)) warnings.unshift(`El extracto está en dólares y la cuenta es "${account.name}".`);
+  if (currency === "UYU" && /d[oó]lar|usd/i.test(account.name)) warnings.unshift(`El extracto está en pesos y la cuenta es "${account.name}".`);
+
+  // Cuántas líneas ya están importadas (misma huella que Conciliación).
+  const fingerprints = assignFingerprints(parsed.lines);
+  const { data: knownRows } = await ctx.supabase
+    .from("treasury_statement_lines")
+    .select("fingerprint")
+    .eq("account_id", account.id)
+    .in("fingerprint", [...fingerprints.values()]);
+  const known = new Set(((knownRows ?? []) as Array<{ fingerprint: string }>).map((r) => r.fingerprint));
+  const alreadyImported = parsed.lines.filter((l) => known.has(fingerprints.get(l.key)!)).length;
+
+  return { row, account, parsed, warnings, alreadyImported } as const;
+}
+
+const lineOut = (l: StatementLine) => ({
+  fila: l.row,
+  fecha: l.date,
+  monto: l.amount,
+  moneda: l.currency,
+  descripcion: l.description,
+  ...(l.memo ? { asunto: l.memo } : {}),
+  ...(l.grossAmount != null ? { valor_bruto: l.grossAmount } : {}),
+});
+
+const entryOut = (e: ReconcileEntry) => ({
+  id: e.id,
+  fecha: e.entry_date,
+  monto: e.amount,
+  moneda: e.currency,
+  rubro: e.rubro,
+  detalle: e.description,
+  recibo: e.receipt_number,
+});
+
+async function revisarExtracto(ctx: ToolContext, input: Input): Promise<ToolOutcome> {
+  const st = await statementFile(ctx, input);
+  if ("error" in st) return err(st.error!);
+  const { account, parsed } = st;
+  const rubroOf = await getRubroNames(ctx.supabase);
+  const { entries, error } = await getAccountEntries(
+    ctx.supabase,
+    account.id,
+    shiftDate(parsed.to, DEFAULT_WINDOW_DAYS),
+    rubroOf
+  );
+  if (error) return err(`No pude leer el libro: ${error}`);
+  // Contra TODO el libro de la cuenta, haya o no pares guardados: es un
+  // chequeo del archivo contra el libro, no del estado de Conciliación.
+  const result = reconcile(parsed.lines, entries, {
+    from: parsed.from,
+    to: parsed.to,
+    statementBalance: parsed.closingBalance
+      ? { amount: parsed.closingBalance.amount, currency: parsed.closingBalance.currency }
+      : null,
+  });
+  const LIMIT = 80;
+  return ok({
+    plataforma: PLATFORM_LABELS[parsed.platform],
+    cuenta: account.name,
+    desde: parsed.from,
+    hasta: parsed.to,
+    lineas: parsed.lines.length,
+    ya_importadas_en_conciliacion: st.alreadyImported,
+    filas_omitidas: parsed.skipped.slice(0, 20),
+    avisos: st.warnings,
+    todo_cierra: result.clean,
+    totales: result.totals,
+    cerraron: result.matched.slice(0, LIMIT).map((m) => ({
+      tipo: m.kind,
+      lineas: m.lines.map(lineOut),
+      movimientos: m.entries.map(entryOut),
+      dias_de_diferencia: m.dayDiff,
+      ...(m.missingFee ? { comision_sin_registrar: m.missingFee } : {}),
+    })),
+    devueltas_por_la_plataforma: result.reversed.map((r) => ({ salida: lineOut(r.out), devolucion: lineOut(r.back) })),
+    en_extracto_y_no_en_libro: result.unmatchedLines.slice(0, LIMIT).map(lineOut),
+    en_libro_y_no_en_extracto: result.unmatchedEntries.slice(0, LIMIT).map(entryOut),
+    ...(result.matched.length > LIMIT || result.unmatchedLines.length > LIMIT || result.unmatchedEntries.length > LIMIT
+      ? { aviso: `Las listas se cortaron en ${LIMIT}.` }
+      : {}),
+  });
+}
+
+async function leerPlanilla(ctx: ToolContext, input: Input): Promise<ToolOutcome> {
+  const row = await getFile(ctx.supabase, s(input.archivo_id));
+  if (!row) return err("Ese archivo no está en la conversación.");
+  if (row.kind !== "planilla") return err(`"${row.file_name}" no es una planilla.`);
+  const sheets = readSheets(await readFileBuffer(ctx.supabase, row));
+  if (sheets.length === 0) return err("La planilla no tiene hojas.");
+  const wanted = s(input.hoja);
+  const sheet = wanted ? sheets.find((sh) => sh.name.toLowerCase() === wanted.toLowerCase()) : sheets[0];
+  if (!sheet) return err(`No hay una hoja "${wanted}". Las hojas son: ${sheets.map((sh) => sh.name).join(", ")}.`);
+  const from = Math.max(1, Math.floor(n(input.desde_fila) ?? 1));
+  const count = Math.min(400, Math.max(1, Math.floor(n(input.filas) ?? 150)));
+  // Una fila es la lista de sus celdas como texto; las vacías del final
+  // se recortan y una celda larga se corta, para que entre más planilla.
+  const rows: Array<{ fila: number; celdas: string[] }> = [];
+  let chars = 0;
+  for (let i = from - 1; i < sheet.rows.length && rows.length < count; i++) {
+    const cells = (sheet.rows[i] ?? []).map((c) => String(c ?? "").trim().slice(0, 120));
+    while (cells.length > 0 && cells[cells.length - 1] === "") cells.pop();
+    if (cells.length === 0) continue;
+    chars += cells.join("|").length;
+    if (chars > 60000) break;
+    rows.push({ fila: i + 1, celdas: cells });
+  }
+  const last = rows[rows.length - 1]?.fila ?? from;
+  return ok({
+    hojas: sheets.map((sh) => ({ nombre: sh.name, filas: sh.rows.length })),
+    hoja: sheet.name,
+    filas: rows,
+    ...(last < sheet.rows.length ? { sigue_desde_fila: last + 1 } : {}),
+  });
+}
+
+async function proponerAdjuntarComprobante(ctx: ToolContext, input: Input, toolUseId: string): Promise<ToolOutcome> {
+  const e = await loadOne(ctx, s(input.movimiento_id));
+  if (!e) return err("Ese movimiento no existe.");
+  if (e.voided_at) return err("Ese movimiento está anulado.");
+  const files = await receiptFiles(ctx, input.archivos);
+  if (typeof files === "string") return err(files);
+  if (files.length === 0) return err("Falta el archivo a adjuntar.");
+  const names = namesOf(await catalogOf(ctx));
+  const { count } = await ctx.supabase
+    .from("treasury_attachments")
+    .select("id", { count: "exact", head: true })
+    .eq("entry_id", e.id);
+  const lines: ProposalLine[] = [
+    { label: "Movimiento", value: `${e.entry_date} · ${money(e.amount, e.currency)}` },
+    { label: "Cuenta", value: names.accounts.get(e.account_id) ?? "—" },
+    { label: "Rubro", value: names.subcategories.get(e.subcategory_id) ?? "—" },
+  ];
+  if (e.description) lines.push({ label: "Detalle", value: e.description });
+  lines.push({ label: files.length > 1 ? "Comprobantes" : "Comprobante", value: files.map((f) => f.name).join(", ") });
+  const warnings: string[] = [];
+  if (count) warnings.push(`El movimiento ya tiene ${count === 1 ? "un comprobante" : `${count} comprobantes`}: este se suma.`);
+  if (e.amount > 0) warnings.push("Es un ingreso: el comprobante de un aporte suele ser el recibo que emitimos.");
+  return withFiles(
+    files,
+    proposal(toolUseId, "comprobante", files.length > 1 ? "Adjuntar comprobantes" : "Adjuntar un comprobante", lines, { entry_id: e.id }, warnings)
+  );
+}
+
+async function proponerImportarExtracto(ctx: ToolContext, input: Input, toolUseId: string): Promise<ToolOutcome> {
+  const st = await statementFile(ctx, input);
+  if ("error" in st) return err(st.error!);
+  const { row, account, parsed, alreadyImported } = st;
+  const warnings = [...st.warnings];
+  if (row.size_bytes > 2 * 1024 * 1024) warnings.push("El archivo pesa más de 2 MB: Conciliación lo va a rechazar.");
+  if (alreadyImported === parsed.lines.length) warnings.push("Todas las líneas ya están importadas: no va a sumar nada.");
+  const lines: ProposalLine[] = [
+    { label: "Archivo", value: row.file_name },
+    { label: "Plataforma", value: PLATFORM_LABELS[parsed.platform] },
+    { label: "Cuenta", value: account.name },
+    { label: "Período", value: `${parsed.from} al ${parsed.to}` },
+    {
+      label: "Líneas",
+      value: `${parsed.lines.length}${alreadyImported > 0 ? ` (${alreadyImported} ya estaban, no se duplican)` : ""}`,
+    },
+  ];
+  return withFiles(
+    [asAttached(row)],
+    proposal(toolUseId, "importar_extracto", "Importar el extracto a Conciliación", lines, { account_id: account.id }, warnings)
+  );
+}
+
 // ─── Despacho ──────────────────────────────────────────────────────────
 
 export async function runTool(
@@ -1011,6 +1283,14 @@ export async function runTool(
         return await proponerSobreUno(ctx, input, toolUseId, "anulacion");
       case "proponer_contra_asiento":
         return await proponerSobreUno(ctx, input, toolUseId, "contra_asiento");
+      case "revisar_extracto":
+        return await revisarExtracto(ctx, input);
+      case "leer_planilla":
+        return await leerPlanilla(ctx, input);
+      case "proponer_adjuntar_comprobante":
+        return await proponerAdjuntarComprobante(ctx, input, toolUseId);
+      case "proponer_importar_extracto":
+        return await proponerImportarExtracto(ctx, input, toolUseId);
       default:
         return err(`No existe la herramienta ${name}.`);
     }

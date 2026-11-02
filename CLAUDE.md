@@ -514,6 +514,43 @@ sin configurar nada. Decidido: **solo quien tiene el tag de Tesorería**,
 
 ⚠️ Hasta que corra la 090 la pantalla avisa y no conversa.
 
+**Archivos adjuntos (092, 2026-11-02).** El tesorero le pasa un extracto,
+la foto o el PDF de una factura, la captura de un giro o una planilla (📎,
+pegar o arrastrar; hasta 5 por pregunta, 10 MB cada uno) para que lo cruce
+con el libro. Decidido con el usuario: los archivos **quedan con la
+conversación**, una factura se puede **colgar como comprobante** y un
+extracto revisado se puede **importar a Conciliación**, las dos cosas por
+tarjeta.
+
+- **El navegador sube al bucket privado `asistente-archivos`**
+  (`<localidad>/<persona>/<uuid>.<ext>`, las fotos achicadas con
+  `compressImage`) y al route le llega el path, que `attachFiles()`
+  (`lib/treasury-assistant/files.ts`) vuelve a verificar y registra en
+  `treasury_assistant_files` (RLS de la 090: quien la tuvo, con el tag).
+- **Imágenes y PDF van a la Files API** (beta `files-api-2025-04-14`, en
+  `client.ts`) y entran al historial como bloque `image`/`document` por
+  `file_id`: el historial los nombra sin cargar los bytes en la base.
+  **Las planillas NO se mandan crudas**: el modelo recibe un resumen y el
+  detalle lo piden las herramientas, que releen el archivo con los
+  lectores de siempre (`parseStatement`, SheetJS).
+- Cada archivo va precedido por una línea `⟦archivo id=… tipo=…
+  nombre="…"⟧` (`fileNote`/`parseFileNote`): es como el modelo lo nombra
+  en una herramienta y como `toDisplay` lo redibuja como chapita. El link
+  de la chapita es `/admin/tesoreria/asistente/archivo/<id>` (URL firmada de
+  un minuto).
+- **Herramientas nuevas**: `revisar_extracto` (el motor de Conciliación,
+  `reconcile()`, contra TODO el libro de la cuenta, sin importar ni mirar
+  los pares guardados, más cuántas líneas ya estaban por huella),
+  `leer_planilla` (por tramos), `proponer_adjuntar_comprobante` (a un
+  movimiento que ya está) y `proponer_importar_extracto`; `proponer_movimiento`
+  suma `comprobantes`. Al confirmar, `execute.ts` le pasa el archivo como
+  `File` a `uploadAttachmentAction` o `importStatementAction`: queda una
+  copia en `treasury-receipts` o en `extractos`, por el camino de siempre.
+  Si el comprobante falla, el movimiento ya quedó y se avisa.
+
+⚠️ Hasta que corra la 092, adjuntar dice "falta aplicar la migración 092"
+y el asistente sigue andando sin archivos.
+
 ## Ayudantes de la Asamblea (migración 088)
 
 Pedido el 2026-10-25: las Asambleas nombran ayudantes o asistentes que no
@@ -3469,7 +3506,10 @@ cambia nada.
 - **Estrenar el asistente** (la 090 se aplicó el 2026-11-02): las lecturas y
   las propuestas se probaron en vivo contra la base con service-role; falta
   CONFIRMAR una tarjeta en producción (necesita la sesión) y ver que el
-  movimiento aparezca en el Libro con su recibo.
+  movimiento aparezca en el Libro con su recibo. Con la 092 (archivos):
+  pasarle una factura real y confirmar el gasto con el comprobante, y un
+  extracto de Prex o BROU para revisar e importar. Leer un PDF con la Files
+  API se probó en vivo; el resto necesita la sesión.
 - **Estrenar los ayudantes** (la 088 se aplicó el 2026-10-25): nombrar a alguien que no
   sea de la Asamblea (por ejemplo Fotos y Calendario, con un "hasta"),
   entrar con esa cuenta desde "Panel de ayudante" en `/perfil`, ver que el

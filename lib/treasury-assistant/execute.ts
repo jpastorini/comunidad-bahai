@@ -1,19 +1,30 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   revertEntryAction,
   saveEntryAction,
   saveTransferAction,
   voidEntryAction,
 } from "@/app/admin/(panel)/tesoreria/libro/actions";
-import type { Proposal } from "./tools";
+import { uploadAttachmentAction } from "@/app/admin/(panel)/tesoreria/libro/attachment-actions";
+import { importStatementAction } from "@/app/admin/(panel)/tesoreria/conciliacion/actions";
+import { PLATFORM_LABELS } from "@/lib/bank-statements";
+import { getFile, readAsFile } from "./files";
+import type { AttachedFile, Proposal } from "./types";
 
 /**
  * Ejecuta una propuesta que el tesorero CONFIRMÓ, por el mismo server
- * action que usa el formulario del Libro. No hay un segundo camino de
- * escritura: autenticación, tag, mes cerrado, recibo emitido, numeración
- * correlativa y aviso al creyente son los de siempre.
+ * action que usa el formulario del Libro (o de Conciliación). No hay un
+ * segundo camino de escritura: autenticación, tag, mes cerrado, recibo
+ * emitido, numeración correlativa y aviso al creyente son los de siempre.
+ *
+ * Los archivos de la conversación (092) se leen del bucket del asistente y
+ * se le pasan al action como si la persona los hubiera elegido en esa
+ * pantalla: el comprobante termina en `treasury-receipts` y el extracto en
+ * `extractos`, cada uno con su copia.
  */
 export async function executeProposal(
+  supabase: SupabaseClient,
   p: Proposal
 ): Promise<{ ok: boolean; message: string; entryId?: string | null }> {
   const fd = new FormData();
@@ -24,11 +35,30 @@ export async function executeProposal(
     case "correccion": {
       const r = await saveEntryAction(fd);
       if (!r.ok) return { ok: false, message: r.error ?? "No se pudo guardar." };
-      return {
-        ok: true,
-        message: p.kind === "movimiento" ? "Registrado en el libro." : "Corregido en el libro.",
-        entryId: r.id,
-      };
+      const base = p.kind === "movimiento" ? "Registrado en el libro." : "Corregido en el libro.";
+      const attached = r.id ? await attachReceipts(supabase, r.id, p.files ?? []) : "";
+      return { ok: true, message: `${base}${attached}`, entryId: r.id };
+    }
+    case "comprobante": {
+      const entryId = p.fields.entry_id;
+      const attached = await attachReceipts(supabase, entryId, p.files ?? []);
+      const failed = attached.includes("no se pudo");
+      return { ok: !failed, message: attached.trim() || "No había comprobantes para adjuntar.", entryId };
+    }
+    case "importar_extracto": {
+      const row = await getFile(supabase, p.files?.[0]?.id ?? null);
+      if (!row) return { ok: false, message: "El archivo ya no está en la conversación." };
+      fd.set("file", await readAsFile(supabase, row));
+      const r = await importStatementAction(fd);
+      if (!r.ok) return { ok: false, message: r.error };
+      const parts = [
+        `Extracto de ${PLATFORM_LABELS[r.platform]} importado: ${r.newCount} líneas nuevas`,
+        r.knownCount > 0 ? `${r.knownCount} ya estaban` : null,
+        `${r.matchedCount} cerraron con el libro`,
+        r.dismissedCount > 0 ? `${r.dismissedCount} descartadas por devolución` : null,
+      ].filter(Boolean);
+      const warnings = r.warnings.length > 0 ? ` Avisos: ${r.warnings.join(" ")}` : "";
+      return { ok: true, message: `${parts.join(", ")}.${warnings}` };
     }
     case "transferencia": {
       const r = await saveTransferAction(fd);
@@ -49,4 +79,32 @@ export async function executeProposal(
         : { ok: false, message: r.error ?? "No se pudo revertir." };
     }
   }
+}
+
+/**
+ * Cuelga los archivos del movimiento como comprobantes. Si uno falla, el
+ * movimiento ya quedó guardado y se avisa sin deshacerlo: perder el
+ * asiento es peor que perder la foto (mismo criterio que `EntryForm`).
+ */
+async function attachReceipts(supabase: SupabaseClient, entryId: string, files: AttachedFile[]): Promise<string> {
+  if (files.length === 0) return "";
+  const failed: string[] = [];
+  let done = 0;
+  for (const f of files) {
+    try {
+      const row = await getFile(supabase, f.id);
+      if (!row) throw new Error("ya no está en la conversación");
+      const fd = new FormData();
+      fd.set("entry_id", entryId);
+      fd.set("file", await readAsFile(supabase, row));
+      const r = await uploadAttachmentAction(fd);
+      if (!r.ok) throw new Error(r.error ?? "error");
+      done++;
+    } catch (e) {
+      failed.push(`"${f.name}" (${e instanceof Error ? e.message : String(e)})`);
+    }
+  }
+  const okPart = done > 0 ? ` ${done === 1 ? "Comprobante adjuntado" : `${done} comprobantes adjuntados`}.` : "";
+  const failPart = failed.length > 0 ? ` El comprobante no se pudo adjuntar: ${failed.join(", ")}; subilo desde el Libro.` : "";
+  return okPart + failPart;
 }

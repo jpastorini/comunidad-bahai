@@ -1,10 +1,12 @@
 import "server-only";
-import Anthropic from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { TOOLS, TOOL_LABELS, runTool, type Proposal, type ToolContext } from "./tools";
 import { executeProposal } from "./execute";
+import { FILES_BETA, anthropic } from "./client";
+import { parseFileNote } from "./files";
 import { SYSTEM_PROMPT, contextBlock } from "./prompt";
-import type { DisplayItem, StreamEvent } from "./types";
+import type { AttachedFile, DisplayItem, StreamEvent } from "./types";
 
 export type { StreamEvent } from "./types";
 
@@ -57,12 +59,6 @@ export type AgentContext = ToolContext & {
   bahaiYear: number | null;
   emit: (e: StreamEvent) => void;
 };
-
-let client: Anthropic | null = null;
-function anthropic(): Anthropic {
-  client ??= new Anthropic();
-  return client;
-}
 
 // ─── Persistencia ──────────────────────────────────────────────────────
 
@@ -121,16 +117,25 @@ export function toDisplay(t: Thread): DisplayItem[] {
   const pushCards = (proposals: Proposal[]) => items.push({ kind: "proposals", proposals });
   t.messages.forEach((m, idx) => {
     const blocks = typeof m.content === "string" ? [{ type: "text", text: m.content }] : m.content;
-    const text = blocks
+    const texts = blocks
       .filter((b): b is { type: "text"; text: string } => b.type === "text" && "text" in b)
-      .map((b) => b.text)
-      .join("\n\n")
-      .trim();
-    if (text) {
-      const kind = m.role === "user" ? "user" : "assistant";
+      .map((b) => b.text);
+    // Las líneas que nombran un archivo (092) se dibujan como el archivo,
+    // no como texto.
+    const files: AttachedFile[] = [];
+    const prose: string[] = [];
+    for (const tx of texts) {
+      const f = m.role === "user" ? parseFileNote(tx) : null;
+      if (f) files.push(f);
+      else prose.push(tx);
+    }
+    const text = prose.join("\n\n").trim();
+    if (m.role === "user" && (text || files.length > 0)) {
+      items.push({ kind: "user", text, ...(files.length > 0 ? { files } : {}) });
+    } else if (m.role === "assistant" && text) {
       const prev = items[items.length - 1];
-      if (kind === "assistant" && prev?.kind === "assistant") prev.text += `\n\n${text}`;
-      else items.push({ kind, text });
+      if (prev?.kind === "assistant") prev.text += `\n\n${text}`;
+      else items.push({ kind: "assistant", text });
     }
     const cards = cardsAt.get(idx);
     if (cards) pushCards(cards);
@@ -196,7 +201,7 @@ async function runLoop(ctx: AgentContext, t: Thread, userContent: Msg["content"]
       const params = {
         model: MODEL,
         max_tokens: 16000,
-        betas: ["server-side-fallback-2026-07-01"],
+        betas: ["server-side-fallback-2026-07-01", FILES_BETA],
         fallbacks: "default",
         output_config: { effort: "medium" },
         system: [
@@ -285,9 +290,18 @@ async function runLoop(ctx: AgentContext, t: Thread, userContent: Msg["content"]
   }
 }
 
-/** Una pregunta nueva. Si quedaban propuestas sin decidir, cuentan como descartadas. */
-export async function ask(ctx: AgentContext, t: Thread, text: string): Promise<void> {
-  let content: Msg["content"] = [{ type: "text", text }];
+/**
+ * Una pregunta nueva, con los archivos adjuntos ya convertidos en bloques
+ * (`attachFiles`). Si quedaban propuestas sin decidir, cuentan como
+ * descartadas.
+ */
+export async function ask(
+  ctx: AgentContext,
+  t: Thread,
+  text: string,
+  fileBlocks: Anthropic.Beta.BetaContentBlockParam[] = []
+): Promise<void> {
+  let content: Msg["content"] = [...fileBlocks, { type: "text", text }];
   if (t.pending) {
     for (const p of t.pending.proposals) {
       if (p.status === "pendiente") {
@@ -295,7 +309,7 @@ export async function ask(ctx: AgentContext, t: Thread, text: string): Promise<v
         p.outcome = "El tesorero no la confirmó y escribió otro mensaje.";
       }
     }
-    content = [...resultsFor(t.pending), { type: "text", text }];
+    content = [...resultsFor(t.pending), ...fileBlocks, { type: "text", text }];
     settle(t);
   }
   await runLoop(ctx, t, content);
@@ -324,7 +338,7 @@ export async function applyDecision(
   if (!t.pending || !p) return null;
   if (p.status === "pendiente") {
     if (confirm) {
-      const r = await executeProposal(p);
+      const r = await executeProposal(supabase, p);
       p.status = r.ok ? "hecho" : "fallo";
       p.outcome = r.message;
       p.entryId = r.entryId ?? null;
