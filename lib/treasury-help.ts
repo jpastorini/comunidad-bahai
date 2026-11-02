@@ -14,6 +14,8 @@
 
 export const TREASURY_HELP = {
   screens: {
+    asistente:
+      "Preguntale al asistente lo que quieras saber del libro («¿cuánto gastamos en el Centro desde Riḍván?», «¿qué me falta para cerrar el mes?») o pedile que registre algo («anotá el aporte de 2.000 de Ana por Prex»). Lee los mismos datos que ves vos, nombres incluidos. Nunca escribe por su cuenta: cada movimiento que propone aparece en una tarjeta y queda en el libro recién cuando tocás Confirmar, con las mismas reglas que el formulario del Libro. Las conversaciones son tuyas: no las ve nadie más.",
     guia:
       "Los pasos del ciclo de la Tesorería, en orden, para el mes que se está cerrando. Lo que la app puede comprobar aparece tildado; lo demás queda a tu criterio. Si recién agarrás el cargo, empezá por acá y seguí los links.",
     manual:
@@ -135,6 +137,7 @@ export const SCREEN_INDEX: Array<{
   section: string;
 }> = [
   { key: "guia", label: "Guía del mes", href: "/admin/tesoreria/guia", section: "Empezar" },
+  { key: "asistente", label: "Asistente", href: "/admin/tesoreria/asistente", section: "Empezar" },
   { key: "traspaso", label: "Traspaso", href: "/admin/tesoreria/traspaso", section: "Empezar" },
   { key: "libro", label: "Libro", href: "/admin/tesoreria/libro", section: "Todos los días" },
   { key: "chat", label: "Mensajes", href: "/admin/tesoreria/chat", section: "Todos los días" },

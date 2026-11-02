@@ -463,7 +463,56 @@ País → 3 zonas electorales → 20 agrupaciones. Ver la sección "Zonas y
 agrupaciones" más abajo. ·
 **Ayudantes de la Asamblea** (migración 088, 2026-10-25): permisos sobre
 secciones del panel para creyentes que no integran la Asamblea, con
-vigencia opcional. Ver la sección "Ayudantes de la Asamblea" más abajo.
+vigencia opcional. Ver la sección "Ayudantes de la Asamblea" más abajo. ·
+**Asistente de Tesorería** (migración 090, 2026-11-02): Claude dentro del
+panel, que lee el libro y propone movimientos que el tesorero confirma.
+Ver la sección "Asistente de Tesorería" más abajo.
+
+## Asistente de Tesorería (migración 090)
+
+Pedido el 2026-11-02 ("muchas veces yo no sé qué hacer, y eso que
+desarrollé la app"). Se charló un servidor MCP para que cada tesorero
+conecte su propia AI y el usuario eligió un **asistente dentro del panel**
+(Tesorería → Asistente, `/admin/tesoreria/asistente`): lo tiene cualquiera
+sin configurar nada. Decidido: **solo quien tiene el tag de Tesorería**,
+**ve nombres** (habla con el tesorero, que ya los ve) y **puede escribir**.
+
+- **Claude Opus 5.5** (`claude-opus-5-5`, effort `medium`, fallback de
+  refusals del lado del servidor con `fallbacks: "default"`), bucle manual
+  con streaming en `lib/treasury-assistant/agent.ts`. El route
+  `/admin/tesoreria/asistente/api` devuelve líneas JSON (`StreamEvent`,
+  `types.ts`). Probado en vivo el 2026-11-02: ~7–13 s y ~27 k tokens de
+  entrada por pregunta, casi todo en la caché del prompt (tools + reglas
+  + los textos de `treasury-help.ts`). Tope de 80 preguntas por persona en
+  24 h (`treasury_assistant_turns`).
+- **Las lecturas** (`tools.ts`) corren con el cliente del tesorero, o sea
+  con la RLS, y reusan las funciones de las pantallas: `getTreasuryAttention`,
+  `getTreasuryGuide`, `applyLedgerFilters`/`filteredTotals`, `balancesBy`,
+  `getTreasuryProgress`, `getAccountReconciliation`, la última auditoría,
+  `getCommitmentMonthReport`. Si una pantalla cambia cómo calcula algo, el
+  asistente lo hereda. Si agregás una pantalla de Tesorería con datos que
+  el tesorero preguntaría, sumale una herramienta.
+- ⚠️ **Las escrituras no escriben.** `proponer_*` (movimiento, corrección,
+  transferencia, anulación, contra-asiento) valida contra el catálogo y el
+  mes cerrado, y devuelve una TARJETA con los nombres resueltos desde la
+  base, no la paráfrasis del modelo. El bucle se detiene (`pending`) hasta
+  que el tesorero confirma o descarta cada una; confirmar llama al MISMO
+  server action del Libro (`execute.ts` → `saveEntryAction`,
+  `saveTransferAction`, `voidEntryAction`, `revertEntryAction`), así que mes
+  cerrado, recibo emitido, numeración y aviso al creyente son los de
+  siempre. La decisión se ejecuta en el route ANTES de abrir el stream,
+  porque esos actions leen la sesión de las cookies. Escribir una pregunta
+  con tarjetas sin decidir las descarta.
+- **Sin `strict` en las herramientas**: la API rechaza más de 16 campos con
+  unión (`[tipo, "null"]`) por pedido y acá hay ~30 opcionales. Los
+  opcionales quedan fuera de `required` (`nullable()` en `tools.ts`).
+- **La conversación** (`treasury_assistant_threads`) guarda el historial
+  tal cual lo devuelve la API —los bloques de pensamiento tienen que
+  volver sin cambios— más `pending` y `decided` (las tarjetas resueltas,
+  para redibujarlas). RLS: la ve solo quien la tuvo, con el tag, en esa
+  comunidad. Ni la Asamblea.
+
+⚠️ Hasta que corra la 090 la pantalla avisa y no conversa.
 
 ## Ayudantes de la Asamblea (migración 088)
 
@@ -3392,6 +3441,10 @@ cambia nada.
 
 ## Pendientes conocidos
 
+- **Aplicar la 090 y estrenar el asistente** (2026-11-02): las lecturas y
+  las propuestas se probaron en vivo contra la base con service-role; falta
+  CONFIRMAR una tarjeta en producción (necesita la sesión) y ver que el
+  movimiento aparezca en el Libro con su recibo.
 - **Estrenar los ayudantes** (la 088 se aplicó el 2026-10-25): nombrar a alguien que no
   sea de la Asamblea (por ejemplo Fotos y Calendario, con un "hasta"),
   entrar con esa cuenta desde "Panel de ayudante" en `/perfil`, ver que el
