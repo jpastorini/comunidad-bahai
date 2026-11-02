@@ -68,11 +68,15 @@ export type StoredMatch = {
   created_at: string;
 };
 
-/** Una línea con sus pares resueltos. `diff` es lo que la línea tiene de
+/** Un par resuelto: una línea con sus movimientos, o un GRUPO (089) de
+ *  líneas y movimientos atados entre sí (los cobros del Point de un día
+ *  contra la canasta y la comisión). `diff` es lo que las líneas tienen de
  *  más respecto de la suma de sus movimientos: distinto de cero cuando el
- *  libro tiene la transferencia y no la comisión que Prex cobró adentro. */
+ *  libro tiene la transferencia y no la comisión que se cobró adentro. */
 export type LineView = {
+  /** La primera de `lines`. */
   line: StoredLine;
+  lines: StoredLine[];
   entries: ReconcileEntry[];
   kinds: StoredMatchKind[];
   manual: boolean;
@@ -109,6 +113,43 @@ export type CandidateEntry = ReconcileEntry & {
   account_name: string;
   contributor_name: string | null;
 };
+
+/**
+ * Los pares guardados agrupados: cada grupo es la componente conexa de
+ * líneas y movimientos unidos por algún par. Sin la 089 cada grupo es una
+ * línea con sus movimientos, como siempre.
+ */
+export function groupMatches(
+  matches: StoredMatch[]
+): Array<{ lineIds: string[]; entryIds: string[]; matches: StoredMatch[] }> {
+  const parent = new Map<string, string>();
+  const find = (x: string): string => {
+    let r = x;
+    while (parent.get(r) !== r) r = parent.get(r) as string;
+    parent.set(x, r);
+    return r;
+  };
+  const add = (x: string) => {
+    if (!parent.has(x)) parent.set(x, x);
+  };
+  for (const m of matches) {
+    const a = `l:${m.line_id}`;
+    const b = `e:${m.entry_id}`;
+    add(a);
+    add(b);
+    parent.set(find(a), find(b));
+  }
+  const groups = new Map<string, { lineIds: string[]; entryIds: string[]; matches: StoredMatch[] }>();
+  for (const m of matches) {
+    const root = find(`l:${m.line_id}`);
+    const g = groups.get(root) ?? { lineIds: [], entryIds: [], matches: [] };
+    if (!g.lineIds.includes(m.line_id)) g.lineIds.push(m.line_id);
+    if (!g.entryIds.includes(m.entry_id)) g.entryIds.push(m.entry_id);
+    g.matches.push(m);
+    groups.set(root, g);
+  }
+  return [...groups.values()];
+}
 
 /** Códigos de "todavía no corrió la 061". */
 export function isStatementsSchemaMissing(error: { code?: string } | null | undefined): boolean {
@@ -296,13 +337,14 @@ function toReconcileEntry(r: RawEntryRow, rubroOf: Map<string, string>): Reconci
  * la cuenta dentro de la ventana, y aparte los de las OTRAS cuentas de la
  * comunidad en la misma ventana. Resuelve nombre de cuenta y de
  * contribuyente. Lo que ya cerró contra alguna línea (de cualquier cuenta)
- * queda afuera: un movimiento cierra contra UNA línea.
+ * queda afuera, salvo que su grupo todavía no cierre (`openEntryIds`).
  */
 async function getCandidates(
   supabase: SupabaseClient,
   accountId: string,
   window: { from: string; to: string } | null,
-  rubroOf: Map<string, string>
+  rubroOf: Map<string, string>,
+  openEntryIds: Set<string> = new Set()
 ): Promise<{ candidates: CandidateEntry[]; elsewhere: CandidateEntry[] }> {
   const inWindow = (q: EntriesQuery) =>
     window ? q.gte("entry_date", window.from).lte("entry_date", window.to) : q;
@@ -331,7 +373,7 @@ async function getCandidates(
   );
 
   const out = rows
-    .filter((r) => !matched.has(r.id))
+    .filter((r) => !matched.has(r.id) || openEntryIds.has(r.id))
     .map<CandidateEntry>((r) => ({
       ...toReconcileEntry(r, rubroOf),
       account_id: r.account_id,
@@ -367,13 +409,9 @@ export async function getAccountReconciliation(
       : null;
 
   const matches = await getMatches(supabase, lines.map((l) => l.id));
-  const byLine = new Map<string, StoredMatch[]>();
-  for (const m of matches) {
-    const arr = byLine.get(m.line_id) ?? [];
-    arr.push(m);
-    byLine.set(m.line_id, arr);
-  }
+  const matchedLineIds = new Set(matches.map((m) => m.line_id));
   const matchedEntryIds = new Set(matches.map((m) => m.entry_id));
+  const lineById = new Map(lines.map((l) => [l.id, l]));
 
   const rubroOf = await getRubroNames(supabase);
   const upTo = coverage ? shiftDate(coverage.to, CANDIDATE_WINDOW_DAYS) : "9999-12-31";
@@ -383,18 +421,33 @@ export async function getAccountReconciliation(
   const pending: StoredLine[] = [];
   const matched: LineView[] = [];
   const dismissed: StoredLine[] = [];
+  // Los movimientos de un grupo que no cierra se siguen ofreciendo para
+  // vincular: es como se ata a mano la canasta a su segundo cobro.
+  const openEntryIds = new Set<string>();
+  for (const g of groupMatches(matches)) {
+    const ls = g.lineIds
+      .map((id) => lineById.get(id))
+      .filter((l): l is StoredLine => !!l)
+      .sort((a, b) => (a.line_date < b.line_date ? -1 : a.line_date > b.line_date ? 1 : 0));
+    if (ls.length === 0) continue;
+    const es = g.entryIds.map((id) => entryById.get(id)).filter((e): e is ReconcileEntry => !!e);
+    const lineSum = ls.reduce((s, l) => addMoney(s, l.amount), 0);
+    const sum = es.reduce((s, e) => addMoney(s, e.amount), 0);
+    const diff = addMoney(lineSum, -sum);
+    if (Math.abs(diff) >= 0.005) g.entryIds.forEach((id) => openEntryIds.add(id));
+    matched.push({
+      line: ls[0],
+      lines: ls,
+      entries: es,
+      kinds: [...new Set(g.matches.map((m) => m.kind))],
+      manual: g.matches.some((m) => m.matched_by === "tesorero"),
+      diff,
+    });
+  }
+  matched.sort((a, b) => (a.line.line_date < b.line.line_date ? -1 : a.line.line_date > b.line.line_date ? 1 : 0));
   for (const l of lines) {
-    const ms = byLine.get(l.id) ?? [];
-    if (ms.length > 0) {
-      const es = ms.map((m) => entryById.get(m.entry_id)).filter((e): e is ReconcileEntry => !!e);
-      const sum = es.reduce((s, e) => addMoney(s, e.amount), 0);
-      matched.push({
-        line: l,
-        entries: es,
-        kinds: ms.map((m) => m.kind),
-        manual: ms.some((m) => m.matched_by === "tesorero"),
-        diff: addMoney(l.amount, -sum),
-      });
+    if (matchedLineIds.has(l.id)) {
+      continue;
     } else if (l.dismissed_at) {
       dismissed.push(l);
     } else {
@@ -415,7 +468,8 @@ export async function getAccountReconciliation(
           to: shiftDate(coverage.to, CANDIDATE_WINDOW_DAYS),
         }
       : null,
-    rubroOf
+    rubroOf,
+    openEntryIds
   );
 
   const withBalance = imports.rows.find((i) => i.closing_balance != null);

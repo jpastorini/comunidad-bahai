@@ -15,7 +15,7 @@ import { addMoney } from "./treasury-format";
  *    misma moneda, el mismo importe (con signo) y fecha a lo sumo
  *    `windowDays` días de distancia: el giro tiene una fecha y el tesorero
  *    lo registra otro día. Si hay varios candidatos gana el más cercano en
- *    fecha; cada movimiento cierra con UNA línea.
+ *    fecha; fuera de un grupo, cada movimiento cierra con UNA línea.
  *  · Prex mete la comisión adentro del importe (pedí 5.014, salieron
  *    5.058,26). El libro la tiene como dos asientos, la transferencia y el
  *    gasto por transferencia. Se acepta el par, y si falta el asiento de
@@ -24,6 +24,10 @@ import { addMoney } from "./treasury-format";
  *    (dos aportes que entraron juntos), y una salida que la plataforma
  *    devolvió el mismo día (transferencia rechazada + devolución) se
  *    aparea consigo misma y no se le pide al libro.
+ *  · Varios cobros del mismo día (Mercado Pago, Point) pueden cerrar como
+ *    GRUPO contra los movimientos del libro de ese día que suman lo mismo:
+ *    la canasta de la Fiesta como un aporte y la comisión del día como un
+ *    gasto (089).
  *  · Los movimientos anulados (054) y los saldos de apertura no cuentan.
  *
  * Lo que queda sin par, de cada lado, es el resultado útil: lo que está
@@ -46,10 +50,13 @@ export type ReconcileEntry = {
   voided_at: string | null;
 };
 
-export type MatchKind = "exacto" | "comision" | "suma";
+export type MatchKind = "exacto" | "comision" | "suma" | "grupo";
 
 export type ReconcileMatch = {
+  /** La primera de `lines`. */
   line: StatementLine;
+  /** Todas las líneas del par: una sola, salvo en `grupo`. */
+  lines: StatementLine[];
   entries: ReconcileEntry[];
   kind: MatchKind;
   /** Días entre la línea y el movimiento (el más lejano si son varios). */
@@ -114,6 +121,45 @@ const REVERSAL_RE = /devoluci|revers|anulad|rechaz|reintegro/i;
  * Aparte de `reconcile()` porque la pantalla persistida lo necesita sin
  * volver a cruzar nada.
  */
+/** Hasta cuántos movimientos se combinan para cerrar un grupo: 2^16
+ *  combinaciones es nada; más que eso un día no tiene. */
+const MAX_GROUP_POOL = 16;
+
+/**
+ * La combinación de movimientos que suma `target`: la de menos
+ * movimientos y, a igual cantidad, la más cercana a `date`. null si no
+ * hay o si el pozo es demasiado grande para probar todas.
+ */
+export function subsetSumming(
+  pool: ReconcileEntry[],
+  target: number,
+  date?: string
+): ReconcileEntry[] | null {
+  if (pool.length === 0 || pool.length > MAX_GROUP_POOL) return null;
+  const cents = pool.map((e) => Math.round(e.amount * 100));
+  const goal = Math.round(target * 100);
+  let best: { mask: number; size: number; spread: number } | null = null;
+  for (let mask = 1; mask < 1 << pool.length; mask++) {
+    let sum = 0;
+    let size = 0;
+    let spread = 0;
+    for (let i = 0; i < pool.length; i++) {
+      if (mask & (1 << i)) {
+        sum += cents[i];
+        size++;
+        if (date) spread += Math.abs(daysBetween(date, pool[i].entry_date));
+      }
+    }
+    if (sum !== goal) continue;
+    if (!best || size < best.size || (size === best.size && spread < best.spread)) {
+      best = { mask, size, spread };
+    }
+  }
+  if (!best) return null;
+  const chosen = best.mask;
+  return pool.filter((_, i) => chosen & (1 << i));
+}
+
 export function reconcileTotals(
   lines: StatementLine[],
   allEntries: ReconcileEntry[],
@@ -230,7 +276,7 @@ export function reconcile(
     if (hit) {
       usedLines.add(l.key);
       usedEntries.add(hit.entry.id);
-      matched.push({ line: l, entries: [hit.entry], kind: "exacto", dayDiff: hit.dayDiff, missingFee: null });
+      matched.push({ line: l, lines: [l], entries: [hit.entry], kind: "exacto", dayDiff: hit.dayDiff, missingFee: null });
     }
   }
 
@@ -250,6 +296,7 @@ export function reconcile(
     }
     matched.push({
       line: l,
+      lines: [l],
       entries,
       kind: "comision",
       dayDiff: Math.max(hit.dayDiff, feeHit?.dayDiff ?? 0),
@@ -275,12 +322,58 @@ export function reconcile(
       found.forEach((e) => usedEntries.add(e.id));
       matched.push({
         line: l,
+        lines: [l],
         entries: found,
         kind: "suma",
         dayDiff: Math.max(...found.map((e) => Math.abs(daysBetween(l.date, e.entry_date)))),
         missingFee: null,
       });
     }
+  }
+
+  // 4. El grupo del día (Mercado Pago, Point): varios cobros del mismo día
+  // contra los movimientos que el libro tiene por ese día — la canasta de
+  // la Fiesta como UN aporte y una sola comisión del día. Entran las
+  // líneas que quedaron sueltas y las que cerraron por comisión sin
+  // encontrar el gasto (ese par se deshace y se rearma como grupo).
+  const days = [...new Set(ordered.map((l) => `${l.date}|${l.currency}`))];
+  for (const day of days) {
+    const [date, currency] = day.split("|");
+    const loose = matched.filter(
+      (m) => m.kind === "comision" && m.missingFee != null && m.line.date === date && m.line.currency === currency
+    );
+    const group = ordered.filter(
+      (l) =>
+        l.date === date &&
+        l.currency === currency &&
+        (!usedLines.has(l.key) || loose.some((m) => m.line.key === l.key))
+    );
+    if (group.length < 2) continue;
+    const target = group.reduce((s, l) => addMoney(s, l.amount), 0);
+    const released = new Set(loose.flatMap((m) => m.entries.map((e) => e.id)));
+    const pool = candidates.filter(
+      (e) => e.currency === currency && (!usedEntries.has(e.id) || released.has(e.id))
+    );
+    const found =
+      subsetSumming(pool.filter((e) => e.entry_date === date), target) ??
+      subsetSumming(
+        pool.filter((e) => Math.abs(daysBetween(date, e.entry_date)) <= windowDays),
+        target,
+        date
+      );
+    if (!found) continue;
+    for (const m of loose) matched.splice(matched.indexOf(m), 1);
+    released.forEach((id) => usedEntries.delete(id));
+    group.forEach((l) => usedLines.add(l.key));
+    found.forEach((e) => usedEntries.add(e.id));
+    matched.push({
+      line: group[0],
+      lines: group,
+      entries: found,
+      kind: "grupo",
+      dayDiff: Math.max(...found.map((e) => Math.abs(daysBetween(date, e.entry_date)))),
+      missingFee: null,
+    });
   }
 
   const unmatchedLines = ordered.filter((l) => !usedLines.has(l.key));

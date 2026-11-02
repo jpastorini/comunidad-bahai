@@ -20,6 +20,7 @@ import {
   dismissLineAction,
   importStatementAction,
   linkLineAction,
+  rematchAction,
   undoLineAction,
   type ImportResult,
 } from "./actions";
@@ -306,7 +307,7 @@ function AccountState({ data: d, account }: { data: AccountReconciliation; accou
             ))}
             {feeGaps.map((m) => (
               <FeeGapRow
-                key={`gap-${m.line.id}`}
+                key={`gap-${m.lines.map((l) => l.id).join("-")}`}
                 view={m}
                 candidates={d.candidates}
                 elsewhere={d.elsewhere}
@@ -316,10 +317,11 @@ function AccountState({ data: d, account }: { data: AccountReconciliation; accou
           </ul>
         )}
         {pendingCount > 0 && (
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link href="/admin/tesoreria/libro" className="text-[13px] font-semibold text-terra hover:underline">
               Abrir el libro →
             </Link>
+            <RematchButton accountId={account.id} onChanged={() => router.refresh()} />
           </div>
         )}
       </Card>
@@ -352,7 +354,7 @@ function AccountState({ data: d, account }: { data: AccountReconciliation; accou
             </summary>
             <ul className="mt-3 divide-y divide-black/5">
               {d.matched.map((m) => (
-                <MatchedRow key={m.line.id} view={m} onChanged={() => router.refresh()} />
+                <MatchedRow key={m.lines.map((l) => l.id).join("-")} view={m} onChanged={() => router.refresh()} />
               ))}
               {d.dismissed.map((l) => (
                 <DismissedRow key={l.id} line={l} onChanged={() => router.refresh()} />
@@ -509,18 +511,36 @@ function FeeGapRow({
     });
   }
 
+  const platform = PLATFORM_LABELS[m.line.platform];
+  const isPos = m.line.platform === "mercadopago";
+  const several = m.lines.length > 1;
+  const title = several
+    ? `Los ${m.lines.length} cobros del`
+    : m.kinds.includes("comision")
+      ? isPos
+        ? "Comisión del cobro del"
+        : "Comisión de la transferencia del"
+      : "Falta completar la línea del";
+  const hint = several
+    ? `Los cobros de ${platform} y los movimientos vinculados no suman lo mismo.`
+    : m.kinds.includes("comision")
+      ? isPos
+        ? `El cobro está en el libro por el valor de la compra; falta el gasto por la comisión y la retención que ${platform} descontó.`
+        : `La transferencia está en el libro; falta el gasto por la comisión que ${platform} cobró adentro del importe.`
+      : isPos
+        ? "Los movimientos vinculados no suman el neto del cobro. Si un aporte del libro junta varios cobros, vinculalo también a los otros."
+        : "Los movimientos vinculados no suman el importe de la línea.";
   return (
     <li className="py-2.5">
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[13px] text-dark">
-            {m.kinds.includes("comision") ? "Comisión de la transferencia" : "Falta completar la línea"} del{" "}
-            {formatReceiptDate(m.line.line_date)}
+            {title} {formatReceiptDate(m.line.line_date)}
           </div>
-          <div className="text-[11.5px] text-muted">
-            {m.kinds.includes("comision")
-              ? `La transferencia está en el libro; falta el gasto por la comisión que ${PLATFORM_LABELS[m.line.platform]} cobró adentro del importe.`
-              : "Los movimientos vinculados no suman el importe de la línea."}
+          <div className="text-[11.5px] text-muted">{hint}</div>
+          <div className="mt-0.5 text-[11.5px] text-muted">
+            {m.lines.map((l) => signed(l.amount)).join(" + ")} en {platform} ·{" "}
+            {m.entries.map((e) => signed(e.amount)).join(" + ")} en el libro
           </div>
         </div>
         <div className="shrink-0 text-right">
@@ -556,13 +576,22 @@ function MatchedRow({ view: m, onChanged }: { view: LineView; onChanged: () => v
   const [error, setError] = useState<string | null>(null);
   return (
     <li className="py-2.5 text-[12.5px]">
-      <div className="flex items-baseline justify-between gap-3">
-        <LineText line={m.line} compact />
-        <span className="shrink-0 tabular-nums text-dark">{signed(m.line.amount)}</span>
-      </div>
+      {m.lines.map((l) => (
+        <div key={l.id} className="flex items-baseline justify-between gap-3">
+          <LineText line={l} compact />
+          <span className="shrink-0 tabular-nums text-dark">{signed(l.amount)}</span>
+        </div>
+      ))}
       <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-2 text-[11.5px] text-muted">
         <span>
-          {m.manual ? "vinculada a mano" : "cerró sola"} ·{" "}
+          {m.manual
+            ? m.lines.length > 1
+              ? "vinculadas a mano"
+              : "vinculada a mano"
+            : m.lines.length > 1
+              ? "cerraron juntas"
+              : "cerró sola"}{" "}
+          ·{" "}
           {m.entries
             .map(
               (e) =>
@@ -576,7 +605,7 @@ function MatchedRow({ view: m, onChanged }: { view: LineView; onChanged: () => v
           disabled={busy}
           onClick={() =>
             startTransition(async () => {
-              const r = await undoLineAction(m.line.id);
+              const r = await undoLineAction(m.lines.map((l) => l.id));
               if (!r.ok) setError(r.error);
               else onChanged();
             })
@@ -587,6 +616,35 @@ function MatchedRow({ view: m, onChanged }: { view: LineView; onChanged: () => v
       </div>
       {error && <p className="mt-1 text-[12px] text-rose-700">{error}</p>}
     </li>
+  );
+}
+
+function RematchButton({ accountId, onChanged }: { accountId: string; onChanged: () => void }) {
+  const [busy, startTransition] = useTransition();
+  const [note, setNote] = useState<string | null>(null);
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        className={smallBtn}
+        disabled={busy}
+        onClick={() =>
+          startTransition(async () => {
+            setNote(null);
+            const r = await rematchAction(accountId);
+            if (!r.ok) setNote(r.error);
+            else {
+              const n = r.matchedCount ?? 0;
+              setNote(n === 0 ? "No cerró nada nuevo." : n === 1 ? "Cerró 1 línea." : `Cerraron ${n} líneas.`);
+              onChanged();
+            }
+          })
+        }
+      >
+        {busy ? "Cruzando…" : "Volver a cruzar con el libro"}
+      </button>
+      {note && <span className="text-[12px] text-muted">{note}</span>}
+    </span>
   );
 }
 

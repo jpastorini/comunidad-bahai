@@ -2634,6 +2634,22 @@ se eligen: cada uno lleva a `/admin/tesoreria/libro?ids=<id>`, que abre
 el movimiento para corregirle la cuenta; después se vincula a mano o se
 vuelve a importar.
 
+**Grupos (089, 2026-11-02).** Con el Point de Mercado Pago, la Fiesta
+entra como varios cobros y el libro la tiene como UN aporte (la canasta)
+y una comisión del día, así que "un movimiento cierra contra una línea"
+dejó de ser cierto. La 089 cambia `unique (entry_id)` por
+`unique (line_id, entry_id)`: un grupo son los pares cruzados de sus
+líneas y movimientos, y la pantalla lo arma como componente conexa
+(`groupMatches()`); `LineView` trae `lines`. El motor suma un paso 4,
+**grupo del día**: las líneas sueltas de una fecha, más las que cerraron
+por comisión sin hallar el gasto, contra la combinación de movimientos
+del libro (`subsetSumming`, la de menos movimientos, tope 16) que sume lo
+mismo. Al volver a correr, los pares del motor que no suman se rehacen
+(los manuales nunca); "Volver a cruzar con el libro" lo corre sin
+importar. Un movimiento de un grupo que no cierra se sigue ofreciendo
+para vincular a mano. Sin la 089 todo sigue como antes, salvo que vincular
+un movimiento ya usado falla por la constraint vieja.
+
 ⚠️ Hasta que corra la 061, la pantalla avisa y no importa
 (`isStatementsSchemaMissing`: 42P01 / 42703 / PGRST205); Cierres y
 Libro siguen andando sin la conciliación, porque las lecturas caen a

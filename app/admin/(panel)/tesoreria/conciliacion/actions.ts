@@ -22,6 +22,7 @@ import {
   getMatches,
   getRubroNames,
   getStoredLines,
+  groupMatches,
   isStatementsSchemaMissing,
   toStatementLine,
 } from "@/lib/treasury-statements";
@@ -264,6 +265,11 @@ export async function importStatementAction(formData: FormData): Promise<ImportR
  * Corre el motor sobre las líneas pendientes de la cuenta contra los
  * movimientos sin par, y persiste lo que encuentra. Devuelve cuántas
  * líneas cerraron y cuántas se descartaron solas.
+ *
+ * Lo que el motor cerró antes y todavía no suma (la comisión sin su
+ * gasto) vuelve a entrar con sus movimientos: un gasto cargado después, o
+ * el grupo del día (089), lo pueden completar. Lo vinculado a mano no se
+ * toca nunca.
  */
 async function runMatcher(
   supabase: ReturnType<typeof createSupabaseServer>,
@@ -272,8 +278,31 @@ async function runMatcher(
 ): Promise<{ matchedCount: number; dismissedCount: number; error: string | null }> {
   const stored = await getStoredLines(supabase, accountId);
   const matches = await getMatches(supabase, stored.map((l) => l.id));
-  const matchedLineIds = new Set(matches.map((m) => m.line_id));
-  const matchedEntryIds = new Set(matches.map((m) => m.entry_id));
+  const lineAmount = new Map(stored.map((l) => [l.id, Number(l.amount)]));
+
+  const rubroOf = await getRubroNames(supabase);
+  const maxDate = stored.reduce((a, l) => (l.line_date > a ? l.line_date : a), "0000-00-00");
+  const { entries, error } = await getAccountEntries(
+    supabase,
+    accountId,
+    shiftDate(maxDate, DEFAULT_WINDOW_DAYS),
+    rubroOf
+  );
+  if (error) return { matchedCount: 0, dismissedCount: 0, error: `El motor no pudo leer el libro: ${error}` };
+  const entryAmount = new Map(entries.map((e) => [e.id, e.amount]));
+
+  // Los grupos del motor que no suman se vuelven a probar.
+  const retry = new Set<string>();
+  for (const g of groupMatches(matches)) {
+    if (g.matches.some((m) => m.matched_by !== "motor")) continue;
+    const lineSum = g.lineIds.reduce((s, id) => s + (lineAmount.get(id) ?? 0), 0);
+    const entrySum = g.entryIds.reduce((s, id) => s + (entryAmount.get(id) ?? 0), 0);
+    if (Math.abs(lineSum - entrySum) >= 0.005) g.matches.forEach((m) => retry.add(m.id));
+  }
+  const kept = matches.filter((m) => !retry.has(m.id));
+  const matchedLineIds = new Set(kept.map((m) => m.line_id));
+  const matchedEntryIds = new Set(kept.map((m) => m.entry_id));
+  const retriedLineIds = new Set(matches.filter((m) => retry.has(m.id)).map((m) => m.line_id));
 
   const pending = stored.filter((l) => !matchedLineIds.has(l.id) && !l.dismissed_at);
   if (pending.length === 0) return { matchedCount: 0, dismissedCount: 0, error: null };
@@ -282,38 +311,44 @@ async function runMatcher(
   const from = lines.reduce((a, l) => (l.date < a ? l.date : a), lines[0].date);
   const to = lines.reduce((a, l) => (l.date > a ? l.date : a), lines[0].date);
 
-  const rubroOf = await getRubroNames(supabase);
-  const { entries, error } = await getAccountEntries(
-    supabase,
-    accountId,
-    shiftDate(to, DEFAULT_WINDOW_DAYS),
-    rubroOf
-  );
-  if (error) return { matchedCount: 0, dismissedCount: 0, error: `El motor no pudo leer el libro: ${error}` };
-
   const result = reconcile(
     lines,
     entries.filter((e) => !matchedEntryIds.has(e.id)),
     { from, to }
   );
 
+  // Lo que se volvió a probar se reemplaza por lo que encontró el motor
+  // ahora (que puede ser lo mismo).
+  if (retry.size > 0) {
+    const { error: deleteError } = await supabase
+      .from("treasury_statement_matches")
+      .delete()
+      .in("id", [...retry]);
+    if (deleteError) {
+      console.error("[runMatcher] retry", deleteError);
+      return { matchedCount: 0, dismissedCount: 0, error: `No pude rehacer los pares: ${deleteError.message}` };
+    }
+  }
+
   let matchedCount = 0;
   if (result.matched.length > 0) {
     const rows = result.matched.flatMap((m) =>
-      m.entries.map((e) => ({
-        line_id: m.line.key,
+      m.lines.flatMap((l) => m.entries.map((e) => ({
+        line_id: l.key,
         entry_id: e.id,
         kind: m.kind,
         matched_by: "motor",
         matched_by_user: userId,
-      }))
+      })))
     );
     const { error: insertError } = await supabase.from("treasury_statement_matches").insert(rows);
     if (insertError) {
       console.error("[runMatcher] matches", insertError);
       return { matchedCount: 0, dismissedCount: 0, error: `No pude guardar los pares: ${insertError.message}` };
     }
-    matchedCount = result.matched.length;
+    matchedCount = result.matched
+      .flatMap((m) => m.lines)
+      .filter((l) => !retriedLineIds.has(l.key)).length;
   }
 
   let dismissedCount = 0;
@@ -339,6 +374,16 @@ async function runMatcher(
   }
 
   return { matchedCount, dismissedCount, error: null };
+}
+
+/** Vuelve a cruzar el extracto de una cuenta con el libro, sin importar
+ *  nada: después de cargar en el libro lo que faltaba. */
+export async function rematchAction(accountId: string): Promise<Result & { matchedCount?: number }> {
+  const { session, supabase } = await guard();
+  const { matchedCount, error } = await runMatcher(supabase, accountId, session.user.id);
+  if (error) return failResult(error);
+  revalidateAll();
+  return { ok: true, error: null, matchedCount };
 }
 
 // ─── Lo que el tesorero resuelve a mano ────────────────────────────────
@@ -375,7 +420,7 @@ export async function linkLineAction(lineId: string, entryId: string): Promise<R
     matched_by_user: session.user.id,
   });
   if (error) {
-    if (error.code === "23505") return failResult("Ese movimiento ya está vinculado a otra línea.");
+    if (error.code === "23505") return failResult("Ese movimiento ya está vinculado a esta línea.");
     console.error("[linkLineAction]", error);
     return failResult(error.message);
   }
@@ -416,13 +461,16 @@ export async function dismissLineAction(lineId: string, reason: string): Promise
   return okResult;
 }
 
-/** Vuelve la línea a pendiente: suelta sus pares y borra el descarte. */
-export async function undoLineAction(lineId: string): Promise<Result> {
+/** Vuelve las líneas a pendiente: suelta sus pares y borra el descarte.
+ *  Un grupo (089) se deshace entero, con todas sus líneas. */
+export async function undoLineAction(lineId: string | string[]): Promise<Result> {
   const { supabase } = await guard();
+  const ids = Array.isArray(lineId) ? lineId : [lineId];
+  if (ids.length === 0) return okResult;
   const { error: matchError } = await supabase
     .from("treasury_statement_matches")
     .delete()
-    .eq("line_id", lineId);
+    .in("line_id", ids);
   if (matchError) {
     console.error("[undoLineAction] matches", matchError);
     return failResult(isStatementsSchemaMissing(matchError) ? MIGRATION_MSG : matchError.message);
@@ -430,7 +478,7 @@ export async function undoLineAction(lineId: string): Promise<Result> {
   const { error } = await supabase
     .from("treasury_statement_lines")
     .update({ dismissed_at: null, dismissed_by: null, dismiss_reason: null, dismissed_auto: false })
-    .eq("id", lineId);
+    .in("id", ids);
   if (error) {
     console.error("[undoLineAction] line", error);
     return failResult(error.message);
