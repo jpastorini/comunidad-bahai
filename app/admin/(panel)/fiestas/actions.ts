@@ -6,6 +6,7 @@ import { requirePermission } from "@/lib/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 import { getBahaiMonth } from "@/lib/bahai-calendar";
+import { getLocalityMemberIds, sendPushToUsers } from "@/lib/push";
 import {
   generateTemplateDeepening,
   generateTemplatePrayers,
@@ -293,7 +294,7 @@ async function persistNews(formData: FormData, feastId: string): Promise<string 
 //   published   → in_progress (iniciar Fiesta)
 //   in_progress → published   (volver a publicada)
 export async function setFeastStatusAction(formData: FormData) {
-  await requirePermission("fiestas");
+  const session = await requirePermission("fiestas");
   const id = formData.get("id") as string;
   const requested = formData.get("new_status") as string;
   const valid = ["draft", "published", "in_progress"] as const;
@@ -314,7 +315,42 @@ export async function setFeastStatusAction(formData: FormData) {
   }
 
   const supabase = createSupabaseServer();
-  await supabase.from("feasts").update(update).eq("id", id);
+  // El estado anterior decide si hay que avisar: solo el paso a iniciada
+  // es "empezó la Fiesta". Volver a mandar el form de una que ya estaba
+  // iniciada no repite el push.
+  const { data: before } = await supabase
+    .from("feasts")
+    .select("status, locality_id, bahai_month_name")
+    .eq("id", id)
+    .maybeSingle();
+  const { error } = await supabase.from("feasts").update(update).eq("id", id);
+  if (error) {
+    console.error("[fiestas] cambiar estado falló:", error.message);
+    setFlashToast({ tone: "error", message: "No se pudo cambiar el estado de la Fiesta." });
+    redirect(`/admin/fiestas/${id}`);
+  }
+
+  // Aviso de inicio: a los creyentes de la localidad (no a los Amigos de
+  // la Fe, que no ven la Fiesta, 047), por membresía (056). Quien la
+  // inicia no se avisa a sí mismo. Un push que falla no deshace nada.
+  if (
+    newStatus === "in_progress" &&
+    before &&
+    before.status !== "in_progress" &&
+    before.locality_id
+  ) {
+    const recipients = (
+      await getLocalityMemberIds(before.locality_id, { bahaiOnly: true })
+    ).filter((uid) => uid !== session.profile.id);
+    await sendPushToUsers(recipients, {
+      title: `Comenzó la Fiesta de ${before.bahai_month_name}`,
+      body: "Ya está disponible el programa: oraciones, lecturas y noticias.",
+      url: `/fiestas/${id}`,
+      // Mismo tag que el recordatorio de la mañana: lo reemplaza en vez
+      // de apilar dos avisos de la misma Fiesta.
+      tag: `feast-${id}`,
+    });
+  }
 
   const messages: Record<typeof newStatus, string> = {
     draft:

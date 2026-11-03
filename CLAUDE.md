@@ -1583,6 +1583,13 @@ creyentes**, confirmada o no (el aviso es la invitación).
   `feasts.reminder_sent_at` frena los reintentos. Si la Fiesta todavía no
   empezó, el aviso invita a confirmar.
 
+**Aviso al iniciar la Fiesta** (sin migración, 2026-11-03): al pasar
+de publicada a iniciada, `setFeastStatusAction` manda "Comenzó la Fiesta
+de …" a los creyentes de la localidad (por membresía, sin Amigos de la Fe
+ni quien la inició), con el mismo tag `feast-<id>` que el recordatorio de
+la mañana, así lo reemplaza. No hay marca de enviado: "Volver a Publicada"
+y reiniciar vuelve a avisar.
+
 La 065 se aplicó el 2026-09-24. Si la tabla faltara, el bloque "Voy" no
 aparece (la lectura detecta el esquema faltante) y el aviso de la Fiesta
 falla en el log sin tumbar los otros dos de la mañana.
