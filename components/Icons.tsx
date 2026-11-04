@@ -228,6 +228,22 @@ export const IconEnsenanza = (p: IconProps) => (
   </Svg>
 );
 
+/** Estrella de cinco puntas, rellena: señala lo más usado (el Libro). */
+export const IconStar = (p: IconProps) => (
+  <Svg fill="currentColor" stroke="none" {...p}>
+    <path d="M12 2.6l2.9 6.1 6.7.8-4.9 4.6 1.3 6.6L12 17.4l-6 3.3 1.3-6.6L2.4 9.5l6.7-.8z" />
+  </Svg>
+);
+
+/** Destellos: el Asistente de Tesorería. */
+export const IconSparkles = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M10 4l1.8 4.7L16.5 10.5l-4.7 1.8L10 17l-1.8-4.7L3.5 10.5l4.7-1.8z" />
+    <path d="M18 14l.9 2.3 2.3.9-2.3.9L18 20.4l-.9-2.3-2.3-.9 2.3-.9z" />
+    <path d="M17.5 3l.6 1.5 1.5.6-1.5.6-.6 1.5-.6-1.5-1.5-.6 1.5-.6z" />
+  </Svg>
+);
+
 /** Código QR, para Compartir. */
 export const IconQr = (p: IconProps) => (
   <Svg {...p}>

@@ -11,6 +11,8 @@ import {
   IconMensajes,
   IconNacional,
   IconPersonas,
+  IconSparkles,
+  IconStar,
   IconTesoreria,
 } from "@/components/Icons";
 import { BahaiStar } from "@/components/BahaiStar";
@@ -280,13 +282,21 @@ function GroupRow({
                 <Link
                   href={leaf.href}
                   onClick={onNavigate}
-                  className={`block rounded-lg px-3 py-2 text-[12.5px] transition ${
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12.5px] transition ${
                     on
                       ? `${activeBg} font-semibold text-white shadow-card-soft`
                       : "font-medium text-dark/80 hover:bg-bg hover:text-dark"
                   }`}
                 >
-                  {leaf.label}
+                  <span>{leaf.label}</span>
+                  {/* La marca de la hoja (admin-nav): dorada sobre blanco,
+                      blanca sobre el fondo activo. */}
+                  {leaf.icon === "star" && (
+                    <IconStar size={13} className={on ? "text-white" : "text-gold"} />
+                  )}
+                  {leaf.icon === "sparkles" && (
+                    <IconSparkles size={14} className={on ? "text-white" : "text-gold-dark"} />
+                  )}
                 </Link>
               </li>
             );

@@ -53,6 +53,13 @@ export type NavLeaf = {
   onlyInStructure?: boolean;
   /** El permiso que la abre para un ayudante (088). */
   perm?: Permission;
+  /**
+   * Marca al lado de la etiqueta. Es la excepción a "un ícono por grupo":
+   * `star` señala la pantalla más usada del grupo (el Libro), `sparkles`
+   * la que conversa (el Asistente). El Sidebar las dibuja; acá es un texto
+   * porque este módulo no lleva JSX.
+   */
+  icon?: "star" | "sparkles";
 };
 
 export type NavGroup = {
@@ -167,7 +174,7 @@ export const ADMIN_NAV: NavGroup[] = [
       // recién agarra la Tesorería.
       { href: "/admin/tesoreria/guia", label: "Guía del mes", section: "Empezar" },
       // Preguntarle al libro y pedirle que registre, con confirmación (090).
-      { href: "/admin/tesoreria/asistente", label: "Asistente", section: "Empezar" },
+      { href: "/admin/tesoreria/asistente", label: "Asistente", section: "Empezar", icon: "sparkles" },
       // Toda la ayuda junta, para imprimir el primer día.
       { href: "/admin/tesoreria/manual", label: "Manual", section: "Empezar" },
       // El acta que firman quien entrega y quien recibe, y los pasos del cambio.
@@ -179,6 +186,9 @@ export const ADMIN_NAV: NavGroup[] = [
         label: "Libro",
         match: ["/admin/tesoreria/recibo"],
         section: "Todos los días",
+        // La pantalla más usada de la Tesorería: la estrella la hace
+        // encontrar de un vistazo en una lista de veinte hojas.
+        icon: "star",
       },
       { href: "/admin/tesoreria/chat", label: "Mensajes", section: "Todos los días", inStructure: false },
       // El extracto de la plataforma contra el libro de esa cuenta (061).
