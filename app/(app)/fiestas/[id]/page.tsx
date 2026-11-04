@@ -15,9 +15,13 @@ import {
 import { NEWS_SCOPE_LABELS, NEWS_SCOPE_ORDER } from "@/lib/feast-program";
 import { getMyRsvp } from "@/lib/feast-rsvps";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { getPublicationForFeast } from "@/lib/treasury-publications";
+import { loadFeastTreasury } from "@/lib/feast-program-server";
+import type { FeastProgramTreasury } from "@/lib/feast-program";
+import { formatReceiptDate } from "@/lib/treasury-format";
+import { fmtAmounts } from "@/lib/treasury-publication-content";
 import type { FeastNewsItem } from "@/lib/types";
-import { PublishedTreasury } from "@/components/treasury/PublishedTreasury";
+import { BahaiStar } from "@/components/BahaiStar";
+import { FundBalances } from "@/components/treasury/ProgressBoard";
 import { RsvpBlock } from "./rsvp-block";
 import { SuggestionForm } from "./suggestion-form";
 
@@ -55,12 +59,13 @@ export default async function FeastDetailPage({
       ? await getMyRsvp(createSupabaseServer(), feast.id, session.user.id)
       : null;
 
-  // La Tesorería de la Fiesta es la foto que el tesorero compartió (066),
-  // la vigente cuando se inició. Las cifras escritas a mano en el
-  // formulario quedan solo para las Fiestas de antes.
-  const publication =
+  // La Tesorería de la Fiesta: el último informe para la comunidad
+  // emitido; si no hay, la foto de Publicar (066); si tampoco, las cifras
+  // a mano de las Fiestas viejas. La misma elección que el deck y el
+  // folleto (`feastTreasury()`).
+  const treasury =
     isInProgress && session?.locality
-      ? await getPublicationForFeast(createSupabaseServer(), session.locality.id, feast)
+      ? await loadFeastTreasury(createSupabaseServer(), session.locality.id, feast)
       : null;
 
   return (
@@ -245,40 +250,9 @@ export default async function FeastDetailPage({
               </Section>
             )}
 
-            {publication ? (
+            {treasury && (
               <Section title="Tesorería del mes">
-                <PublishedTreasury publication={publication} variant="month" />
-              </Section>
-            ) : (feast.treasury_income != null ||
-              feast.treasury_expenses != null ||
-              feast.treasury_final != null ||
-              feast.treasury_pdf_url) && (
-              <Section title="Tesorería del mes (Fondo Local)">
-                <div className="rounded-2xl bg-card p-4 shadow-card-soft">
-                  <div className="grid grid-cols-3 gap-3 text-center">
-                    <TreasuryStat label="Ingresos" amount={feast.treasury_income} />
-                    <TreasuryStat label="Egresos" amount={feast.treasury_expenses} />
-                    <TreasuryStat
-                      label="Estado final"
-                      amount={feast.treasury_final}
-                      strong
-                    />
-                  </div>
-                  {feast.treasury_pdf_url && (
-                    <a
-                      href={feast.treasury_pdf_url}
-                      target="_blank"
-                      rel="noopener"
-                      className="tap mt-4 inline-flex items-center gap-2 rounded-xl border border-terra/20 bg-terra/[0.05] px-3.5 py-2 text-[12px] font-semibold text-terra hover:bg-terra/10"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                      </svg>
-                      Descargar informe completo
-                    </a>
-                  )}
-                </div>
+                <FeastTreasuryBlock t={treasury} />
               </Section>
             )}
 
@@ -419,6 +393,108 @@ function NewsBlock({ label, items }: { label: string; items: FeastNewsItem[] }) 
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/** La Tesorería de la Fiesta según de dónde salga (`feastTreasury()`). */
+function FeastTreasuryBlock({ t }: { t: FeastProgramTreasury }) {
+  if (t.kind === "report") {
+    return (
+      <div className="flex flex-col gap-4">
+        <section className="rounded-[20px] border border-black/[0.05] bg-card p-4 shadow-card-elevated sm:p-6">
+          <div className="mb-3">
+            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-gold-dark">
+              <BahaiStar size={10} color="#C4A235" />
+              Informe de Tesorería
+            </div>
+            <h2 className="mt-1 font-display text-[21px] font-semibold leading-tight text-dark sm:text-[25px]">
+              {t.title}
+            </h2>
+            <p className="mt-1 text-[12px] text-muted">
+              {[
+                t.subtitle,
+                t.from
+                  ? `Del ${formatReceiptDate(t.from)} al ${formatReceiptDate(t.to)}`
+                  : `Hasta el ${formatReceiptDate(t.to)}`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <ReportFigure label="Ingresos" value={fmtAmounts(t.income)} />
+            <ReportFigure label="Egresos" value={fmtAmounts(t.expenses)} />
+            <ReportFigure label="Resultado" value={fmtAmounts(t.result)} />
+          </div>
+          <p className="mt-2.5 text-[11.5px] text-muted">
+            {t.incomeCount} {t.incomeCount === 1 ? "aporte recibido" : "aportes recibidos"} en
+            el período. Las transferencias entre cuentas no son movimiento del Fondo y no se
+            cuentan.
+          </p>
+          <a
+            href={t.href}
+            target="_blank"
+            rel="noopener"
+            className="tap mt-4 inline-flex items-center gap-2 rounded-xl border border-terra/20 bg-terra/[0.05] px-3.5 py-2 text-[12px] font-semibold text-terra hover:bg-terra/10"
+          >
+            Ver informe completo →
+          </a>
+        </section>
+        {t.balances.length > 0 && (
+          <FundBalances balances={t.balances} eyebrow={`Al ${formatReceiptDate(t.to)}`} />
+        )}
+      </div>
+    );
+  }
+  if (t.kind === "publication") {
+    return (
+      <div className="flex flex-col gap-4">
+        <p className="px-1 text-[11.5px] font-medium text-muted">{t.label}</p>
+        {t.month && (
+          <section className="rounded-[20px] border border-black/[0.05] bg-card p-4 shadow-card-elevated sm:p-6">
+            <h2 className="font-display text-[21px] font-semibold leading-tight text-dark">
+              Mes de {t.month.name}
+            </h2>
+            <p className="mt-1 text-[12px] text-muted">
+              Del {formatReceiptDate(t.month.from)} al {formatReceiptDate(t.month.to)}
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <ReportFigure label="Ingresos" value={fmtAmounts(t.month.income)} />
+              <ReportFigure label="Egresos" value={fmtAmounts(t.month.expenses)} />
+            </div>
+          </section>
+        )}
+        {t.balances.length > 0 && <FundBalances balances={t.balances} />}
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-2xl bg-card p-4 shadow-card-soft">
+      <div className="grid grid-cols-3 gap-3 text-center">
+        <TreasuryStat label="Ingresos" amount={t.income} />
+        <TreasuryStat label="Egresos" amount={t.expenses} />
+        <TreasuryStat label="Estado final" amount={t.final} strong />
+      </div>
+      {t.pdfUrl && (
+        <a
+          href={t.pdfUrl}
+          target="_blank"
+          rel="noopener"
+          className="tap mt-4 inline-flex items-center gap-2 rounded-xl border border-terra/20 bg-terra/[0.05] px-3.5 py-2 text-[12px] font-semibold text-terra hover:bg-terra/10"
+        >
+          Descargar informe completo
+        </a>
+      )}
+    </div>
+  );
+}
+
+function ReportFigure({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-xl border border-black/[0.06] bg-bg/40 px-3 py-2.5">
+      <div className="text-[11px] text-muted">{label}</div>
+      <div className="break-words tabular-nums text-[15px] font-semibold text-dark">{value}</div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
 } from "@react-pdf/renderer";
 import type { FeastProgram } from "@/lib/feast-program";
 import { fmtAmount, fmtAmounts } from "@/lib/treasury-publication-content";
+import { formatReceiptDate } from "@/lib/treasury-format";
 
 /**
  * El folleto de la Fiesta: el programa impreso en A5, claro, para bajar
@@ -351,7 +352,35 @@ export function FeastBooklet({
 
         <View style={s.block} minPresenceAhead={60}>
           <Text style={s.label}>Informe de Tesorería</Text>
-          {p.treasury?.kind === "publication" ? (
+          {p.treasury?.kind === "report" ? (
+            <>
+              <Text style={s.para}>
+                {[p.treasury.title, p.treasury.subtitle].filter(Boolean).join(" · ")}
+                {p.treasury.from
+                  ? ` (del ${formatReceiptDate(p.treasury.from)} al ${formatReceiptDate(p.treasury.to)})`
+                  : ""}
+                . Ingresos {fmtAmounts(p.treasury.income)} · Egresos{" "}
+                {fmtAmounts(p.treasury.expenses)} · Resultado{" "}
+                {fmtAmounts(p.treasury.result)}.
+              </Text>
+              {p.treasury.balances.length > 0 && (
+                <Text style={s.para}>
+                  Disponible por fondo:{" "}
+                  {p.treasury.balances
+                    .map((b) => `${b.label} ${fmtAmount(b)}`)
+                    .join(" · ")}
+                  .
+                </Text>
+              )}
+              <Text style={s.para}>
+                El informe completo está en{" "}
+                <Link src={`${origin}${p.treasury.href}`} style={s.link}>
+                  {origin.replace(/^https?:\/\//, "")}
+                  {p.treasury.href}
+                </Link>
+              </Text>
+            </>
+          ) : p.treasury?.kind === "publication" ? (
             <>
               {p.treasury.month && (
                 <Text style={s.para}>
@@ -370,28 +399,6 @@ export function FeastBooklet({
                 </Text>
               )}
               <Text style={[s.para, { color: MIST }]}>{p.treasury.label}.</Text>
-              {p.treasury.report && (
-                <Text style={s.para}>
-                  El informe completo está en{" "}
-                  <Link src={`${origin}${p.treasury.report.href}`} style={s.link}>
-                    {origin.replace(/^https?:\/\//, "")}
-                    {p.treasury.report.href}
-                  </Link>
-                </Text>
-              )}
-            </>
-          ) : p.treasury?.kind === "report" ? (
-            <>
-              <Text style={s.para}>
-                {[p.treasury.title, p.treasury.subtitle].filter(Boolean).join(" · ")}
-              </Text>
-              <Text style={s.para}>
-                El informe completo está en la app y en{" "}
-                <Link src={`${origin}${p.treasury.href}`} style={s.link}>
-                  {origin.replace(/^https?:\/\//, "")}
-                  {p.treasury.href}
-                </Link>
-              </Text>
             </>
           ) : p.treasury?.kind === "figures" ? (
             <Text style={s.para}>

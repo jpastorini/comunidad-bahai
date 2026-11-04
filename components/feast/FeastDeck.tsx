@@ -9,6 +9,7 @@ import type {
   FeastProgramPrayer,
 } from "@/lib/feast-program";
 import { fmtAmount, fmtAmounts } from "@/lib/treasury-publication-content";
+import { formatReceiptDate } from "@/lib/treasury-format";
 
 /**
  * El programa de la Fiesta de los Diecinueve Días como presentación: una
@@ -469,9 +470,48 @@ function News({ section }: { section: FeastProgramNewsSection }) {
 
 function Treasury({ p }: { p: FeastProgram }) {
   const t = p.treasury!;
+  if (t.kind === "report") {
+    // El último informe para la comunidad: lo que el tesorero preparó para
+    // presentar. Las cifras son las del informe, congeladas al guardarlo.
+    return (
+      <>
+        <div className="fd-head">
+          <div className="fd-kicker fd-reveal d1">Porción Administrativa</div>
+          <h2 className="fd-reveal d2">Informe de Tesorería</h2>
+          <p className="fd-sub fd-reveal d3">
+            {[t.title, t.subtitle].filter(Boolean).join(" · ")}
+          </p>
+        </div>
+        <div className="fd-center fd-reveal d4">
+          <div className="fd-stats">
+            <TextStat label="Ingresos" value={fmtAmounts(t.income)} />
+            <TextStat label="Egresos" value={fmtAmounts(t.expenses)} />
+            <TextStat label="Resultado" value={fmtAmounts(t.result)} />
+          </div>
+          {t.balances.length > 0 && (
+            <div className="fd-funds">
+              {t.balances.map((b) => (
+                <div key={`${b.label}|${b.currency}`} className="fd-fund">
+                  <span>{b.label}</span>
+                  <strong>{fmtAmount(b)}</strong>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="fd-note">
+            {t.from ? `Del ${formatReceiptDate(t.from)} al ${formatReceiptDate(t.to)}` : `Hasta el ${formatReceiptDate(t.to)}`}
+            {" · "}
+            {t.incomeCount} {t.incomeCount === 1 ? "aporte" : "aportes"}
+          </p>
+          <a className="fd-cta fd-cta-sm" href={t.href} target="_blank" rel="noopener">
+            Abrir el informe completo →
+          </a>
+        </div>
+      </>
+    );
+  }
   if (t.kind === "publication") {
-    // La foto compartida por el tesorero (066), no un cálculo en vivo: lo
-    // que se proyecta es lo que la Tesorería dijo, con su fecha.
+    // Sin informe del mes: la foto compartida por el tesorero (066).
     return (
       <>
         <div className="fd-head">
@@ -499,11 +539,6 @@ function Treasury({ p }: { p: FeastProgram }) {
             </div>
           )}
           <p className="fd-note">{t.label}</p>
-          {t.report && (
-            <a className="fd-cta fd-cta-sm" href={t.report.href} target="_blank" rel="noopener">
-              Abrir el informe completo →
-            </a>
-          )}
         </div>
       </>
     );
@@ -513,34 +548,18 @@ function Treasury({ p }: { p: FeastProgram }) {
       <div className="fd-head">
         <div className="fd-kicker fd-reveal d1">Porción Administrativa</div>
         <h2 className="fd-reveal d2">Informe de Tesorería</h2>
-        <p className="fd-sub fd-reveal d3">
-          {t.kind === "report"
-            ? [t.title, t.subtitle].filter(Boolean).join(" · ")
-            : "Fondo Local · movimiento del mes"}
-        </p>
+        <p className="fd-sub fd-reveal d3">Fondo Local · movimiento del mes</p>
       </div>
-      {t.kind === "report" ? (
-        <div className="fd-center fd-reveal d4">
-          <a className="fd-cta" href={t.href} target="_blank" rel="noopener">
-            Abrir el informe →
+      <div className="fd-stats fd-reveal d4">
+        <Stat label="Ingresos" value={t.income} />
+        <Stat label="Egresos" value={t.expenses} />
+        <Stat label="Estado final" value={t.final} strong />
+        {t.pdfUrl && (
+          <a className="fd-cta fd-cta-sm" href={t.pdfUrl} target="_blank" rel="noopener">
+            Informe completo (PDF) →
           </a>
-          <p className="fd-note">
-            El informe se proyecta como presentación aparte y queda
-            disponible en la app para toda la comunidad.
-          </p>
-        </div>
-      ) : (
-        <div className="fd-stats fd-reveal d4">
-          <Stat label="Ingresos" value={t.income} />
-          <Stat label="Egresos" value={t.expenses} />
-          <Stat label="Estado final" value={t.final} strong />
-          {t.pdfUrl && (
-            <a className="fd-cta fd-cta-sm" href={t.pdfUrl} target="_blank" rel="noopener">
-              Informe completo (PDF) →
-            </a>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </>
   );
 }

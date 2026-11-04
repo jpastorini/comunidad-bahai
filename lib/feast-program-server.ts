@@ -5,9 +5,56 @@ import {
   getFeastNews,
   getFeastPrayers,
 } from "./data";
-import { buildFeastProgram, type FeastProgram, type TreasuryReportRef } from "./feast-program";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  buildFeastProgram,
+  feastTreasury,
+  type FeastProgram,
+  type FeastProgramTreasury,
+  type TreasuryReportRef,
+} from "./feast-program";
 import { createSupabaseServer } from "./supabase/server";
+import { sanitizeReportSnapshot } from "./treasury-report-content";
 import { getPublicationForFeast } from "./treasury-publications";
+import type { Feast } from "./types";
+
+/**
+ * La Tesorería de una Fiesta, para la pantalla (/fiestas/[id]), el deck y
+ * el folleto: los informes emitidos para la comunidad más la foto de
+ * Publicar, y `feastTreasury()` elige.
+ */
+export async function loadFeastTreasury(
+  supabase: SupabaseClient,
+  localityId: string,
+  feast: Feast
+): Promise<FeastProgramTreasury | null> {
+  // La RLS (044) ya acota a la localidad y a lo que la persona puede leer;
+  // los filtros explícitos son para que el tesorero —que también lee sus
+  // borradores e internos, y el admin nacional, que lee todo— no los vea
+  // ofrecidos acá.
+  const [{ data: reports, error }, publication] = await Promise.all([
+    supabase
+      .from("treasury_reports")
+      .select("title, subtitle, period_to, share_token, snapshot")
+      .eq("locality_id", localityId)
+      .eq("status", "published")
+      .eq("audience", "comunidad")
+      .order("period_to", { ascending: false })
+      .limit(12),
+    getPublicationForFeast(supabase, localityId, feast),
+  ]);
+  if (error) console.error("[loadFeastTreasury]", error.message);
+  const refs: TreasuryReportRef[] = ((reports ?? []) as Record<string, unknown>[]).map(
+    (r) => ({
+      title: r.title as string,
+      subtitle: (r.subtitle as string | null) ?? null,
+      period_to: r.period_to as string,
+      share_token: r.share_token as string,
+      snapshot: sanitizeReportSnapshot(r.snapshot),
+    })
+  );
+  return feastTreasury({ feast, reports: refs, publication });
+}
 
 export type FeastProgramLoad =
   | { kind: "ok"; program: FeastProgram; isAdmin: boolean }
@@ -39,29 +86,19 @@ export async function loadFeastProgram(id: string): Promise<FeastProgramLoad> {
   const isAdmin = session.profile.role === "admin";
   if (!isAdmin && feast.status !== "in_progress") return { kind: "not-started" };
 
-  // Informes publicados para la comunidad. La RLS (044) ya acota a la
-  // localidad y a audience='comunidad'; el filtro explícito es para que
-  // el tesorero —que también lee sus borradores e internos— no los vea
-  // ofrecidos acá.
-  const supabase = createSupabaseServer();
-  const { data: reports } = await supabase
-    .from("treasury_reports")
-    .select("title, subtitle, period_to, share_token")
-    .eq("status", "published")
-    .eq("audience", "comunidad")
-    .order("period_to", { ascending: false })
-    .limit(12);
-
-  const publication = await getPublicationForFeast(supabase, session.locality.id, feast);
+  const treasury = await loadFeastTreasury(
+    createSupabaseServer(),
+    session.locality.id,
+    feast
+  );
 
   const program = buildFeastProgram({
-    publication,
+    treasury,
     feast,
     localityName: session.locality.name,
     locations,
     prayers,
     news,
-    reports: (reports ?? []) as TreasuryReportRef[],
   });
 
   return { kind: "ok", program, isAdmin };

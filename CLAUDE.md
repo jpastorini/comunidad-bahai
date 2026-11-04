@@ -1215,8 +1215,9 @@ dicha por el tesorero y con fecha**, que no se recalcula sola.
   Sale de `computePublicationSnapshot()` (`lib/treasury-publications.ts`)
   con la MISMA `treasury_progress()` de siempre: una llamada para el
   ejercicio y otra con el rango del mes. Sin nombres de contribuyentes.
-- **Quién la lee**: `/tesoreria`, `/fiestas/[id]`, el deck y el folleto
-  de `/programa/[id]`, y nada más. Ninguna pantalla de la comunidad llama
+- **Quién la lee**: `/tesoreria` y, cuando no hay informe del mes, la
+  Fiesta (`/fiestas/[id]`, el deck y el folleto de `/programa/[id]`; ver
+  "Programa de la Fiesta"), y nada más. Ninguna pantalla de la comunidad llama
   a `treasury_progress()` directo; si agregás una, que lea la publicación.
   El tablero del panel (`/admin/tesoreria/progreso`) SÍ sigue en vivo: el
   tesorero necesita ver el libro al día.
@@ -1231,9 +1232,9 @@ dicha por el tesorero y con fecha**, que no se recalcula sola.
   "Informe mensual" y los dos compartibles de imagen de `/tesoreria`. Los
   medios de pago ("Cómo aportar") siguen en la tabla `treasury`: son un
   dato fijo, no un cálculo.
-- **El informe de Tesorería** (deck con textos y aprobación) sigue aparte.
-  En la Fiesta la diapositiva muestra la foto y, si hay informe del mes
-  (`pickReportForFeast`), el link.
+- **El informe de Tesorería** (deck con textos y aprobación) sigue aparte,
+  y desde el 2026-11-03 es lo que manda en la Fiesta (ver "Programa de la
+  Fiesta"); la foto de Publicar queda de respaldo.
 
 ⚠️ Hasta que corra la 066, `/tesoreria` dice "todavía no compartió el
 estado del Fondo" (ya NO muestra el tablero en vivo), la Fiesta cae a las
@@ -1670,15 +1671,20 @@ qué secciones tienen contenido. Tres cosas del diseño:
   antes para ensayar: `loadFeastProgram()` devuelve `not-started` y la
   página redirige a `/fiestas/[id]`. Al creyente los dos botones le
   aparecen al iniciar la Fiesta.
-- **La Tesorería es la foto que compartió el tesorero** (066, ver "El
-  estado del Fondo"), la vigente al iniciar la Fiesta. Además, si hay
-  informe del mes, se enlaza: en la Fiesta del mes M se
-  presenta el informe del mes que termina: `pickReportForFeast()` toma
-  el informe publicado para la comunidad con `period_to` más cercano por
-  debajo de la fecha oficial de M (tolerancia 45 días) y la diapositiva
-  lleva a `/i/<token>`. No hay `feast_id` en los informes; la
-  coincidencia por fecha alcanza. Sin foto (Fiestas de antes de la 066),
-  el informe o las cifras a mano (`treasury_income` etc.) como antes.
+- **La Tesorería es el último informe para la comunidad** (2026-11-03,
+  pedido del usuario: el tesorero ya arma el informe para la Fiesta y no
+  tiene por qué publicar las cifras aparte). En la Fiesta del mes M se
+  presenta el informe del mes que termina: `pickReportForFeast()` toma el
+  informe EMITIDO con audiencia `comunidad` y `period_to` más cercano por
+  debajo de la fecha oficial de M (tolerancia 45 días). Se muestran las
+  cifras de su snapshot congelado —ingresos, egresos, resultado, aportes y
+  saldos por fondo— y el link a `/i/<token>`. Si no hay, la foto de
+  Publicar vigente al iniciar la Fiesta (066); si tampoco, las cifras a
+  mano (`treasury_income` etc.). La elección es UNA función,
+  `feastTreasury()` (`lib/feast-program.ts`), cargada por
+  `loadFeastTreasury()` (`lib/feast-program-server.ts`), que usan la
+  pantalla `/fiestas/[id]`, el deck y el folleto: las tres dicen lo mismo.
+  No hay `feast_id` en los informes; la coincidencia por fecha alcanza.
 
 De paso se arregló el borrado de filas del formulario de Fiestas: la
 casilla "Eliminar al guardar" de lugares y oraciones llevaba un hidden

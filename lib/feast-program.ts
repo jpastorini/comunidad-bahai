@@ -5,6 +5,7 @@ import {
   type PublicationMonth,
   type TreasuryPublication,
 } from "./treasury-publication-content";
+import type { ReportBalanceRow, ReportMoney, ReportSnapshot } from "./treasury-report-content";
 import type {
   Feast,
   FeastLocation,
@@ -52,21 +53,30 @@ export type FeastProgramNewsSection = {
 
 export type FeastProgramTreasury =
   | {
-      /** La foto compartida por el tesorero (066): lo que se presenta. */
-      kind: "publication";
-      /** "Compartido el 24/09/2026 · movimientos hasta el 20/09/2026". */
-      label: string;
-      month: PublicationMonth | null;
-      balances: ProgressData["balances"];
-      /** El informe del mes, si hay uno publicado, como link aparte. */
-      report: { title: string; subtitle: string | null; href: string } | null;
-    }
-  | {
+      /** El último informe para la comunidad emitido (2026-11-03): lo que
+       *  se presenta. Sus cifras son las del snapshot congelado del
+       *  informe, las mismas que muestra el deck del informe. */
       kind: "report";
       title: string;
       subtitle: string | null;
       /** Link público del informe (/i/<token>). */
       href: string;
+      from: string;
+      to: string;
+      income: ReportMoney[];
+      expenses: ReportMoney[];
+      result: ReportMoney[];
+      incomeCount: number;
+      /** Saldos ACUMULADOS por fondo al cierre del informe. */
+      balances: ReportBalanceRow[];
+    }
+  | {
+      /** Sin informe del mes: la foto compartida por el tesorero (066). */
+      kind: "publication";
+      /** "Compartido el 24/09/2026 · movimientos hasta el 20/09/2026". */
+      label: string;
+      month: PublicationMonth | null;
+      balances: ProgressData["balances"];
     }
   | {
       kind: "figures";
@@ -105,7 +115,69 @@ export type TreasuryReportRef = {
   subtitle: string | null;
   period_to: string;
   share_token: string;
+  snapshot: ReportSnapshot;
 };
+
+/**
+ * Qué Tesorería se presenta en una Fiesta. Un solo lugar para la pantalla
+ * de la Fiesta, el deck y el folleto, así no pueden decir cosas
+ * distintas. Orden (decidido con el usuario el 2026-11-03):
+ *
+ * 1. El último informe para la comunidad emitido que cierra antes de la
+ *    Fiesta (`pickReportForFeast`, tolerancia 45 días): el tesorero ya lo
+ *    preparó para presentar, no tiene que publicar las cifras aparte.
+ * 2. Si no hay, la foto de Tesorería → Publicar vigente al iniciarla (066).
+ * 3. Si tampoco, las cifras escritas a mano de las Fiestas viejas.
+ */
+export function feastTreasury(input: {
+  feast: Feast;
+  reports: TreasuryReportRef[];
+  publication: TreasuryPublication | null;
+}): FeastProgramTreasury | null {
+  const { feast, reports, publication } = input;
+  const report = feast.gregorian_date
+    ? pickReportForFeast(reports, feast.gregorian_date)
+    : null;
+  if (report) {
+    const s = report.snapshot;
+    return {
+      kind: "report",
+      title: report.title,
+      subtitle: report.subtitle,
+      href: `/i/${report.share_token}`,
+      from: s.from,
+      to: s.to || report.period_to,
+      income: s.income,
+      expenses: s.expenses,
+      result: s.result,
+      incomeCount: s.incomeCount,
+      balances: s.byFund,
+    };
+  }
+  if (publication) {
+    return {
+      kind: "publication",
+      label: publicationLabel(publication),
+      month: publication.snapshot.month,
+      balances: publication.snapshot.progress?.balances ?? [],
+    };
+  }
+  if (
+    feast.treasury_income != null ||
+    feast.treasury_expenses != null ||
+    feast.treasury_final != null ||
+    feast.treasury_pdf_url
+  ) {
+    return {
+      kind: "figures",
+      income: feast.treasury_income,
+      expenses: feast.treasury_expenses,
+      final: feast.treasury_final,
+      pdfUrl: feast.treasury_pdf_url,
+    };
+  }
+  return null;
+}
 
 const NEWS_SCOPES: {
   scope: FeastNewsScope;
@@ -158,12 +230,10 @@ export function buildFeastProgram(input: {
   locations: FeastLocation[];
   prayers: FeastPrayer[];
   news: FeastNewsItem[];
-  /** Informes publicados para la comunidad; se elige el del mes que cierra. */
-  reports: TreasuryReportRef[];
-  /** El estado del Fondo vigente al iniciar la Fiesta (066). */
-  publication: TreasuryPublication | null;
+  /** La Tesorería que se presenta, ya elegida por `feastTreasury()`. */
+  treasury: FeastProgramTreasury | null;
 }): FeastProgram {
-  const { feast, localityName, locations, prayers, news, reports, publication } = input;
+  const { feast, localityName, locations, prayers, news, treasury } = input;
   const month = getBahaiMonth(feast.bahai_month_index);
   const celebrationDate = feast.gregorian_date
     ? celebrationDateFor(feast.gregorian_date)
@@ -178,49 +248,6 @@ export function buildFeastProgram(input: {
       .filter((n) => n.scope === s.scope)
       .sort((a, b) => a.position - b.position),
   })).filter((s) => s.items.length > 0);
-
-  const report = feast.gregorian_date
-    ? pickReportForFeast(reports, feast.gregorian_date)
-    : null;
-
-  let treasury: FeastProgramTreasury | null = null;
-  if (publication) {
-    treasury = {
-      kind: "publication",
-      label: publicationLabel(publication),
-      month: publication.snapshot.month,
-      balances: publication.snapshot.progress?.balances ?? [],
-      report: report
-        ? {
-            title: report.title,
-            subtitle: report.subtitle,
-            href: `/i/${report.share_token}`,
-          }
-        : null,
-    };
-  } else if (report) {
-    // Sin foto compartida (Fiestas de antes de la 066): el informe o las
-    // cifras escritas a mano, como antes.
-    treasury = {
-      kind: "report",
-      title: report.title,
-      subtitle: report.subtitle,
-      href: `/i/${report.share_token}`,
-    };
-  } else if (
-    feast.treasury_income != null ||
-    feast.treasury_expenses != null ||
-    feast.treasury_final != null ||
-    feast.treasury_pdf_url
-  ) {
-    treasury = {
-      kind: "figures",
-      income: feast.treasury_income,
-      expenses: feast.treasury_expenses,
-      final: feast.treasury_final,
-      pdfUrl: feast.treasury_pdf_url,
-    };
-  }
 
   return {
     feastId: feast.id,
