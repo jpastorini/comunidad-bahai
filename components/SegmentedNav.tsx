@@ -110,7 +110,9 @@ const lastSegment = new Map<string, number>();
 export const BIBLIOTECA_SEGMENTS: SegmentItem[] = [
   { href: "/oraciones", label: "Oraciones", prefix: "/oraciones" },
   { href: "/mensajes", label: "Mensajes", prefix: "/mensajes" },
-  { href: "/materiales", label: "Materiales", prefix: "/materiales" },
+  // La ruta sigue siendo /materiales; la gente no encontraba los libros
+  // bajo "Materiales".
+  { href: "/materiales", label: "Libros", prefix: "/materiales" },
 ];
 
 /** Items del hub AEL — todo lo que emite/gestiona la Asamblea Espiritual Local. */
