@@ -17,7 +17,7 @@ export default async function AdminMaterialesPage() {
   const session = await requirePermission("materiales");
   const supabase = createSupabaseServer();
   // Solo materiales de ESTA localidad. Los nacionales se gestionan en
-  // Admin Nacional → Materiales (nacionales).
+  // Admin Nacional → Libros nacionales (nacionales).
   const { data } = await supabase
     .from("study_materials")
     .select("*")
@@ -32,7 +32,7 @@ export default async function AdminMaterialesPage() {
     <>
       <PageHeader
         eyebrow="Vida comunitaria"
-        title="Materiales"
+        title="Libros"
         description="Libros Ruhí, escritos, oraciones y la Oración del mes con imagen para compartir."
         actions={<Button href="/admin/materiales/nuevo">+ Nuevo material</Button>}
       />

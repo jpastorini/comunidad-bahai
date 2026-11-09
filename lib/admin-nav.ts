@@ -143,7 +143,7 @@ export const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/sugerencias", label: "Sugerencias", perm: "fiestas" },
       { href: "/admin/actividades", label: "Actividades", perm: "actividades" },
       { href: "/admin/servicio", label: "Servicio", perm: "servicio" },
-      { href: "/admin/materiales", label: "Materiales", perm: "materiales" },
+      { href: "/admin/materiales", label: "Libros", perm: "materiales" },
       { href: "/admin/fotos", label: "Fotos", perm: "fotos" },
     ],
   },
@@ -259,7 +259,7 @@ export const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/mensajes", label: "Mensajes de la Casa Universal" },
       // Reemplazar la Lectura de hoy del día siguiente por una cita a mano (081).
       { href: "/admin/nacional/lectura", label: "Lectura de mañana" },
-      { href: "/admin/nacional/materiales", label: "Materiales nacionales" },
+      { href: "/admin/nacional/materiales", label: "Libros nacionales" },
       { href: "/admin/nacional/localidades", label: "Localidades" },
       // El mapa del país (086): qué agrupación va en cada zona electoral y
       // en qué agrupación está cada Asamblea Local.

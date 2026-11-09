@@ -8,10 +8,10 @@ export default async function NewMaterialPage() {
   await requirePermission("materiales");
   return (
     <FormShell>
-      <PageHeader back={{ href: "/admin/materiales", label: "Materiales" }}
+      <PageHeader back={{ href: "/admin/materiales", label: "Libros" }}
         eyebrow="Vida comunitaria"
         title="Nuevo material"
-        description="Material de tu comunidad. Los materiales para todas las localidades se cargan en Admin Nacional → Materiales."
+        description="Material de tu comunidad. Los materiales para todas las localidades se cargan en Admin Nacional → Libros nacionales."
       />
       <MaterialForm />
     </FormShell>

@@ -40,7 +40,7 @@ export const PERMISSIONS: PermissionInfo[] = [
   { key: "fiestas", label: "Fiestas de 19 Días", group: "Vida comunitaria", hint: "Armar la Fiesta, ver quiénes van y las sugerencias.", aelOnly: true },
   { key: "actividades", label: "Actividades", group: "Vida comunitaria", hint: "Cargar las actividades de la comunidad." },
   { key: "servicio", label: "Servicio", group: "Vida comunitaria", hint: "Publicar necesidades y ver quiénes se ofrecen." },
-  { key: "materiales", label: "Materiales", group: "Vida comunitaria", hint: "Subir y ordenar materiales de la comunidad." },
+  { key: "materiales", label: "Libros", group: "Vida comunitaria", hint: "Subir y ordenar materiales de la comunidad." },
   { key: "fotos", label: "Fotos", group: "Vida comunitaria", hint: "Ordenar, destacar y quitar fotos y comentarios." },
   { key: "comunicados", label: "Comunicados y encuestas", group: "Comunicación", hint: "Publicar (con aviso a todos) y ver quién los leyó.", aelOnly: true },
   { key: "boletin", label: "Boletín", group: "Comunicación", hint: "Armar y publicar el Boletín local." },

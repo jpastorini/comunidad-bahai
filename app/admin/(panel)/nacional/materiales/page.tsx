@@ -33,7 +33,7 @@ export default async function AdminNacionalMaterialesPage() {
     <>
       <PageHeader
         eyebrow="Admin Nacional"
-        title="Materiales (nacionales)"
+        title="Libros (nacionales)"
         description="Libros Ruhí, Escritos y Libros para TODAS las comunidades. Lo que cargues acá lo ven todas las localidades."
         actions={
           <Button href="/admin/nacional/materiales/nuevo">
