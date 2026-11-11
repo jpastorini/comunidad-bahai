@@ -304,6 +304,19 @@ shell desborda en "Grande". La barra de pestañas es la excepción que
 NO escala del todo: el relleno de las píldoras va dividido por el zoom y
 las etiquetas se ajustan al ancho de la barra (`cqw`), porque con "Muy
 grande" en un celular de 375 px no entraban ·
+**Oraciones obligatorias con guía de posturas y ornamentos persas** (sin
+migración, 2026-11-11): en las tres obligatorias, `parseObligatoryPrayer()`
+(`lib/obligatory-prayers.ts`, puro) CLASIFICA los párrafos de
+`oraciones.json` en nota / guía / texto sin tocar una palabra; la guía va
+en recuadro azul con el dibujo de la postura (`components/prayers/PostureFigure.tsx`:
+siluetas con túnica en un nicho de arco persa y un aguamanil para las
+abluciones; las figuras de palotes se rechazaron por irreverentes) y las palabras de la oración con barra dorada. La
+nota "* El Más Grande Nombre: «Alláh-u-Abhá»" la agrega la pantalla (el
+asterisco del libro venía sin su pie). Toda oración abre con una
+línea fina con una estrella de nueve puntas y cierra con una roseta de
+NUEVE pétalos (`PersianOrnaments.tsx`, oro y lapislázuli); un solo
+motivo, porque la versión con enredaderas y flores pareció recargada. Si cambia el texto de una indicación en el JSON, revisar
+`GUIDE_START` y `posturesOf()` ·
 **Vida devocional**: "Lectura de hoy" (cita de los Escritos Sagrados, la
 misma para toda la comunidad cada día, determinística por fecha — sin tabla
 ni estado, ver `lib/citas.ts`; corpus de 991 citas en `public/citas.json`

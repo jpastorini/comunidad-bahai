@@ -6,6 +6,7 @@ import { BIBLIOTECA_SEGMENTS, SegmentedNav } from "@/components/SegmentedNav";
 import { requireMember } from "@/lib/auth";
 import { getLecturaDelDia } from "@/lib/daily-reading";
 import { getOraciones } from "@/lib/oraciones";
+import { MedallionRule } from "@/components/prayers/PersianOrnaments";
 
 export const revalidate = 60;
 
@@ -49,10 +50,11 @@ export default async function OracionesPage() {
           <IconChevronRight size={14} className="shrink-0 text-muted" />
         </Link>
 
-        <p className="mb-4 px-1 font-body text-[12.5px] leading-relaxed text-muted">
+        <p className="mb-2 px-1 text-center font-body text-[12.5px] leading-relaxed text-muted">
           Oraciones reveladas por el Báb, Bahá'u'lláh y ʻAbdu'l-Bahá,
           organizadas por tema.
         </p>
+        <MedallionRule className="mb-4" />
 
         {groups.map((group) => (
           <section key={group.id} className="mb-5">

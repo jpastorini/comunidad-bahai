@@ -2,6 +2,10 @@ import { notFound } from "next/navigation";
 import { DevotionalToggle } from "@/components/DevotionalToggle";
 import { GoldHeader } from "@/components/GoldHeader";
 import { requireMember } from "@/lib/auth";
+import {
+  OBLIGATORY_GROUP_ID,
+  parseObligatoryPrayer,
+} from "@/lib/obligatory-prayers";
 import { findPrayer } from "@/lib/oraciones";
 import { PrayerReader } from "../../prayer-reader";
 import { SharePrayerButton } from "../../share-button";
@@ -24,7 +28,13 @@ export default async function OracionLecturaPage({
 
   const found = findPrayer(params.category, params.prayer);
   if (!found) notFound();
-  const { category, prayer } = found;
+  const { group, category, prayer } = found;
+  // Las obligatorias traen indicaciones de postura mezcladas con el texto:
+  // se separan para dibujarlas distinto.
+  const blocks =
+    group.id === OBLIGATORY_GROUP_ID
+      ? parseObligatoryPrayer(prayer.body)
+      : undefined;
 
   return (
     <>
@@ -41,7 +51,11 @@ export default async function OracionLecturaPage({
       />
       <main className="scroll-area flex-1 px-4 pb-8 pt-4">
         <article className="rounded-2xl bg-card p-5 shadow-card">
-          <PrayerReader body={prayer.body} author={prayer.author} />
+          <PrayerReader
+            body={prayer.body}
+            author={prayer.author}
+            blocks={blocks}
+          />
           <div className="mt-5 border-t border-black/[0.06] pt-4">
             <SharePrayerButton
               title={prayer.title}
