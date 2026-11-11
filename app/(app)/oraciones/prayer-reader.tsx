@@ -106,13 +106,16 @@ function Block({ block, size }: { block: PrayerBlock; size: number }) {
           {block.postures.map((posture, i) => (
             <div key={posture} className="flex items-start gap-2">
               {i > 0 && (
-                <span aria-hidden className="mt-7 text-[15px] text-terra/40">
+                <span aria-hidden className="mt-9 text-[15px] text-terra/40">
                   →
                 </span>
               )}
-              <figure className="flex w-[88px] flex-col items-center text-center text-terra">
-                <PostureFigure posture={posture} width={68} />
-                <figcaption className="mt-1 text-[10px] leading-tight text-terra/80">
+              <figure className="flex min-w-[76px] max-w-[112px] flex-col items-center text-center text-terra">
+                <PostureFigure
+                  posture={posture}
+                  tight={block.postures.length === 1}
+                />
+                <figcaption className="mt-1.5 text-[10px] leading-tight text-terra/80">
                   {POSTURE_LABELS[posture]}
                 </figcaption>
               </figure>

@@ -309,8 +309,11 @@ migración, 2026-11-11): en las tres obligatorias, `parseObligatoryPrayer()`
 (`lib/obligatory-prayers.ts`, puro) CLASIFICA los párrafos de
 `oraciones.json` en nota / guía / texto sin tocar una palabra; la guía va
 en recuadro azul con el dibujo de la postura (`components/prayers/PostureFigure.tsx`:
-siluetas con túnica en un nicho de arco persa y un aguamanil para las
-abluciones; las figuras de palotes se rechazaron por irreverentes) y las palabras de la oración con barra dorada. La
+siluetas de perfil generadas con Magnific —una sola lámina con las cinco
+posturas, recortada a PNG transparentes de 300 px de alto en
+`public/oraciones/posturas/`, todas a la misma escala— y un aguamanil SVG
+para las abluciones; cuatro versiones dibujadas a mano en SVG no gustaron:
+los palotes por irreverentes y las demás por falta de detalle) y las palabras de la oración con barra dorada. La
 nota "* El Más Grande Nombre: «Alláh-u-Abhá»" la agrega la pantalla (el
 asterisco del libro venía sin su pie). Toda oración abre con una
 línea fina con una estrella de nueve puntas y cierra con una roseta de
