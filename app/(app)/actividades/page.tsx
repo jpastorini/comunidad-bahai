@@ -50,7 +50,7 @@ export default async function ActividadesPage() {
               >
                 <div
                   className="flex min-h-[52px] w-12 shrink-0 flex-col items-center justify-center rounded-xl px-1 py-2"
-                  style={{ background: `${color}10` }}
+                  data-cat style={{ background: `${color}10` }}
                 >
                   <div
                     className="font-display text-base font-bold leading-none"

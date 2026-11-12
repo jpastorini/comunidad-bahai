@@ -168,7 +168,7 @@ export default async function CalendarioPage({
                 >
                   <div
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-                    style={{ background: `${i.color}10` }}
+                    data-cat style={{ background: `${i.color}10` }}
                   >
                     <span
                       className="font-display text-base font-bold"
@@ -277,7 +277,7 @@ function LegendDot({
     <span className="inline-flex items-center gap-1">
       <span
         className="inline-block h-2 w-2 rounded-full"
-        style={{ background: meta.color }}
+        data-cat style={{ background: meta.color }}
       />
       <span>{meta.label}</span>
     </span>

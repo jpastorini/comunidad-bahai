@@ -114,7 +114,7 @@ function HolyDayCard({
     >
       <div
         className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl"
-        style={{ background: `${item.color}10` }}
+        data-cat style={{ background: `${item.color}10` }}
       >
         <span
           className="font-display text-[17px] font-bold leading-none"
@@ -138,7 +138,7 @@ function HolyDayCard({
         </div>
         <span
           className="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide"
-          style={{ background: `${meta.color}15`, color: meta.color }}
+          data-cat style={{ background: `${meta.color}15`, color: meta.color }}
         >
           {worksLabel}
         </span>

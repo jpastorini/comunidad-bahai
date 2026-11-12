@@ -59,11 +59,11 @@ export default async function EventDetailPage({
           <div className="mb-2.5">
             <span
               className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-wide"
-              style={{ background: `${kindMeta.color}15`, color: kindMeta.color }}
+              data-cat style={{ background: `${kindMeta.color}15`, color: kindMeta.color }}
             >
               <span
                 className="inline-block h-1.5 w-1.5 rounded-full"
-                style={{ background: kindMeta.color }}
+                data-cat style={{ background: kindMeta.color }}
               />
               {kindMeta.label}
             </span>

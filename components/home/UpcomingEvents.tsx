@@ -44,7 +44,7 @@ export function UpcomingEvents({ events }: { events: CalendarEvent[] }) {
             >
               <div
                 className="mb-1.5 text-[9.5px] font-semibold uppercase tracking-[0.3px]"
-                style={{ color: accent }}
+                data-cat style={{ color: accent }}
               >
                 {weekday} {e.day} {monthShort} · {e.time}
               </div>

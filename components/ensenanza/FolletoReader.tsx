@@ -196,7 +196,7 @@ export function FolletoReader({
           className="tap flex flex-1 items-center justify-end gap-1.5 rounded-2xl bg-terra px-3 py-3 text-right text-white shadow-card disabled:opacity-40"
         >
           <span className="min-w-0">
-            <span className="block text-[10px] uppercase tracking-wide text-white/70">Siguiente</span>
+            <span className="block text-[10px] uppercase tracking-wide text-white/70 dark:text-white/90">Siguiente</span>
             <span className="block truncate text-[12.5px] font-semibold">
               {index < total - 1 ? labelAt(index + 1) : "—"}
             </span>

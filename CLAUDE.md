@@ -345,10 +345,20 @@ de las posturas pasan a marfil. ⚠️ Un cambio en `tailwind.config.ts` no
 lo toma el dev server en caliente: reiniciarlo. Revisado en el navegador
 con datos de ejemplo: Inicio, Biblioteca, Lectura de hoy, una oración
 obligatoria, Calendario, Comunicados (lista y detalle), Tesorería, Chat,
-Compartir (QR) y Perfil. **Sin revisar**: galería y visor de fotos,
-Fiestas, Libros, Mensajes, Actividades, Servicio, Mis aportes, Boletín,
-Buscar y las hojas de instalación y de avisos. Pendiente posible: opción
-"Automático" (seguir al teléfono) ·
+Compartir (QR) y Perfil. El resto (Fiestas, Libros, Mensajes y un
+mensaje, Actividades, Servicio, Buscar, Boletín, Días Sagrados,
+Notificaciones, Enseñanza, Contacto, subir fotos, Mis aportes, Mi caja
+chica) se pasó por una **auditoría de contraste por código** —un script
+que recorre `#app-shell` y lista texto con contraste menor a 3,2 y fondos
+claros—, porque con la ventana minimizada no hay capturas: lo único que
+encontró fueron insignias de fecha con color de categoría sin `data-cat`
+(Actividades, Calendario, Días Sagrados, Próximamente), ya marcadas.
+⚠️ Esa auditoría no ve los filtros (`data-cat`) ni lo que no se
+renderiza: con datos de ejemplo, Fiestas, Boletín, Mis aportes y Mi caja
+salieron VACÍAS, y el visor de fotos y las hojas de instalación y de
+avisos no se pudieron abrir (se miró su código: no usan colores del
+tema, o los usan sobre `bg-card`). Falta verlos con datos reales en un
+teléfono. Pendiente posible: opción "Automático" (seguir al teléfono) ·
 **Oraciones obligatorias con guía de posturas y ornamentos persas** (sin
 migración, 2026-11-11): en las tres obligatorias, `parseObligatoryPrayer()`
 (`lib/obligatory-prayers.ts`, puro) CLASIFICA los párrafos de

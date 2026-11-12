@@ -14,7 +14,7 @@ export function FeaturedPhotos({ photos }: { photos: FeaturedPhoto[] }) {
         >
           <div
             className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-[13px]"
-            style={{ background: "#B0506B12", color: "#B0506B" }}
+            data-cat style={{ background: "#B0506B12", color: "#B0506B" }}
           >
             <IconGaleria size={21} />
           </div>
