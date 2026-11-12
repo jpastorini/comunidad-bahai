@@ -129,7 +129,7 @@ export default async function TesoreriaPage() {
               >
                 <div
                   className="mb-2 flex h-[34px] w-[34px] items-center justify-center rounded-[11px] font-display text-base font-bold text-terra"
-                  style={{ background: "#2A3F8F10" }}
+                  style={{ background: "rgb(var(--c-terra) / 0.06)" }}
                 >
                   {m.letter}
                 </div>

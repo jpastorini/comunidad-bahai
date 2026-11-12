@@ -8,11 +8,53 @@
   --safe-bottom: calc(env(safe-area-inset-bottom, 0px) / var(--ui-zoom, 1));
 }
 
+/* Paleta (lib/ui-theme.ts). Tres canales RGB por color, sin `rgb()`, para
+   que Tailwind pueda aplicar la opacidad: `rgb(var(--c-terra) / 0.1)`.
+   `[data-theme="clasico"]` repone la paleta original adentro de un
+   documento (recibo, informe, deck) aunque la app tenga otro tema. */
+:root,
+[data-theme="clasico"] {
+  --c-gold: 196 162 53;
+  --c-gold-dark: 150 121 14;
+  --c-gold-light: 212 184 90;
+  --c-terra: 42 63 143;
+  --c-terra-light: 61 86 176;
+  --c-amber: 126 68 184;
+  --c-dark: 42 40 51;
+  --c-pine: 31 58 44;
+  --c-pine-light: 46 85 64;
+  --c-muted: 122 118 112;
+  --c-bg: 248 247 242;
+  --c-card: 255 255 255;
+  --c-green: 106 139 95;
+  --c-online: 126 207 139;
+}
+
+/* Sepia: papel más cálido y tinta marrón, para leer. El acento no cambia. */
+[data-theme="sepia"] {
+  --c-bg: 243 235 218;
+  --c-dark: 58 46 34;
+  --c-muted: 122 108 91;
+}
+
+/* Terracota: el acento azul pasa a tierra cocida, sobre un crema apenas
+   más cálido. */
+[data-theme="terracota"] {
+  --c-terra: 160 74 42;
+  --c-terra-light: 188 98 64;
+  --c-bg: 250 245 238;
+}
+
+/* Un bloque con tema propio también toma su color de texto. */
+[data-theme] {
+  color: rgb(var(--c-dark));
+}
+
 html,
 body {
   height: 100%;
-  background-color: #F8F7F2;
-  color: #2A2833;
+  background-color: rgb(var(--c-bg));
+  color: rgb(var(--c-dark));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior-y: contain;
@@ -33,7 +75,7 @@ body {
   height: calc(100dvh / var(--ui-zoom, 1));
   max-width: 480px;
   margin: 0 auto;
-  background: #F8F7F2;
+  background: rgb(var(--c-bg));
   position: relative;
   overflow: hidden;
 }
@@ -89,7 +131,7 @@ html[data-splash] #cb-splash {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #F8F7F2;
+  background: rgb(var(--c-bg));
   overflow: hidden;
   pointer-events: none;
   animation: cb-splash-out 450ms ease 1900ms forwards;

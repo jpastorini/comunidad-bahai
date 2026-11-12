@@ -121,7 +121,7 @@ export default async function CalendarioPage({
                   style={{
                     fontWeight: isToday || item ? 600 : 400,
                     background: isToday
-                      ? "#2A3F8F"
+                      ? "rgb(var(--c-terra))"
                       : itemColor
                       ? `${itemColor}10`
                       : "transparent",
@@ -129,7 +129,7 @@ export default async function CalendarioPage({
                       ? "#fff"
                       : itemColor
                       ? itemColor
-                      : "#2A2833",
+                      : "rgb(var(--c-dark))",
                   }}
                 >
                   {day}

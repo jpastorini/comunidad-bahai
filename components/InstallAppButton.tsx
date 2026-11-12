@@ -78,7 +78,7 @@ export function InstallAppButton() {
       <div className="flex items-center gap-3">
         <div
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-terra"
-          style={{ background: "#2A3F8F10" }}
+          style={{ background: "rgb(var(--c-terra) / 0.06)" }}
         >
           <svg
             width="20"

@@ -304,6 +304,26 @@ shell desborda en "Grande". La barra de pestañas es la excepción que
 NO escala del todo: el relleno de las píldoras va dividido por el zoom y
 las etiquetas se ajustan al ancho de la barra (`cqw`), porque con "Muy
 grande" en un celular de 375 px no entraban ·
+**Temas de color, etapa 1** (`lib/ui-theme.ts`, selector `UiThemeControl`
+en `/perfil`, sección "Pantalla"; sin migración, 2026-11-12): Clásico,
+Sepia (papel cálido y tinta marrón) y Terracota (el acento azul pasa a
+tierra cocida). La paleta de `tailwind.config.ts` dejó de ser hex: cada
+color es una variable CSS de `globals.css` (`--c-terra`, tres canales RGB
+para que `bg-terra/10` siga andando) y un tema es un bloque
+`[data-theme="…"]` que redefine algunas. Preferencia POR DISPOSITIVO en la
+cookie `cb_theme`, que el layout raíz lee para pintar sin parpadeo, igual
+que el zoom. Reglas: el **dorado no cambia** (identidad, barra del
+sistema, ícono); el acento **no puede ser verde pino** (es la Asamblea
+Nacional, 057); `card` queda blanco en todos, porque hay ~360 `bg-white`
+a mano. ⚠️ **Los documentos no siguen el tema**: `/i`, `/b`, `/la-fe`,
+`/informe`, `/programa`, `/admin/informe` y `/admin/libro-caja` tienen un
+`layout.tsx` con `data-theme="clasico"`, que repone la paleta; un documento
+nuevo fuera de `(app)` y `(panel)` necesita el suyo. ⚠️ Un color de acento
+escrito como hex (`#2A3F8F`, `style={{…}}`) NO cambia con el tema: usar la
+clase (`text-terra`) o `rgb(var(--c-terra))`. Los colores de CATEGORÍA
+(tipos de evento, íconos de Accesos rápidos, `lib/tokens.ts`) son hex a
+propósito y no cambian. **Etapa 2, pendiente: el oscuro**, que exige
+separar `dark` como texto de `dark` como fondo y revisar cada `bg-white` ·
 **Oraciones obligatorias con guía de posturas y ornamentos persas** (sin
 migración, 2026-11-11): en las tres obligatorias, `parseObligatoryPrayer()`
 (`lib/obligatory-prayers.ts`, puro) CLASIFICA los párrafos de

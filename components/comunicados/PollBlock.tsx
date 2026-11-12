@@ -168,7 +168,7 @@ export function PollBlock({
                       style={{ width: 18, height: 18 }}
                     >
                       {on && (
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#2A3F8F" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-terra" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                       )}

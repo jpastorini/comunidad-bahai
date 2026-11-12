@@ -20,7 +20,7 @@ const EXAMPLES = [
 const KIND_BADGE: Record<SearchHit["source_kind"], { label: string; className: string }> = {
   cita: { label: "Escritos", className: "bg-gold/15 text-gold-dark" },
   libro: { label: "Libro", className: "bg-terra/10 text-terra" },
-  mensaje: { label: "Casa Universal de Justicia", className: "bg-[#2A3F8F]/10 text-[#2A3F8F]" },
+  mensaje: { label: "Casa Universal de Justicia", className: "bg-terra/10 text-terra" },
   ruhi: { label: "Instituto Ruhí", className: "bg-[#6A8B5F]/12 text-[#4F6B46]" },
 };
 

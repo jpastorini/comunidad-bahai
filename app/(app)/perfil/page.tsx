@@ -16,6 +16,8 @@ import {
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { UiZoomControl } from "@/components/UiZoomControl";
 import { UI_ZOOM_COOKIE, parseUiZoom } from "@/lib/ui-zoom";
+import { UiThemeControl } from "@/components/UiThemeControl";
+import { UI_THEME_COOKIE, parseUiTheme } from "@/lib/ui-theme";
 import { cookies } from "next/headers";
 import { PushToggle } from "@/components/PushToggle";
 import { DevotionalToggle } from "@/components/DevotionalToggle";
@@ -339,6 +341,12 @@ export default async function ProfilePage() {
           <UiZoomControl
             initial={parseUiZoom(cookies().get(UI_ZOOM_COOKIE)?.value)}
           />
+          {/* Tema de color: también por dispositivo (lib/ui-theme.ts) */}
+          <div className="mt-2.5">
+            <UiThemeControl
+              initial={parseUiTheme(cookies().get(UI_THEME_COOKIE)?.value)}
+            />
+          </div>
         </div>
 
         {/* Notificaciones push: el camino manual; la hoja de avisos

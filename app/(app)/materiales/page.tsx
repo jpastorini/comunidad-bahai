@@ -100,7 +100,7 @@ export default async function MaterialesPage() {
             >
               <div
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-[13px] font-bold text-terra"
-                style={{ background: "#2A3F8F10" }}
+                style={{ background: "rgb(var(--c-terra) / 0.06)" }}
               >
                 {b.number ?? "—"}
               </div>
@@ -134,7 +134,7 @@ export default async function MaterialesPage() {
                     >
                       <div
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-terra"
-                        style={{ background: "#2A3F8F10" }}
+                        style={{ background: "rgb(var(--c-terra) / 0.06)" }}
                       >
                         <IconMateriales size={16} />
                       </div>

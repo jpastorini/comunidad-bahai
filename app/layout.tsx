@@ -3,6 +3,7 @@ import { Cormorant_Garamond, Outfit, Sora } from "next/font/google";
 import { cookies } from "next/headers";
 import { SplashScreen } from "@/components/SplashScreen";
 import { UI_ZOOM_COOKIE, parseUiZoom } from "@/lib/ui-zoom";
+import { UI_THEME_COOKIE, parseUiTheme } from "@/lib/ui-theme";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -61,9 +62,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // Tamaño de letra global (lib/ui-zoom.ts): se lee acá, en el servidor,
   // para que el primer paint ya salga escalado y no haya salto.
   const uiZoom = parseUiZoom(cookies().get(UI_ZOOM_COOKIE)?.value);
+  // Tema de color (lib/ui-theme.ts): misma razón, sin parpadeo al cargar.
+  const uiTheme = parseUiTheme(cookies().get(UI_THEME_COOKIE)?.value);
   return (
     <html
       lang="es"
+      data-theme={uiTheme}
       className={`${cormorant.variable} ${sora.variable} ${outfit.variable}`}
       style={{ "--ui-zoom": uiZoom } as React.CSSProperties}
       // El script de SplashScreen marca <html data-splash> antes de que
