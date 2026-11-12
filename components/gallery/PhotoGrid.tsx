@@ -136,7 +136,7 @@ export function PhotoGrid({
                 className="h-full w-full object-cover transition-transform group-hover:scale-105"
               />
               {showMeta && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-end gap-2 bg-gradient-to-t from-black/55 to-transparent px-1.5 pb-1 pt-3 text-[10px] font-semibold text-white">
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-end gap-2 bg-gradient-to-t from-scrim/55 to-transparent px-1.5 pb-1 pt-3 text-[10px] font-semibold text-white">
                   {totalReactions > 0 && <span>❤ {totalReactions}</span>}
                   {commentCount > 0 && <span>💬 {commentCount}</span>}
                 </div>
@@ -211,7 +211,7 @@ function Lightbox({
   const hasNext = index < total - 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black">
+    <div className="fixed inset-0 z-50 flex flex-col bg-scrim">
       {/* Top bar */}
       <div className="flex shrink-0 items-center justify-between px-4 py-3 text-white">
         <div className="text-[12px] opacity-80">

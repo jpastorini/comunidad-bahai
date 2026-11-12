@@ -61,7 +61,7 @@ export function FeaturedPhotos({ photos }: { photos: FeaturedPhoto[] }) {
                 loading="lazy"
               />
             </div>
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-2.5 pb-2 pt-6">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-scrim/65 to-transparent px-2.5 pb-2 pt-6">
               <div className="truncate text-[11px] font-semibold text-white">
                 {p.event_title}
               </div>

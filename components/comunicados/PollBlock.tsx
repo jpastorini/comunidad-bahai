@@ -115,7 +115,7 @@ export function PollBlock({
             const pct = pollPercent(n, participants);
             const isMine = mine.has(o.id);
             return (
-              <li key={o.id} className="relative overflow-hidden rounded-lg bg-white/70 ring-1 ring-black/[0.05]">
+              <li key={o.id} className="relative overflow-hidden rounded-lg bg-card/70 ring-1 ring-black/[0.05]">
                 <div
                   className={`absolute inset-y-0 left-0 ${isMine ? "bg-terra/20" : "bg-gold/25"}`}
                   style={{ width: `${pct}%`, transition: "width .4s ease" }}
@@ -158,7 +158,7 @@ export function PollBlock({
                     className={`tap flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium ring-1 transition ${
                       on
                         ? "bg-terra text-white ring-terra"
-                        : "bg-white/80 text-dark ring-black/[0.08] hover:bg-white"
+                        : "bg-card/80 text-dark ring-black/[0.08] hover:bg-card"
                     }`}
                   >
                     <span

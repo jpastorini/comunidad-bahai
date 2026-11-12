@@ -11,9 +11,13 @@
 /* Paleta (lib/ui-theme.ts). Tres canales RGB por color, sin `rgb()`, para
    que Tailwind pueda aplicar la opacidad: `rgb(var(--c-terra) / 0.1)`.
    `[data-theme="clasico"]` repone la paleta original adentro de un
-   documento (recibo, informe, deck) aunque la app tenga otro tema. */
+   documento (recibo, informe, deck) aunque la app tenga otro tema.
+   Sepia y Terracota parten de esta misma base (y más abajo cambian lo
+   suyo): así su miniatura del selector no hereda nada del tema puesto. */
 :root,
-[data-theme="clasico"] {
+[data-theme="clasico"],
+[data-theme="sepia"],
+[data-theme="terracota"] {
   --c-gold: 196 162 53;
   --c-gold-dark: 150 121 14;
   --c-gold-light: 212 184 90;
@@ -28,6 +32,124 @@
   --c-card: 255 255 255;
   --c-green: 106 139 95;
   --c-online: 126 207 139;
+  /* `black` de Tailwind: bordes finos y hovers. En oscuro pasa a blanco. */
+  --c-black: 0 0 0;
+  /* Relleno oscuro en cualquier tema (`dark` es el texto y se aclara). */
+  --c-night: 42 40 51;
+  /* El degradé dorado de los encabezados, aparte de `gold-dark`. */
+  --c-grad-gold-a: 150 121 14;
+  --c-grad-gold-b: 196 162 53;
+  color-scheme: light;
+}
+
+/* ── Tema oscuro ──────────────────────────────────────────────────────
+   Vale SOLO en la app del creyente: el selector exige `#app-shell`
+   (app/(app)/layout.tsx) en la página. El panel, el login, la bienvenida
+   y los documentos quedan en clásico sin tener que envolverlos, y el
+   fondo de <body> acompaña porque las variables se definen en <html>.
+   Un navegador sin `:has()` descarta la regla y muestra el clásico.
+   El fondo es noche cálida, no negro puro, y el dorado se apaga apenas
+   en los encabezados: junto a los Escritos tiene que seguir sobrio.
+   ⚠️ El segundo bloque repite las variables para la miniatura del
+   selector (un `data-theme="oscuro"` suelto). No se pueden juntar en
+   una lista: sin `:has()` el navegador tiraría la regla entera. */
+html[data-theme="oscuro"]:has(#app-shell) {
+  --c-bg: 22 21 27;
+  --c-card: 35 34 43;
+  --c-dark: 236 233 226;
+  --c-muted: 162 158 152;
+  --c-terra: 112 136 232;
+  --c-terra-light: 136 158 240;
+  --c-amber: 164 118 220;
+  --c-green: 128 166 116;
+  --c-gold-dark: 204 172 76;
+  --c-black: 255 255 255;
+  --c-night: 58 56 72;
+  --c-grad-gold-a: 108 88 14;
+  --c-grad-gold-b: 160 132 42;
+  /* El degradé azul lleva texto blanco: conserva el azul profundo. */
+  --c-grad-terra-a: 42 63 143;
+  --c-grad-terra-b: 61 86 176;
+  color-scheme: dark;
+}
+[data-theme="oscuro"]:not(html) {
+  --c-bg: 22 21 27;
+  --c-card: 35 34 43;
+  --c-dark: 236 233 226;
+  --c-muted: 162 158 152;
+  --c-terra: 112 136 232;
+  --c-terra-light: 136 158 240;
+  --c-amber: 164 118 220;
+  --c-green: 128 166 116;
+  --c-gold-dark: 204 172 76;
+  --c-black: 255 255 255;
+  --c-night: 58 56 72;
+  --c-grad-gold-a: 108 88 14;
+  --c-grad-gold-b: 160 132 42;
+  /* El degradé azul lleva texto blanco: conserva el azul profundo. */
+  --c-grad-terra-a: 42 63 143;
+  --c-grad-terra-b: 61 86 176;
+}
+
+/* Los avisos de color de Tailwind (rosa = error, ámbar = atención,
+   esmeralda = en orden) están pensados sobre blanco: fondo -50 y texto
+   -700. En oscuro se dan vuelta acá, en un solo lugar, en vez de clase
+   por clase. Los botones llenos (bg-rose-500/600) no cambian. */
+html[data-theme="oscuro"]:has(#app-shell) .bg-rose-50,
+html[data-theme="oscuro"]:has(#app-shell) .bg-rose-100 {
+  background-color: rgb(244 63 94 / 0.14);
+}
+html[data-theme="oscuro"]:has(#app-shell) .text-rose-500,
+html[data-theme="oscuro"]:has(#app-shell) .text-rose-600,
+html[data-theme="oscuro"]:has(#app-shell) .text-rose-700,
+html[data-theme="oscuro"]:has(#app-shell) .text-rose-800,
+html[data-theme="oscuro"]:has(#app-shell) .text-red-600 {
+  color: rgb(253 164 175);
+}
+html[data-theme="oscuro"]:has(#app-shell) .border-rose-200,
+html[data-theme="oscuro"]:has(#app-shell) .border-rose-300,
+html[data-theme="oscuro"]:has(#app-shell) .ring-rose-200 {
+  border-color: rgb(244 63 94 / 0.4);
+  --tw-ring-color: rgb(244 63 94 / 0.4);
+}
+html[data-theme="oscuro"]:has(#app-shell) .bg-amber-50 {
+  background-color: rgb(245 158 11 / 0.14);
+}
+html[data-theme="oscuro"]:has(#app-shell) .text-amber-700,
+html[data-theme="oscuro"]:has(#app-shell) .text-amber-800,
+html[data-theme="oscuro"]:has(#app-shell) .text-amber-800\/90 {
+  color: rgb(252 211 77);
+}
+html[data-theme="oscuro"]:has(#app-shell) .border-amber-300,
+html[data-theme="oscuro"]:has(#app-shell) .border-amber-100\/60 {
+  border-color: rgb(245 158 11 / 0.35);
+}
+html[data-theme="oscuro"]:has(#app-shell) .bg-emerald-50 {
+  background-color: rgb(16 185 129 / 0.14);
+}
+html[data-theme="oscuro"]:has(#app-shell) .text-emerald-700,
+html[data-theme="oscuro"]:has(#app-shell) .text-emerald-800 {
+  color: rgb(110 231 183);
+}
+html[data-theme="oscuro"]:has(#app-shell) .border-emerald-200 {
+  border-color: rgb(16 185 129 / 0.35);
+}
+
+/* Los colores de CATEGORÍA (tipos de evento, íconos de Accesos rápidos,
+   el color que la Asamblea le puso a un evento) son hex fijos, pensados
+   sobre blanco: el azul y el morado no se leen sobre noche. Lo que los
+   usa lleva `data-cat` y en oscuro se aclara entero. */
+html[data-theme="oscuro"]:has(#app-shell) [data-cat] {
+  filter: brightness(1.6) saturate(0.9);
+}
+
+/* La tarjeta destacada (primer comunicado, primer boletín, cabecera del
+   boletín): crema dorado en claro, dorado apagado sobre noche en oscuro. */
+.cb-highlight {
+  background: linear-gradient(160deg, #fbf6e4, #fffdf7);
+}
+html[data-theme="oscuro"]:has(#app-shell) .cb-highlight {
+  background: linear-gradient(160deg, #3a331f, #2a2723);
 }
 
 /* Sepia: papel más cálido y tinta marrón, para leer. El acento no cambia. */
@@ -87,7 +209,7 @@ body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: #ffffff transparent;
+  scrollbar-color: rgb(var(--c-card)) transparent;
   min-height: 0;
 }
 
@@ -95,7 +217,7 @@ body {
   width: 6px;
 }
 .scroll-area::-webkit-scrollbar-thumb {
-  background: #ffffff;
+  background: rgb(var(--c-card));
   border-radius: 3px;
 }
 

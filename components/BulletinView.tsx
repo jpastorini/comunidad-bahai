@@ -18,8 +18,7 @@ export function BulletinView({
   return (
     <article className="flex flex-col gap-4 pb-6">
       {/* Cabecera de la edición */}
-      <header className="overflow-hidden rounded-2xl shadow-card-elevated ring-1 ring-gold/45"
-        style={{ background: "linear-gradient(160deg, #FBF6E4, #FFFDF7)" }}
+      <header className="cb-highlight overflow-hidden rounded-2xl shadow-card-elevated ring-1 ring-gold/45"
       >
         <div className="p-4">
           <div className="text-[10px] font-bold uppercase tracking-[0.5px] text-gold-dark">

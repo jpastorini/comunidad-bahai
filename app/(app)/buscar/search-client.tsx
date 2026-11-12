@@ -21,7 +21,7 @@ const KIND_BADGE: Record<SearchHit["source_kind"], { label: string; className: s
   cita: { label: "Escritos", className: "bg-gold/15 text-gold-dark" },
   libro: { label: "Libro", className: "bg-terra/10 text-terra" },
   mensaje: { label: "Casa Universal de Justicia", className: "bg-terra/10 text-terra" },
-  ruhi: { label: "Instituto Ruhí", className: "bg-[#6A8B5F]/12 text-[#4F6B46]" },
+  ruhi: { label: "Instituto Ruhí", className: "bg-green/[0.12] text-[#4F6B46] dark:text-green" },
 };
 
 type State =

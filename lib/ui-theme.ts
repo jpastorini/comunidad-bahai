@@ -21,8 +21,22 @@
  *    boletín público) NO siguen el tema: sus layouts llevan
  *    `data-theme="clasico"`, que repone la paleta original. Si agregás un
  *    documento fuera de los grupos (app) y (panel), envolvelo igual.
- *  - Etapa 1 son temas CLAROS: `card` queda blanco en todos, porque hay
- *    cientos de `bg-white` escritos a mano. El oscuro es la etapa 2.
+ *  - En los temas CLAROS `card` queda blanco.
+ *
+ * El OSCURO (etapa 2) vale solo en la app del creyente: su paleta se
+ * define bajo `html[data-theme="oscuro"]:has(#app-shell)`, así que el
+ * panel, el login, la bienvenida y los documentos siguen en clásico sin
+ * envolverlos. Lo que hay que saber para no romperlo:
+ *  - `dark` es el color del TEXTO y en oscuro se aclara. Un relleno
+ *    oscuro fijo es `night`; un negro de verdad (velo de una hoja, visor
+ *    de fotos, degradé sobre una foto) es `scrim`.
+ *  - `black` de Tailwind también es variable: `border-black/10` y
+ *    `bg-black/[0.04]` pasan a blanco translúcido. Por eso un velo NO se
+ *    escribe `bg-black/50`.
+ *  - Una superficie es `bg-card`, nunca `bg-white` (que queda blanco:
+ *    sirve para el QR o la perilla de un interruptor).
+ *  - Un color de categoría en hex (`style={{ color }}`) lleva `data-cat`
+ *    para aclararse; un caso suelto se resuelve con la variante `dark:`.
  */
 
 export const UI_THEME_COOKIE = "cb_theme";
@@ -31,6 +45,7 @@ export const UI_THEMES = [
   { id: "clasico", label: "Clásico" },
   { id: "sepia", label: "Sepia" },
   { id: "terracota", label: "Terracota" },
+  { id: "oscuro", label: "Oscuro" },
 ] as const;
 
 export type UiTheme = (typeof UI_THEMES)[number]["id"];

@@ -135,7 +135,7 @@ function PhotoPreviewGrid({
             loading="lazy"
           />
           {i === urls.length - 1 && remaining > 0 && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-[15px] font-semibold text-white">
+            <div className="absolute inset-0 flex items-center justify-center bg-scrim/45 text-[15px] font-semibold text-white">
               +{remaining}
             </div>
           )}

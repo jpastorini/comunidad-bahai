@@ -83,7 +83,7 @@ export function CommentSection({
   const inputBg = dark
     ? "bg-white/10 text-white placeholder:text-white/40"
     : "bg-bg text-dark placeholder:text-muted";
-  const sendBg = dark ? "bg-white text-dark" : "bg-terra text-white";
+  const sendBg = dark ? "bg-white text-night" : "bg-terra text-white";
   const divider = dark ? "border-white/10" : "border-black/[0.05]";
 
   return (

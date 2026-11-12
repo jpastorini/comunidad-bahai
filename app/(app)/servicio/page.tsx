@@ -57,7 +57,7 @@ export default async function ServicioPage() {
                     </h3>
                     <span
                       className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                      style={{ background: `${color}12`, color }}
+                      data-cat style={{ background: `${color}12`, color }}
                     >
                       {URGENCY_LABEL[n.urgency]}
                     </span>

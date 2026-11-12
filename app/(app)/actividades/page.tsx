@@ -68,7 +68,7 @@ export default async function ActividadesPage() {
                 <div className="min-w-0 flex-1">
                   <span
                     className="mb-1 inline-block rounded px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.5px]"
-                    style={{ background: `${color}10`, color }}
+                    data-cat style={{ background: `${color}10`, color }}
                   >
                     {TYPE_LABEL[a.type]}
                   </span>

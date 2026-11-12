@@ -49,14 +49,9 @@ export function ComunicadoListItem({
         national
           ? "bg-pine shadow-card-elevated"
           : featured
-            ? "shadow-card-elevated ring-1 ring-gold/45"
+            ? "cb-highlight shadow-card-elevated ring-1 ring-gold/45"
             : "bg-card shadow-card"
       }`}
-      style={
-        !national && featured
-          ? { background: "linear-gradient(160deg, #FBF6E4, #FFFDF7)" }
-          : undefined
-      }
     >
       {m.image_url && (
         // eslint-disable-next-line @next/next/no-img-element

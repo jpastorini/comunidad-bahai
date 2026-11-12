@@ -261,7 +261,7 @@ export function PhotoUploadFlow({ events }: Props) {
                     type="button"
                     onClick={() => removePicked(p.id)}
                     aria-label="Quitar foto"
-                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white"
+                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-scrim/55 text-white"
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                       <line x1="18" y1="6" x2="6" y2="18" />

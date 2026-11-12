@@ -15,7 +15,9 @@ import { POSTURE_LABELS } from "@/lib/obligatory-prayers";
 // Las abluciones no llevan figura: llevan el aguamanil, que sí es SVG.
 
 /** El azul de las siluetas (medido en las imágenes). */
-const NAVY = "#12263F";
+// `currentColor`: azul marino en claro y marfil en el tema oscuro (lo pone
+// el contenedor), porque el marino no se ve sobre noche.
+const NAVY = "currentColor";
 const GOLD = "#C4A235";
 
 /** Ancho de cada PNG; el alto es siempre 300. */
@@ -114,7 +116,7 @@ export function PostureFigure({
       <div
         role="img"
         aria-label={label}
-        className="flex items-end"
+        className="flex items-end text-[#12263F] dark:text-[#D9D4C8]"
         style={{ height }}
       >
         <Ewer height={height} />
@@ -142,7 +144,8 @@ export function PostureFigure({
         width={width}
         height={height}
         draggable={false}
-        className="max-w-none select-none"
+        // Las siluetas son PNG azul marino: en oscuro se pasan a marfil.
+        className="max-w-none select-none dark:[filter:brightness(0)_invert(0.83)_sepia(0.12)]"
         style={{ marginTop: -cut }}
       />
       {(posture === "mirar" || posture === "alquibla") && (

@@ -158,7 +158,7 @@ export function ContactForm({
 }
 
 const inputCls =
-  "w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 font-body text-[14px] text-dark outline-none focus:border-terra";
+  "w-full rounded-xl border border-black/10 bg-card px-3 py-2.5 font-body text-[14px] text-dark outline-none focus:border-terra";
 
 function Field({
   label,

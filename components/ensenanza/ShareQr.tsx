@@ -155,6 +155,7 @@ export function ShareQr({ items }: { items: ShareItem[] }) {
           role="dialog"
           aria-label={`Código QR de ${item.title}`}
           onClick={() => setFull(false)}
+          data-theme="clasico"
           className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-white px-6"
           style={{ paddingTop: "var(--safe-top)", paddingBottom: "var(--safe-bottom)" }}
         >

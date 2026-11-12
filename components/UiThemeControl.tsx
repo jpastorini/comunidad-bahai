@@ -26,7 +26,7 @@ export function UiThemeControl({ initial }: { initial: UiTheme }) {
         Cambia los colores de la app. Se guarda en este dispositivo.
       </p>
       <div
-        className="mt-3 grid grid-cols-3 gap-2"
+        className="mt-3 grid grid-cols-2 gap-2"
         role="radiogroup"
         aria-label="Colores de la app"
       >

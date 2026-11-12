@@ -53,7 +53,7 @@ export function ChatDutyCard({ duties }: { duties: ChatDuty[] }) {
             >
               <div
                 className="relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[11px]"
-                style={{ background: `${color}14`, color }}
+                data-cat style={{ background: `${color}14`, color }}
               >
                 <Icon size={17} />
                 {d.pending !== null && d.pending > 0 && (

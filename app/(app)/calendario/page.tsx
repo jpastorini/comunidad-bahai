@@ -117,6 +117,7 @@ export default async function CalendarioPage({
               return (
                 <div
                   key={day}
+                  data-cat={!isToday && itemColor ? "" : undefined}
                   className="mx-auto my-0.5 flex h-9 w-9 items-center justify-center rounded-full text-[13px]"
                   style={{
                     fontWeight: isToday || item ? 600 : 400,
@@ -182,6 +183,7 @@ export default async function CalendarioPage({
                     </div>
                     <div className="mt-0.5 flex items-center gap-2 font-body text-[11px] text-muted">
                       <span
+                        data-cat
                         className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide"
                         style={{
                           background: `${kindMeta.color}15`,

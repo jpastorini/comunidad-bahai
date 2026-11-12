@@ -4,6 +4,9 @@ import type { Config } from "tailwindcss";
 const c = (name: string) => `rgb(var(--c-${name}) / <alpha-value>)`;
 
 const config: Config = {
+  // `dark:` vale solo con el tema oscuro puesto Y dentro de la app del
+  // creyente (el mismo selector que define la paleta en globals.css).
+  darkMode: ["variant", 'html[data-theme="oscuro"]:has(#app-shell) &'],
   content: [
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
@@ -34,6 +37,16 @@ const config: Config = {
         card: c("card"), // #FFFFFF
         green: c("green"), // #6A8B5F
         online: c("online"), // #7ECF8B
+        // Tema oscuro (lib/ui-theme.ts). `black` se usa casi siempre al
+        // 4–25 % para bordes finos y fondos de hover: en oscuro tiene que
+        // ser BLANCO o desaparecen, así que también es una variable.
+        black: c("black"),
+        // Lo que tiene que ser negro de verdad en cualquier tema: el velo
+        // detrás de una hoja, el visor de fotos, el degradé sobre una foto.
+        scrim: "#000000",
+        // Un relleno oscuro en cualquier tema. `dark` es el color del
+        // TEXTO y en oscuro se aclara: no sirve como fondo.
+        night: c("night"), // #2A2833
       },
       fontFamily: {
         display: ["var(--font-cormorant)", "Georgia", "serif"],
@@ -46,10 +59,12 @@ const config: Config = {
         "card-soft": "0 1px 4px rgba(42,31,20,0.04)",
       },
       backgroundImage: {
+        // Con sus propias variables: en oscuro `gold-dark` se aclara para
+        // leerse como texto, y el encabezado necesita lo contrario.
         "gold-grad":
-          "linear-gradient(160deg, rgb(var(--c-gold-dark)), rgb(var(--c-gold)))",
+          "linear-gradient(160deg, rgb(var(--c-grad-gold-a)), rgb(var(--c-grad-gold-b)))",
         "terra-grad":
-          "linear-gradient(135deg, rgb(var(--c-terra)), rgb(var(--c-terra-light)))",
+          "linear-gradient(135deg, rgb(var(--c-grad-terra-a, var(--c-terra))), rgb(var(--c-grad-terra-b, var(--c-terra-light))))",
         // La otra institución (057): mismo tratamiento que el terra, en
         // el verde pino de la tarjeta del comunicado nacional.
         "pine-grad":

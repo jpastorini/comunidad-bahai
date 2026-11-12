@@ -43,16 +43,8 @@ export default async function BoletinLocalPage() {
                   href={`/boletin-local/${b.id}`}
                   className={
                     i === 0
-                      ? "tap overflow-hidden rounded-2xl p-4 shadow-card-elevated ring-1 ring-gold/45"
+                      ? "cb-highlight tap overflow-hidden rounded-2xl p-4 shadow-card-elevated ring-1 ring-gold/45"
                       : "tap overflow-hidden rounded-2xl bg-card p-4 shadow-card"
-                  }
-                  style={
-                    i === 0
-                      ? {
-                          background:
-                            "linear-gradient(160deg, #FBF6E4, #FFFDF7)",
-                        }
-                      : undefined
                   }
                 >
                   <div className="text-[10px] font-semibold tracking-[0.3px] text-terra">

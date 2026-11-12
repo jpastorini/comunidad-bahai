@@ -53,7 +53,7 @@ export function AvatarEditor({ currentUrl, name, hasGoogleAvatar }: Props) {
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <Avatar url={currentUrl} name={name} size={120} className="border-2 border-white shadow-card-elevated" />
+      <Avatar url={currentUrl} name={name} size={120} className="border-2 border-card shadow-card-elevated" />
 
       <div className="flex flex-wrap items-center justify-center gap-2">
         <input

@@ -317,7 +317,7 @@ export function ZoomableImage({
       onWheel={onWheel}
       className={
         immersive
-          ? "fixed inset-0 z-[60] overflow-hidden bg-black"
+          ? "fixed inset-0 z-[60] overflow-hidden bg-scrim"
           : "relative h-full w-full overflow-hidden"
       }
       style={{ touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}

@@ -322,8 +322,33 @@ nuevo fuera de `(app)` y `(panel)` necesita el suyo. ⚠️ Un color de acento
 escrito como hex (`#2A3F8F`, `style={{…}}`) NO cambia con el tema: usar la
 clase (`text-terra`) o `rgb(var(--c-terra))`. Los colores de CATEGORÍA
 (tipos de evento, íconos de Accesos rápidos, `lib/tokens.ts`) son hex a
-propósito y no cambian. **Etapa 2, pendiente: el oscuro**, que exige
-separar `dark` como texto de `dark` como fondo y revisar cada `bg-white` ·
+propósito y no cambian.
+**Etapa 2, el tema Oscuro** (mismo día, sin migración): vale **solo en la
+app del creyente**. Su paleta se define bajo
+`html[data-theme="oscuro"]:has(#app-shell)`, así que el panel, el login,
+la bienvenida y los documentos siguen en clásico sin envolverlos, y un
+navegador sin `:has()` muestra el clásico. Fondo noche cálida (no negro
+puro) y el dorado de los encabezados apenas apagado, por sobriedad junto
+a los Escritos. Reglas para no romperlo: `dark` es el TEXTO y en oscuro
+se aclara —un relleno oscuro fijo es `night`, y un negro de verdad (velo
+de una hoja, visor de fotos, degradé sobre una foto) es `scrim`—;
+`black` de Tailwind también es variable, para que `border-black/10` y
+`bg-black/[0.04]` pasen a blanco translúcido (por eso un velo NO se
+escribe `bg-black/50`); una superficie es `bg-card`, nunca `bg-white`
+(que sigue blanco: QR, perilla de un interruptor); los degradés
+`gold-grad` y `terra-grad` tienen variables propias porque llevan texto
+blanco encima; los avisos rosa/ámbar/esmeralda de Tailwind se dan vuelta
+en un bloque de `globals.css`; un color de categoría en hex lleva
+`data-cat` (se aclara con un filtro) y un caso suelto usa la variante
+`dark:`; las tarjetas destacadas crema usan `.cb-highlight`; las siluetas
+de las posturas pasan a marfil. ⚠️ Un cambio en `tailwind.config.ts` no
+lo toma el dev server en caliente: reiniciarlo. Revisado en el navegador
+con datos de ejemplo: Inicio, Biblioteca, Lectura de hoy, una oración
+obligatoria, Calendario, Comunicados (lista y detalle), Tesorería, Chat,
+Compartir (QR) y Perfil. **Sin revisar**: galería y visor de fotos,
+Fiestas, Libros, Mensajes, Actividades, Servicio, Mis aportes, Boletín,
+Buscar y las hojas de instalación y de avisos. Pendiente posible: opción
+"Automático" (seguir al teléfono) ·
 **Oraciones obligatorias con guía de posturas y ornamentos persas** (sin
 migración, 2026-11-11): en las tres obligatorias, `parseObligatoryPrayer()`
 (`lib/obligatory-prayers.ts`, puro) CLASIFICA los párrafos de

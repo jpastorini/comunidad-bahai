@@ -102,7 +102,7 @@ function SectionCard({ href, title, Icon, color, hasUnseen }: SectionItem) {
       )}
       <div
         className="flex h-[40px] w-[40px] items-center justify-center rounded-[13px]"
-        style={{ background: `${color}12`, color }}
+        data-cat style={{ background: `${color}12`, color }}
       >
         <Icon size={21} />
       </div>
