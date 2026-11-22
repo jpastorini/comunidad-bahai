@@ -391,7 +391,13 @@ function ActionsCell({ item }: { item: UnifiedCalendarItem }) {
   }
   if (item.source === "feast") {
     return (
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-2">
+        <Link
+          href={`${item.adminHref}/invitacion`}
+          className="text-[12px] font-semibold text-terra hover:underline"
+        >
+          Invitación
+        </Link>
         <Link
           href={item.adminHref}
           className="text-[12px] font-semibold text-terra hover:underline"
@@ -405,7 +411,13 @@ function ActionsCell({ item }: { item: UnifiedCalendarItem }) {
   // Día Sagrado (system-seeded): solo editar, no borrar.
   if (item.isSystemSeeded) {
     return (
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-2">
+        <Link
+          href={`${item.adminHref}/invitacion`}
+          className="text-[12px] font-semibold text-terra hover:underline"
+        >
+          Invitación
+        </Link>
         <Link
           href={item.adminHref}
           className="text-[12px] font-semibold text-terra hover:underline"
@@ -418,6 +430,12 @@ function ActionsCell({ item }: { item: UnifiedCalendarItem }) {
 
   return (
     <div className="flex items-center justify-end gap-2">
+      <Link
+        href={`${item.adminHref}/invitacion`}
+        className="text-[12px] font-semibold text-terra hover:underline"
+      >
+        Invitación
+      </Link>
       <Link
         href={item.adminHref}
         className="text-[12px] font-semibold text-terra hover:underline"

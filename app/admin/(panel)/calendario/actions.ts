@@ -113,9 +113,21 @@ export async function upsertEventAction(formData: FormData) {
     payload.image_url = null;
   }
 
-  const { error } = id
-    ? await supabase.from("calendar_events").update(payload).eq("id", id)
-    : await supabase.from("calendar_events").insert(payload);
+  // El alta devuelve el id: "Crear y hacer la invitación" sigue de largo
+  // al creador de invitaciones de ese evento.
+  let savedId = id;
+  let error: { code?: string; message: string } | null = null;
+  if (id) {
+    ({ error } = await supabase.from("calendar_events").update(payload).eq("id", id));
+  } else {
+    const res = await supabase
+      .from("calendar_events")
+      .insert(payload)
+      .select("id")
+      .single();
+    error = res.error;
+    savedId = (res.data as { id: string } | null)?.id ?? null;
+  }
 
   setFlashToast(
     error
@@ -131,6 +143,9 @@ export async function upsertEventAction(formData: FormData) {
 
   revalidatePath("/admin/calendario");
   revalidatePath("/calendario");
+  if (!error && savedId && formData.get("then") === "invitacion") {
+    redirect(`/admin/calendario/${savedId}/invitacion`);
+  }
   redirect("/admin/calendario");
 }
 

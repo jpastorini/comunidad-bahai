@@ -225,10 +225,19 @@ export function EventForm({ event, defaultDate, structure = false }: Props) {
         <ImageSlot currentUrl={event?.image_url ?? null} />
       </Card>
 
-      <div className="mt-5 flex items-center justify-end gap-2">
+      <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
         <Button variant="secondary" href="/admin/calendario">
           Cancelar
         </Button>
+        {/* Guarda y sigue al creador de invitaciones (la imagen para WhatsApp). */}
+        <button
+          type="submit"
+          name="then"
+          value="invitacion"
+          className="tap rounded-xl border border-terra/30 bg-terra/[0.05] px-4 py-2 text-[13px] font-semibold text-terra"
+        >
+          {event ? "Guardar y hacer la invitación" : "Crear y hacer la invitación"}
+        </button>
         <Button type="submit">{event ? "Guardar" : "Crear evento"}</Button>
       </div>
     </form>

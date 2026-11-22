@@ -9,7 +9,17 @@ export type ShareResult = "shared" | "downloaded" | "error";
  */
 export async function shareNodeAsImage(
   node: HTMLElement,
-  opts: { filename: string; title?: string; text?: string }
+  opts: {
+    filename: string;
+    title?: string;
+    text?: string;
+    /** Tamaño del lienzo en px CSS. Sin esto, lo que mide el nodo en
+     *  pantalla — que NO sirve si un ancestro lo escala con transform. */
+    width?: number;
+    height?: number;
+    /** Saltea el menú de compartir y baja el archivo. */
+    downloadOnly?: boolean;
+  }
 ): Promise<ShareResult> {
   try {
     // Esperamos a que las fuentes estén listas para que el render no
@@ -31,8 +41,8 @@ export async function shareNodeAsImage(
       pixelRatio: 3,
       cacheBust: true,
       backgroundColor: "#ffffff",
-      width: Math.ceil(rect.width),
-      height: Math.ceil(rect.height),
+      width: opts.width ?? Math.ceil(rect.width),
+      height: opts.height ?? Math.ceil(rect.height),
       style: { margin: "0" },
     });
 
@@ -40,7 +50,7 @@ export async function shareNodeAsImage(
     const file = new File([blob], opts.filename, { type: "image/png" });
 
     const nav = typeof navigator !== "undefined" ? navigator : undefined;
-    if (nav?.canShare?.({ files: [file] })) {
+    if (!opts.downloadOnly && nav?.canShare?.({ files: [file] })) {
       try {
         await nav.share({
           files: [file],

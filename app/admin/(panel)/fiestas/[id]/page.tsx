@@ -158,6 +158,22 @@ export default async function EditFeastPage({
             </a>
           </div>
         </Card>
+
+        <Card>
+          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Invitación
+          </h3>
+          <p className="mt-2 text-[12px] text-muted">
+            Una imagen con el lugar, la fecha y la hora de la Fiesta, para
+            compartir por WhatsApp en los grupos de la comunidad.
+          </p>
+          <Link
+            href={`/admin/fiestas/${feast.id}/invitacion`}
+            className="tap mt-3 inline-flex rounded-xl border border-terra/30 bg-terra/[0.05] px-4 py-2 text-[13px] font-semibold text-terra"
+          >
+            Crear invitación →
+          </Link>
+        </Card>
       </div>
 
       {/* Quiénes van (065). Solo la Asamblea lo ve: al creyente no se le

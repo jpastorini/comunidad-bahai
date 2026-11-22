@@ -540,6 +540,9 @@ agrupaciones" más abajo. ·
 **Ayudantes de la Asamblea** (migración 088, 2026-10-25): permisos sobre
 secciones del panel para creyentes que no integran la Asamblea, con
 vigencia opcional. Ver la sección "Ayudantes de la Asamblea" más abajo. ·
+**Creador de invitaciones** (sin migración, 2026-11-22): la imagen de un
+evento o de una Fiesta para compartir por WhatsApp. Ver la sección
+"Creador de invitaciones" más abajo. ·
 **Asistente de Tesorería** (migración 090, 2026-11-02): Claude dentro del
 panel, que lee el libro y propone movimientos que el tesorero confirma.
 Ver la sección "Asistente de Tesorería" más abajo.
@@ -641,6 +644,55 @@ anulado y un pago con un aporte marcado "no pasa por el banco" por error.
 
 ⚠️ Hasta que corra la 092, adjuntar dice "falta aplicar la migración 092"
 y el asistente sigue andando sin archivos.
+
+## Creador de invitaciones (sin migración, 2026-11-22)
+
+La imagen de un evento para compartir por WhatsApp, armada con los datos
+que ya están cargados. Decidido con el usuario: la usa la **Asamblea y
+los ayudantes** del Calendario o de las Fiestas (088), sale **cuadrada**
+(1080 × 1080, para un chat) o **vertical** (1080 × 1920, para los
+Estados), vale para **eventos del calendario y Fiestas** (una imagen por
+lugar), y **siempre** lleva título, fecha, hora y lugar: sin los cuatro
+no se puede enviar (`missingFields`). Opcionales: encabezado, texto
+breve, pie con el nombre de la comunidad, foto y una cita.
+
+- **Rutas**: `/admin/calendario/[id]/invitacion` (`requirePermission("calendario")`)
+  y `/admin/fiestas/[id]/invitacion?lugar=<id>` (`"fiestas"`; fecha y hora
+  por `feastCelebration()`, la misma regla del calendario y del aviso).
+  Se entra desde "Crear / Guardar y hacer la invitación" del formulario
+  del evento (el botón manda `then=invitacion` y `upsertEventAction`
+  redirige con el id del alta), desde "Invitación" en la lista del
+  calendario y desde la tarjeta "Invitación" de la Fiesta.
+- **Nada se guarda.** El editor (`components/invitations/InvitationEditor.tsx`)
+  arranca con los datos del evento y lo que se retoca vale solo para la
+  imagen. La tarjeta (`InvitationCard.tsx`) mide 360 px fijos y se
+  captura al triple con `shareNodeAsImage`, que ganó `width`/`height`
+  explícitos —la vista previa se achica con `transform` en un envoltorio
+  y medir el nodo en pantalla daría mal— y `downloadOnly`.
+- ⚠️ **Los colores de la tarjeta son hex a propósito**: es un documento
+  que sale de la app y no sigue el tema. Tres estilos (Claro, Noche, Foto
+  de fondo) en `PALETTES`.
+- ⚠️ **La foto entra siempre como `data:` URI** (la del evento se baja
+  una vez con `fetch`; la subida en el momento pasa por `compressImage`),
+  por lo mismo que la firma del recibo: html-to-image deja en blanco un
+  `<img>` remoto que falla, sin avisar.
+- **Sin foto, la invitación lleva una ilustración** (`InvitationArt.tsx`,
+  pedido el mismo día: "si no se tiene una imagen, el sistema debe crear
+  una acorde"). Cuatro motivos de línea en SVG en línea —Amanecer, Libro,
+  Arcos, Estrella—, que `pickInvitationArt()` (`lib/invitation.ts`) elige
+  leyendo el título y el encabezado; en el editor se cambia o se quita.
+  No hay generador de imágenes en la app: son dibujos fijos, sobrios, con
+  los colores del estilo. Se dibujan en 360 × 232 y la cuadrada muestra
+  solo la franja central (y 72–160).
+- **La cita se elige, no se escribe**: el selector pide `/citas.json`
+  (el corpus de la Lectura de hoy) recién al abrirlo y ofrece solo las de
+  hasta 230 caracteres, que son las que entran.
+- **Si el contenido no entra, se avisa** (el cuerpo de la tarjeta se mide
+  contra su alto): la imagen saldría cortada sin que nadie lo note.
+
+Probado en el navegador con datos de ejemplo, captura incluida (PNG de
+1080 × 1920 con la foto adentro). Falta verlo con un evento real desde el
+panel y el menú de compartir en un teléfono.
 
 ## Ayudantes de la Asamblea (migración 088)
 
