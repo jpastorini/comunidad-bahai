@@ -117,6 +117,7 @@ export function InvitationEditor({ initial, create }: Props) {
   const [useDesign, setUseDesign] = useState(true);
   const [designing, setDesigning] = useState(false);
   const [designNote, setDesignNote] = useState<string | null>(null);
+  const [styleNote, setStyleNote] = useState("");
   const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
 
   const cardRef = useRef<HTMLDivElement>(null);
@@ -191,6 +192,7 @@ export function InvitationEditor({ initial, create }: Props) {
         invitationKey: invitationKey.current,
         format,
         ...data,
+        styleNote,
       });
       if (typeof result.remaining === "number") setAttemptsLeft(result.remaining);
       if (result.ok && result.design) {
@@ -432,6 +434,18 @@ export function InvitationEditor({ initial, create }: Props) {
               texto lo escribe la app, exacto. Una invitación por hora, con hasta 3
               intentos.
             </p>
+            <label htmlFor="inv_style" className="mt-3 block text-[12px] font-semibold text-dark">
+              Indicaciones de estilo <span className="font-normal text-muted">(opcional)</span>
+            </label>
+            <textarea
+              id="inv_style"
+              rows={2}
+              value={styleNote}
+              maxLength={300}
+              onChange={(e) => setStyleNote(e.target.value)}
+              placeholder="Ej.: colores cálidos, que haya un mate y un jardín, más sobrio, de noche…"
+              className="mt-1 w-full rounded-xl border border-black/10 bg-card px-3 py-2 font-body text-[13px] leading-[1.4] text-dark outline-none placeholder:text-muted focus:border-terra"
+            />
             <button
               type="button"
               disabled={designing || !data.title.trim() || attemptsLeft === 0}

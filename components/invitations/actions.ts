@@ -26,6 +26,8 @@ export async function generateInvitationDesignAction(input: {
   place: string;
   text: string;
   footer: string;
+  /** Indicación libre de estilo o diseño para la AI. */
+  styleNote?: string;
 }): Promise<{
   ok: boolean;
   design?: InvitationDesign;
@@ -61,6 +63,7 @@ export async function generateInvitationDesignAction(input: {
       place: clip(input.place, 140),
       text: clip(input.text, 160),
       footer: clip(input.footer, 60),
+      styleNote: clip(input.styleNote, 300),
     },
     INVITATION_ATTEMPTS - quota.remaining + 1
   );

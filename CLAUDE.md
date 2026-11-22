@@ -736,6 +736,11 @@ intentos**, y el diseño fijo queda de respaldo.
 - **El prompt fija la reverencia**: sin figuras humanas, sin
   representaciones de las Figuras Centrales, sin caligrafía ni el Más
   Grande Nombre, sin símbolos de otras religiones, edificios genéricos.
+- **"Indicaciones de estilo"** (opcional, hasta 300 caracteres), justo
+  arriba del botón: lo que la persona quiere del dibujo ("colores
+  cálidos", "que haya un mate", "más sobrio"). Viaja como `styleNote` y
+  manda sobre el motivo, la paleta y la composición, pero no sobre las
+  reglas del prompt (sin letras, sin figuras humanas, reverencia, SVG).
 - **El límite** es `invitation_generations` (094), una fila por generación
   LOGRADA (un intento que falla no gasta), sin policies: la lee y escribe
   el servidor con service-role. `invitation_key` lo arma el navegador al
