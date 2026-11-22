@@ -706,6 +706,50 @@ breve, pie con el nombre de la comunidad, foto y una cita.
   aviso: la casilla es `community_visible` (085). Después de creada, lo
   que se retoque vale solo para la imagen.
 
+**Diseño con AI (migración 094, 2026-11-22).** Pedido: que la invitación
+se genere "de manera dinámica con AI a partir de los datos". Decidido con
+el usuario: **la AI dibuja y la app escribe** (un modelo de imágenes se
+equivoca en tildes, fechas y nombres como Bahá'í), **sin servicio de
+imágenes nuevo** —Claude dibuja en SVG; la app solo tiene clave de
+Anthropic—, **una invitación por hora por institución con hasta 3
+intentos**, y el diseño fijo queda de respaldo.
+
+- **"Generar con AI"** en el editor llama a `generateInvitationDesignAction`
+  (`components/invitations/actions.ts`; Asamblea o ayudante de Calendario
+  o Fiestas). Claude Opus 5.5 (`lib/invitation-ai.ts`, effort `medium`,
+  salida estructurada por `output_config.format`, fallback de refusals)
+  recibe el lienzo, las zonas en píxeles y los datos del evento, y
+  devuelve dos colores de fondo, tres de texto, dónde va el texto
+  (arriba / centro / abajo) y la ilustración. Tarda unos 45 segundos: las
+  tres pantallas de invitación llevan `maxDuration = 120`, porque un
+  server action corre con el límite de su página.
+- ⚠️ **El SVG no se confía**: lo escribe un modelo a partir de texto que
+  tipeó una persona y va al DOM con `dangerouslySetInnerHTML`.
+  `sanitizeInvitationSvg()` (`lib/invitation-design.ts`, puro) lo
+  RECONSTRUYE con una lista de etiquetas y atributos permitidos; no pasan
+  `<text>`, `<image>`, `<style>`, scripts, eventos, enlaces ni el texto
+  suelto. Si se permite una etiqueta nueva, que no pueda cargar nada de
+  afuera.
+- **Los colores del texto tampoco se le creen**: `buildInvitationDesign()`
+  mide el contraste contra las dos puntas del fondo y, si no alcanza,
+  cambia la tinta por un oscuro o un blanco.
+- **El prompt fija la reverencia**: sin figuras humanas, sin
+  representaciones de las Figuras Centrales, sin caligrafía ni el Más
+  Grande Nombre, sin símbolos de otras religiones, edificios genéricos.
+- **El límite** es `invitation_generations` (094), una fila por generación
+  LOGRADA (un intento que falla no gasta), sin policies: la lee y escribe
+  el servidor con service-role. `invitation_key` lo arma el navegador al
+  primer pedido; los intentos de la misma invitación lo comparten.
+- **Un diseño vale para el formato en que se dibujó** (el lienzo cambia):
+  en el otro formato la tarjeta muestra el diseño fijo y el editor lo
+  avisa. Con el diseño de AI activo no hay foto, estilo ni ilustración
+  fija. La imagen que se guarda en el evento es la que esté a la vista.
+
+Probado con dos generaciones reales (una noche de oraciones: lámpara y
+ramas sobre cielo nocturno; una tarde para niños: cometas y banderines).
+⚠️ Hasta que corra la 094, "Generar con AI" avisa que falta la migración y
+el diseño fijo sigue andando.
+
 Probado en el navegador con datos de ejemplo, captura incluida (PNG de
 1080 × 1920 con la foto adentro). Falta verlo con un evento real desde el
 panel y el menú de compartir en un teléfono.

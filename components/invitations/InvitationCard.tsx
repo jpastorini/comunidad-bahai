@@ -9,6 +9,7 @@ import {
   type InvitationQuote,
   type InvitationStyle,
 } from "@/lib/invitation";
+import { ART_SHARE, type InvitationDesign } from "@/lib/invitation-design";
 import { InvitationArt } from "./InvitationArt";
 
 // La tarjeta de invitación, tal cual sale en la imagen.
@@ -68,17 +69,38 @@ export type InvitationCardProps = {
   /** `data:` URI, o null para no llevar foto. */
   photo: string | null;
   quote: InvitationQuote | null;
+  /**
+   * El diseño hecho por AI (colores, composición e ilustración). Vale
+   * solo para el formato en que se dibujó; con él no hay foto, estilo ni
+   * ilustración fija: el texto lo sigue escribiendo la tarjeta.
+   */
+  design?: InvitationDesign | null;
   /** La ilustración que ocupa el lugar de la foto cuando no hay. */
   art?: InvitationArtKind | null;
 };
 
 export const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
-  function InvitationCard({ data, format, style, photo, quote, art = null }, ref) {
+  function InvitationCard(
+    { data, format, style, photo: photoProp, quote, art: artProp = null, design = null },
+    ref
+  ) {
+    const ai = design && design.format === format ? design : null;
+    const photo = ai ? null : photoProp;
+    const art = ai ? null : artProp;
     const { w, h } = INVITATION_SIZE[format];
     const tall = format === "vertical";
     // El estilo "foto" sin foto no existe: cae a noche.
-    const look: InvitationStyle = style === "foto" && !photo ? "noche" : style;
-    const p = PALETTES[look];
+    const look: InvitationStyle = ai ? "claro" : style === "foto" && !photo ? "noche" : style;
+    const p: Palette = ai
+      ? {
+          background: `linear-gradient(180deg, ${ai.backgroundTop} 0%, ${ai.backgroundBottom} 100%)`,
+          ink: ai.ink,
+          soft: ai.soft,
+          accent: ai.accent,
+          line: `${ai.accent}80`,
+          art: [ai.backgroundTop, ai.backgroundBottom],
+        }
+      : PALETTES[look];
 
     const title = data.title.trim() || "Título del evento";
     const len = title.length;
@@ -92,7 +114,7 @@ export const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
     const bannerHeight = tall ? 232 : 88;
     // Todo crece un poco en la vertical, y se aprieta en la cuadrada con
     // foto arriba, que es donde menos lugar queda.
-    const k = tall ? 1.18 : banner ? 0.9 : 1;
+    const k = tall ? 1.18 : banner || ai ? 0.9 : 1;
     const titleSize = (len <= 20 ? 31 : len <= 38 ? 26 : len <= 60 ? 22 : 19) * k;
 
     const rowStyle: CSSProperties = {
@@ -171,7 +193,20 @@ export const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
         )}
 
         {/* Marco fino: un solo motivo, sobrio. */}
-        {!banner && look !== "foto" && (
+        {ai && (
+          // El dibujo de la AI, ya saneado en el servidor (lista de
+          // etiquetas y atributos permitidos, sin texto ni scripts).
+          <svg
+            viewBox={`0 0 ${w} ${h}`}
+            width={w}
+            height={h}
+            style={{ position: "absolute", inset: 0, display: "block" }}
+            aria-hidden
+            dangerouslySetInnerHTML={{ __html: ai.svg }}
+          />
+        )}
+
+        {!banner && !ai && look !== "foto" && (
           <div
             style={{
               position: "absolute",
@@ -192,7 +227,22 @@ export const InvitationCard = forwardRef<HTMLDivElement, InvitationCardProps>(
             display: "flex",
             flexDirection: "column",
             justifyContent: look === "foto" ? "flex-end" : "center",
-            padding: tall ? "30px 30px 26px" : banner ? "10px 24px 12px" : "26px 28px 22px",
+            // Con el diseño de la AI, el texto se queda en SU zona.
+            marginTop: ai
+              ? ai.textPosition === "abajo"
+                ? h * ART_SHARE
+                : ai.textPosition === "centro"
+                  ? h * 0.14
+                  : 0
+              : 0,
+            marginBottom: ai
+              ? ai.textPosition === "arriba"
+                ? h * ART_SHARE
+                : ai.textPosition === "centro"
+                  ? h * 0.14
+                  : 0
+              : 0,
+            padding: tall ? "30px 30px 26px" : banner || ai ? "10px 24px 12px" : "26px 28px 22px",
             textAlign: "center",
           }}
         >

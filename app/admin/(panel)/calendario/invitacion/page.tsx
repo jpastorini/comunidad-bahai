@@ -8,6 +8,10 @@ import { createEventFromInvitationAction } from "../actions";
 // Creador de invitaciones, empezando por la invitación: se piden los
 // datos, sale la imagen y de ahí nace la actividad del calendario. Para
 // quien piensa "tengo que invitar" antes que "tengo que cargar un evento".
+// El diseño con AI (un server action de esta pantalla) tarda cerca de un
+// minuto: sin esto la función se corta antes.
+export const maxDuration = 120;
+
 export default async function NewInvitationPage({
   searchParams,
 }: {

@@ -10,6 +10,10 @@ import { invitationFooter } from "@/lib/invitation";
 // La invitación a una Fiesta de los 19 Días: una imagen por lugar de
 // celebración. Fecha y hora salen de la MISMA regla que el calendario y el
 // recordatorio (`feastCelebration`), para que la imagen no diga otro día.
+// El diseño con AI (un server action de esta pantalla) tarda cerca de un
+// minuto: sin esto la función se corta antes.
+export const maxDuration = 120;
+
 export default async function FeastInvitationPage({
   params,
   searchParams,

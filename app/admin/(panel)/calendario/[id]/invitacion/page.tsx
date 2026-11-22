@@ -10,6 +10,10 @@ import { isStructureLocality, type CalendarEvent } from "@/lib/types";
 // Creador de invitaciones: la imagen de un evento del calendario para
 // compartir por WhatsApp. La usa la Asamblea y quien tenga encargado el
 // Calendario (088), igual que el alta del evento.
+// El diseño con AI (un server action de esta pantalla) tarda cerca de un
+// minuto: sin esto la función se corta antes.
+export const maxDuration = 120;
+
 export default async function EventInvitationPage({
   params,
 }: {

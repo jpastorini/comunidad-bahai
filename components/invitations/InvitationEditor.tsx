@@ -19,6 +19,8 @@ import {
   type InvitationStyle,
 } from "@/lib/invitation";
 import { nodeToJpegFile, shareNodeAsImage } from "@/lib/share-image";
+import type { InvitationDesign } from "@/lib/invitation-design";
+import { generateInvitationDesignAction } from "./actions";
 import { InvitationCard } from "./InvitationCard";
 
 // El editor de la invitación: a la izquierda los datos (prellenados desde
@@ -108,6 +110,14 @@ export function InvitationEditor({ initial, create }: Props) {
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<InvitationCreateResult | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
+  // El diseño con AI: Claude dibuja, la tarjeta escribe. Los intentos de
+  // una misma invitación comparten la clave (el límite es por institución).
+  const invitationKey = useRef("");
+  const [design, setDesign] = useState<InvitationDesign | null>(null);
+  const [useDesign, setUseDesign] = useState(true);
+  const [designing, setDesigning] = useState(false);
+  const [designNote, setDesignNote] = useState<string | null>(null);
+  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const fitRef = useRef<HTMLDivElement>(null);
@@ -149,6 +159,7 @@ export function InvitationEditor({ initial, create }: Props) {
     return () => observer.disconnect();
   }, []);
 
+  const activeDesign = useDesign && design && design.format === format ? design : null;
   const shownPhoto = usePhoto ? photo : null;
   const autoArt = pickInvitationArt(`${data.eyebrow} ${data.title}`);
   const art: InvitationArtKind | null = shownPhoto
@@ -168,7 +179,31 @@ export function InvitationEditor({ initial, create }: Props) {
     check();
     // Las fuentes pueden llegar después del primer render.
     document.fonts?.ready.then(check).catch(() => {});
-  }, [data, format, style, shownPhoto, quote, art]);
+  }, [data, format, style, shownPhoto, quote, art, activeDesign]);
+
+  async function generateDesign() {
+    if (designing || !data.title.trim()) return;
+    if (!invitationKey.current) invitationKey.current = crypto.randomUUID();
+    setDesigning(true);
+    setDesignNote(null);
+    try {
+      const result = await generateInvitationDesignAction({
+        invitationKey: invitationKey.current,
+        format,
+        ...data,
+      });
+      if (typeof result.remaining === "number") setAttemptsLeft(result.remaining);
+      if (result.ok && result.design) {
+        setDesign(result.design);
+        setUseDesign(true);
+      } else {
+        setDesignNote(result.error ?? "No se pudo generar el diseño.");
+      }
+    } catch {
+      setDesignNote("No se pudo generar el diseño. Probá de nuevo en un momento.");
+    }
+    setDesigning(false);
+  }
 
   const missing = missingFields(data);
   const ready = missing.length === 0;
@@ -390,6 +425,55 @@ export function InvitationEditor({ initial, create }: Props) {
 
       <div className="lg:sticky lg:top-6">
         <Card>
+          <div className="mb-4 rounded-xl border border-gold/40 bg-gold/[0.07] p-3">
+            <div className="text-[12px] font-semibold text-dark">Diseño con AI</div>
+            <p className="mt-1 text-[11px] text-muted">
+              La AI dibuja una ilustración y elige los colores para este evento; el
+              texto lo escribe la app, exacto. Una invitación por hora, con hasta 3
+              intentos.
+            </p>
+            <button
+              type="button"
+              disabled={designing || !data.title.trim() || attemptsLeft === 0}
+              onClick={() => void generateDesign()}
+              className="tap mt-2 w-full rounded-xl bg-dark px-4 py-2.5 text-[13px] font-semibold text-white disabled:opacity-50"
+            >
+              {designing
+                ? "Diseñando… puede tardar un minuto"
+                : design
+                  ? "Generar otra versión"
+                  : "Generar con AI"}
+            </button>
+            {attemptsLeft !== null && !designNote && (
+              <p className="mt-2 text-[11px] text-muted">
+                {attemptsLeft === 0
+                  ? "No quedan intentos para esta invitación."
+                  : `Te ${attemptsLeft === 1 ? "queda 1 intento" : `quedan ${attemptsLeft} intentos`} para esta invitación.`}
+              </p>
+            )}
+            {!data.title.trim() && (
+              <p className="mt-2 text-[11px] text-muted">Escribí el título para poder diseñar.</p>
+            )}
+            {designNote && <p className="mt-2 text-[12px] text-rose-700">{designNote}</p>}
+            {design && (
+              <label className="mt-2 flex items-center gap-2 text-[12px] text-dark">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={useDesign}
+                  onChange={(e) => setUseDesign(e.target.checked)}
+                />
+                Usar el diseño de la AI
+              </label>
+            )}
+            {design && useDesign && design.format !== format && (
+              <p className="mt-2 text-[11px] text-amber-700">
+                El diseño de la AI se hizo para la {design.format}: en este formato se ve
+                el diseño fijo. Volvé al otro formato o generá otra versión acá.
+              </p>
+            )}
+          </div>
+
           <div className="flex flex-wrap gap-2">
             {FORMATS.map((f) => (
               <Chip key={f.id} active={format === f.id} onClick={() => setFormat(f.id)}>
@@ -402,7 +486,7 @@ export function InvitationEditor({ initial, create }: Props) {
               <Chip
                 key={s.id}
                 active={style === s.id}
-                disabled={s.id === "foto" && !shownPhoto}
+                disabled={Boolean(activeDesign) || (s.id === "foto" && !shownPhoto)}
                 onClick={() => setStyle(s.id)}
               >
                 {s.label}
@@ -431,6 +515,7 @@ export function InvitationEditor({ initial, create }: Props) {
                   photo={shownPhoto}
                   quote={quote}
                   art={art}
+                  design={activeDesign}
                 />
               </div>
             </div>
