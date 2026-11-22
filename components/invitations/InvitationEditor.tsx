@@ -18,7 +18,7 @@ import {
   type InvitationQuote,
   type InvitationStyle,
 } from "@/lib/invitation";
-import { shareNodeAsImage } from "@/lib/share-image";
+import { nodeToJpegFile, shareNodeAsImage } from "@/lib/share-image";
 import { InvitationCard } from "./InvitationCard";
 
 // El editor de la invitación: a la izquierda los datos (prellenados desde
@@ -56,7 +56,31 @@ function fileToDataUrl(file: Blob): Promise<string> {
   });
 }
 
-export function InvitationEditor({ initial }: { initial: InvitationInitial }) {
+/** Lo que devuelve el alta de la actividad (el server action del calendario). */
+export type InvitationCreateResult = {
+  ok: boolean;
+  id?: string;
+  error?: string;
+  imageFailed?: boolean;
+  notified?: boolean;
+};
+
+type Props = {
+  initial: InvitationInitial;
+  /**
+   * Modo alta: la invitación se arma ANTES que el evento, y de acá nace
+   * la actividad del calendario. Sin esto, el editor solo hace la imagen
+   * de un evento que ya existe.
+   */
+  create?: {
+    action: (formData: FormData) => Promise<InvitationCreateResult>;
+    /** Con una estructura puesta (082) no hay aviso: se elige si se
+     *  muestra en el calendario de la comunidad (085). */
+    structure: boolean;
+  };
+};
+
+export function InvitationEditor({ initial, create }: Props) {
   const [data, setData] = useState<InvitationData>({
     eyebrow: initial.eyebrow,
     title: initial.title,
@@ -78,6 +102,12 @@ export function InvitationEditor({ initial }: { initial: InvitationInitial }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [overflow, setOverflow] = useState(false);
   const [scale, setScale] = useState(1);
+  // Modo alta: compartir con la comunidad, y el resultado del alta.
+  const [share, setShare] = useState(!create?.structure);
+  const [audience, setAudience] = useState<"todos" | "creyentes">("todos");
+  const [creating, setCreating] = useState(false);
+  const [created, setCreated] = useState<InvitationCreateResult | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const fitRef = useRef<HTMLDivElement>(null);
@@ -179,6 +209,38 @@ export function InvitationEditor({ initial }: { initial: InvitationInitial }) {
     if (result === "error") setNotice("No se pudo generar la imagen. Probá de nuevo.");
   }
 
+  async function createEvent() {
+    if (!create || !cardRef.current || !ready || creating) return;
+    setCreating(true);
+    setCreateError(null);
+    // La imagen se guarda como la del evento: es lo que la comunidad ve
+    // al abrir la actividad en su calendario.
+    const image = await nodeToJpegFile(cardRef.current, {
+      filename: invitationFileName(data.title).replace(".png", ".jpg"),
+      width: size.w,
+      height: size.h,
+    });
+    const fd = new FormData();
+    fd.set("title", data.title.trim());
+    fd.set("date", data.date);
+    fd.set("time", data.time.trim());
+    fd.set("location", data.place.trim().split("\n").map((l) => l.trim()).filter(Boolean).join(", "));
+    fd.set("description", data.text.trim());
+    if (share) fd.set("share", "on");
+    fd.set("audience", audience);
+    if (image) fd.set("image_file", image);
+    try {
+      const result = await create.action(fd);
+      if (result.ok) setCreated(result);
+      else setCreateError(result.error ?? "No se pudo crear la actividad.");
+    } catch {
+      setCreateError("No se pudo crear la actividad. Probá de nuevo.");
+    }
+    setCreating(false);
+  }
+
+  const pendingCreate = Boolean(create) && !created;
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
       <div className="space-y-5">
@@ -221,7 +283,11 @@ export function InvitationEditor({ initial }: { initial: InvitationInitial }) {
             </div>
           </div>
           <p className="mt-3 text-[11px] text-muted">
-            Lo que cambies acá vale solo para la imagen: el evento queda como está.
+            {create
+              ? created
+                ? "La actividad ya quedó en el calendario: lo que cambies ahora vale solo para la imagen."
+                : "Con estos datos se arma la imagen y se crea la actividad en el calendario."
+              : "Lo que cambies acá vale solo para la imagen: el evento queda como está."}
           </p>
         </Card>
 
@@ -382,12 +448,72 @@ export function InvitationEditor({ initial }: { initial: InvitationInitial }) {
             </p>
           )}
 
+          {create && !created && (
+            <div className="mt-4 rounded-xl border border-black/[0.08] bg-bg/40 p-3">
+              <div className="text-[12px] font-semibold text-dark">Actividad en el calendario</div>
+              <label className="mt-2 flex items-start gap-2 text-[12px] text-dark">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4"
+                  checked={share}
+                  onChange={(e) => setShare(e.target.checked)}
+                />
+                <span>
+                  {create.structure
+                    ? "Mostrarla en el calendario de la comunidad"
+                    : "Compartir con la comunidad: mandar un aviso al crearla"}
+                </span>
+              </label>
+              {!create.structure && share && (
+                <select
+                  value={audience}
+                  onChange={(e) => setAudience(e.target.value as "todos" | "creyentes")}
+                  aria-label="A quién se le avisa"
+                  className="mt-2 w-full rounded-xl border border-black/10 bg-card px-3 py-2 text-[12px] text-dark"
+                >
+                  <option value="todos">A toda la comunidad (creyentes y Amigos de la Fe)</option>
+                  <option value="creyentes">Solo a los creyentes</option>
+                </select>
+              )}
+              {!create.structure && (
+                <p className="mt-2 text-[11px] text-muted">
+                  La actividad se ve en el calendario de la comunidad con esta imagen,
+                  se avise o no.
+                </p>
+              )}
+              <button
+                type="button"
+                disabled={!ready || creating}
+                onClick={() => void createEvent()}
+                className="tap mt-3 w-full rounded-xl bg-terra px-4 py-2.5 text-[13px] font-semibold text-white shadow-card-soft disabled:opacity-50"
+              >
+                {creating ? "Creando…" : "Crear la actividad y la invitación"}
+              </button>
+              {createError && <p className="mt-2 text-[12px] text-rose-700">{createError}</p>}
+            </div>
+          )}
+
+          {created && (
+            <div className="mt-4 rounded-xl bg-emerald-50 px-3 py-2.5 text-[12px] text-emerald-800">
+              <strong>La actividad quedó en el calendario.</strong>{" "}
+              {created.notified && "Se avisó a la comunidad. "}
+              {created.imageFailed && "La imagen no se pudo guardar en el evento. "}
+              <a href={`/admin/calendario/${created.id}`} className="font-semibold underline">
+                Abrir la actividad
+              </a>
+            </div>
+          )}
+
           <div className="mt-4 grid gap-2">
             <button
               type="button"
               disabled={!ready || busy}
               onClick={() => void send(false)}
-              className="tap rounded-xl bg-terra px-4 py-2.5 text-[13px] font-semibold text-white shadow-card-soft disabled:opacity-50"
+              className={`tap rounded-xl px-4 py-2.5 text-[13px] font-semibold disabled:opacity-50 ${
+                pendingCreate
+                  ? "border border-terra/30 bg-terra/[0.05] text-terra"
+                  : "bg-terra text-white shadow-card-soft"
+              }`}
             >
               {busy ? "Generando…" : "Enviar por WhatsApp"}
             </button>

@@ -110,6 +110,9 @@ export default async function AdminCalendarPage({
           <>
             <ScopeToggle scope={scope} vista={vista} m={searchParams?.m} />
             <ViewToggle vista={vista} query={scopeQuery} />
+            <Button variant="secondary" href="/admin/calendario/invitacion">
+              Crear invitación
+            </Button>
             <Button href="/admin/calendario/nuevo">+ Nuevo evento</Button>
           </>
         }

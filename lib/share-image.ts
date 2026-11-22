@@ -1,4 +1,37 @@
-import { toPng } from "html-to-image";
+import { toJpeg, toPng } from "html-to-image";
+
+/**
+ * Captura un nodo como JPEG liviano, para GUARDARLO (la imagen de un
+ * evento, por ejemplo). El PNG de compartir pesa varios MB con una foto
+ * adentro y no pasa por un server action en Vercel (4,5 MB).
+ */
+export async function nodeToJpegFile(
+  node: HTMLElement,
+  opts: { filename: string; width: number; height: number }
+): Promise<File | null> {
+  try {
+    if (typeof document !== "undefined" && document.fonts?.ready) {
+      try {
+        await document.fonts.ready;
+      } catch {
+        /* noop */
+      }
+    }
+    const dataUrl = await toJpeg(node, {
+      pixelRatio: 2,
+      quality: 0.9,
+      backgroundColor: "#ffffff",
+      width: opts.width,
+      height: opts.height,
+      style: { margin: "0" },
+    });
+    const blob = await (await fetch(dataUrl)).blob();
+    return new File([blob], opts.filename, { type: "image/jpeg" });
+  } catch (err) {
+    console.error("[nodeToJpegFile] error:", err);
+    return null;
+  }
+}
 
 export type ShareResult = "shared" | "downloaded" | "error";
 

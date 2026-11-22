@@ -690,6 +690,21 @@ breve, pie con el nombre de la comunidad, foto y una cita.
 - **Si el contenido no entra, se avisa** (el cuerpo de la tarjeta se mide
   contra su alto): la imagen saldría cortada sin que nadie lo note.
 
+- **Se puede empezar por la invitación** (pedido el mismo día: lo
+  probable es que nadie cargue antes la actividad). "Crear invitación" en
+  el calendario del panel abre `/admin/calendario/invitacion`: el mismo
+  editor vacío, con `create`. "Crear la actividad y la invitación" llama a
+  `createEventFromInvitationAction`, que da de alta el evento con esos
+  datos y guarda la imagen como la del evento (un JPEG liviano de
+  `nodeToJpegFile`, no el PNG de compartir, que pesa MB y no pasa por un
+  server action). El action devuelve el resultado en vez de redirigir: el
+  editor sigue abierto para mandar la imagen. La casilla **"Compartir con
+  la comunidad"** manda un push "Nueva actividad" que abre el evento, a
+  toda la comunidad o solo a los creyentes, a elección; la actividad se ve
+  en el calendario se avise o no. Con una estructura puesta (082) no hay
+  aviso: la casilla es `community_visible` (085). Después de creada, lo
+  que se retoque vale solo para la imagen.
+
 Probado en el navegador con datos de ejemplo, captura incluida (PNG de
 1080 × 1920 con la foto adentro). Falta verlo con un evento real desde el
 panel y el menú de compartir en un teléfono.

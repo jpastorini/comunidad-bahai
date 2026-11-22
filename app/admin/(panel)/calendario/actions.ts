@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth";
 import { to24h } from "@/lib/format";
+import { invitationDateLabel, invitationTimeLabel } from "@/lib/invitation";
+import { getLocalityMemberIds, sendPushToUsers } from "@/lib/push";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { setFlashToast } from "@/lib/toast";
 import { isStructureLocality } from "@/lib/types";
@@ -147,6 +149,97 @@ export async function upsertEventAction(formData: FormData) {
     redirect(`/admin/calendario/${savedId}/invitacion`);
   }
   redirect("/admin/calendario");
+}
+
+/**
+ * La actividad que nace del Creador de invitaciones: quien arma la imagen
+ * primero no tiene que cargar el evento aparte. Devuelve el resultado en
+ * vez de redirigir, porque el editor sigue abierto para compartir la
+ * imagen.
+ */
+export async function createEventFromInvitationAction(formData: FormData): Promise<{
+  ok: boolean;
+  id?: string;
+  error?: string;
+  /** La actividad se creó, pero la imagen no se pudo guardar. */
+  imageFailed?: boolean;
+  notified?: boolean;
+}> {
+  const session = await requirePermission("calendario");
+  const supabase = createSupabaseServer();
+
+  const title = ((formData.get("title") as string) || "").trim();
+  const date = ((formData.get("date") as string) || "").trim();
+  const time = ((formData.get("time") as string) || "").trim();
+  const location = ((formData.get("location") as string) || "").trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!title || !m || !time || !location) {
+    return { ok: false, error: "Faltan el título, la fecha, la hora o el lugar." };
+  }
+
+  const structure = isStructureLocality(session.locality);
+  const share = formData.get("share") === "on";
+
+  const payload: Record<string, unknown> = {
+    title,
+    year: parseInt(m[1], 10),
+    month: parseInt(m[2], 10),
+    day: parseInt(m[3], 10),
+    time: to24h(time),
+    location,
+    description: ((formData.get("description") as string) || "").trim() || null,
+    duration_minutes: 60,
+    color: "#2A3F8F",
+    kind: "actividad_general",
+  };
+  // En una estructura (082), "compartir" es mostrarla en el calendario de
+  // la comunidad (085): lo de una Asamblea ya es de su comunidad.
+  if (structure) payload.community_visible = share;
+
+  const imageFile = formData.get("image_file") as File | null;
+  const imageUrl = await uploadImage(imageFile);
+  if (imageUrl) payload.image_url = imageUrl;
+
+  const { data, error } = await supabase
+    .from("calendar_events")
+    .insert(payload)
+    .select("id")
+    .single();
+  if (error || !data) {
+    console.error("createEventFromInvitation:", error);
+    return { ok: false, error: error?.message ?? "No se pudo crear la actividad." };
+  }
+  const id = (data as { id: string }).id;
+
+  // El aviso a la comunidad: opcional y con la audiencia elegida, como un
+  // comunicado. Una estructura no avisa (ver "Pendiente posible", 085).
+  let notified = false;
+  if (share && !structure) {
+    const recipients = await getLocalityMemberIds(session.locality.id, {
+      bahaiOnly: formData.get("audience") === "creyentes",
+    });
+    await sendPushToUsers(
+      recipients.filter((uid) => uid !== session.user.id),
+      {
+        title: "Nueva actividad",
+        body: [title, invitationDateLabel(date), invitationTimeLabel(time)]
+          .filter(Boolean)
+          .join(" · "),
+        url: `/calendario/${id}`,
+        tag: `evento-${id}`,
+      }
+    );
+    notified = true;
+  }
+
+  revalidatePath("/admin/calendario");
+  revalidatePath("/calendario");
+  return {
+    ok: true,
+    id,
+    imageFailed: Boolean(imageFile && imageFile.size > 0 && !imageUrl),
+    notified,
+  };
 }
 
 export async function deleteEventAction(formData: FormData) {
