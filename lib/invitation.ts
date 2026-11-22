@@ -71,9 +71,11 @@ export function invitationFooter(locality: {
   name: string;
   kind?: string | null;
 }): string {
-  return locality.kind === "nacional" || locality.kind === "estructura"
-    ? locality.name
-    : `Comunidad Bahá'í de ${locality.name}`;
+  // El nombre de una localidad puede venir ya completo ("Comunidad Bahá'í
+  // de Montevideo") o solo la ciudad: no se le antepone dos veces.
+  const name = locality.name.trim();
+  if (locality.kind === "nacional" || locality.kind === "estructura") return name;
+  return /^(comunidad|asamblea)\b/i.test(name) ? name : `Comunidad Bahá'í de ${name}`;
 }
 
 /** Recorte en un espacio, para proponer el texto breve. */
