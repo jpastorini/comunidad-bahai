@@ -691,8 +691,9 @@ breve, pie con el nombre de la comunidad, foto y una cita.
   contra su alto): la imagen saldría cortada sin que nadie lo note.
 
 - **Se puede empezar por la invitación** (pedido el mismo día: lo
-  probable es que nadie cargue antes la actividad). "Crear invitación" en
-  el calendario del panel abre `/admin/calendario/invitacion`: el mismo
+  probable es que nadie cargue antes la actividad). "Crear invitación"
+  —hoja propia del menú, en Vida comunitaria, porque el botón del
+  calendario no se encontraba— abre `/admin/calendario/invitacion`: el mismo
   editor vacío, con `create`. "Crear la actividad y la invitación" llama a
   `createEventFromInvitationAction`, que da de alta el evento con esos
   datos y guarda la imagen como la del evento (un JPEG liviano de

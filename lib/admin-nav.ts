@@ -139,6 +139,9 @@ export const ADMIN_NAV: NavGroup[] = [
     structureLabel: "Agenda",
     children: [
       { href: "/admin/calendario", label: "Calendario", inStructure: true, perm: "calendario" },
+      // El Creador de invitaciones: es una pantalla del calendario, pero
+      // tiene su hoja porque quien quiere invitar no la busca adentro.
+      { href: "/admin/calendario/invitacion", label: "Crear invitación", inStructure: true, perm: "calendario" },
       { href: "/admin/fiestas", label: "Fiestas de 19 Días", aelOnly: true, perm: "fiestas" },
       { href: "/admin/sugerencias", label: "Sugerencias", perm: "fiestas" },
       { href: "/admin/actividades", label: "Actividades", perm: "actividades" },
